@@ -6,7 +6,7 @@ import BarBawahPortal from "@/components/BarBawahPortal";
 import DaftarSW from "@/components/DaftarSW";
 import { pengguna } from "@/lib/akses";
 import { boleh } from "@/lib/peranan";
-import { aset } from "@/lib/laluan";
+import { AWALAN, aset } from "@/lib/laluan";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -30,7 +30,13 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
   return (
     // localization ms-MY supaya skrin log masuk Clerk dalam Bahasa Melayu,
     // selaras dengan peraturan projek: BM sepenuhnya, tiada teks Inggeris.
-    <ClerkProvider localization={msMY}>
+    <ClerkProvider
+      localization={msMY}
+      // URL pelayar — mesti membawa basePath, sama sebabnya seperti dalam
+      // komponen <SignIn />.
+      signInUrl={`${AWALAN}/masuk`}
+      signInFallbackRedirectUrl={`${AWALAN}/`}
+    >
       <html lang="ms">
         <body className="bg-slate-50 text-slate-800">
           {/* Portal juga boleh dipasang sebagai app, jadi ia kehilangan

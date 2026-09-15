@@ -1,7 +1,7 @@
 import Image from "next/image";
-import { aset } from "@/lib/laluan";
 import { SignIn } from "@clerk/nextjs";
 import { SEKOLAH } from "@/data/sekolah";
+import { AWALAN, aset } from "@/lib/laluan";
 
 export const metadata = { title: "Log Masuk" };
 
@@ -31,7 +31,21 @@ export default function Masuk() {
       </div>
 
       <div className="mt-8 w-full max-w-md">
+        {/* `path` dan `routing` MESTI dinyatakan secara eksplisit apabila
+            `basePath` digunakan.
+            Tanpa ia, Clerk menyimpulkan laluannya daripada router Next — yang
+            melaporkan "/masuk" TANPA basePath — sedangkan URL pelayar ialah
+            "/portal/masuk". Ketidakpadanan itu menyebabkan komponen berhenti
+            secara SENYAP: kotak akarnya dirender, tetapi kosong. Skrin log
+            masuk kelihatan normal kecuali tiada borang langsung, dan tiada
+            ralat konsol untuk menunjukkan sebabnya.
+            Semua URL di sini ialah URL PELAYAR, jadi setiap satu membawa
+            awalan. */}
         <SignIn
+          routing="path"
+          path={`${AWALAN}/masuk`}
+          signUpUrl={`${AWALAN}/masuk`}
+          fallbackRedirectUrl={`${AWALAN}/`}
           appearance={{
             elements: {
               rootBox: "w-full",
