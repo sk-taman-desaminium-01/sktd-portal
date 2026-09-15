@@ -31,7 +31,22 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
     // localization ms-MY supaya skrin log masuk Clerk dalam Bahasa Melayu,
     // selaras dengan peraturan projek: BM sepenuhnya, tiada teks Inggeris.
     <ClerkProvider
-      localization={msMY}
+      /* Clerk mengambil "My Application" daripada nama aplikasi dalam papan
+         pemuka Clerk, dan ia terpampang pada skrin log masuk: "Teruskan ke
+         My Application". Menindihnya di sini membetulkannya tanpa bergantung
+         kepada tetapan papan pemuka yang tiada dalam repo dan senyap-senyap
+         boleh berubah. */
+      localization={{
+        ...msMY,
+        signIn: {
+          ...msMY.signIn,
+          start: {
+            ...msMY.signIn?.start,
+            title: "Portal Kakitangan",
+            subtitle: "Log masuk dengan emel rasmi sekolah anda.",
+          },
+        },
+      }}
       // URL pelayar — mesti membawa basePath, sama sebabnya seperti dalam
       // komponen <SignIn />.
       signInUrl={`${AWALAN}/masuk`}
