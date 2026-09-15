@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { ClerkProvider } from "@clerk/nextjs";
 import { msMY } from "@clerk/localizations";
+import TarikSegar from "@/components/TarikSegar";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -18,7 +19,12 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     // selaras dengan peraturan projek: BM sepenuhnya, tiada teks Inggeris.
     <ClerkProvider localization={msMY}>
       <html lang="ms">
-        <body className="bg-slate-50 text-slate-800">{children}</body>
+        <body className="bg-slate-50 text-slate-800">
+          {/* Portal juga boleh dipasang sebagai app, jadi ia kehilangan
+              tarik-untuk-segarkan pelayar dengan cara yang sama. */}
+          <TarikSegar />
+          {children}
+        </body>
       </html>
     </ClerkProvider>
   );

@@ -11,3 +11,34 @@
   --color-emas-muda:#e6cf92;
   --color-garis:    #d9e0ea;
 }
+
+/* ---------------------------------------------------------------------------
+   Skrol mesti berfungsi pada Android DAN iOS — pelajaran sama seperti
+   sktd-web. Jangan `height:100%`, dan jangan `overflow-x:hidden`:
+   mengikut CSS Overflow 3, `hidden` pada satu paksi memaksa paksi satu lagi
+   menjadi `auto`, menjadikan html/body bekas skrol sendiri. Itu mematikan
+   `position:sticky` dan menghalang peristiwa `scroll` sampai ke `window`.
+   `clip` tidak mencipta bekas skrol, jadi ia selamat.
+--------------------------------------------------------------------------- */
+html, body {
+  height: auto;
+  overflow-x: clip;
+  overscroll-behavior-y: auto;
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* --- Tarik-untuk-segarkan: pemutar semasa halaman dimuat semula ---
+   Disalin dari sktd-web. Portal juga boleh dipasang sebagai app, jadi ia
+   kehilangan tarik-untuk-segarkan pelayar dengan cara yang sama. */
+@keyframes sktd-pusing {
+  to { transform: rotate(1turn); }
+}
+.sktd-pusing { animation: sktd-pusing 800ms linear infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+  .sktd-pusing { animation: none; }
+}
