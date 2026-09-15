@@ -5,7 +5,20 @@
 Repo: `sk-taman-desaminium-01/sktd-portal` · Hos: **Vercel** · Domain: `portal.sktd.edu.my` *(cadangan)*
 Tugasan rasmi: `../docs/tugasan-sktd.md`. Peraturan keras: `../CLAUDE.md`.
 
-Commit: `git config user.email 286102471+syaifulizhan@users.noreply.github.com`
+## ⚠️ Identiti commit BERBEZA daripada repo lain
+
+Repo ini di-deploy oleh Vercel akaun SEKOLAH. Vercel mengaitkan setiap deploy
+dengan pengarang commit; commit dari `syaifulizhan` memberi amaran
+*"syaifulizhan is not a member of this team"* dan menawarkan naik taraf Pro
+(Hobby = satu ahli sahaja).
+
+Jadi repo INI commit sebagai akaun sekolah:
+
+    git config user.name  "SK-Taman-Desaminium"
+    git config user.email "328302342+SK-Taman-Desaminium@users.noreply.github.com"
+
+Repo lain (`sktd`, `sktd-web`, `epbd`) kekal guna
+`286102471+syaifulizhan@users.noreply.github.com`.
 
 ## Kenapa repo & hos BERASINGAN dari laman awam
 
