@@ -1,6 +1,6 @@
 "use server";
 
-import { auth } from "@clerk/nextjs/server";
+import { pastikanAdmin } from "./akses";
 import { revalidatePath } from "next/cache";
 import { klienTulis } from "./supabase-pelayan";
 import { binaSemulaLamanAwam } from "./bina-semula";
@@ -23,11 +23,15 @@ export interface PosCms {
 
 const LAJUR = "id,jenis,tajuk,slug,kategori,ringkasan,keutamaan,status,tarikh_terbit,updated_at";
 
-/** Setiap tindakan CMS bermula di sini. Tiada sesi = tiada apa berlaku. */
+/**
+ * Setiap tindakan CMS bermula di sini.
+ *
+ * Log masuk SAHAJA tidak memadai — mana-mana guru boleh log masuk. Menulis
+ * kandungan laman awam ialah kuasa admin, jadi ia disemak terhadap
+ * ADMIN_EMAILS di pelayan.
+ */
 async function pastikanMasuk() {
-  const { userId } = await auth();
-  if (!userId) throw new Error("Tidak dibenarkan.");
-  return userId;
+  return pastikanAdmin();
 }
 
 export async function senaraiPos(): Promise<PosCms[]> {
