@@ -1,6 +1,6 @@
 "use server";
 
-import { pastikanAdmin } from "./akses";
+import { pastikanBoleh } from "./akses";
 import { revalidatePath } from "next/cache";
 import { klienTulis } from "./supabase-pelayan";
 import { binaSemulaLamanAwam } from "./bina-semula";
@@ -31,7 +31,7 @@ const LAJUR = "id,jenis,tajuk,slug,kategori,ringkasan,keutamaan,status,tarikh_te
  * ADMIN_EMAILS di pelayan.
  */
 async function pastikanMasuk() {
-  return pastikanAdmin();
+  return pastikanBoleh("terbit_kandungan");
 }
 
 export async function senaraiPos(): Promise<PosCms[]> {
