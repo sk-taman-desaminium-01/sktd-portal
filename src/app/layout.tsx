@@ -2,6 +2,10 @@ import type { Metadata } from "next";
 import { ClerkProvider } from "@clerk/nextjs";
 import { msMY } from "@clerk/localizations";
 import TarikSegar from "@/components/TarikSegar";
+import BarBawahPortal from "@/components/BarBawahPortal";
+import DaftarSW from "@/components/DaftarSW";
+import { pengguna } from "@/lib/akses";
+import { boleh } from "@/lib/peranan";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -13,7 +17,15 @@ export const metadata: Metadata = {
   appleWebApp: { capable: true, title: "Portal SKTD", statusBarStyle: "black-translucent" },
 };
 
-export default function RootLayout({ children }: LayoutProps<"/">) {
+export default async function RootLayout({ children }: LayoutProps<"/">) {
+  // Keputusan "boleh nampak tab Urus" dibuat di PELAYAN. Menghantar peranan
+  // ke pelayar dan memutuskan di sana bermakna peranan itu berada dalam
+  // payload RSC — dan sesiapa boleh mengubahnya dalam DevTools.
+  const saya = await pengguna();
+  const bolehAdmin =
+    boleh(saya?.peranan ?? null, "terbit_kandungan") ||
+    boleh(saya?.peranan ?? null, "urus_akses");
+
   return (
     // localization ms-MY supaya skrin log masuk Clerk dalam Bahasa Melayu,
     // selaras dengan peraturan projek: BM sepenuhnya, tiada teks Inggeris.
@@ -24,6 +36,8 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
               tarik-untuk-segarkan pelayar dengan cara yang sama. */}
           <TarikSegar />
           {children}
+          <BarBawahPortal bolehAdmin={bolehAdmin} />
+          <DaftarSW />
         </body>
       </html>
     </ClerkProvider>
