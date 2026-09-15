@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Fragment, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 
 /**
  * Bar navigasi bawah portal — hanya bila portal dipasang sebagai app.
@@ -15,9 +15,13 @@ import { Fragment, useEffect, useState } from "react";
 
 type Tab = { href: string; nama: string; d: string };
 
+/**
+ * eRPM SENGAJA tidak berada di sini. Dengan tiga tab, butang bulat di tengah
+ * tidak pernah jatuh betul-betul di tengah bar — ia kelihatan senget. eRPM
+ * masih satu ketukan sahaja: ia kad dalam bahagian Kurikulum di hab.
+ */
 const TAB: Tab[] = [
   { href: "/", nama: "Hab", d: "M3 10.5 12 3l9 7.5M5.5 9.5V20h13V9.5" },
-  { href: "/erpm", nama: "eRPM", d: "M4 5h11l5 5v9H4zM15 5v5h5M8 14h8M8 17h5" },
 ];
 
 /**
@@ -56,6 +60,39 @@ export default function BarBawahPortal({ bolehAdmin }: { bolehAdmin: boolean }) 
 
   const tab = bolehAdmin ? [...TAB, TAB_ADMIN] : TAB;
 
+  // Bahagi tab kepada dua belah yang sama banyak; belah yang kurang diisi
+  // dengan slot kosong supaya butang bulat kekal di tengah.
+  const separuh = Math.ceil(tab.length / 2);
+  const kiri: (Tab | null)[] = tab.slice(0, separuh);
+  const kanan: (Tab | null)[] = tab.slice(separuh);
+  while (kanan.length < kiri.length) kanan.push(null);
+  while (kiri.length < kanan.length) kiri.unshift(null);
+
+  const butangTab = (t: Tab | null, i: number) => {
+    if (!t) return <li key={`kosong-${i}`} className="flex-1" aria-hidden="true" />;
+    const aktif = t.href === "/" ? laluan === "/" : laluan.startsWith(t.href);
+    return (
+      <li key={t.href} className="flex-1">
+        <Link
+          href={t.href}
+          aria-current={aktif ? "page" : undefined}
+          className={`flex h-[60px] flex-col items-center justify-center gap-1 text-[10px] font-semibold ${
+            aktif ? "text-emas-muda" : "text-white/45"
+          }`}
+        >
+          <svg
+            viewBox="0 0 24 24" aria-hidden="true" className="h-[22px] w-[22px]"
+            fill="none" stroke="currentColor" strokeWidth={aktif ? 2.2 : 1.8}
+            strokeLinecap="round" strokeLinejoin="round"
+          >
+            <path d={t.d} />
+          </svg>
+          {t.nama}
+        </Link>
+      </li>
+    );
+  };
+
   return (
     <>
       <div aria-hidden="true" className="h-[calc(60px+env(safe-area-inset-bottom))]" />
@@ -64,38 +101,16 @@ export default function BarBawahPortal({ bolehAdmin }: { bolehAdmin: boolean }) 
         className="fixed inset-x-0 bottom-0 z-40 border-t border-white/10 bg-navy-900/95 backdrop-blur"
         style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
       >
+        {/* SUSUN ATUR: tab kiri | butang bulat | tab kanan.
+            Kedua-dua belah diberi bilangan slot yang SAMA — slot kosong
+            ditambah bila perlu — supaya bulatan itu jatuh betul-betul di
+            tengah tidak kira sama ada pengguna nampak tab "Urus" atau tidak.
+            Versi sebelum ini menyisipkan butang pada indeks yang dikira, dan
+            ia kelihatan senget setiap kali bilangan tab ganjil. */}
         <ul className="mx-auto flex max-w-lg items-end">
-          {tab.map((t, i) => {
-            // Butang laman disisipkan di TENGAH senarai.
-            const tengah = i === Math.ceil(tab.length / 2);
-            const aktif = t.href === "/" ? laluan === "/" : laluan.startsWith(t.href);
-            return (
-              <Fragment key={t.href}>
-              {tengah && <ButangLaman />}
-              <li className="flex-1">
-                <Link
-                  href={t.href}
-                  aria-current={aktif ? "page" : undefined}
-                  className={`flex h-[60px] flex-col items-center justify-center gap-1 text-[10px] font-semibold ${
-                    aktif ? "text-emas-muda" : "text-white/45"
-                  }`}
-                >
-                  <svg
-                    viewBox="0 0 24 24" aria-hidden="true" className="h-[22px] w-[22px]"
-                    fill="none" stroke="currentColor" strokeWidth={aktif ? 2.2 : 1.8}
-                    strokeLinecap="round" strokeLinejoin="round"
-                  >
-                    <path d={t.d} />
-                  </svg>
-                  {t.nama}
-                </Link>
-              </li>
-              </Fragment>
-            );
-          })}
-          {/* Kalau bilangan tab menjadikan tengah berada di hujung, butang
-              tidak pernah disisipkan dalam gelung — letakkannya di sini. */}
-          {Math.ceil(tab.length / 2) >= tab.length && <ButangLaman />}
+          {kiri.map(butangTab)}
+          <ButangLaman />
+          {kanan.map(butangTab)}
         </ul>
       </nav>
     </>
