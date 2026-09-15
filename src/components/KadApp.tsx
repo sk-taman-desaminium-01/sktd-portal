@@ -1,6 +1,6 @@
 import type { KadPortal } from "@/data/bahagian";
 import type { StatusApp } from "@/data/sekolah";
-import { aset } from "@/lib/laluan";
+import { AWALAN, aset } from "@/lib/laluan";
 
 /**
  * Satu kad app dalam hab — padanan `kad()` dalam `skrinPortal()` mockup:
@@ -18,9 +18,18 @@ const LABEL: Record<StatusApp, { teks: string; kelas: string }> = {
   akan: { teks: "Akan datang", kelas: "bg-[#eef1f5] text-slate-500" },
 };
 
-/** Ke mana kad ini pergi — app sebenar, atau tapak pembinaannya. */
+/**
+ * Ke mana kad ini pergi — app sebenar, atau tapak pembinaannya.
+ *
+ * ⚠️ AWALAN DITAMBAH DI SINI dengan tangan. Kad menggunakan `<a>` mentah dan
+ * bukan `<Link>` kerana pautan luar perlu `target`/`rel` — dan `<a>` TIDAK
+ * mendapat `basePath` secara automatik seperti `<Link>`. Tanpa baris ini
+ * setiap kad menuju ke /erpm, /admin, /bina/... yang tidak wujud, dan
+ * pengguna mendapat 404 Vercel pada SETIAP kad. Itu benar-benar berlaku.
+ */
 export function tujuKad(app: KadPortal): string {
-  return app.pautan ?? `/bina/${app.id}`;
+  const tuju = app.pautan ?? `/bina/${app.id}`;
+  return tuju.startsWith("/") ? `${AWALAN}${tuju}` : tuju;
 }
 
 export default function KadApp({
