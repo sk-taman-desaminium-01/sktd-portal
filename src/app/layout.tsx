@@ -8,6 +8,8 @@ export const metadata: Metadata = {
   description: "Portal kakitangan SK Taman Desaminium.",
   // Portal dalaman — jangan diindeks langsung.
   robots: { index: false, follow: false },
+  icons: { apple: [{ url: "/apple-touch-icon.png", sizes: "180x180" }] },
+  appleWebApp: { capable: true, title: "Portal SKTD", statusBarStyle: "black-translucent" },
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
