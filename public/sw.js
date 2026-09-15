@@ -38,9 +38,10 @@ self.addEventListener("fetch", (e) => {
   if (url.origin !== self.location.origin) return;
 
   // Hanya bundle bercap kandungan dan ikon. Tiada yang lain.
+  // Laluan sebenar termasuk basePath `/portal`.
   const selamat =
-    url.pathname.startsWith("/_next/static/") ||
-    /^\/(ikon-|apple-touch-icon|logo-sktd)/.test(url.pathname);
+    url.pathname.startsWith("/portal/_next/static/") ||
+    /^\/portal\/(ikon-|apple-touch-icon|logo-sktd)/.test(url.pathname);
   if (!selamat) return;
 
   e.respondWith(

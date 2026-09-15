@@ -1,4 +1,5 @@
 import Image from "next/image";
+import { aset } from "@/lib/laluan";
 import { currentUser } from "@clerk/nextjs/server";
 import { SignOutButton } from "@clerk/nextjs";
 import { SEKOLAH } from "@/data/sekolah";
@@ -25,7 +26,7 @@ function BelumDiberiAkses({
   return (
     <main className="flex min-h-screen flex-col items-center justify-center bg-navy-900 bg-[radial-gradient(120%_70%_at_50%_0%,#17406f,var(--color-navy-900)_60%)] px-5 py-14 text-white">
       <div className="w-full max-w-lg text-center">
-        <Image src="/logo-sktd.png" alt="" width={72} height={72} priority className="mx-auto w-16" />
+        <Image src={aset("/logo-sktd.png")} alt="" width={72} height={72} priority className="mx-auto w-16" />
         <h1 className="mt-5 text-2xl font-bold sm:text-3xl">
           Akses belum diberikan
         </h1>
@@ -95,7 +96,7 @@ export default async function Hab() {
     <main className="min-h-screen bg-navy-900 bg-[radial-gradient(120%_70%_at_50%_0%,#17406f,var(--color-navy-900)_60%)] px-5 py-14 text-white">
       {/* ---------- Kepala ---------- */}
       <header className="mx-auto flex max-w-xl flex-col items-center text-center">
-        <Image src="/logo-sktd.png" alt="" width={72} height={72} priority className="w-16 sm:w-[72px]" />
+        <Image src={aset("/logo-sktd.png")} alt="" width={72} height={72} priority className="w-16 sm:w-[72px]" />
         <h1 className="mt-4 text-3xl font-bold tracking-tight sm:text-4xl">
           Portal <span className="text-emas-muda">Kakitangan</span>
         </h1>
