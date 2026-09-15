@@ -1,5 +1,6 @@
 import type { KadPortal } from "@/data/bahagian";
 import type { StatusApp } from "@/data/sekolah";
+import { aset } from "@/lib/laluan";
 
 /**
  * Satu kad app dalam hab — padanan `kad()` dalam `skrinPortal()` mockup:
@@ -39,7 +40,7 @@ export default function KadApp({
         >
           {app.logo ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={app.logo} alt="" className="h-full w-full object-cover" />
+            <img src={aset(app.logo)} alt="" className="h-full w-full object-cover" />
           ) : (
             app.ikon
           )}

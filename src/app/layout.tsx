@@ -6,6 +6,7 @@ import BarBawahPortal from "@/components/BarBawahPortal";
 import DaftarSW from "@/components/DaftarSW";
 import { pengguna } from "@/lib/akses";
 import { boleh } from "@/lib/peranan";
+import { aset } from "@/lib/laluan";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -13,7 +14,7 @@ export const metadata: Metadata = {
   description: "Portal kakitangan SK Taman Desaminium.",
   // Portal dalaman — jangan diindeks langsung.
   robots: { index: false, follow: false },
-  icons: { apple: [{ url: "/apple-touch-icon.png", sizes: "180x180" }] },
+  icons: { apple: [{ url: "/portal/apple-touch-icon.png", sizes: "180x180" }] },
   appleWebApp: { capable: true, title: "Portal SKTD", statusBarStyle: "black-translucent" },
 };
 

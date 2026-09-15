@@ -1,4 +1,5 @@
 import Image from "next/image";
+import { aset } from "@/lib/laluan";
 import { SignIn } from "@clerk/nextjs";
 import { SEKOLAH } from "@/data/sekolah";
 
@@ -18,7 +19,7 @@ export default function Masuk() {
   return (
     <main className="flex min-h-screen flex-col items-center bg-navy-900 bg-[radial-gradient(120%_70%_at_50%_0%,#17406f,var(--color-navy-900)_60%)] px-5 py-14 text-white">
       <div className="flex w-full max-w-md flex-col items-center text-center">
-        <Image src="/logo-sktd.png" alt="" width={72} height={72} priority className="w-16 sm:w-[72px]" />
+        <Image src={aset("/logo-sktd.png")} alt="" width={72} height={72} priority className="w-16 sm:w-[72px]" />
         <h1 className="mt-4 text-3xl font-bold tracking-tight sm:text-4xl">
           Portal <span className="text-emas-muda">Kakitangan</span>
         </h1>

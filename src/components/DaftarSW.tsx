@@ -16,7 +16,10 @@ export default function DaftarSW() {
   useEffect(() => {
     if (!("serviceWorker" in navigator)) return;
     const daftar = () => {
-      navigator.serviceWorker.register("/sw.js").catch((e) => {
+      // Skop service worker terhad kepada folder fail itu sendiri, jadi
+      // sw.js di bawah /portal hanya mengawal /portal/* — betul-betul yang
+      // kita mahu: ia tidak boleh menyentuh laman awam di asal yang sama.
+      navigator.serviceWorker.register("/portal/sw.js").catch((e) => {
         console.warn("[sw] pendaftaran gagal:", e);
       });
     };
