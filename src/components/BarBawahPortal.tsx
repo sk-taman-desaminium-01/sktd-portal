@@ -21,7 +21,11 @@ type Tab = { href: string; nama: string; d: string };
  * masih satu ketukan sahaja: ia kad dalam bahagian Kurikulum di hab.
  */
 const TAB: Tab[] = [
-  { href: "/", nama: "Hab", d: "M3 10.5 12 3l9 7.5M5.5 9.5V20h13V9.5" },
+  // Grid, BUKAN rumah. Butang bulat di sebelahnya sudah menggunakan ikon
+  // rumah untuk "kembali ke laman sekolah"; dua rumah bersebelahan bermakna
+  // dua benda berbeza kelihatan sama. Grid juga lebih tepat: hab ialah
+  // pelancar kad app, bukan "halaman utama".
+  { href: "/", nama: "Hab", d: "M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h6v6h-6z" },
 ];
 
 /**
