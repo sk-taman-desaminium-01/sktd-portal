@@ -1,7 +1,9 @@
 import Image from "next/image";
 import { currentUser } from "@clerk/nextjs/server";
 import { SignOutButton } from "@clerk/nextjs";
-import { SEKOLAH, type AppPortal, type StatusApp } from "@/data/sekolah";
+import { SEKOLAH } from "@/data/sekolah";
+import { kadIkutBahagian } from "@/data/bahagian";
+import KadApp from "@/components/KadApp";
 import { NAMA_PERANAN } from "@/lib/peranan";
 import { pengguna } from "@/lib/akses";
 import { boleh } from "@/lib/peranan";
@@ -16,8 +18,6 @@ import Link from "next/link";
  *
  * Hab ini PELANCAR sahaja — tiada data app lain di sini.
  */
-
-const PORTAL = SEKOLAH.portal as AppPortal[];
 
 function BelumDiberiAkses({
   nama, emel, rasmi,
@@ -75,13 +75,6 @@ function BelumDiberiAkses({
     </main>
   );
 }
-
-const LABEL: Record<StatusApp, { teks: string; kelas: string }> = {
-  sedia: { teks: "Sedia", kelas: "bg-[#e5f4ec] text-[#167a4b]" },
-  bina: { teks: "Dalam pembinaan", kelas: "bg-[#fdf3dc] text-[#9a6b06]" },
-  reka: { teks: "Peringkat reka bentuk", kelas: "bg-navy-100 text-navy-700" },
-  akan: { teks: "Akan datang", kelas: "bg-[#eef1f5] text-slate-500" },
-};
 
 export default async function Hab() {
   const user = await currentUser();
@@ -174,77 +167,38 @@ export default async function Hab() {
         </section>
       )}
 
-      {/* ---------- Kad app ---------- */}
-      <section className="mx-auto mt-9 grid max-w-4xl gap-4 sm:grid-cols-2">
-        {PORTAL.map((app) => {
-          // Kad yang perlu peranan pentadbir: guru biasa nampak kad TERKUNCI,
-          // bukan pautan. Ini paparan sahaja — kawalan sebenar di pelayan.
-          const terkunci = Boolean(app.perluPentadbir) && !admin;
-          const lencana = terkunci
-            ? { teks: "Tiada akses", kelas: "bg-[#eef1f5] text-slate-500" }
-            : LABEL[app.status];
-          const bolehBuka = Boolean(app.pautan) && !terkunci;
+      {/* ---------- Kad app, dikumpul ikut unit Buku Pengurusan ----------
+          Sebelum ini semua app dalam SATU grid rata: guru terpaksa mengimbas
+          setiap kad untuk mencari satu. Buku Pengurusan sudah membahagikan
+          kerja sekolah kepada unit dan setiap guru sudah tahu unit mereka,
+          jadi hab mengikut pembahagian yang sama. Rujukan muka surat
+          dikekalkan supaya sesiapa boleh menyemak dari mana ia datang. */}
+      {kadIkutBahagian().map(({ bahagian, kad }) => (
+        <section key={bahagian.kod} className="mx-auto mt-10 max-w-4xl">
+          <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+            <h2 className="text-[11px] font-bold uppercase tracking-widest text-emas">
+              {bahagian.nama}
+            </h2>
+            {bahagian.muka && (
+              <span className="text-[11px] text-white/35">
+                Buku Pengurusan m.{bahagian.muka}
+              </span>
+            )}
+          </div>
+          <p className="mt-1 text-sm text-white/55">{bahagian.ringkas}</p>
 
-          const isi = (
-            <>
-              <div className="flex items-start justify-between gap-3">
-                <span
-                  aria-hidden="true"
-                  className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-xl text-xs font-bold text-white"
-                  style={{ backgroundColor: app.warna }}
-                >
-                  {app.logo ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={app.logo} alt="" className="h-full w-full object-cover" />
-                  ) : (
-                    app.ikon
-                  )}
-                </span>
-                <span className={`rounded px-2 py-1 text-[10px] font-bold uppercase tracking-wide ${lencana.kelas}`}>
-                  {lencana.teks}
-                </span>
-              </div>
-
-              <h2 className="mt-3.5 text-lg font-bold text-navy-900">
-                {app.nama}
-                {app.luaran && <span title="Laman luar" className="ml-1.5 text-slate-400">↗</span>}
-              </h2>
-              <p className="mt-1 text-sm leading-relaxed text-slate-600">{app.fungsi}</p>
-              {app.catatan && <p className="mt-2 text-xs leading-relaxed text-slate-500">{app.catatan}</p>}
-              {app.akses && <p className="mt-2 text-xs text-slate-500">🔒 {app.akses}</p>}
-
-              <div className="mt-auto flex items-end justify-between gap-3 pt-4 text-xs">
-                <span className="min-w-0 truncate text-slate-400">
-                  {app.domain}
-                  {app.domainCadangan && <i> (cadangan)</i>}
-                </span>
-                {bolehBuka && (
-                  <span className="shrink-0 font-semibold text-navy-700">
-                    {app.luaran ? "Buka laman ↗" : "Buka →"}
-                  </span>
-                )}
-              </div>
-            </>
-          );
-
-          const kelas = "flex h-full flex-col rounded-2xl bg-white p-5 text-left";
-          return (
-            <div key={app.id}>
-              {bolehBuka ? (
-                <a
-                  href={app.pautan}
-                  {...(app.luaran ? { target: "_blank", rel: "noreferrer" } : {})}
-                  className={`${kelas} shadow-sm ring-1 ring-white/10 transition hover:ring-2 hover:ring-emas`}
-                >
-                  {isi}
-                </a>
-              ) : (
-                <div className={`${kelas} opacity-70`}>{isi}</div>
-              )}
-            </div>
-          );
-        })}
-      </section>
+          <div className="mt-4 grid gap-4 sm:grid-cols-2">
+            {kad.map((app) => (
+              <KadApp
+                key={app.id}
+                app={app}
+                // Paparan sahaja — kawalan sebenar di pelayan pada setiap laluan.
+                terkunci={Boolean(app.perluPentadbir) && !admin}
+              />
+            ))}
+          </div>
+        </section>
+      ))}
 
       {/* ---------- Pautan KPM: senarai teks, BUKAN kad ---------- */}
       <section className="mx-auto mt-14 max-w-4xl">

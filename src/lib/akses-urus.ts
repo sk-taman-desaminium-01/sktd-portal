@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { pastikanBoleh } from "./akses";
 import { klienTulis } from "./supabase-pelayan";
-import { PERANAN, type Peranan } from "./peranan";
+import { PERANAN, perananBolehDiberi, sembunyiBaris, type Peranan } from "./peranan";
 
 export interface BarisAkses {
   id: string;
@@ -14,25 +14,22 @@ export interface BarisAkses {
 }
 
 export async function senaraiAkses(): Promise<BarisAkses[]> {
-  await pastikanBoleh("urus_akses");
+  const saya = await pastikanBoleh("urus_akses");
   const db = klienTulis();
-  return (await db.minta(
+  const semua = (await db.minta(
     "pbd_guru?select=id,nama,email,peranan,dibenarkan&order=dibenarkan.desc,peranan.asc,nama.asc",
   )) as BarisAkses[];
+
+  // Keahlian jawatankuasa admin dirahsiakan daripada bukan-mutlak.
+  // Ditapis di PELAYAN, bukan dengan CSS — baris yang ditapis di pelayar
+  // tetap sampai ke pelayar dalam payload RSC (peraturan keras #12).
+  return semua.filter((b) => !sembunyiBaris(saya.peranan, b.peranan));
 }
 
 export type Hasil = { ok: boolean; mesej: string };
 
-/** Emel admin mutlak tidak boleh diurus di sini — ia milik env. */
-function adalahMutlak(emel: string) {
-  return (process.env.ADMIN_EMAILS ?? "")
-    .split(",")
-    .map((e) => e.trim().toLowerCase())
-    .includes(emel.trim().toLowerCase());
-}
-
 export async function tambahAkses(data: FormData): Promise<Hasil> {
-  await pastikanBoleh("urus_akses");
+  const saya = await pastikanBoleh("urus_akses");
 
   const nama = String(data.get("nama") ?? "").trim();
   const email = String(data.get("email") ?? "").trim().toLowerCase();
@@ -41,14 +38,22 @@ export async function tambahAkses(data: FormData): Promise<Hasil> {
   if (!nama) return { ok: false, mesej: "Nama diperlukan." };
   if (!email) return { ok: false, mesej: "Emel diperlukan." };
   if (!PERANAN.includes(peranan)) return { ok: false, mesej: "Peranan tidak sah." };
+  // Hanya admin mutlak boleh melantik admin. Mesejnya sengaja sama dengan
+  // peranan yang memang tidak wujud — jika tidak, ia mengesahkan bahawa
+  // lapisan yang lebih tinggi wujud.
+  if (!perananBolehDiberi(saya.peranan).includes(peranan)) {
+    return { ok: false, mesej: "Peranan tidak sah." };
+  }
 
   // Sekolah guna emel rasmi; membenarkan emel luar membuka pintu belakang.
   if (!email.endsWith("@moe-dl.edu.my") && !email.endsWith("@moe.edu.my")) {
     return { ok: false, mesej: "Hanya emel rasmi @moe-dl.edu.my atau @moe.edu.my dibenarkan." };
   }
-  if (adalahMutlak(email)) {
-    return { ok: false, mesej: "Emel ini admin mutlak — diurus melalui env, bukan di sini." };
-  }
+  // NOTA: emel admin mutlak SENGAJA tidak disekat di sini.
+  // Menolaknya dengan mesej khas akan memberitahu sesiapa yang cuba bahawa
+  // emel itu istimewa — iaitu tepat apa yang kita mahu rahsiakan. Baris yang
+  // ditulis tidak memberi atau menarik apa-apa kuasa: `pengguna()` membaca
+  // env DAHULU, jadi status mutlak tidak pernah datang dari jadual ini.
 
   const db = klienTulis();
   try {
@@ -65,8 +70,10 @@ export async function tambahAkses(data: FormData): Promise<Hasil> {
 }
 
 export async function tukarPeranan(id: string, peranan: Peranan): Promise<Hasil> {
-  await pastikanBoleh("urus_akses");
-  if (!PERANAN.includes(peranan)) return { ok: false, mesej: "Peranan tidak sah." };
+  const saya = await pastikanBoleh("urus_akses");
+  if (!perananBolehDiberi(saya.peranan).includes(peranan)) {
+    return { ok: false, mesej: "Peranan tidak sah." };
+  }
   const db = klienTulis();
   await db.minta(`pbd_guru?id=eq.${id}`, {
     method: "PATCH",

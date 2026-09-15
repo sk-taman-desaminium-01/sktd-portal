@@ -2,9 +2,14 @@
 
 import { useState } from "react";
 import { tambahAkses, tukarPeranan, tarikAkses, type BarisAkses, type Hasil } from "@/lib/akses-urus";
-import { NAMA_PERANAN, PERANAN, type Peranan } from "@/lib/peranan";
+import { NAMA_PERANAN, type Peranan } from "@/lib/peranan";
 
-export default function PanelAkses({ baris }: { baris: BarisAkses[] }) {
+export default function PanelAkses({ baris, peranan: perananPilihan }: {
+  baris: BarisAkses[];
+  /** Peranan yang pengguna INI dibenarkan berikan — ditentukan pelayan,
+   *  supaya `admin` tidak pernah muncul sebagai pilihan kepada bukan-mutlak. */
+  peranan: Peranan[];
+}) {
   const [hasil, setHasil] = useState<Hasil | null>(null);
   const [sibuk, setSibuk] = useState(false);
 
@@ -30,7 +35,7 @@ export default function PanelAkses({ baris }: { baris: BarisAkses[] }) {
           <input name="email" required type="email" placeholder="emel@moe-dl.edu.my"
             className="rounded-lg border border-garis px-3 py-2.5 text-sm" />
           <select name="peranan" className="rounded-lg border border-garis px-3 py-2.5 text-sm">
-            {PERANAN.map((p) => (
+            {perananPilihan.map((p) => (
               <option key={p} value={p}>{NAMA_PERANAN[p]}</option>
             ))}
           </select>
@@ -67,7 +72,7 @@ export default function PanelAkses({ baris }: { baris: BarisAkses[] }) {
                   onChange={(e) => jalan(() => tukarPeranan(b.id, e.target.value as Peranan))}
                   className="rounded-lg border border-garis px-2.5 py-2 text-sm"
                 >
-                  {PERANAN.map((p) => (
+                  {perananPilihan.map((p) => (
                     <option key={p} value={p}>{NAMA_PERANAN[p]}</option>
                   ))}
                 </select>
