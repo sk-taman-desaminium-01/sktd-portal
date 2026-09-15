@@ -12,11 +12,23 @@ import { boleh, type Keupayaan, type Peranan, type PerananBerkesan } from "./per
  * termasuk orang yang sepatutnya membetulkannya.
  */
 
+/** Domain rasmi yang dibenarkan mendaftar. Clerk allowlist perlu naik taraf
+ *  berbayar (disahkan 16 Sep 2026: API pulangkan
+ *  `unsupported_subscription_plan_features`), jadi sekatan ini kita buat
+ *  sendiri — corak sama seperti `requireAllowedUser()` dalam repo erpm. */
+const DOMAIN_RASMI = ["@moe-dl.edu.my", "@moe.edu.my"];
+
+export function domainRasmi(emel: string): boolean {
+  return DOMAIN_RASMI.some((d) => emel.toLowerCase().endsWith(d));
+}
+
 export interface Pengguna {
   emel: string;
   nama: string | null;
   peranan: PerananBerkesan | null; // null = tiada dalam senarai akses
   mutlak: boolean;
+  /** Emel dari domain rasmi sekolah? */
+  rasmi: boolean;
 }
 
 function senaraiMutlak(): string[] {
@@ -34,7 +46,7 @@ export async function pengguna(): Promise<Pengguna | null> {
   const nama = u?.fullName ?? u?.firstName ?? null;
 
   if (senaraiMutlak().includes(emel)) {
-    return { emel, nama, peranan: "admin_mutlak", mutlak: true };
+    return { emel, nama, peranan: "admin_mutlak", mutlak: true, rasmi: true };
   }
 
   // Bukan mutlak → semak senarai akses dalam DB.
@@ -46,12 +58,12 @@ export async function pengguna(): Promise<Pengguna | null> {
 
     const r = baris[0];
     // Tiada dalam senarai, atau ada tetapi BELUM dibenarkan → tiada peranan.
-    if (!r || !r.dibenarkan) return { emel, nama, peranan: null, mutlak: false };
-    return { emel, nama: r.nama ?? nama, peranan: r.peranan, mutlak: false };
+    if (!r || !r.dibenarkan) return { emel, nama, peranan: null, mutlak: false, rasmi: domainRasmi(emel) };
+    return { emel, nama: r.nama ?? nama, peranan: r.peranan, mutlak: false, rasmi: domainRasmi(emel) };
   } catch {
     // DB gagal: JANGAN beri kuasa secara senyap. Orang biasa dianggap tiada
     // peranan (gagal tertutup); admin mutlak sudah pulang di atas.
-    return { emel, nama, peranan: null, mutlak: false };
+    return { emel, nama, peranan: null, mutlak: false, rasmi: domainRasmi(emel) };
   }
 }
 

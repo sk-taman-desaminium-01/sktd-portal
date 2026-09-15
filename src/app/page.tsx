@@ -2,7 +2,7 @@ import Image from "next/image";
 import { currentUser } from "@clerk/nextjs/server";
 import { SignOutButton } from "@clerk/nextjs";
 import { SEKOLAH, type AppPortal, type StatusApp } from "@/data/sekolah";
-import { adakahAdmin } from "@/lib/akses";
+import { pengguna } from "@/lib/akses";
 
 /**
  * Hab Portal Kakitangan — padanan `skrinPortal()` dalam mockup yang dibekukan.
@@ -16,6 +16,63 @@ import { adakahAdmin } from "@/lib/akses";
 
 const PORTAL = SEKOLAH.portal as AppPortal[];
 
+function BelumDiberiAkses({
+  nama, emel, rasmi,
+}: { nama: string; emel: string; rasmi: boolean }) {
+  return (
+    <main className="flex min-h-screen flex-col items-center justify-center bg-navy-900 bg-[radial-gradient(120%_70%_at_50%_0%,#17406f,var(--color-navy-900)_60%)] px-5 py-14 text-white">
+      <div className="w-full max-w-lg text-center">
+        <Image src="/logo-sktd.png" alt="" width={72} height={72} priority className="mx-auto w-16" />
+        <h1 className="mt-5 text-2xl font-bold sm:text-3xl">
+          Akses belum diberikan
+        </h1>
+        <div className="mx-auto my-4 h-0.5 w-36 bg-gradient-to-r from-transparent via-emas to-transparent" />
+
+        <div className="rounded-xl bg-white/5 p-5 text-left ring-1 ring-white/10">
+          <p className="text-sm leading-relaxed text-white/80">
+            Log masuk anda <b>berjaya</b>, {nama}. Akaun anda sah — cuma belum
+            dimasukkan ke dalam senarai akses portal.
+          </p>
+          <p className="mt-3 rounded-lg bg-navy-900/60 px-3 py-2 font-mono text-xs text-white/70">
+            {emel}
+          </p>
+          {!rasmi && (
+            <p className="mt-3 rounded-lg bg-[#fdf3dc] px-3 py-2 text-xs leading-relaxed text-[#9a6b06]">
+              Emel ini bukan dari domain rasmi sekolah. Portal ini untuk akaun{" "}
+              <b>@moe-dl.edu.my</b> sahaja — sila log keluar dan masuk semula
+              dengan akaun rasmi anda.
+            </p>
+          )}
+        </div>
+
+        <div className="mt-6 rounded-xl bg-white/5 p-5 text-left ring-1 ring-white/10">
+          <p className="text-sm font-semibold text-emas-muda">Apa perlu dibuat</p>
+          <p className="mt-2 text-sm leading-relaxed text-white/75">
+            Hubungi <b>pentadbir sekolah</b> dan minta akaun anda ditambah ke
+            senarai akses portal. Beritahu mereka emel di atas — itu yang
+            mereka perlukan.
+          </p>
+          <p className="mt-3 text-xs leading-relaxed text-white/50">
+            Selepas ditambah, log keluar dan masuk semula.
+          </p>
+        </div>
+
+        <div className="mt-7 flex flex-wrap justify-center gap-3">
+          <SignOutButton>
+            <button className="rounded-lg border border-white/25 px-4 py-2.5 text-sm font-semibold text-white/80 hover:bg-white/10">
+              Log keluar
+            </button>
+          </SignOutButton>
+          <a href="https://sktd.edu.my"
+            className="rounded-lg border border-white/25 px-4 py-2.5 text-sm font-semibold text-white/80 hover:bg-white/10">
+            ← Laman Sekolah
+          </a>
+        </div>
+      </div>
+    </main>
+  );
+}
+
 const LABEL: Record<StatusApp, { teks: string; kelas: string }> = {
   sedia: { teks: "Sedia", kelas: "bg-[#e5f4ec] text-[#167a4b]" },
   bina: { teks: "Dalam pembinaan", kelas: "bg-[#fdf3dc] text-[#9a6b06]" },
@@ -25,10 +82,18 @@ const LABEL: Record<StatusApp, { teks: string; kelas: string }> = {
 
 export default async function Hab() {
   const user = await currentUser();
-  const admin = await adakahAdmin();
+  const saya = await pengguna();
+  const admin = saya?.peranan === "admin" || saya?.peranan === "admin_mutlak";
 
   const nama = user?.fullName ?? user?.firstName ?? "Cikgu";
   const emel = user?.emailAddresses[0]?.emailAddress ?? "";
+
+  // Log masuk berjaya TETAPI belum ada dalam senarai akses.
+  // Tanpa skrin ini guru nampak hab kosong dan fikir sistem rosak — dan pada
+  // hari pertama, 150 guru yang keliru bermakna 150 soalan kepada pentadbir.
+  if (!saya?.peranan) {
+    return <BelumDiberiAkses nama={nama} emel={emel} rasmi={saya?.rasmi ?? false} />;
+  }
 
   return (
     <main className="min-h-screen bg-navy-900 bg-[radial-gradient(120%_70%_at_50%_0%,#17406f,var(--color-navy-900)_60%)] px-5 py-14 text-white">
