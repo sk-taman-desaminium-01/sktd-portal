@@ -20,11 +20,19 @@ const LALUAN_AWAM = createRouteMatcher([
   "/daftar(.*)",
 ]);
 
-export default clerkMiddleware(async (auth, req) => {
-  if (!LALUAN_AWAM(req)) {
-    await auth.protect();
-  }
-});
+export default clerkMiddleware(
+  async (auth, req) => {
+    if (!LALUAN_AWAM(req)) {
+      await auth.protect();
+    }
+  },
+  {
+    // Tanpa ini, pengguna yang belum log masuk dapat 404 dan bukan dialih ke
+    // skrin log masuk — guru akan sangka portal rosak. Disahkan pada domain
+    // hidup: / dan /admin kedua-duanya 404 sebelum ini ditetapkan.
+    signInUrl: "/masuk",
+  },
+);
 
 export const config = {
   matcher: [
