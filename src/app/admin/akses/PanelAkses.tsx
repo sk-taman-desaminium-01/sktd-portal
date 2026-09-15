@@ -20,6 +20,10 @@ export default function PanelAkses({ baris, peranan: perananPilihan }: {
   }
 
   const aktif = baris.filter((b) => b.dibenarkan);
+  // Dua jenis orang berkumpul di sini, dan kita SENGAJA tidak membezakannya:
+  // mereka yang baru log masuk dan belum diluluskan, dan mereka yang aksesnya
+  // ditarik. Dari sudut sistem kedua-duanya sama — tiada akses — dan skema
+  // tidak menyimpan perbezaan itu. Tajuknya jujur tentang perkara itu.
   const ditarik = baris.filter((b) => !b.dibenarkan);
 
   return (
@@ -92,7 +96,7 @@ export default function PanelAkses({ baris, peranan: perananPilihan }: {
       {ditarik.length > 0 && (
         <section className="mt-8">
           <h2 className="text-base font-bold text-slate-500">
-            Akses ditarik · {ditarik.length}
+            Tiada akses · {ditarik.length}
           </h2>
           <p className="mt-1 text-xs text-slate-500">
             Rekod dikekalkan untuk audit — bukan dipadam.
