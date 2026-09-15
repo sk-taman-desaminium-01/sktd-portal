@@ -177,24 +177,13 @@ export const KAD_TAMBAHAN: KadBaharu[] = [
     nama: "Unit Kokurikulum", ikon: "KOK", warna: "#146b56",
     fungsi: "Pendaftaran ahli unit beruniform, kelab, persatuan dan sukan.",
     domain: "portal.sktd.edu.my/kokurikulum", domainCadangan: true, status: "akan",
-    catatan: "Buku Pengurusan m.122 — senarai unit dan penyelaras sudah ada.",
+    catatan: "Buku Pengurusan m.122 — senarai unit dan penyelaras sudah ada. "
+      + "PAJSK tidak dijadikan kad berasingan: ia dibuat melalui eOperasi KPM.",
     rancangan: [
       "Pendaftaran ahli unit beruniform, kelab, persatuan dan sukan",
       "Senarai penyelaras dan guru penasihat dari Buku Pengurusan m.122",
       "Kehadiran aktiviti mingguan",
       "Laporan aktiviti untuk fail unit",
-    ],
-  },
-  {
-    id: "pajsk", bahagian: "kokurikulum",
-    nama: "PAJSK", ikon: "PJS", warna: "#0f7a5f",
-    fungsi: "Penilaian Aktiviti Jasmani, Sukan dan Kokurikulum.",
-    domain: "portal.sktd.edu.my/pajsk", domainCadangan: true, status: "akan",
-    catatan: "Kini melalui eOperasi KPM; sistem dalaman untuk kutipan data sahaja.",
-    rancangan: [
-      "Kutipan markah PAJSK mengikut murid",
-      "Semakan oleh guru penasihat sebelum dihantar",
-      "Eksport untuk dimasukkan ke eOperasi KPM",
     ],
   },
 
