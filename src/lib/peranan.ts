@@ -68,7 +68,10 @@ export type Keupayaan =
 const KEUPAYAAN: Record<PerananBerkesan, Keupayaan[]> = {
   admin_mutlak: ["urus_akses", "terbit_kandungan", "lihat_data_murid", "lihat_diagnostik"],
   admin:        ["urus_akses", "terbit_kandungan", "lihat_data_murid", "lihat_diagnostik"],
-  pentadbir:    ["terbit_kandungan", "lihat_data_murid"],
+  // Pentadbir (GB, PK, guru kanan) BOLEH urus akses — keputusan pengguna
+  // 16 Sep 2026. Menentukan siapa dapat masuk ialah keputusan pentadbiran
+  // sekolah, bukan keputusan teknikal, jadi ia milik mereka.
+  pentadbir:    ["urus_akses", "terbit_kandungan", "lihat_data_murid"],
   // Juruteknik sengaja TIADA lihat_data_murid. Kerja teknikal tidak
   // memerlukan No. KP atau gred murid, jadi ia tidak diberi.
   juruteknik:   ["lihat_diagnostik"],

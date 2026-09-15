@@ -2,7 +2,10 @@ import Image from "next/image";
 import { currentUser } from "@clerk/nextjs/server";
 import { SignOutButton } from "@clerk/nextjs";
 import { SEKOLAH, type AppPortal, type StatusApp } from "@/data/sekolah";
+import { NAMA_PERANAN } from "@/lib/peranan";
 import { pengguna } from "@/lib/akses";
+import { boleh } from "@/lib/peranan";
+import Link from "next/link";
 
 /**
  * Hab Portal Kakitangan — padanan `skrinPortal()` dalam mockup yang dibekukan.
@@ -123,7 +126,7 @@ export default async function Hab() {
                 admin ? "bg-emas text-navy-900" : "bg-white/15 text-white/70"
               }`}
             >
-              {admin ? "Pentadbir" : "Kakitangan"}
+              {NAMA_PERANAN[saya.peranan]}
             </span>
           </span>
           {emel && <span className="mt-0.5 block truncate text-xs text-white/60">{emel}</span>}
@@ -134,6 +137,42 @@ export default async function Hab() {
           </button>
         </SignOutButton>
       </section>
+
+      {/* ---------- Pentadbiran: hanya untuk yang berkuasa ----------
+          Tanpa bahagian ini, skrin /admin dan /admin/akses wujud tetapi TIADA
+          sesiapa boleh menemuinya. Dipapar ikut keupayaan, bukan ikut peranan
+          — jadi menambah peranan baharu tidak memerlukan perubahan di sini. */}
+      {(boleh(saya.peranan, "terbit_kandungan") || boleh(saya.peranan, "urus_akses")) && (
+        <section className="mx-auto mt-9 max-w-4xl">
+          <h2 className="text-[11px] font-bold uppercase tracking-widest text-emas">
+            Pentadbiran
+          </h2>
+          <ul className="mt-3 grid gap-3 sm:grid-cols-2">
+            {boleh(saya.peranan, "terbit_kandungan") && (
+              <li>
+                <Link href="/admin"
+                  className="block rounded-xl bg-white/5 p-4 ring-1 ring-white/10 hover:ring-emas">
+                  <span className="block font-semibold text-white">Urus Laman Web</span>
+                  <span className="mt-1 block text-sm text-white/65">
+                    Pengumuman &amp; aktiviti. Terbit terus ke sktd.edu.my.
+                  </span>
+                </Link>
+              </li>
+            )}
+            {boleh(saya.peranan, "urus_akses") && (
+              <li>
+                <Link href="/admin/akses"
+                  className="block rounded-xl bg-white/5 p-4 ring-1 ring-white/10 hover:ring-emas">
+                  <span className="block font-semibold text-white">Senarai Akses</span>
+                  <span className="mt-1 block text-sm text-white/65">
+                    Siapa boleh masuk portal, dan apa peranan mereka.
+                  </span>
+                </Link>
+              </li>
+            )}
+          </ul>
+        </section>
+      )}
 
       {/* ---------- Kad app ---------- */}
       <section className="mx-auto mt-9 grid max-w-4xl gap-4 sm:grid-cols-2">
