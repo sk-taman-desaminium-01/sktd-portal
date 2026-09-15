@@ -1,0 +1,12 @@
+@import "tailwindcss";
+
+/* Token warna sama dengan laman awam (diambil dari mockup yang dibekukan). */
+@theme {
+  --color-navy-50:  #f4f8fd;
+  --color-navy-100: #e6eefa;
+  --color-navy-700: #1b4a80;
+  --color-navy-800: #123561;
+  --color-navy-900: #0b2545;
+  --color-emas:     #c9a24b;
+  --color-garis:    #d9e0ea;
+}
