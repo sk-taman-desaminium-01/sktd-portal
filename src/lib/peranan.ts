@@ -63,10 +63,17 @@ export type Keupayaan =
   | "urus_akses"      // tambah/buang orang, tukar peranan
   | "terbit_kandungan" // tulis & terbit pos laman awam
   | "lihat_data_murid"
-  | "lihat_diagnostik";
+  | "lihat_diagnostik"
+  // Susun atur hab: bahagian, urutan dan status kad. Admin MUTLAK sahaja —
+  // ini menukar apa yang SEMUA orang nampak, jadi ia bukan kerja harian.
+  | "urus_portal"
+  // Lantik / buang ahli jawatankuasa admin. Admin MUTLAK sahaja.
+  | "urus_admin";
 
 const KEUPAYAAN: Record<PerananBerkesan, Keupayaan[]> = {
-  admin_mutlak: ["urus_akses", "terbit_kandungan", "lihat_data_murid", "lihat_diagnostik"],
+  admin_mutlak: ["urus_akses", "terbit_kandungan", "lihat_data_murid",
+                 "lihat_diagnostik", "urus_portal", "urus_admin"],
+  // Admin TIDAK dapat `urus_admin` — lihat nota "Jawatankuasa admin" di bawah.
   admin:        ["urus_akses", "terbit_kandungan", "lihat_data_murid", "lihat_diagnostik"],
   // Pentadbir (GB, PK, guru kanan) BOLEH urus akses — keputusan pengguna
   // 16 Sep 2026. Menentukan siapa dapat masuk ialah keputusan pentadbiran
@@ -87,4 +94,31 @@ export function boleh(p: PerananBerkesan | null, k: Keupayaan): boolean {
 /** Admin mutlak tidak boleh diturunkan pangkat atau dibuang melalui UI. */
 export function bolehDiubah(p: PerananBerkesan): boolean {
   return p !== "admin_mutlak";
+}
+
+/* ------------------------------------------- jawatankuasa admin: dirahsiakan */
+
+/**
+ * Peranan yang seseorang boleh BERIKAN kepada orang lain.
+ *
+ * Keputusan pengguna (16 Sep 2026): keahlian jawatankuasa admin — dan wujudnya
+ * lapisan admin mutlak — dirahsiakan daripada admin lain, "agar tiada gila
+ * kuasa".  Maka:
+ *
+ *   · hanya admin mutlak boleh melantik `admin`
+ *   · senarai akses menyembunyikan baris `admin` daripada bukan-mutlak
+ *   · `admin_mutlak` tidak pernah muncul sebagai pilihan kepada sesiapa —
+ *     ia hidup dalam env, bukan dalam DB
+ *
+ * Ini kerahsiaan melalui PENAPISAN PAPARAN, bukan kawalan keselamatan; kuasa
+ * sebenar tetap ditentukan `KEUPAYAAN` di atas pada setiap tindakan pelayan.
+ */
+export function perananBolehDiberi(oleh: PerananBerkesan | null): Peranan[] {
+  if (oleh === "admin_mutlak") return [...PERANAN];
+  return PERANAN.filter((r) => r !== "admin");
+}
+
+/** Baris yang patut disembunyikan daripada `oleh`. */
+export function sembunyiBaris(oleh: PerananBerkesan | null, peranan: Peranan): boolean {
+  return peranan === "admin" && oleh !== "admin_mutlak";
 }
