@@ -35,6 +35,24 @@ Satu Clerk instance pada domain akar → log masuk sekali, guna semua subdomain.
 5. Istilah **"pentadbir"**, bukan "PKP". Peranan: `guru` | `kakitangan` |
    `pentadbir` | `admin`.
 
+## Vercel (akaun SEKOLAH)
+
+Scope: `sekolah-9986-1440` · Projek: `sktd-portal` · Repo tersambung → **setiap
+push ke `main` deploy sendiri**. Tiada arahan deploy manual diperlukan.
+
+⚠️ **Repo ini AWAM.** Vercel Hobby menolak repo PERSENDIRIAN milik organisasi
+(`repo_owned_by_org`), jadi ia dijadikan awam supaya kekal dalam org sekolah
+tanpa naik taraf Pro. Maknanya: **tiada rahsia boleh masuk repo ini**, selamanya.
+Semua kunci hidup dalam env Vercel sahaja.
+
+Enam env (Production + Preview): `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`,
+`CLERK_SECRET_KEY`, `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`,
+`SUPABASE_SECRET_KEY`, `CLOUDFLARE_DEPLOY_HOOK`.
+
+Nota akaun: MCP Vercel, Vercel CLI tempatan dan sambungan Chrome SEMUANYA
+terikat pada akaun peribadi dan tidak nampak team sekolah. Kerja Vercel sekolah
+perlu `--token` + `--scope sekolah-9986-1440`.
+
 ## Toolchain
 Next 16.3.5 · React 19.2 · Clerk 7.9.3 (+ `@clerk/localizations` ms-MY) ·
 Tailwind v4 · `src/` · alias `@/*` · Node 22.
