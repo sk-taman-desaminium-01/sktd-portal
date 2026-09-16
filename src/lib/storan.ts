@@ -1,4 +1,5 @@
 import "server-only";
+import { HAD_BAIT } from "@/data/had-fail";
 
 /**
  * Muat naik fail ke Supabase Storage.
@@ -15,8 +16,11 @@ import "server-only";
 
 const BUCKET = "web-media";
 
-/** 10 MB. Gambar laman sekolah tidak sepatutnya sebesar ini pun. */
-export const HAD_SAIZ = 10 * 1024 * 1024;
+/**
+ * Had saiz. Diimport dari `@/data/had-fail` supaya pelayan, pelayar dan
+ * `bodySizeLimit` dalam next.config.ts semuanya merujuk nombor yang SAMA.
+ */
+export const HAD_SAIZ = HAD_BAIT;
 
 export const JENIS_DIBENARKAN = [
   "image/png", "image/jpeg", "image/webp", "image/avif", "application/pdf",

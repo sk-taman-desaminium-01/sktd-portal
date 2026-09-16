@@ -42,6 +42,23 @@ const nextConfig: NextConfig = {
        * kedua-duanya, dan kedua-duanya milik sekolah.
        */
       allowedOrigins: ["sktd.edu.my", "portal.sktd.edu.my"],
+
+      /**
+       * WAJIB SEPADAN dengan had muat naik kita (HAD_SAIZ dalam
+       * src/lib/storan.ts, 10 MB).
+       *
+       * Lalai Next ialah 1 MB. Kod muat naik kita membenarkan 10 MB — jadi
+       * setiap fail antara 1 MB dan 10 MB ditolak oleh Next SEBELUM sampai
+       * ke kod kita, dan pengguna melihat "An unexpected response was
+       * received from the server": mesej yang tidak menyebut saiz langsung,
+       * untuk had yang mereka tidak tahu wujud. Jadual waktu Excel dan PDF
+       * sekolah lazimnya melepasi 1 MB.
+       *
+       * 12 MB, bukan 10: pengekodan multipart menambah beberapa peratus di
+       * atas saiz fail sebenar. Had 10 MB yang sebenar dikuatkuasakan dalam
+       * `muatNaik()`, di mana ralatnya boleh menyebut saiz fail itu.
+       */
+      bodySizeLimit: "12mb",
     },
   },
 
