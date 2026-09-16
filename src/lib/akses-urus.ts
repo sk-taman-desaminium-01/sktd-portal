@@ -101,6 +101,40 @@ export async function tukarPeranan(id: string, peranan: Peranan): Promise<Hasil>
  * jejak siapa pernah ada akses — dan itu maklumat yang audit perlukan.
  * Jadi kita tetapkan `dibenarkan = false`; orangnya kekal dalam rekod.
  */
+/**
+ * TOLAK permohonan — baris dibuang terus daripada jadual.
+ *
+ * ⚠️ INI SATU-SATUNYA TEMPAT DALAM PORTAL YANG MEMADAM REKOD ORANG.
+ * Di tempat lain kami menegakkan "kosong ≠ padam" dan menyimpan rekod untuk
+ * audit (lihat `tarikAkses`). Pengecualian ini diminta secara khusus: senarai
+ * menunggu ialah ruang kerja harian, dan permohonan yang jelas salah — akaun
+ * peribadi, orang luar — mesti boleh dibersihkan supaya senarai itu kekal
+ * boleh dibaca.
+ *
+ * HAD YANG MESTI DIKETAHUI: penolakan TIDAK KEKAL. Kalau orang yang sama log
+ * masuk sekali lagi, `pengguna()` tidak menemui baris mereka dan menulis satu
+ * baris menunggu yang baharu — jadi mereka muncul semula. Untuk penolakan
+ * yang kekal, jadual perlu satu lajur status, iaitu perubahan skema.
+ */
+export async function tolakAkses(id: string): Promise<Hasil> {
+  await pastikanBoleh("urus_akses");
+  try {
+    const db = klienTulis();
+    const baris = (await db.minta(`pbd_guru?id=eq.${id}`, {
+      method: "DELETE",
+      headers: { Prefer: "return=representation" },
+    })) as { nama: string; dibenarkan: boolean }[] | null;
+
+    if (!Array.isArray(baris) || baris.length === 0) {
+      return { ok: false, mesej: "Rekod itu tidak dijumpai — mungkin ia sudah dibuang. Muat semula halaman." };
+    }
+    revalidatePath("/admin/akses");
+    return { ok: true, mesej: `Permohonan ${baris[0].nama} ditolak dan dibuang dari senarai.` };
+  } catch (e) {
+    return { ok: false, mesej: e instanceof Error ? e.message : "Gagal menolak permohonan." };
+  }
+}
+
 export async function tarikAkses(id: string, dibenarkan: boolean): Promise<Hasil> {
   await pastikanBoleh("urus_akses");
   try {
