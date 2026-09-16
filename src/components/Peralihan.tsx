@@ -51,49 +51,34 @@ export default function Peralihan() {
     };
 
     /**
-     * JARING TERAKHIR: paksa navigasi kalau ia tidak bermula.
+     * TIADA NAVIGASI PAKSA DI SINI, dan itu keputusan yang dibalikkan.
      *
-     * Pengguna melaporkan portal tersekat pada skrin pemuat — cincin
-     * berputar, halaman tidak bertukar. Puncanya dikesan sebagai pramuat
-     * Speculation Rules ke atas laluan berautentikasi, dan pramuat itu
-     * sudah dibuang. Tetapi diagnosis SATU punca tidak mencukupi untuk
-     * kegagalan yang saya tidak dapat hasilkan semula: saya tiada sesi
-     * log masuk pengguna.
+     * Saya pernah menambah jaring yang memaksa `location.assign` 1.2 saat
+     * selepas klik, untuk berjaga kalau navigasi tidak bermula. Jaring itu
+     * MENJADI pepijat: jejak navigasi Chrome sebenar menunjukkan DUA
+     * navigasi dijadualkan ke /portal — klik pengguna, kemudian paksaan
+     * saya. Navigasi kedua membatalkan yang pertama.
      *
-     * Jadi jaring ini tidak bergantung pada punca langsung. Kalau 1.2 saat
-     * selepas KLIK dokumen ini masih di sini, navigasi dipaksa dengan
-     * `location.assign`. Ia dicetuskan pada `click`, bukan `pointerdown`:
-     * klik bermakna pengguna benar-benar memilih untuk pergi, jadi memaksa
-     * navigasi tidak pernah membawa sesiapa ke tempat yang mereka tidak
-     * mahu.
+     * Pada laluan berautentikasi kesannya lebih teruk daripada sekadar
+     * lambat: jabat tangan Clerk berpusing ke pelayannya dan kembali, dan
+     * membatalkannya di tengah jalan membawa pengguna balik ke halaman
+     * asal. Itulah "cincin muncul dan terpadam, kekal di sktd.edu.my".
+     *
+     * Navigasi biasa BERFUNGSI — disahkan dalam Chrome sebenar dengan klik
+     * tetikus sebenar. Komponen ini kekal PASIF: ia memerhati dan melukis,
+     * dan tidak pernah menyentuh navigasi.
      */
-    const lepas = (e: MouseEvent) => {
-      if (e.defaultPrevented || e.button !== 0) return;
-      if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
-      const sasaran = (e.target as HTMLElement | null)?.closest("a");
-      if (!sasaran) return;
-      const href = sasaran.getAttribute("href") ?? "";
-      if (!KELUAR.test(href)) return;
-      const penuh = sasaran.href;
-      window.setTimeout(() => {
-        if (document.visibilityState === "hidden") return;
-        if (window.location.href === penuh) return;
-        window.location.assign(penuh);
-      }, 1200);
-    };
 
-    // Kembali melalui butang "back" memaparkan halaman dari cache bfcache
-    // dengan keadaan React yang SAMA — termasuk skrin pemuat yang tidak
-    // pernah ditutup. `pageshow` ialah satu-satunya isyarat yang menangkapnya.
+    // Kembali melalui butang "back" memaparkan halaman dari bfcache dengan
+    // keadaan React yang SAMA — termasuk skrin pemuat yang tidak pernah
+    // ditutup. `pageshow` ialah satu-satunya isyarat yang menangkapnya.
     const kembali = () => setTunjuk(false);
 
     document.addEventListener("pointerdown", tekan, true);
-    document.addEventListener("click", lepas, true);
     window.addEventListener("pageshow", kembali);
     window.addEventListener("pagehide", kembali);
     return () => {
       document.removeEventListener("pointerdown", tekan, true);
-      document.removeEventListener("click", lepas, true);
       window.removeEventListener("pageshow", kembali);
       window.removeEventListener("pagehide", kembali);
     };
