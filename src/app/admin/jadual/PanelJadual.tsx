@@ -66,9 +66,20 @@ export default function PanelJadual({
   function guna(draf: NonNullable<HasilBaca["draf"]>) {
     setJadual((j) => {
       const k = j.kelas[pilih];
-      // Nama guru subjek yang sudah diisi DIKEKALKAN — fail jadual jarang
-      // mengandungi nama guru, dan membuangnya bermakna kerja diulang.
-      return { ...j, kelas: { ...j.kelas, [pilih]: { ...draf, guruSubjek: k?.guruSubjek } } };
+      // Nama guru yang DIBACA dari fail menang, kerana ia datang terus dari
+      // dokumen rasmi. Nama yang sudah ditaip dikekalkan untuk subjek yang
+      // fail itu tidak menyebutnya, supaya kerja sebelum ini tidak hilang.
+      const guruSubjek = { ...(k?.guruSubjek ?? {}), ...(draf.guruSubjek ?? {}) };
+      return {
+        ...j,
+        kelas: {
+          ...j.kelas,
+          [pilih]: {
+            ...draf,
+            ...(Object.keys(guruSubjek).length > 0 ? { guruSubjek } : {}),
+          },
+        },
+      };
     });
   }
 
@@ -234,8 +245,9 @@ export default function PanelJadual({
         <h2 className="text-base font-bold text-navy-800">Muat naik fail jadual</h2>
         <p className="mt-1 text-sm leading-relaxed text-slate-600">
           Ada fail jadual untuk {pilih}? Muat naik dan sistem akan cuba
-          membacanya. <b>Tiada apa yang tersimpan secara automatik</b> — ia
-          hanya mengisi grid di atas sebagai cadangan untuk anda semak.
+          membacanya, termasuk <b>nama guru</b> kalau ia tertulis dalam fail
+          itu. <b>Tiada apa yang tersimpan secara automatik</b> — ia hanya
+          mengisi grid di atas sebagai cadangan untuk anda semak.
         </p>
 
         <form
@@ -244,7 +256,7 @@ export default function PanelJadual({
         >
           <input
             type="file" name="fail" required
-            accept="application/pdf,.docx,image/png,image/jpeg"
+            accept=".pdf,.docx,.xlsx,.xlsm,.csv,image/png,image/jpeg"
             className="min-w-0 flex-1 rounded-lg border border-garis px-3 py-2.5 text-sm"
           />
           <button
@@ -256,9 +268,12 @@ export default function PanelJadual({
         </form>
 
         <p className="mt-2 text-xs leading-relaxed text-slate-500">
-          PDF berteks dan DOCX boleh dibaca. PDF imbasan dan gambar TIDAK —
-          ia perlu OCR, yang tidak berjalan di pelayan ini. Fail tetap
-          disimpan supaya anda boleh merujuknya sambil mengisi grid.
+          <b>Excel (.xlsx) dan CSV paling tepat</b> — ia menyimpan baris dan
+          lajur sebenar, jadi sistem tahu sel mana di bawah hari yang mana.
+          DOCX berjadual juga baik. PDF berteks boleh dibaca tetapi kurang
+          tepat. PDF imbasan dan gambar TIDAK boleh — ia perlu OCR, yang tidak
+          berjalan di pelayan ini. Fail tetap disimpan supaya anda boleh
+          merujuknya sambil mengisi grid.
         </p>
 
         {baca && (
