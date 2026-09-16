@@ -9,7 +9,7 @@ import { kesanSeksyen, type SeksyenDikesan, type MukaDokumen } from "./pengurusa
 import { JENIS_SEKSYEN, type KodSeksyen } from "@/data/seksyen-pengurusan";
 import { bacaPenunjukKod } from "@/data/carta";
 import {
-  simpanDokumen, tukarSeksyen, padamDokumen,
+  simpanDokumen, tukarSeksyen, padamDokumen, barisSeksyen, seksyenDokumen,
   type SeksyenUntukSimpan,
 } from "./pengurusan";
 import { amaranDokumen, type MukaBaca } from "./muka-pdf";
@@ -254,6 +254,52 @@ export async function tukarSeksyenTindakan(
     await tukarSeksyen(id, ubah);
     revalidatePath("/admin/pengurusan");
     return { ok: true, mesej: "Dikemas kini." };
+  } catch (e) {
+    return { ok: false, mesej: ralat(e) };
+  }
+}
+
+export interface HasilBaris {
+  ok: boolean;
+  mesej: string;
+  lajur?: string[];
+  baris?: string[][];
+  jumlah?: number;
+}
+
+/**
+ * Baca baris satu seksyen, untuk DISEMAK sebelum disahkan.
+ *
+ * Skrin edisi tersimpan dahulunya memapar nama seksyen, kiraan baris, dan
+ * butang Sahkan — tanpa sebarang cara melihat baris itu. Pengguna menekan
+ * Sahkan pada data yang mereka tidak pernah lihat, dan berkata terus
+ * terang: "bagaimana saya nak sahkan kalau tak dapat semak apa-apa?"
+ *
+ * Mereka betul, dan ia menjadikan seluruh idea pengesahan tidak bermakna:
+ * "disahkan" sepatutnya bermaksud seseorang sudah membacanya.
+ *
+ * Had 400 baris: seksyen terbesar dalam buku sebenar ialah 527 baris, dan
+ * menghantar semuanya ke pelayar menjadikan skrin admin berat tanpa sebab.
+ * Pengguna yang perlu melihat lebih boleh memuat turun CSV.
+ */
+export async function lihatBaris(seksyenId: string): Promise<HasilBaris> {
+  try {
+    await pastikanBoleh("urus_pengurusan");
+  } catch {
+    return { ok: false, mesej: "Tiada kebenaran." };
+  }
+  try {
+    const semua = await barisSeksyen(seksyenId);
+    const HAD = 400;
+    return {
+      ok: true,
+      baris: semua.slice(0, HAD).map((b) => b.sel),
+      jumlah: semua.length,
+      mesej:
+        semua.length > HAD
+          ? `${HAD} daripada ${semua.length} baris dipapar.`
+          : `${semua.length} baris.`,
+    };
   } catch (e) {
     return { ok: false, mesej: ralat(e) };
   }
