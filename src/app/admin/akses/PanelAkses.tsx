@@ -5,17 +5,18 @@ import { tambahAkses, tukarPeranan, tarikAkses, type BarisAkses, type Hasil } fr
 import { NAMA_PERANAN, type Peranan } from "@/lib/peranan";
 
 /**
- * Emel dari domain rasmi sekolah?
+ * Emel bukan MOE?
  *
- * Log masuk kini merekod SESIAPA yang berjaya masuk, bukan hanya domain
- * rasmi — kerana menapis di situ bermakna kakitangan yang menggunakan
- * variasi domain KPM lain hilang tanpa jejak. Tandanya dipindahkan ke sini:
- * admin nampak domain luar dengan jelas dan boleh menolaknya.
+ * Peraturannya sengaja SAMA dengan `domainRasmi()` dalam akses.ts — domain
+ * mengandungi "moe" — tetapi ditulis semula di sini kerana fail ini komponen
+ * klien dan akses.ts ialah `server-only`. Kalau peraturan itu berubah, ia
+ * mesti berubah di kedua-dua tempat; ujian yang paling mudah ialah satu emel
+ * yang sama mesti dilayan sama pada borang ini dan pada skrin log masuk.
  */
 function luarDomain(emel: string | null): boolean {
   if (!emel) return true;
-  const e = emel.toLowerCase();
-  return !e.endsWith("@moe-dl.edu.my") && !e.endsWith("@moe.edu.my");
+  const domain = emel.toLowerCase().split("@")[1] ?? "";
+  return !domain.includes("moe");
 }
 
 export default function PanelAkses({ baris, peranan: perananPilihan }: {
@@ -50,7 +51,7 @@ export default function PanelAkses({ baris, peranan: perananPilihan }: {
         >
           <input name="nama" required placeholder="Nama penuh"
             className="rounded-lg border border-garis px-3 py-2.5 text-sm" />
-          <input name="email" required type="email" placeholder="emel@moe-dl.edu.my"
+          <input name="email" required type="email" placeholder="nama@moe-dl.edu.my"
             className="rounded-lg border border-garis px-3 py-2.5 text-sm" />
           <select name="peranan" className="rounded-lg border border-garis px-3 py-2.5 text-sm">
             {perananPilihan.map((p) => (
