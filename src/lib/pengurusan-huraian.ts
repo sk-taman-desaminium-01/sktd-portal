@@ -529,6 +529,12 @@ export function pisahKepala(grid: string[][]): { lajur: string[]; baris: string[
   return { lajur: [], baris: bersih };
 }
 
+/** Dua tajuk yang sama selepas ruang dan tanda baca diabaikan. */
+function samaTajuk(a: string, b: string): boolean {
+  const n = (t: string) => t.toUpperCase().replace(/[^A-Z0-9]+/g, " ").trim();
+  return n(a) === n(b);
+}
+
 /* --------------------------------------------------------- pengesan seksyen */
 
 /**
@@ -606,8 +612,16 @@ export function kesanSeksyen(muka: MukaDokumen[]): SeksyenDikesan[] {
     const jenis = kesanJenis(tajuk);
     if (!jenis) return;
     // Muka berturutan dengan jenis SAMA ialah sambungan, bukan seksyen baharu.
+    //
+    // KECUALI bagi jenis yang dipecah ikut tajuk: takwim dicetak bulan demi
+    // bulan, dan setiap bulan ada tajuknya sendiri. Tajuk yang BERBEZA
+    // bermakna bulan baharu; tajuk yang SAMA bermakna muka sambungan bulan
+    // itu, dan itu tetap dicantum.
     const akhir = mula[mula.length - 1];
-    if (akhir && akhir.jenis.kod === jenis.kod) return;
+    if (akhir && akhir.jenis.kod === jenis.kod) {
+      if (!jenis.pecahIkutTajuk) return;
+      if (samaTajuk(akhir.tajuk, tajuk)) return;
+    }
     mula.push({ i, tajuk, jenis });
   });
 
