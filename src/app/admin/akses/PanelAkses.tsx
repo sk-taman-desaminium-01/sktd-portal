@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { tambahAkses, tukarPeranan, tarikAkses, type BarisAkses, type Hasil } from "@/lib/akses-urus";
+import { tambahAkses, tukarPeranan, tarikAkses, tolakAkses, type BarisAkses, type Hasil } from "@/lib/akses-urus";
 import { NAMA_PERANAN, type Peranan } from "@/lib/peranan";
 
 /**
@@ -35,6 +35,8 @@ export default function PanelAkses({ baris, peranan: perananPilihan }: {
   const [sibukId, setSibukId] = useState<string | null>(null);
   const [berjaya, setBerjaya] = useState<string | null>(null);
   const router = useRouter();
+  // Menu tiga titik yang sedang terbuka, jika ada.
+  const [menuId, setMenuId] = useState<string | null>(null);
 
   async function jalan(id: string, f: () => Promise<Hasil>) {
     setSibukId(id);
@@ -202,6 +204,51 @@ export default function PanelAkses({ baris, peranan: perananPilihan }: {
                       ? "✓ Dibenarkan"
                       : "Benarkan"}
                 </button>
+
+                {/* Tindakan yang jarang dan tidak boleh diundur disorok di
+                    balik tiga titik — bukan diletak bersebelahan "Benarkan".
+                    Dua butang bersebelahan yang melakukan perkara bertentangan
+                    ialah cara paling mudah seseorang menolak orang yang
+                    sepatutnya diluluskan. */}
+                <span className="relative">
+                  <button
+                    type="button"
+                    aria-label={`Tindakan lain untuk ${b.nama}`}
+                    aria-expanded={menuId === b.id}
+                    disabled={sibukId === b.id}
+                    onClick={() => setMenuId((m) => (m === b.id ? null : b.id))}
+                    className="rounded-lg border border-garis px-2.5 py-2 text-sm leading-none text-slate-500 hover:border-navy-700 hover:text-navy-700 disabled:opacity-50"
+                  >
+                    ⋮
+                  </button>
+
+                  {menuId === b.id && (
+                    <>
+                      {/* Lapisan penutup: satu ketikan di luar menutup menu. */}
+                      <span
+                        className="fixed inset-0 z-10"
+                        aria-hidden="true"
+                        onClick={() => setMenuId(null)}
+                      />
+                      <span className="absolute right-0 z-20 mt-1 block w-56 overflow-hidden rounded-xl border border-garis bg-white shadow-lg">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setMenuId(null);
+                            jalan(b.id, () => tolakAkses(b.id));
+                          }}
+                          className="block w-full px-4 py-3 text-left text-sm font-semibold text-[#8f2424] hover:bg-[#fbeaea]"
+                        >
+                          Tolak permohonan
+                          <span className="mt-0.5 block text-xs font-normal leading-snug text-slate-500">
+                            Buang terus dari senarai. Kalau mereka log masuk
+                            semula, permohonan baharu akan muncul.
+                          </span>
+                        </button>
+                      </span>
+                    </>
+                  )}
+                </span>
               </li>
             ))}
           </ul>
