@@ -9,6 +9,7 @@ import { boleh } from "@/lib/peranan";
 import { AWALAN, aset } from "@/lib/laluan";
 import "./globals.css";
 import Laju from "@/components/Laju";
+import Peralihan from "@/components/Peralihan";
 
 export const metadata: Metadata = {
   title: { default: "Portal Kakitangan SKTD", template: "%s · Portal SKTD" },
@@ -67,6 +68,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
           <BarBawahPortal bolehAdmin={bolehAdmin} />
           <DaftarSW />
           <Laju />
+          <Peralihan />
       </body>
       </html>
     </ClerkProvider>

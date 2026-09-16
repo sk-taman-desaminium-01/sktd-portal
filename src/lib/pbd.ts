@@ -22,10 +22,16 @@ import { kelasBolehSunting } from "./guru-kelas";
  * Maka setiap fungsi di bawah menyemak sendiri, dan tiada satu pun
  * bergantung pada pemanggilnya sudah menyemak.
  *
- * TP TIDAK PERNAH DIKIRA AUTOMATIK. Guru menandakan setiap SP sebagai
- * M / TM / M-I dan sistem memaparkan x/N sebagai PANDUAN; TP 1–6 tetap
- * ditaip guru sendiri. Mengautomasikannya pernah dibincang dan ditolak:
- * TP ialah pertimbangan profesional, bukan purata.
+ * DUA NILAI SAHAJA, dan itu keputusan pengguna (17 Sep 2026): Tahap
+ * Penguasaan (TP 1–6) dan gred sumatif UASA (A–E). Itu yang masuk ke slip
+ * PBD, dan tiada apa lagi.
+ *
+ * Penandaan Standard Prestasi setiap SP TIDAK dibuat di sini — itu kerja
+ * eRPM, app berasingan setiap panitia. Membinanya semula dalam ePBD
+ * bermakna guru menanda perkara yang sama dua kali dalam dua sistem.
+ *
+ * TP TIDAK PERNAH DIKIRA AUTOMATIK. Ia ditaip guru subjek sendiri, kerana
+ * tahap penguasaan ialah pertimbangan profesional, bukan purata.
  */
 
 export interface Murid {
