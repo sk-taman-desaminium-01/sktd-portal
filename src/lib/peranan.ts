@@ -16,10 +16,18 @@
  * Admin mutlak BUKAN sekadar "admin yang lain". Ia peranan berasingan.
  */
 
+/**
+ * Peranan SENGAJA SEDIKIT.
+ *
+ * "Juruteknik" pernah ada di sini dan dibuang atas permintaan pengguna
+ * (16 Sep 2026): senarai jawatan yang panjang menjadikan skrin akses semak
+ * dan menyukarkan keputusan mudah. Kerja teknikal dilakukan oleh admin.
+ * Setiap peranan baharu mesti membawa perbezaan kuasa yang NYATA, bukan
+ * sekadar nama jawatan yang berbeza.
+ */
 export const PERANAN = [
   "admin",
   "pentadbir",
-  "juruteknik",
   "kakitangan",
   "guru",
 ] as const;
@@ -33,7 +41,6 @@ export const NAMA_PERANAN: Record<PerananBerkesan, string> = {
   admin_mutlak: "Admin Mutlak",
   admin: "Admin",
   pentadbir: "Pentadbir",
-  juruteknik: "Juruteknik",
   kakitangan: "Kakitangan",
   guru: "Guru",
 };
@@ -45,8 +52,6 @@ export const HURAIAN_PERANAN: Record<PerananBerkesan, string> = {
     "Urus kandungan laman, urus senarai akses, dan semua fungsi pentadbir.",
   pentadbir:
     "Urus kandungan laman web dan lihat laporan. Tidak boleh ubah senarai akses.",
-  juruteknik:
-    "Lihat status sistem dan diagnostik. TIDAK boleh lihat data murid atau terbitkan kandungan.",
   kakitangan: "Guna aplikasi kakitangan. Tiada akses pentadbiran.",
   guru: "Guna aplikasi guru. Tiada akses pentadbiran.",
 };
@@ -85,9 +90,6 @@ const KEUPAYAAN: Record<PerananBerkesan, Keupayaan[]> = {
   // sekolah, bukan keputusan teknikal, jadi ia milik mereka.
   pentadbir:    ["urus_akses", "terbit_kandungan", "lihat_data_murid",
                  "urus_guru_kelas"],
-  // Juruteknik sengaja TIADA lihat_data_murid. Kerja teknikal tidak
-  // memerlukan No. KP atau gred murid, jadi ia tidak diberi.
-  juruteknik:   ["lihat_diagnostik"],
   kakitangan:   [],
   guru:         [],
 };
