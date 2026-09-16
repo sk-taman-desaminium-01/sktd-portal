@@ -104,7 +104,7 @@ export default function PanelIsi({
               <th className="w-10 p-2 text-[11px] font-bold uppercase tracking-wide text-slate-500">#</th>
               <th className="p-2 text-[11px] font-bold uppercase tracking-wide text-slate-500">Nama</th>
               <th className="w-24 p-2 text-[11px] font-bold uppercase tracking-wide text-slate-500">TP</th>
-              <th className="w-24 p-2 text-[11px] font-bold uppercase tracking-wide text-slate-500">UASA</th>
+              <th className="w-24 p-2 text-[11px] font-bold uppercase tracking-wide text-slate-500">Sumatif</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-garis">

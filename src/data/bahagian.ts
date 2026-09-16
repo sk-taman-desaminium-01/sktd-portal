@@ -186,8 +186,8 @@ export const KAD_TAMBAHAN: KadBaharu[] = [
     // TIADA `perlu`: setiap guru subjek perlu membukanya. Halaman itu
     // sendiri menapis kelas dan subjek mana mereka boleh sentuh.
     akses: "Guru subjek, guru kelas, pentadbir & admin",
-    catatan: "Slip dan pengisian TP sudah hidup. Tanda SP setiap standard "
-      + "belum dibina — TP dimasukkan guru terus.",
+    catatan: "TP dan gred sumatif sudah hidup, termasuk slip. Penandaan "
+      + "Standard Prestasi kekal di eRPM setiap panitia, bukan di sini.",
   },
   {
     id: "jadual", bahagian: "kurikulum",

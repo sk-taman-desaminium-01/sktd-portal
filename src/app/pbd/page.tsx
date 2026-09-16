@@ -126,10 +126,10 @@ export default async function Pbd() {
       )}
 
       <p className="mt-8 rounded-xl border border-garis bg-navy-50 p-4 text-sm leading-relaxed text-navy-800">
-        <b>TP ditaip guru sendiri.</b> Sistem memaparkan bilangan SP yang
-        dikuasai sebagai panduan, tetapi tidak pernah menetapkan TP secara
-        automatik — tahap penguasaan ialah pertimbangan profesional guru,
-        bukan purata.
+        <b>Dua perkara sahaja yang masuk ke slip:</b> Tahap Penguasaan (TP
+        1–6) dan gred sumatif UASA (A–E). Kedua-duanya ditaip guru subjek
+        sendiri — sistem tidak pernah mengiranya automatik, kerana tahap
+        penguasaan ialah pertimbangan profesional guru.
       </p>
     </main>
   );
