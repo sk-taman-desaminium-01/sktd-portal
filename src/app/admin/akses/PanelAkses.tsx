@@ -1,7 +1,6 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 import { tambahAkses, tukarPeranan, tarikAkses, tolakAkses, type BarisAkses, type Hasil } from "@/lib/akses-urus";
 import { NAMA_PERANAN, type Peranan } from "@/lib/peranan";
 
@@ -26,6 +25,11 @@ export default function PanelAkses({ baris, peranan: perananPilihan }: {
    *  supaya `admin` tidak pernah muncul sebagai pilihan kepada bukan-mutlak. */
   peranan: Peranan[];
 }) {
+  // Salinan tempatan supaya skrin boleh dikemas kini serta-merta daripada
+  // hasil tindakan. Ia disegerakkan semula bila pelayan menghantar prop baharu.
+  const [senarai, setSenarai] = useState<BarisAkses[]>(baris);
+  useEffect(() => setSenarai(baris), [baris]);
+
   const [hasil, setHasil] = useState<Hasil | null>(null);
   // SATU baris yang sibuk, bukan seluruh skrin.
   // Versi sebelum ini menggunakan satu boolean `sibuk` untuk semua butang,
@@ -34,7 +38,6 @@ export default function PanelAkses({ baris, peranan: perananPilihan }: {
   // SETIAP butang tersekat selama-lamanya.
   const [sibukId, setSibukId] = useState<string | null>(null);
   const [berjaya, setBerjaya] = useState<string | null>(null);
-  const router = useRouter();
   // Menu tiga titik yang sedang terbuka, jika ada.
   const [menuId, setMenuId] = useState<string | null>(null);
 
@@ -46,11 +49,13 @@ export default function PanelAkses({ baris, peranan: perananPilihan }: {
       setHasil(r);
       if (r.ok) {
         setBerjaya(id);
-        // Tarik senarai terkini dari pelayan supaya orang yang baru
-        // dibenarkan BERGERAK ke bahagian "Dibenarkan" di depan mata admin.
-        // Tanpa ini, tindakan itu berjaya tetapi skrin kelihatan tidak
-        // berubah — dan admin menekannya berulang kali.
-        router.refresh();
+        // Senarai datang BERSAMA hasil, jadi skrin dikemas kini daripada data
+        // itu sendiri. Versi sebelum ini memanggil router.refresh(), yang
+        // mencetuskan render semula kedua serentak dengan penyegaran yang
+        // revalidatePath sudah mulakan — dan kegagalan dalam render itu
+        // memantul balik sebagai "Minified React error #441" di dalam kotak
+        // mesej ini, iaitu ralat yang tidak bermakna kepada sesiapa.
+        if (r.senarai) setSenarai(r.senarai);
         window.setTimeout(() => setBerjaya((b) => (b === id ? null : b)), 2500);
       }
     } catch (e) {
@@ -69,12 +74,12 @@ export default function PanelAkses({ baris, peranan: perananPilihan }: {
 
   const sibuk = sibukId !== null;
 
-  const aktif = baris.filter((b) => b.dibenarkan);
+  const aktif = senarai.filter((b) => b.dibenarkan);
   // Dua jenis orang berkumpul di sini, dan kita SENGAJA tidak membezakannya:
   // mereka yang baru log masuk dan belum diluluskan, dan mereka yang aksesnya
   // ditarik. Dari sudut sistem kedua-duanya sama — tiada akses — dan skema
   // tidak menyimpan perbezaan itu. Tajuknya jujur tentang perkara itu.
-  const ditarik = baris.filter((b) => !b.dibenarkan);
+  const ditarik = senarai.filter((b) => !b.dibenarkan);
 
   return (
     <>
