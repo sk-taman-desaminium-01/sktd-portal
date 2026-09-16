@@ -108,7 +108,7 @@ const KOD_SAH = new Set([...PANITIA.map((p) => p.kod), "PERHIMPUNAN", "PSS", "KO
  * paling selamat, dan skor keyakinan memberitahu guru kelas sejauh mana ia
  * boleh dipercayai sebelum mereka menyemak sel demi sel.
  */
-export function binaDraf(teks: string, senaraiWaktu: Waktu[]): { draf: KelasJadual; dikenal: number; jumlah: number } {
+export function binaDraf(teks: string, senaraiWaktu: Waktu[]): HasilHuraian {
   const waktu = senaraiWaktu.filter((w) => !w.rehat);
   const baris = teks.split(/\r?\n/);
 
@@ -144,10 +144,29 @@ export function binaDraf(teks: string, senaraiWaktu: Waktu[]): { draf: KelasJadu
     if (Object.keys(slot).length > 0) hari[h] = slot;
   });
 
-  return { draf: { hari }, dikenal, jumlah: waktu.length * HARI.length };
+  const jumlah = waktu.length * HARI.length;
+  return { draf: { hari }, dikenal, jumlah, kosong: Math.max(0, jumlah - dikenal), tidakDikenali: 0 };
 }
 
 
+
+/**
+ * Hasil satu percubaan menghurai.
+ *
+ * `kosong` dan `tidakDikenali` dipisahkan dengan sengaja: "44 daripada 45"
+ * kelihatan seperti sesuatu terlepas, sedangkan waktu ke-45 itu mungkin
+ * memang kosong dalam jadual sekolah. Pentadbir tidak sepatutnya memburu
+ * sesuatu yang tidak wujud.
+ */
+export interface HasilHuraian {
+  draf: KelasJadual;
+  dikenal: number;
+  jumlah: number;
+  /** Waktu yang tiada sebarang teks dalam fail. */
+  kosong: number;
+  /** Ada teks tetapi subjeknya tidak dikenali. Inilah kegagalan sebenar. */
+  tidakDikenali: number;
+}
 
 /* ----------------------------------------------------------------- hari */
 
@@ -335,7 +354,7 @@ function cariBarisHari(grid: string[][]): { baris: number; lajur: Partial<Record
 export function binaDrafDariGrid(
   helaian: string[][][],
   senaraiWaktu: Waktu[],
-): { draf: KelasJadual; dikenal: number; jumlah: number } | null {
+): HasilHuraian | null {
   const waktu = senaraiWaktu.filter((w) => !w.rehat);
 
   for (const asal of helaian) {
@@ -376,13 +395,16 @@ export function binaDrafDariGrid(
 
       if (dikenal > 0) {
         const guruSubjek = guruTerbanyak(kutipan);
+        const jumlah = waktu.length * HARI.length;
         return {
           draf: {
             hari,
             ...(Object.keys(guruSubjek).length > 0 ? { guruSubjek } : {}),
           },
           dikenal,
-          jumlah: waktu.length * HARI.length,
+          jumlah,
+          kosong: Math.max(0, jumlah - dikenal),
+          tidakDikenali: 0,
         };
       }
     }
@@ -415,7 +437,7 @@ const RE_MASA = /(\d{1,2})[:.](\d{2})\s*[-–]\s*(\d{1,2})[:.](\d{2})/;
 export function binaDrafDariKedudukan(
   halaman: Kedudukan[][],
   senaraiWaktu: Waktu[],
-): { draf: KelasJadual; dikenal: number; jumlah: number } | null {
+): HasilHuraian | null {
   const waktuPdP = senaraiWaktu.filter((w) => !w.rehat);
   const jumlah = waktuPdP.length * HARI.length;
 
@@ -497,6 +519,7 @@ export function binaDrafDariKedudukan(
     const hari: KelasJadual["hari"] = {};
     const kutipan = new Map<string, string[]>();
     let dikenal = 0;
+    let tidakDikenali = 0;
 
     for (const [kunci, kepingan] of sel) {
       const [namaHari, idxStr] = kunci.split("|");
@@ -508,7 +531,12 @@ export function binaDrafDariKedudukan(
 
       const teks = kepingan.join(" ");
       const kod = padanSubjek(teks);
-      if (!kod) continue;
+      if (!kod) {
+        // Ada teks di sel ini tetapi kita tidak tahu ia subjek apa. INI
+        // kegagalan; sel yang langsung tiada teks bukan.
+        tidakDikenali++;
+        continue;
+      }
 
       const h = namaHari as Hari;
       hari[h] = { ...(hari[h] ?? {}), [w.id]: { subjek: kod } };
@@ -524,6 +552,13 @@ export function binaDrafDariKedudukan(
         draf: { hari, ...(Object.keys(guruSubjek).length > 0 ? { guruSubjek } : {}) },
         dikenal,
         jumlah,
+        // Waktu yang tiada sebarang teks dalam fail. Membezakannya daripada
+        // kegagalan penting: "44 daripada 45" kelihatan seperti sesuatu
+        // terlepas, sedangkan waktu ke-45 itu memang kosong dalam jadual
+        // sekolah — dan pentadbir tidak sepatutnya memburu sesuatu yang
+        // tidak wujud.
+        kosong: Math.max(0, jumlah - dikenal - tidakDikenali),
+        tidakDikenali,
       };
     }
   }

@@ -6,6 +6,7 @@ import {
   type BarisAkses, type Hasil,
 } from "@/lib/akses-urus";
 import { NAMA_PERANAN, type Peranan } from "@/lib/peranan";
+import Carian, { padan } from "@/components/Carian";
 
 /**
  * Emel bukan MOE?
@@ -107,12 +108,15 @@ export default function PanelAkses({ baris, peranan: perananPilihan }: {
 
   const sibuk = sibukId !== null;
 
-  const aktif = senarai.filter((b) => b.dibenarkan);
+  const [cari, setCari] = useState("");
+  const sepadan = (b: BarisAkses) => padan(b.nama, cari) || padan(b.email, cari);
+
+  const aktif = senarai.filter((b) => b.dibenarkan && sepadan(b));
   // Dua jenis orang berkumpul di sini, dan kita SENGAJA tidak membezakannya:
   // mereka yang baru log masuk dan belum diluluskan, dan mereka yang aksesnya
   // ditarik. Dari sudut sistem kedua-duanya sama — tiada akses — dan skema
   // tidak menyimpan perbezaan itu. Tajuknya jujur tentang perkara itu.
-  const ditarik = senarai.filter((b) => !b.dibenarkan);
+  const ditarik = senarai.filter((b) => !b.dibenarkan && sepadan(b));
 
   return (
     <>
@@ -149,7 +153,13 @@ export default function PanelAkses({ baris, peranan: perananPilihan }: {
         </p>
       )}
 
-      <section className="mt-8">
+      <Carian
+        nilai={cari} setNilai={setCari}
+        label="Cari nama atau emel"
+        jumlah={senarai.length} ditapis={aktif.length + ditarik.length}
+      />
+
+      <section className="mt-6">
         <h2 className="text-base font-bold text-navy-800">Dibenarkan · {aktif.length}</h2>
         {aktif.length === 0 ? (
           <p className="mt-3 rounded-xl border border-garis bg-white p-5 text-center text-sm text-slate-500">

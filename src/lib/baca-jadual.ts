@@ -1,10 +1,11 @@
 "use server";
 
-import { pengguna } from "./akses";
+import { pengguna, pastikanBoleh } from "./akses";
 import { kelasBolehSunting } from "./guru-kelas";
 import { semakFail } from "./storan";
 import { muatanKeFail, type MuatanFail } from "@/data/fail-base64";
 import { setUntukKelas, type KelasJadual, type Waktu } from "@/data/jadual-jenis";
+import { semuaKelas } from "@/data/kelas";
 import { binaDraf, binaDrafDariGrid, binaDrafDariKedudukan } from "./jadual-huraian";
 import { bacaDokumen } from "./baca-dokumen";
 import { ambilJadual } from "./jadual";
@@ -151,7 +152,7 @@ async function jalankan(kelas: string, muatan: MuatanFail): Promise<HasilBaca> {
     : dok.grid.length > 0
       ? binaDrafDariGrid(dok.grid, senaraiWaktu)
       : null;
-  const { draf, dikenal, jumlah } =
+  const { draf, dikenal, jumlah, kosong, tidakDikenali } =
     dariKedudukan ?? dariGrid ?? binaDraf(dok.teks, senaraiWaktu);
   const bersih = dok.teks;
   const kaedah = dariKedudukan
@@ -172,6 +173,111 @@ async function jalankan(kelas: string, muatan: MuatanFail): Promise<HasilBaca> {
         ? "Fail dibaca, tetapi tiada subjek dikenal pasti. Isi grid secara manual."
         : `Fail dibaca melalui ${kaedah}. ${dikenal} slot dikenal pasti` +
           (jumlahGuru > 0 ? ` dan ${jumlahGuru} nama guru` : "") +
-          " — SEMAK setiap satu sebelum menyimpan.",
+          (tidakDikenali > 0
+            ? `. ${tidakDikenali} sel ada teks yang sistem tidak cam — semak sel kosong dalam grid.`
+            : kosong > 0
+              ? `. Tiada yang terlepas — ${kosong} waktu lagi memang kosong dalam fail itu.`
+              : ". Tiada yang terlepas — jadual penuh.") +
+          " SEMAK setiap satu sebelum menyimpan.",
   };
+}
+
+
+/* ------------------------------------------------------- muat naik PUKAL */
+
+export interface HasilPukal {
+  nama: string;
+  /** Kelas yang dikesan, atau null jika tidak pasti. */
+  kelas: string | null;
+  ok: boolean;
+  mesej: string;
+  draf?: KelasJadual;
+  keyakinan?: { dikenal: number; jumlah: number };
+}
+
+/**
+ * Kesan kelas daripada kandungan fail, kemudian daripada namanya.
+ *
+ * Kandungan didahulukan kerana ia yang dicetak sekolah: jadual 2 MAJU
+ * mengandungi "2 MAJU" sebagai tajuknya. Nama fail hanya sandaran — ia mudah
+ * ditukar orang, dan pentadbir yang menyusun 57 fail memang menamakannya
+ * ikut suka.
+ */
+function kesanKelas(teks: string, namaFail: string): string | null {
+  const senarai = semuaKelas();
+  const normal = (t: string) => ` ${t.toUpperCase().replace(/[^A-Z0-9]+/g, " ").replace(/\s+/g, " ").trim()} `;
+
+  const isi = normal(teks);
+  // Nama terpanjang dipadankan dahulu, supaya "1 INTELEK" tidak dikalahkan
+  // oleh padanan separa kelas lain.
+  const ikutPanjang = [...senarai].sort((a, b) => b.length - a.length);
+  for (const k of ikutPanjang) if (isi.includes(normal(k))) return k;
+
+  const nama = normal(namaFail);
+  for (const k of ikutPanjang) if (nama.includes(normal(k))) return k;
+  return null;
+}
+
+/**
+ * Baca SATU fail dalam muat naik pukal.
+ *
+ * Pukal diproses satu fail pada satu masa dari pelayar, BUKAN sekaligus.
+ * 57 kelas x 300 KB ialah kira-kira 17 MB, dan base64 menjadikannya 23 MB —
+ * jauh melebihi had badan permintaan. Menghantarnya satu demi satu
+ * mengekalkan setiap permintaan kecil, memberi kemajuan yang boleh dilihat,
+ * dan bermakna satu fail rosak tidak menjatuhkan keseluruhan kerja.
+ */
+export async function bacaJadualPukal(muatan: MuatanFail): Promise<HasilPukal> {
+  try {
+    // Pukal ialah kerja pentadbiran ke atas SEMUA kelas, jadi ia memerlukan
+    // kuasa peringkat sekolah — bukan sekadar guru kelas.
+    await pastikanBoleh("urus_guru_kelas");
+  } catch {
+    return { nama: muatan?.nama ?? "(fail)", kelas: null, ok: false, mesej: "Tiada kebenaran." };
+  }
+
+  const nama = muatan?.nama ?? "(fail)";
+  try {
+    const tolak = semakFail(muatanKeFail(muatan));
+    if (tolak) return { nama, kelas: null, ok: false, mesej: tolak };
+
+    const dok = await bacaDokumen(muatanKeFail(muatan));
+    if (dok.jenis === "imbasan" || dok.jenis === "lain") {
+      return { nama, kelas: null, ok: false, mesej: dok.amaran[0] ?? "Fail ini tidak boleh dibaca." };
+    }
+
+    const kelas = kesanKelas(dok.teks, nama);
+    if (!kelas) {
+      return {
+        nama, kelas: null, ok: false,
+        mesej: "Kelas tidak dapat dikesan dari fail ini. Muat naik ia seorang diri dan pilih kelasnya.",
+      };
+    }
+
+    const jadual = await ambilJadual();
+    const senaraiWaktu = setUntukKelas(jadual, kelas)?.senarai ?? [];
+    if (senaraiWaktu.length === 0) {
+      return { nama, kelas, ok: false, mesej: `Tiada set waktu untuk ${kelas}.` };
+    }
+
+    const hasil =
+      (dok.item?.length ? binaDrafDariKedudukan(dok.item, senaraiWaktu) : null) ??
+      (dok.grid.length ? binaDrafDariGrid(dok.grid, senaraiWaktu) : null) ??
+      binaDraf(dok.teks, senaraiWaktu);
+
+    return {
+      nama, kelas, ok: hasil.dikenal > 0,
+      draf: hasil.draf,
+      keyakinan: { dikenal: hasil.dikenal, jumlah: hasil.jumlah },
+      mesej:
+        hasil.dikenal > 0
+          ? `${hasil.dikenal} slot dibaca`
+          : "Fail dibaca tetapi tiada subjek dikenal pasti.",
+    };
+  } catch (e) {
+    return {
+      nama, kelas: null, ok: false,
+      mesej: e instanceof Error ? `${e.name}: ${e.message}` : String(e),
+    };
+  }
 }
