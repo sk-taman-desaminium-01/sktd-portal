@@ -161,14 +161,9 @@ export const KAD_TAMBAHAN: KadBaharu[] = [
   {
     id: "jadual", bahagian: "kurikulum",
     nama: "Jadual Waktu", ikon: "JDL", warna: "#1b4a80",
-    fungsi: "Jadual waktu kelas dan guru — juga boleh dilihat ibu bapa.",
-    domain: "jadual.sktd.edu.my", domainCadangan: true, status: "akan",
-    rancangan: [
-      "Jadual waktu setiap kelas dan setiap guru",
-      "Paparan untuk ibu bapa — konsep seperti jadualwaktu.my",
-      "Kemas kini serentak bila jadual ditukar",
-      "Guru ganti dipaparkan pada hari berkenaan",
-    ],
+    fungsi: "Jadual waktu setiap kelas — ibu bapa melihatnya di laman sekolah.",
+    domain: "sktd.edu.my/jadual", pautan: "/admin/jadual", status: "sedia",
+    akses: "Pentadbir & admin", perluPentadbir: true,
   },
 
   /* --- Kokurikulum --- */
