@@ -20,6 +20,17 @@ import Link from "next/link";
  * Hab ini PELANCAR sahaja — tiada data app lain di sini.
  */
 
+/**
+ * Skrin untuk orang yang berjaya log masuk tetapi belum ada peranan.
+ *
+ * DUA KEADAAN YANG BERBEZA SAMA SEKALI, dan menggabungkannya mengelirukan:
+ *
+ *  · Emel BUKAN MOE — mereka bukan menunggu apa-apa. Mereka menggunakan
+ *    akaun yang salah, dan menunggu selama-lamanya tidak akan mengubahnya.
+ *    Beritahu mereka supaya bertukar akaun, dan JANGAN sebut kelulusan.
+ *  · Emel MOE — mereka memang menunggu. Nama mereka sudah berada di hadapan
+ *    pentadbir; mereka tidak perlu buat apa-apa lagi.
+ */
 function BelumDiberiAkses({
   nama, emel, rasmi, permohonan,
 }: {
@@ -31,32 +42,42 @@ function BelumDiberiAkses({
       <div className="w-full max-w-lg text-center">
         <Image src={aset("/logo-sktd.png")} alt="" width={72} height={72} priority className="mx-auto w-16" />
         <h1 className="mt-5 text-2xl font-bold sm:text-3xl">
-          Akses belum diberikan
+          {rasmi ? "Menunggu pengesahan admin" : "Sila guna emel MOE anda"}
         </h1>
         <div className="mx-auto my-4 h-0.5 w-36 bg-gradient-to-r from-transparent via-emas to-transparent" />
 
         <div className="rounded-xl bg-white/5 p-5 text-left ring-1 ring-white/10">
           <p className="text-sm leading-relaxed text-white/80">
-            Log masuk anda <b>berjaya</b>, {nama}. Akaun anda sah — cuma belum
-            dimasukkan ke dalam senarai akses portal.
+            Anda log masuk sebagai {nama} dengan akaun ini:
           </p>
-          <p className="mt-3 rounded-lg bg-navy-900/60 px-3 py-2 font-mono text-xs text-white/70">
+          <p className="mt-3 break-all rounded-lg bg-navy-900/60 px-3 py-2 font-mono text-xs text-white/70">
             {emel}
           </p>
-          {!rasmi && (
-            <p className="mt-3 rounded-lg bg-[#fdf3dc] px-3 py-2 text-xs leading-relaxed text-[#9a6b06]">
-              Emel ini bukan dari domain rasmi sekolah. Portal ini untuk akaun{" "}
-              <b>@moe-dl.edu.my</b> sahaja — sila log keluar dan masuk semula
-              dengan akaun rasmi anda.
-            </p>
-          )}
         </div>
 
-        {/* Keadaan catatan permohonan — dipapar supaya kegagalan tidak
-            tersembunyi. Sebelum ini kegagalan hanya pergi ke log pelayan,
-            yang bermakna guru DAN admin sama-sama tidak tahu mengapa nama itu
-            tidak pernah muncul. */}
-        {permohonan?.keadaan === "gagal" ? (
+        {!rasmi ? (
+          /* ---------- Akaun salah ---------- */
+          <div className="mt-6 rounded-xl bg-[#fdf3dc] p-5 text-left">
+            <p className="text-sm font-semibold text-[#9a6b06]">
+              Portal ini hanya menerima emel MOE
+            </p>
+            <p className="mt-2 text-sm leading-relaxed text-[#7a5a12]">
+              Akaun di atas bukan emel MOE, jadi ia tidak boleh digunakan di
+              sini — walaupun anda guru sekolah ini. Sila log keluar dan masuk
+              semula menggunakan emel rasmi anda:
+            </p>
+            <ul className="mt-3 space-y-1 font-mono text-xs text-[#7a5a12]">
+              <li>nama@moe-dl.edu.my</li>
+              <li>nama@moe.edu.my</li>
+              <li>nama@moe.gov.my</li>
+            </ul>
+            <p className="mt-3 text-xs leading-relaxed text-[#8a6a1a]">
+              Tiada permohonan dihantar kepada pentadbir — menunggu tidak akan
+              membuka akses untuk akaun ini.
+            </p>
+          </div>
+        ) : permohonan?.keadaan === "gagal" ? (
+          /* ---------- Emel betul, tetapi catatan gagal ---------- */
           <div className="mt-6 rounded-xl bg-[#fbeaea] p-5 text-left">
             <p className="text-sm font-semibold text-[#8f2424]">
               Nama anda TIDAK berjaya dihantar
@@ -70,19 +91,17 @@ function BelumDiberiAkses({
             </p>
           </div>
         ) : (
+          /* ---------- Emel betul, menunggu kelulusan ---------- */
           <div className="mt-6 rounded-xl bg-white/5 p-5 text-left ring-1 ring-white/10">
             <p className="text-sm font-semibold text-emas-muda">
-              {permohonan?.keadaan === "direkod"
-                ? "Nama anda sudah dihantar"
-                : "Menunggu kelulusan"}
+              Nama anda sudah dihantar
             </p>
             <p className="mt-2 text-sm leading-relaxed text-white/75">
-              Nama dan emel anda kini berada dalam senarai pentadbir sekolah,
-              menunggu kelulusan. Anda tidak perlu menghantarnya lagi.
+              Emel anda sah. Nama anda kini berada dalam senarai pentadbir
+              sekolah, menunggu pengesahan. Anda tidak perlu menghantarnya lagi.
             </p>
             <p className="mt-3 text-xs leading-relaxed text-white/50">
-              Untuk menyegerakan, beritahu pentadbir. Selepas diluluskan, log
-              keluar dan masuk semula.
+              Selepas disahkan, log keluar dan masuk semula.
             </p>
           </div>
         )}

@@ -16,7 +16,18 @@ import { boleh, type Keupayaan, type Peranan, type PerananBerkesan } from "./per
  *  berbayar (disahkan 16 Sep 2026: API pulangkan
  *  `unsupported_subscription_plan_features`), jadi sekatan ini kita buat
  *  sendiri — corak sama seperti `requireAllowedUser()` dalam repo erpm. */
-const DOMAIN_RASMI = ["@moe-dl.edu.my", "@moe.edu.my"];
+/**
+ * Domain emel KPM yang dikira rasmi.
+ *
+ * `@moe.gov.my` ada dalam senarai ini kerana ia MEMANG emel MOE — kakitangan
+ * KPM menggunakannya. Meninggalkannya bermakna orang sebenar disuruh "guna
+ * emel MOE" sedangkan itulah yang mereka sedang guna.
+ *
+ * Senarai ini menentukan dua perkara sekaligus: siapa yang permohonannya
+ * direkodkan, dan siapa yang diberitahu supaya bertukar akaun. Jadi menambah
+ * domain di sini lebih baik daripada menambah kes khas di tempat lain.
+ */
+const DOMAIN_RASMI = ["@moe-dl.edu.my", "@moe.edu.my", "@moe.gov.my"];
 
 export function domainRasmi(emel: string): boolean {
   return DOMAIN_RASMI.some((d) => emel.toLowerCase().endsWith(d));
@@ -78,20 +89,22 @@ export async function pengguna(): Promise<Pengguna | null> {
     // Itu memberi akses SIFAR — ia hanya meletakkan nama mereka di hadapan
     // admin. Kelulusan tetap tindakan manusia.
     if (!r) {
-      // TIADA TAPISAN DOMAIN DI SINI, dan itu disengajakan.
+      // Hanya emel MOE direkodkan.
       //
-      // Versi pertama hanya merekod emel yang berakhir dengan @moe-dl.edu.my
-      // atau @moe.edu.my. Kakitangan KPM juga menggunakan variasi lain
-      // (@moe.gov.my antaranya) — dan bagi mereka, log masuk menulis SIFAR
-      // baris dan gagal tanpa sebarang tanda. Guru nampak "akses belum
-      // diberikan", admin nampak senarai kosong, dan tiada sesiapa tahu
-      // mengapa. Itulah yang berlaku.
+      // Emel lain (gmail dan sebagainya) TIDAK dimasukkan ke dalam senarai:
+      // memenuhkan skrin admin dengan akaun Google rawak menjadikan senarai
+      // itu susah dibaca, dan orang berkenaan bukan menunggu kelulusan —
+      // mereka menggunakan akaun yang salah. Skrin memberitahu mereka
+      // perkara itu terus, jadi ia bukan kegagalan senyap.
       //
-      // Merekod semua orang yang log masuk adalah selamat: baris itu memberi
-      // akses SIFAR. Domain yang bukan rasmi ditandakan dalam senarai supaya
-      // admin nampak perbezaannya dan boleh menolaknya.
-      const permohonan = await rekodPermohonan(db, emel, nama, u!.id);
-      return { emel, nama, peranan: null, mutlak: false, rasmi: domainRasmi(emel), permohonan };
+      // `DOMAIN_RASMI` kini termasuk @moe.gov.my. Tanpa itu, kakitangan KPM
+      // sebenar akan disuruh "guna emel MOE" sedangkan itulah yang mereka
+      // sedang guna, dan log masuk mereka tidak pernah direkodkan.
+      const rasmi = domainRasmi(emel);
+      const permohonan = rasmi
+        ? await rekodPermohonan(db, emel, nama, u!.id)
+        : undefined;
+      return { emel, nama, peranan: null, mutlak: false, rasmi, permohonan };
     }
 
     // Ada tetapi belum dibenarkan → tiada peranan.
