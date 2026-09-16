@@ -49,13 +49,15 @@ async function bacaPdf(buf: ArrayBuffer): Promise<Dokumen> {
   const { text } = await extractText(pdf, { mergePages: true });
   const teks = (Array.isArray(text) ? text.join("\n") : text).replace(/ /g, " ").trim();
 
-  // PDF yang diimbas memulangkan hampir tiada teks. Itu bukan "kosong" —
-  // itu isyarat bahawa ia gambar, dan kita mesti berkata begitu.
-  if (teks.length < 40) {
+  // PDF yang diimbas memulangkan hampir TIADA teks. Ambangnya sengaja
+  // rendah: jadual waktu yang jarang berisi boleh menghasilkan sedikit teks
+  // sahaja, dan menolaknya sebagai "imbasan" bermakna fail yang sah tidak
+  // pernah dibaca. Lebih baik cuba membaca dan gagal dengan jujur.
+  if (teks.length < 12) {
     return {
       jenis: "imbasan", teks, grid: [],
       amaran: [
-        "PDF ini tidak mengandungi lapisan teks — hampir pasti ia imbasan atau gambar.",
+        `PDF ini hanya mengandungi ${teks.length} aksara teks — hampir pasti ia imbasan atau gambar.`,
         "Membacanya memerlukan OCR, yang tidak berjalan di pelayan ini.",
       ],
     };

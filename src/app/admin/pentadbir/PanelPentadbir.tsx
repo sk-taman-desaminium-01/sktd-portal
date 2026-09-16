@@ -3,6 +3,8 @@
 import { useState } from "react";
 import Image from "next/image";
 import { simpanPentadbir, naikGambarPentadbir } from "@/lib/pentadbir";
+import PemotongWajah from "./PemotongWajah";
+import { semakSaiz } from "@/data/had-fail";
 import type { Pentadbir } from "@/data/sekolah";
 
 /** Huruf awal nama — dipapar bila tiada gambar. Sama logik dengan mockup. */
@@ -17,6 +19,8 @@ export default function PanelPentadbir({ awal }: { awal: Pentadbir[] }) {
   const [hasil, setHasil] = useState<{ ok: boolean; mesej: string } | null>(null);
   const [sibuk, setSibuk] = useState(false);
   const [naik, setNaik] = useState<number | null>(null);
+  // Gambar yang menunggu dipotong: indeks pentadbir + fail asal.
+  const [potong, setPotong] = useState<{ i: number; fail: File } | null>(null);
 
   const ubah = (i: number, medan: keyof Pentadbir, nilai: string | null) =>
     setSenarai((s) => s.map((o, j) => (j === i ? { ...o, [medan]: nilai } : o)));
@@ -30,7 +34,14 @@ export default function PanelPentadbir({ awal }: { awal: Pentadbir[] }) {
       return baharu;
     });
 
-  async function gambar(i: number, fail: File) {
+  /**
+   * Fail YANG SUDAH DIPOTONG dihantar, bukan fail asal.
+   *
+   * Dua sebab: potret keluar 400×400 supaya barisan pentadbir sekata di
+   * laman awam, dan gambar kamera telefon yang 4–8 MB mengecil kepada
+   * puluhan kilobait — jadi ia tidak pernah menghampiri had muat naik.
+   */
+  async function hantar(i: number, fail: File) {
     setNaik(i);
     const fd = new FormData();
     fd.set("fail", fail);
@@ -48,6 +59,19 @@ export default function PanelPentadbir({ awal }: { awal: Pentadbir[] }) {
 
   return (
     <>
+      {potong && (
+        <PemotongWajah
+          fail={potong.fail}
+          namaOrang={senarai[potong.i]?.nama || "Pentadbir"}
+          onBatal={() => setPotong(null)}
+          onSiap={(fail) => {
+            const i = potong.i;
+            setPotong(null);
+            hantar(i, fail);
+          }}
+        />
+      )}
+
       {hasil && (
         <p
           role="status"
@@ -91,8 +115,13 @@ export default function PanelPentadbir({ awal }: { awal: Pentadbir[] }) {
                   disabled={naik !== null}
                   onChange={(e) => {
                     const f = e.target.files?.[0];
-                    if (f) gambar(i, f);
                     e.target.value = "";
+                    if (!f) return;
+                    const ralat = semakSaiz(f);
+                    if (ralat) { setHasil({ ok: false, mesej: ralat }); return; }
+                    // Buka pemotong dahulu — tiada apa dimuat naik sehingga
+                    // pengguna melihat dan menerima potongannya.
+                    setPotong({ i, fail: f });
                   }}
                 />
               </label>
