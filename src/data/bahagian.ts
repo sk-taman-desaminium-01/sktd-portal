@@ -101,7 +101,6 @@ export const BAHAGIAN: Bahagian[] = [
 const BAHAGIAN_APP: Record<string, KodBahagian> = {
   urusweb: "pentadbiran",
   findelima: "pentadbiran",
-  epbd: "kurikulum",
   erpm: "kurikulum",
   bkgk: "badan",
   payibg: "badan",

@@ -212,11 +212,11 @@ export const SEKOLAH = {
       domain: "sktd.edu.my/admin", pautan: "/admin", status: "bina",
       akses: "Pentadbir, guru kanan & admin",
     },
-    {
-      id: "epbd", nama: "ePBD", ikon: "PBD", warna: "#1b4a80",
-      fungsi: "Slip Pelaporan Pentaksiran Bilik Darjah — semua subjek, Tahun 1–6.",
-      domain: "epbd.sktd.edu.my", pautan: "https://epbd.sktd.edu.my", status: "bina",
-    },
+    // Kad "ePBD" tunggal DIBUANG (17 Sep 2026). Ia menunjuk ke
+    // epbd.sktd.edu.my — app berasingan yang tidak pernah dibina. ePBD kini
+    // hidup DALAM portal ini dan dipecah kepada dua kad mengikut pembahagian
+    // kerja sebenar: ePBD-Guru (pengisian) dan ePBD-Slip (cetakan).
+    // Lihat KAD_TAMBAHAN dalam `bahagian.ts`.
     {
       id: "erpm", nama: "eRPM", ikon: "RPM", warna: "#146b56",
       fungsi: "Penilaian PBD dalam talian untuk setiap subjek — tanda SP, TP, laporan.",
