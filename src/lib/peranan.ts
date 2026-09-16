@@ -76,20 +76,27 @@ export type Keupayaan =
   | "urus_admin"
   // Tetapkan SIAPA guru kelas bagi setiap kelas. Pentadbir ke atas.
   // Ini keputusan pentadbiran sekolah, bukan keputusan teknikal.
-  | "urus_guru_kelas";
+  | "urus_guru_kelas"
+  // Muat naik dan sahkan Buku Pengurusan Tahunan. Pentadbir ke atas.
+  //
+  // BUKAN `urus_portal` (admin mutlak sahaja): buku pengurusan ialah dokumen
+  // rasmi sekolah, dan orang yang menyusunnya ialah pentadbir. Mengunci ia
+  // kepada admin mutlak bermakna orang yang menulis buku itu tidak boleh
+  // memuat naiknya.
+  | "urus_pengurusan";
 
 const KEUPAYAAN: Record<PerananBerkesan, Keupayaan[]> = {
   admin_mutlak: ["urus_akses", "terbit_kandungan", "lihat_data_murid",
                  "lihat_diagnostik", "urus_portal", "urus_admin",
-                 "urus_guru_kelas"],
+                 "urus_guru_kelas", "urus_pengurusan"],
   // Admin TIDAK dapat `urus_admin` — lihat nota "Jawatankuasa admin" di bawah.
   admin:        ["urus_akses", "terbit_kandungan", "lihat_data_murid",
-                 "lihat_diagnostik", "urus_guru_kelas"],
+                 "lihat_diagnostik", "urus_guru_kelas", "urus_pengurusan"],
   // Pentadbir (GB, PK, guru kanan) BOLEH urus akses — keputusan pengguna
   // 16 Sep 2026. Menentukan siapa dapat masuk ialah keputusan pentadbiran
   // sekolah, bukan keputusan teknikal, jadi ia milik mereka.
   pentadbir:    ["urus_akses", "terbit_kandungan", "lihat_data_murid",
-                 "urus_guru_kelas"],
+                 "urus_guru_kelas", "urus_pengurusan"],
   kakitangan:   [],
   guru:         [],
 };

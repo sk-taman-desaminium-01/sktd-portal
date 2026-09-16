@@ -20,6 +20,7 @@ export default async function Admin() {
   const draf = pos.filter((p) => p.status === "draf").length;
   const bolehAkses = boleh(saya?.peranan ?? null, "urus_akses");
   const bolehGuruKelas = boleh(saya?.peranan ?? null, "urus_guru_kelas");
+  const bolehPengurusan = boleh(saya?.peranan ?? null, "urus_pengurusan");
 
   const ALAT: { href: string; nama: string; ringkas: string; ikon: string }[] = [
     { href: "/admin/pos", nama: "Pos baharu", ikon: "✎",
@@ -34,8 +35,10 @@ export default async function Admin() {
       ? [{ href: "/admin/guru-kelas", nama: "Guru Kelas", ikon: "🧑‍🏫",
            ringkas: "Tetapkan siapa guru kelas. Mereka menyunting jadual kelas itu." }]
       : []),
-    { href: "/bina/urusweb", nama: "Buku Pengurusan", ikon: "📕",
-      ringkas: "Muat naik PDF tahunan dan sahkan isinya." },
+    ...(bolehPengurusan
+      ? [{ href: "/admin/pengurusan", nama: "Buku Pengurusan", ikon: "📕",
+           ringkas: "Muat naik buku tahunan; sistem membaca dan menyenaraikan isinya." }]
+      : []),
     ...(bolehAkses
       ? [{ href: "/admin/akses", nama: "Senarai Akses", ikon: "🔑",
            ringkas: "Siapa boleh masuk portal, dan apa peranan mereka." }]
