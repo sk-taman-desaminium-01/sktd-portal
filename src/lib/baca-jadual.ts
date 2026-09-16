@@ -4,7 +4,7 @@ import { pengguna } from "./akses";
 import { kelasBolehSunting } from "./guru-kelas";
 import { semakFail } from "./storan";
 import { setUntukKelas, type KelasJadual, type Waktu } from "@/data/jadual-jenis";
-import { binaDraf, binaDrafDariGrid } from "./jadual-huraian";
+import { binaDraf, binaDrafDariGrid, binaDrafDariKedudukan } from "./jadual-huraian";
 import { bacaDokumen } from "./baca-dokumen";
 import { ambilJadual } from "./jadual";
 
@@ -133,13 +133,29 @@ async function jalankan(data: FormData): Promise<HasilBaca> {
     };
   }
 
-  // GRID DAHULU. Excel, CSV dan jadual DOCX menyimpan baris dan lajur sebenar,
-  // jadi kita tahu sel mana di bawah hari yang mana — padanan kedudukan, bukan
-  // tekaan urutan. Teks rata hanya digunakan bila tiada struktur (PDF).
-  const dariGrid = dok.grid.length > 0 ? binaDrafDariGrid(dok.grid, senaraiWaktu) : null;
-  const { draf, dikenal, jumlah } = dariGrid ?? binaDraf(dok.teks, senaraiWaktu);
+  // TIGA KAEDAH, dari yang paling tepat ke yang paling terdesak:
+  //  1. KOORDINAT PDF — setiap hari satu jalur y, setiap waktu satu jalur x.
+  //     Ini yang membaca jadual aSc sekolah: 37/45 slot pada fail sebenar,
+  //     berbanding 0 dengan kedua-dua kaedah di bawah.
+  //  2. GRID — Excel, CSV dan jadual DOCX menyimpan baris dan lajur sebenar.
+  //  3. TEKS RATA — jaring terakhir. Ia mengandaikan subjek muncul mengikut
+  //     turutan, yang jarang benar pada fail sebenar.
+  const dariKedudukan = dok.item?.length
+    ? binaDrafDariKedudukan(dok.item, senaraiWaktu)
+    : null;
+  const dariGrid = dariKedudukan
+    ? null
+    : dok.grid.length > 0
+      ? binaDrafDariGrid(dok.grid, senaraiWaktu)
+      : null;
+  const { draf, dikenal, jumlah } =
+    dariKedudukan ?? dariGrid ?? binaDraf(dok.teks, senaraiWaktu);
   const bersih = dok.teks;
-  const kaedah = dariGrid ? "struktur jadual" : "teks";
+  const kaedah = dariKedudukan
+    ? "kedudukan dalam PDF"
+    : dariGrid
+      ? "struktur jadual"
+      : "teks";
   const jumlahGuru = Object.keys(draf.guruSubjek ?? {}).length;
 
   return {

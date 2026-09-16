@@ -22,11 +22,27 @@ import "server-only";
 
 export type JenisDokumen = "pdf" | "docx" | "xlsx" | "csv" | "imbasan" | "lain";
 
+/** Satu serpihan teks dengan kedudukannya pada muka surat. */
+export interface ItemTeks {
+  str: string;
+  x: number;
+  y: number;
+}
+
 export interface Dokumen {
   jenis: JenisDokumen;
   teks: string;
   /** [helaian][baris][lajur]. Kosong bila format tidak menyimpan struktur. */
   grid: string[][][];
+  /**
+   * [muka][item] dengan koordinat — PDF sahaja.
+   *
+   * Grid di atas mengandaikan satu sel = satu baris dan satu lajur. Jadual
+   * aSc melanggar andaian itu: label hari duduk pada barisnya SENDIRI di
+   * lajur kiri, manakala subjek dan nama guru berada pada baris lain di
+   * bawahnya. Untuk bentuk begitu, koordinat mentah diperlukan.
+   */
+  item?: ItemTeks[][];
   amaran: string[];
 }
 
@@ -43,11 +59,79 @@ export function jenisFail(nama: string, mime: string): JenisDokumen {
 
 /* --------------------------------------------------------------------- PDF */
 
+/**
+ * Bina grid daripada KEDUDUKAN teks dalam PDF.
+ *
+ * KENAPA INI PERLU: `extractText` memulangkan teks mengikut susunan ia
+ * disimpan dalam fail, bukan mengikut susunan ia KELIHATAN. Pada jadual aSc
+ * sebenar sekolah, hasilnya ialah senarai subjek dan nama guru yang bercampur
+ * tanpa sebarang petunjuk sel mana milik hari mana — diuji pada fail sebenar:
+ * 0 daripada 45 slot dikenal pasti.
+ *
+ * Tetapi setiap serpihan teks dalam PDF membawa koordinat x dan y. Dengan
+ * mengumpulkan y menjadi baris dan x menjadi lajur, jadual yang dilihat mata
+ * boleh dibina semula — dan barulah "sel ini di bawah hari itu" bermakna.
+ *
+ * Nota: paksi y PDF bermula dari BAWAH, jadi baris disusun menurun.
+ */
+function gridDariKedudukan(
+  item: { str: string; x: number; y: number }[],
+): string[][] {
+  const berisi = item.filter((i) => i.str.trim() !== "");
+  if (berisi.length === 0) return [];
+
+  /** Kumpulkan nilai berhampiran menjadi satu paksi. */
+  const kumpul = (nilai: number[], toleransi: number): number[] => {
+    const susun = [...nilai].sort((a, b) => a - b);
+    const pusat: number[] = [];
+    for (const n of susun) {
+      if (pusat.length === 0 || Math.abs(n - pusat[pusat.length - 1]) > toleransi) pusat.push(n);
+    }
+    return pusat;
+  };
+
+  // Toleransi: baris lebih ketat daripada lajur, kerana teks dalam satu sel
+  // boleh berpecah kepada beberapa baris kecil (subjek di atas, guru di bawah).
+  const barisY = kumpul(berisi.map((i) => i.y), 6).sort((a, b) => b - a);
+  const lajurX = kumpul(berisi.map((i) => i.x), 18);
+
+  const dekat = (senarai: number[], n: number) =>
+    senarai.reduce((t, v, idx) => (Math.abs(v - n) < Math.abs(senarai[t] - n) ? idx : t), 0);
+
+  const grid: string[][] = barisY.map(() => Array(lajurX.length).fill(""));
+  for (const i of berisi) {
+    const r = dekat(barisY, i.y);
+    const c = dekat(lajurX, i.x);
+    grid[r][c] = grid[r][c] ? `${grid[r][c]} ${i.str.trim()}` : i.str.trim();
+  }
+  return grid;
+}
+
 async function bacaPdf(buf: ArrayBuffer): Promise<Dokumen> {
   const { extractText, getDocumentProxy } = await import("unpdf");
   const pdf = await getDocumentProxy(new Uint8Array(buf));
   const { text } = await extractText(pdf, { mergePages: true });
   const teks = (Array.isArray(text) ? text.join("\n") : text).replace(/ /g, " ").trim();
+
+  // Grid kedudukan untuk setiap muka — inilah yang menjadikan jadual PDF
+  // benar-benar boleh dibaca, bukan teks rata di atas.
+  const grid: string[][][] = [];
+  const item: ItemTeks[][] = [];
+  try {
+    for (let n = 1; n <= pdf.numPages; n++) {
+      const muka = await pdf.getPage(n);
+      const isi = await muka.getTextContent();
+      const senarai: ItemTeks[] = (isi.items as { str: string; transform: number[] }[])
+        .filter((i) => typeof i.str === "string" && i.str.trim() !== "")
+        .map((i) => ({ str: i.str, x: i.transform[4], y: i.transform[5] }));
+      if (senarai.length > 0) item.push(senarai);
+      const g = gridDariKedudukan(senarai);
+      if (g.length > 0) grid.push(g);
+    }
+  } catch {
+    // Kalau pengekstrakan kedudukan gagal, teks rata masih ada dan
+    // penghurai akan mencuba dengannya. Jangan gagalkan seluruh bacaan.
+  }
 
   // PDF yang diimbas memulangkan hampir TIADA teks. Ambangnya sengaja
   // rendah: jadual waktu yang jarang berisi boleh menghasilkan sedikit teks
@@ -62,7 +146,7 @@ async function bacaPdf(buf: ArrayBuffer): Promise<Dokumen> {
       ],
     };
   }
-  return { jenis: "pdf", teks, grid: [], amaran: [] };
+  return { jenis: "pdf", teks, grid, item, amaran: [] };
 }
 
 /* -------------------------------------------------------------------- DOCX */
