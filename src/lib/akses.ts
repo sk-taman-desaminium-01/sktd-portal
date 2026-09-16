@@ -1,6 +1,6 @@
 import "server-only";
 import { cache } from "react";
-import { currentUser } from "@clerk/nextjs/server";
+import { auth, currentUser } from "@clerk/nextjs/server";
 import { klienTulis } from "./supabase-pelayan";
 import { boleh, type Keupayaan, type Peranan, type PerananBerkesan } from "./peranan";
 
@@ -80,12 +80,57 @@ function senaraiMutlak(): string[] {
  * antara pengguna, bukan antara permintaan. Jadi tiada risiko seorang guru
  * melihat sesi guru lain.
  */
-export const pengguna = cache(async function pengguna(): Promise<Pengguna | null> {
-  const u = await currentUser();
-  const emel = u?.emailAddresses[0]?.emailAddress?.toLowerCase();
-  if (!emel) return null;
+/**
+ * Identiti dari TOKEN SESI, tanpa panggilan rangkaian.
+ *
+ * `currentUser()` ialah satu panggilan HTTP ke API Clerk pada SETIAP render.
+ * Token sesi pula sudah ada dalam kuki dan disahkan secara tempatan dengan
+ * JWKS — jadi kalau emel ada di dalamnya, tiada sebab untuk bertanya Clerk
+ * sesuatu yang kita sudah pegang.
+ *
+ * ⚠️ Emel BUKAN tuntutan lalai. Ia perlu ditambah sekali dalam papan pemuka
+ * Clerk (Sessions → Customize session token):
+ *
+ *     { "emel": "{{user.primary_email_address}}",
+ *       "nama": "{{user.full_name}}" }
+ *
+ * Selagi ia tidak ditambah, fungsi ini memulangkan null dan `pengguna()`
+ * jatuh semula kepada `currentUser()` — betul, cuma lebih perlahan. Itu
+ * disengajakan: laluan pantas yang MENGANDAIKAN tetapan papan pemuka akan
+ * mengunci semua orang keluar pada hari ia tersilap tetap.
+ */
+async function dariToken(): Promise<{ emel: string; nama: string | null; id: string } | null> {
+  try {
+    const { sessionClaims, userId } = await auth();
+    if (!userId) return null;
+    const tuntutan = sessionClaims as Record<string, unknown> | null;
+    const emel = tuntutan?.emel ?? tuntutan?.email;
+    if (typeof emel !== "string" || !emel.includes("@")) return null;
+    const nama = tuntutan?.nama ?? tuntutan?.name;
+    return { emel: emel.toLowerCase(), nama: typeof nama === "string" ? nama : null, id: userId };
+  } catch {
+    return null;
+  }
+}
 
-  const nama = u?.fullName ?? u?.firstName ?? null;
+export const pengguna = cache(async function pengguna(): Promise<Pengguna | null> {
+  const pantas = await dariToken();
+  let emel: string | undefined;
+  let nama: string | null = null;
+  let u: Awaited<ReturnType<typeof currentUser>> = null;
+  let idClerk: string | null = null;
+
+  if (pantas) {
+    emel = pantas.emel;
+    nama = pantas.nama;
+    idClerk = pantas.id;
+  } else {
+    u = await currentUser();
+    emel = u?.emailAddresses[0]?.emailAddress?.toLowerCase();
+    nama = u?.fullName ?? u?.firstName ?? null;
+    idClerk = u?.id ?? null;
+  }
+  if (!emel) return null;
 
   if (senaraiMutlak().includes(emel)) {
     return { id: null, emel, nama, peranan: "admin_mutlak", mutlak: true, rasmi: true };
@@ -125,7 +170,9 @@ export const pengguna = cache(async function pengguna(): Promise<Pengguna | null
       // sedang guna, dan log masuk mereka tidak pernah direkodkan.
       const rasmi = domainRasmi(emel);
       const permohonan = rasmi
-        ? await rekodPermohonan(db, emel, nama, u!.id)
+        ? idClerk
+          ? await rekodPermohonan(db, emel, nama, idClerk)
+          : undefined
         : undefined;
       return { id: null, emel, nama, peranan: null, mutlak: false, rasmi, permohonan };
     }
