@@ -186,12 +186,13 @@ semak("admin mutlak nampak semua pentadbir punya",
       pentadbir.every((k) => mutlak.includes(k)), true);
 // Kad biasa mesti kekal untuk semua orang.
 //
-// "epbd" tunggal sudah tiada — ia dipecah kepada ePBD-Guru dan ePBD-Slip
-// (17 Sep 2026). Kedua-duanya mesti kelihatan kepada guru biasa: halaman
-// masing-masing yang menapis kelas dan subjek mana mereka boleh sentuh,
-// bukan kad yang disembunyikan.
-semak("guru nampak ePBD-Guru", guru.includes("pbd-guru"), true);
-semak("guru nampak ePBD-Slip", guru.includes("pbd-slip"), true);
+// SATU kad ePBD, bukan dua (17 Sep 2026). Hab menjadi serabut dengan dua
+// kad yang namanya hampir sama; pembahagian Guru/Slip berlaku SATU skrin ke
+// dalam. Kad itu mesti kelihatan kepada guru biasa — halaman di dalamnya
+// yang menapis kelas dan subjek mana mereka boleh sentuh.
+semak("guru nampak ePBD", guru.includes("pbd"), true);
+semak("tiada kad ePBD kedua", guru.filter((k) => k.startsWith("pbd")).length, 1);
+// Kad lama yang menunjuk ke epbd.sktd.edu.my — app yang tidak pernah dibina.
 semak("kad ePBD lama sudah tiada", guru.includes("epbd"), false);
 semak("guru nampak Jadual Waktu", guru.includes("jadual"), true);
 semak("tiada peranan → tiada kad pentadbiran", kadUntuk(null).includes("urusweb"), false);
