@@ -6,7 +6,6 @@ import { naikFailJadual, type HasilBaca } from "@/lib/baca-jadual";
 import PukalJadual from "./PukalJadual";
 import { SUBJEK } from "@/data/subjek";
 import { semakSaiz } from "@/data/had-fail";
-import Carian, { padan } from "@/components/Carian";
 import { failKeMuatan } from "@/data/fail-base64";
 import {
   HARI, NAMA_HARI, NAMA_SESI, SESI, jamPapar, setUntukKelas, tahunKelas,
@@ -48,7 +47,6 @@ export default function PanelJadual({
   const [bukaWaktu, setBukaWaktu] = useState(false);
   const [baca, setBaca] = useState<HasilBaca | null>(null);
   const [naik, setNaik] = useState(false);
-  const [cariKelas, setCariKelas] = useState("");
 
   const kelasIni = jadual.kelas[pilih];
   const set = setUntukKelas(jadual, pilih);
@@ -182,33 +180,18 @@ export default function PanelJadual({
     <>
       {/* ---------- Pilih kelas ---------- */}
       <div className="mt-6 flex flex-wrap items-end gap-3 rounded-xl border border-garis bg-white p-4">
-        <div>
-          {/* Carian hanya berguna bila senarainya panjang. Guru kelas yang
-              pegang satu kelas tidak perlu menapis satu baris. */}
-          {kelas.length > 8 && (
-            <Carian
-              nilai={cariKelas} setNilai={setCariKelas}
-              label="Cari kelas"
-              jumlah={kelas.length}
-              ditapis={kelas.filter((k) => padan(k, cariKelas)).length}
-            />
-          )}
-          <label className="mt-2 block text-[11px] font-bold uppercase tracking-wide text-slate-500">
-            Kelas
-            <select
-              value={pilih}
-              onChange={(e) => setPilih(e.target.value)}
-              className="mt-1 block w-44 rounded-lg border border-garis px-3 py-2 text-sm font-normal normal-case tracking-normal text-slate-800"
-            >
-              {/* Kelas yang SEDANG dipilih sentiasa kekal dalam senarai,
-                  walaupun ia tidak sepadan dengan carian — kalau tidak,
-                  menapis akan menukar kelas yang sedang disunting. */}
-              {kelas.filter((k) => k === pilih || padan(k, cariKelas)).map((k) => (
-                <option key={k} value={k}>{k}</option>
-              ))}
-            </select>
-          </label>
-        </div>
+        <label className="text-[11px] font-bold uppercase tracking-wide text-slate-500">
+          Kelas
+          <select
+            value={pilih}
+            onChange={(e) => setPilih(e.target.value)}
+            className="mt-1 block w-44 rounded-lg border border-garis px-3 py-2 text-sm font-normal normal-case tracking-normal text-slate-800"
+          >
+            {kelas.map((k) => (
+              <option key={k} value={k}>{k}</option>
+            ))}
+          </select>
+        </label>
 
         <p className="text-sm text-slate-600">
           Waktu &amp; rehat:{" "}
