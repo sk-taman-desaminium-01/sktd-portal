@@ -6,15 +6,18 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "uji:jadual": "node --experimental-strip-types --no-warnings scripts/uji-huraian.mts"
   },
   "dependencies": {
     "@clerk/localizations": "^4.17.0",
     "@clerk/nextjs": "^7.9.3",
+    "mammoth": "^1.12.3",
     "next": "16.3.5",
     "react": "19.2.8",
     "react-dom": "19.2.8",
-    "server-only": "^0.0.1"
+    "server-only": "^0.0.1",
+    "unpdf": "^1.8.1"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",

@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { simpanJadualKelas, simpanWaktuSesi } from "@/lib/jadual";
+import { naikFailJadual, type HasilBaca } from "@/lib/baca-jadual";
 import { PANITIA } from "@/data/panitia";
 import {
   HARI, NAMA_HARI, NAMA_SESI, SESI, jamPapar,
@@ -42,6 +43,34 @@ export default function PanelJadual({
   const [hasil, setHasil] = useState<{ ok: boolean; mesej: string } | null>(null);
   const [sibuk, setSibuk] = useState(false);
   const [bukaWaktu, setBukaWaktu] = useState(false);
+  const [baca, setBaca] = useState<HasilBaca | null>(null);
+  const [naik, setNaik] = useState(false);
+
+  async function muatNaikFail(borang: HTMLFormElement) {
+    const fd = new FormData(borang);
+    fd.set("kelas", pilih);
+    fd.set("sesi", sesi);
+    setNaik(true);
+    setBaca(null);
+    try {
+      setBaca(await naikFailJadual(fd));
+    } catch (e) {
+      setBaca({ ok: false, mesej: e instanceof Error ? e.message : "Muat naik gagal." });
+    } finally {
+      setNaik(false);
+      borang.reset();
+    }
+  }
+
+  /** Salin cadangan ke dalam grid. TIDAK menyimpan — guru semak dahulu. */
+  function guna(draf: NonNullable<HasilBaca["draf"]>) {
+    setJadual((j) => {
+      const k = j.kelas[pilih];
+      // Nama guru subjek yang sudah diisi DIKEKALKAN — fail jadual jarang
+      // mengandungi nama guru, dan membuangnya bermakna kerja diulang.
+      return { ...j, kelas: { ...j.kelas, [pilih]: { ...draf, guruSubjek: k?.guruSubjek } } };
+    });
+  }
 
   const kelasIni = jadual.kelas[pilih];
   const sesi: Sesi = kelasIni?.sesi ?? "pagi";
@@ -199,6 +228,91 @@ export default function PanelJadual({
           </tbody>
         </table>
       </div>
+
+      {/* ---------- Muat naik fail jadual ---------- */}
+      <section className="mt-5 rounded-xl border border-garis bg-white p-4">
+        <h2 className="text-base font-bold text-navy-800">Muat naik fail jadual</h2>
+        <p className="mt-1 text-sm leading-relaxed text-slate-600">
+          Ada fail jadual untuk {pilih}? Muat naik dan sistem akan cuba
+          membacanya. <b>Tiada apa yang tersimpan secara automatik</b> — ia
+          hanya mengisi grid di atas sebagai cadangan untuk anda semak.
+        </p>
+
+        <form
+          onSubmit={(e) => { e.preventDefault(); muatNaikFail(e.currentTarget); }}
+          className="mt-3 flex flex-wrap items-center gap-3"
+        >
+          <input
+            type="file" name="fail" required
+            accept="application/pdf,.docx,image/png,image/jpeg"
+            className="min-w-0 flex-1 rounded-lg border border-garis px-3 py-2.5 text-sm"
+          />
+          <button
+            type="submit" disabled={naik}
+            className="rounded-lg border border-navy-800 px-4 py-2.5 text-sm font-semibold text-navy-800 disabled:opacity-60"
+          >
+            {naik ? "Membaca…" : "Muat naik & baca"}
+          </button>
+        </form>
+
+        <p className="mt-2 text-xs leading-relaxed text-slate-500">
+          PDF berteks dan DOCX boleh dibaca. PDF imbasan dan gambar TIDAK —
+          ia perlu OCR, yang tidak berjalan di pelayan ini. Fail tetap
+          disimpan supaya anda boleh merujuknya sambil mengisi grid.
+        </p>
+
+        {baca && (
+          <div
+            className={`mt-4 rounded-xl p-4 text-sm leading-relaxed ${
+              baca.ok ? "bg-navy-50 text-navy-800" : "bg-[#fbeaea] text-[#8f2424]"
+            }`}
+          >
+            <p>{baca.mesej}</p>
+
+            {baca.keyakinan && (
+              <p className="mt-2 text-xs">
+                {baca.keyakinan.dikenal} daripada {baca.keyakinan.jumlah} slot
+                dikenal pasti. Yang lain kekal kosong untuk anda isi.
+              </p>
+            )}
+
+            {baca.amaran?.map((a) => (
+              <p key={a} className="mt-2 text-xs text-[#7a5a12]">⚠ {a}</p>
+            ))}
+
+            <div className="mt-3 flex flex-wrap gap-2">
+              {baca.draf && (
+                <button
+                  type="button"
+                  onClick={() => guna(baca.draf!)}
+                  className="rounded-lg bg-navy-800 px-3.5 py-2 text-xs font-semibold text-white"
+                >
+                  Isi grid dengan cadangan ini
+                </button>
+              )}
+              {baca.fail && (
+                <a
+                  href={baca.fail} target="_blank" rel="noreferrer"
+                  className="rounded-lg border border-garis bg-white px-3.5 py-2 text-xs font-semibold text-navy-700"
+                >
+                  Buka fail asal ↗
+                </a>
+              )}
+            </div>
+
+            {baca.teks && (
+              <details className="mt-3">
+                <summary className="cursor-pointer text-xs font-semibold">
+                  Lihat teks yang dibaca
+                </summary>
+                <pre className="mt-2 max-h-60 overflow-auto whitespace-pre-wrap rounded-lg bg-white p-3 text-[11px] leading-relaxed text-slate-600">
+                  {baca.teks}
+                </pre>
+              </details>
+            )}
+          </div>
+        )}
+      </section>
 
       {/* ---------- Guru subjek ---------- */}
       <section className="mt-5 rounded-xl border border-garis bg-white p-4">
