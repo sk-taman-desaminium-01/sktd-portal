@@ -1,4 +1,5 @@
 import "server-only";
+import { cache } from "react";
 import { currentUser } from "@clerk/nextjs/server";
 import { klienTulis } from "./supabase-pelayan";
 import { boleh, type Keupayaan, type Peranan, type PerananBerkesan } from "./peranan";
@@ -65,7 +66,21 @@ function senaraiMutlak(): string[] {
     .filter(Boolean);
 }
 
-export async function pengguna(): Promise<Pengguna | null> {
+/**
+ * Siapa pengguna semasa — DIDEDUP untuk setiap permintaan.
+ *
+ * KENAPA `cache()`: fungsi ini dipanggil beberapa kali semasa merender SATU
+ * halaman — sekali dalam layout, sekali dalam halaman, dan sekali lagi dalam
+ * setiap penolong yang menyemak kebenaran. Setiap panggilan membuat satu
+ * panggilan rangkaian ke Clerk DAN satu ke Supabase. Pada hab itu bermakna
+ * enam perjalanan rangkaian untuk menjawab soalan yang sama tiga kali, dan
+ * pengguna menunggu semuanya.
+ *
+ * `cache()` React mengingat hasilnya untuk permintaan itu sahaja — bukan
+ * antara pengguna, bukan antara permintaan. Jadi tiada risiko seorang guru
+ * melihat sesi guru lain.
+ */
+export const pengguna = cache(async function pengguna(): Promise<Pengguna | null> {
   const u = await currentUser();
   const emel = u?.emailAddresses[0]?.emailAddress?.toLowerCase();
   if (!emel) return null;
@@ -128,7 +143,7 @@ export async function pengguna(): Promise<Pengguna | null> {
     // peranan (gagal tertutup); admin mutlak sudah pulang di atas.
     return { id: null, emel, nama, peranan: null, mutlak: false, rasmi: domainRasmi(emel) };
   }
-}
+});
 
 /**
  * Tulis baris "menunggu kelulusan" untuk orang yang baru log masuk.

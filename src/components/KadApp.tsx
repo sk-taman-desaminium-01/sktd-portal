@@ -1,6 +1,7 @@
+import Link from "next/link";
 import type { KadPortal } from "@/data/bahagian";
 import type { StatusApp } from "@/data/sekolah";
-import { AWALAN, aset } from "@/lib/laluan";
+import { aset } from "@/lib/laluan";
 
 /**
  * Satu kad app dalam hab — padanan `kad()` dalam `skrinPortal()` mockup:
@@ -21,15 +22,21 @@ const LABEL: Record<StatusApp, { teks: string; kelas: string }> = {
 /**
  * Ke mana kad ini pergi — app sebenar, atau tapak pembinaannya.
  *
- * ⚠️ AWALAN DITAMBAH DI SINI dengan tangan. Kad menggunakan `<a>` mentah dan
- * bukan `<Link>` kerana pautan luar perlu `target`/`rel` — dan `<a>` TIDAK
- * mendapat `basePath` secara automatik seperti `<Link>`. Tanpa baris ini
- * setiap kad menuju ke /erpm, /admin, /bina/... yang tidak wujud, dan
- * pengguna mendapat 404 Vercel pada SETIAP kad. Itu benar-benar berlaku.
+ * Laluan DALAMAN dipulangkan TANPA awalan, kerana `<Link>` menambahnya
+ * sendiri. Laluan luar dipulangkan seadanya.
+ *
+ * (Sejarah: kad dahulu menggunakan `<a>` untuk semua, dan `<a>` TIDAK
+ * mendapat basePath — setiap kad memberi 404. Awalan ditambah dengan tangan
+ * untuk membaikinya. Kini laluan dalaman guna `<Link>`, yang membetulkan
+ * awalan DAN memberi navigasi dalam app tanpa memuat semula halaman.)
  */
 export function tujuKad(app: KadPortal): string {
-  const tuju = app.pautan ?? `/bina/${app.id}`;
-  return tuju.startsWith("/") ? `${AWALAN}${tuju}` : tuju;
+  return app.pautan ?? `/bina/${app.id}`;
+}
+
+/** Laluan dalam portal ini, berbanding laman luar. */
+function dalaman(tuju: string): boolean {
+  return tuju.startsWith("/");
 }
 
 export default function KadApp({
@@ -84,12 +91,23 @@ export default function KadApp({
   const kelas = "flex h-full flex-col rounded-2xl bg-white p-5 text-left";
   if (terkunci) return <div className={`${kelas} opacity-70`}>{isi}</div>;
 
+  const tuju = tujuKad(app);
+  const gaya = `${kelas} shadow-sm transition hover:ring-2 hover:ring-emas`;
+
+  // `<Link>` untuk laluan dalaman: Next memuat dahulu halaman itu semasa kad
+  // kelihatan di skrin, dan menukar halaman TANPA memuat semula seluruh app.
+  // Dengan `<a>`, setiap ketukan kad ialah perjalanan penuh ke pelayan —
+  // itulah lengah 2–3 saat yang guru rasa setiap kali mereka buka satu app.
+  if (dalaman(tuju)) {
+    return (
+      <Link href={tuju} className={gaya}>
+        {isi}
+      </Link>
+    );
+  }
+
   return (
-    <a
-      href={tujuKad(app)}
-      {...(app.luaran ? { target: "_blank", rel: "noreferrer" } : {})}
-      className={`${kelas} shadow-sm transition hover:ring-2 hover:ring-emas`}
-    >
+    <a href={tuju} target="_blank" rel="noreferrer" className={gaya}>
       {isi}
     </a>
   );
