@@ -115,10 +115,8 @@ export function binaDraf(teks: string, senaraiWaktu: Waktu[]): { draf: KelasJadu
   // Cari baris permulaan setiap hari.
   const mula: Partial<Record<Hari, number>> = {};
   baris.forEach((b, i) => {
-    const t = b.toLowerCase();
-    for (const h of HARI) {
-      if (mula[h] === undefined && t.includes(NAMA_HARI[h].toLowerCase())) mula[h] = i;
-    }
+    const h = padanHari(b);
+    if (h && mula[h] === undefined) mula[h] = i;
   });
 
   const hari: KelasJadual["hari"] = {};
@@ -150,6 +148,44 @@ export function binaDraf(teks: string, senaraiWaktu: Waktu[]): { draf: KelasJadu
 }
 
 
+
+/* ----------------------------------------------------------------- hari */
+
+/**
+ * Nama hari dalam DUA BAHASA dan bentuk pendek.
+ *
+ * Sekolah menjana jadual dalam dua versi: satu Bahasa Melayu penuh
+ * ("ISNIN"), satu lagi bentuk pendek Inggeris ("Mo", "Tu"). Fail aSc sebenar
+ * yang diberi sekolah menggunakan yang KEDUA — dan kerana penghurai hanya
+ * tahu nama Melayu penuh, ia mengenal pasti SIFAR daripada 45 slot. Fail yang
+ * betul, penghurai yang buta.
+ *
+ * Dipadankan sebagai perkataan penuh (lihat `normal`), jadi "th" tidak
+ * memadankan perkataan lain yang mengandunginya.
+ */
+const HARI_ALIAS: Record<Hari, string[]> = {
+  isnin:  ["isnin", "isn", "monday", "mon", "mo", "m"],
+  selasa: ["selasa", "sel", "tuesday", "tues", "tue", "tu"],
+  rabu:   ["rabu", "rab", "wednesday", "wed", "we", "w"],
+  khamis: ["khamis", "kha", "kham", "thursday", "thur", "thu", "th"],
+  jumaat: ["jumaat", "jumat", "jum", "friday", "fri", "fr", "f"],
+};
+
+/** Hari yang dirujuk oleh satu petak teks, jika ada. */
+export function padanHari(teks: string): Hari | null {
+  const t = normal(teks);
+  if (t.trim() === "") return null;
+  let terbaik: { hari: Hari; panjang: number } | null = null;
+  for (const [hari, senarai] of Object.entries(HARI_ALIAS) as [Hari, string[]][]) {
+    for (const a of senarai) {
+      // Padanan terpanjang menang, supaya "isnin" mengalahkan "isn".
+      if (t.includes(` ${a} `) && (!terbaik || a.length > terbaik.panjang)) {
+        terbaik = { hari, panjang: a.length };
+      }
+    }
+  }
+  return terbaik?.hari ?? null;
+}
 
 /* ------------------------------------------------------------- nama guru */
 
@@ -275,10 +311,8 @@ function cariBarisHari(grid: string[][]): { baris: number; lajur: Partial<Record
   for (let r = 0; r < grid.length; r++) {
     const lajur: Partial<Record<Hari, number>> = {};
     grid[r].forEach((sel, c) => {
-      const t = sel.toLowerCase();
-      for (const h of HARI) {
-        if (lajur[h] === undefined && t.includes(NAMA_HARI[h].toLowerCase())) lajur[h] = c;
-      }
+      const h = padanHari(sel);
+      if (h && lajur[h] === undefined) lajur[h] = c;
     });
     // Tiga hari sudah cukup untuk yakin ini baris kepala, dan ia membenarkan
     // jadual yang hanya meliputi sebahagian minggu.
@@ -351,6 +385,159 @@ export function binaDrafDariGrid(
           jumlah: waktu.length * HARI.length,
         };
       }
+    }
+  }
+  return null;
+}
+
+/* ------------------------------------------- draf dari KOORDINAT PDF ----- */
+
+/** Serpihan teks dengan kedudukannya. Sama bentuk dengan `ItemTeks`. */
+export interface Kedudukan { str: string; x: number; y: number }
+
+const RE_MASA = /(\d{1,2})[:.](\d{2})\s*[-–]\s*(\d{1,2})[:.](\d{2})/;
+
+/**
+ * Bina draf daripada KOORDINAT teks PDF.
+ *
+ * KENAPA CARA INI WUJUD: jadual aSc — yang sekolah ini gunakan — tidak
+ * berbentuk baris-dan-lajur yang kemas. Label hari ("Mo", "Tu") duduk pada
+ * barisnya SENDIRI di lajur kiri, manakala subjek dan nama guru berada pada
+ * baris yang berlainan di bawahnya. Penghurai grid menganggap satu sel = satu
+ * baris + satu lajur, jadi ia mengenal pasti SIFAR daripada 45 slot pada fail
+ * sebenar sekolah. Penghurai teks rata lagi teruk: teks keluar mengikut
+ * susunan ia disimpan, bukan susunan ia kelihatan.
+ *
+ * Koordinat menyelesaikannya: setiap hari menduduki JALUR y, setiap waktu
+ * menduduki JALUR x. Sel ialah persilangan kedua-duanya — sama seperti yang
+ * dilihat mata.
+ */
+export function binaDrafDariKedudukan(
+  halaman: Kedudukan[][],
+  senaraiWaktu: Waktu[],
+): { draf: KelasJadual; dikenal: number; jumlah: number } | null {
+  const waktuPdP = senaraiWaktu.filter((w) => !w.rehat);
+  const jumlah = waktuPdP.length * HARI.length;
+
+  for (const item of halaman) {
+    // --- Lajur waktu: dikenali daripada sel julat masa ("01:00 - 01:30") ---
+    const lajurMasa = item
+      .filter((i) => RE_MASA.test(i.str))
+      .sort((a, b) => a.x - b.x);
+    // --- Baris hari: label pendek yang memadankan nama hari ---
+    const labelHari = item
+      .filter((i) => i.str.trim().length <= 12 && padanHari(i.str) !== null)
+      .sort((a, b) => b.y - a.y); // atas ke bawah
+
+    if (lajurMasa.length < 3 || labelHari.length < 3) continue;
+
+    // Sempadan jalur hari: titik tengah antara label berturutan. Jalur
+    // pertama bermula sedikit di ATAS labelnya, kerana baris subjek hari itu
+    // selalunya berada di atas label (label duduk di tengah bloknya).
+    const sempadan: number[] = [];
+    for (let i = 0; i < labelHari.length - 1; i++) {
+      sempadan.push((labelHari[i].y + labelHari[i + 1].y) / 2);
+    }
+    const jalurHari = labelHari.map((l, i) => ({
+      hari: padanHari(l.str)!,
+      atas: i === 0 ? Infinity : sempadan[i - 1],
+      bawah: i === labelHari.length - 1 ? -Infinity : sempadan[i],
+    }));
+
+    // Sempadan lajur waktu: titik tengah antara kedudukan x masa.
+    const sempadanX: number[] = [];
+    for (let i = 0; i < lajurMasa.length - 1; i++) {
+      sempadanX.push((lajurMasa[i].x + lajurMasa[i + 1].x) / 2);
+    }
+    const jalurWaktu = lajurMasa.map((m, i) => ({
+      indeks: i,
+      kiri: i === 0 ? -Infinity : sempadanX[i - 1],
+      kanan: i === lajurMasa.length - 1 ? Infinity : sempadanX[i],
+    }));
+
+    // Jangan ambil apa-apa dari baris masa ke atas — itu kepala jadual.
+    const hadAtas = Math.max(...lajurMasa.map((m) => m.y));
+
+    const sel = new Map<string, string[]>();
+    const mulaX = new Map<string, number>();
+    for (const it of item) {
+      if (it.y >= hadAtas) continue;
+      if (RE_MASA.test(it.str)) continue;
+      if (it.str.trim().length <= 12 && padanHari(it.str) !== null) continue;
+      // Label rehat dilukis sebagai teks besar MERENTASI lajur rehat. Tanpa
+      // baris ini ia jatuh ke dalam sel jiran dan berakhir sebagai sebahagian
+      // NAMA GURU — "SYAIFUL / ANIS SYUHADA REHAT" pada fail sebenar sekolah.
+      if (/^(rehat|rest|break|recess)$/i.test(it.str.trim())) continue;
+
+      const h = jalurHari.find((j) => it.y <= j.atas && it.y > j.bawah);
+      const w = jalurWaktu.find((j) => it.x >= j.kiri && it.x < j.kanan);
+      if (!h || !w) continue;
+
+      const kunci = `${h.hari}|${w.indeks}`;
+      sel.set(kunci, [...(sel.get(kunci) ?? []), it.str.trim()]);
+      // Simpan x paling kiri dalam sel ini — ia isyarat sel bergabung.
+      mulaX.set(kunci, Math.min(mulaX.get(kunci) ?? Infinity, it.x));
+    }
+
+    /* --- SEL BERGABUNG ---
+       Bila satu subjek merentang dua waktu, aSc melukis satu sel lebar dan
+       meletak teksnya di TENGAH gabungan itu. Teks itu jatuh dalam lajur
+       KANAN, jadi lajur kiri kelihatan kosong — pada fail sebenar sekolah
+       itu meninggalkan hampir separuh jadual kosong.
+
+       Isyaratnya tepat dan bukan tekaan: teks sel biasa bermula PADA
+       kedudukan x lajurnya; teks sel bergabung bermula jauh di KIRI itu,
+       kerana ia dipusatkan merentasi dua lajur. Jadi bila slot kiri kosong
+       dan jirannya bermula di kiri lajurnya sendiri, subjek itu disalin —
+       subjek SAHAJA, bukan teksnya, supaya nama guru tidak bercampur. */
+    for (const h of HARI) {
+      for (let i = lajurMasa.length - 1; i > 0; i--) {
+        const kanan = `${h}|${i}`;
+        const kiri = `${h}|${i - 1}`;
+        if (sel.has(kiri) || !sel.has(kanan)) continue;
+        const mula = mulaX.get(kanan);
+        if (mula === undefined) continue;
+        // Ambang: bermula sekurang-kurangnya seperempat lebar lajur di kiri.
+        const lebarLajur = lajurMasa[i].x - lajurMasa[i - 1].x;
+        if (mula < lajurMasa[i].x - lebarLajur * 0.25) {
+          const kod = padanSubjek(sel.get(kanan)!.join(" "));
+          if (kod) sel.set(kiri, [kod]);
+        }
+      }
+    }
+
+    // --- Tukar sel kepada slot ---
+    const hari: KelasJadual["hari"] = {};
+    const kutipan = new Map<string, string[]>();
+    let dikenal = 0;
+
+    for (const [kunci, kepingan] of sel) {
+      const [namaHari, idxStr] = kunci.split("|");
+      const idx = Number(idxStr);
+      // Lajur masa termasuk rehat; senarai waktu kita juga. Padanan ikut
+      // URUTAN, jadi kedua-duanya sejajar tanpa perlu meneka waktu mana rehat.
+      const w = senaraiWaktu[idx];
+      if (!w || w.rehat) continue;
+
+      const teks = kepingan.join(" ");
+      const kod = padanSubjek(teks);
+      if (!kod) continue;
+
+      const h = namaHari as Hari;
+      hari[h] = { ...(hari[h] ?? {}), [w.id]: { subjek: kod } };
+      dikenal++;
+
+      const guru = namaGuruDariSel(teks, kod);
+      if (guru) kutipan.set(kod, [...(kutipan.get(kod) ?? []), guru]);
+    }
+
+    if (dikenal > 0) {
+      const guruSubjek = guruTerbanyak(kutipan);
+      return {
+        draf: { hari, ...(Object.keys(guruSubjek).length > 0 ? { guruSubjek } : {}) },
+        dikenal,
+        jumlah,
+      };
     }
   }
   return null;
