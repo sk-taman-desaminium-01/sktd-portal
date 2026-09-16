@@ -1,12 +1,12 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { simpanJadualKelas, simpanWaktuSesi } from "@/lib/jadual";
+import { simpanJadualKelas, simpanSetWaktu } from "@/lib/jadual";
 import { naikFailJadual, type HasilBaca } from "@/lib/baca-jadual";
 import { PANITIA } from "@/data/panitia";
 import {
-  HARI, NAMA_HARI, NAMA_SESI, SESI, jamPapar,
-  type Hari, type Jadual, type Sesi, type Waktu,
+  HARI, NAMA_HARI, NAMA_SESI, SESI, jamPapar, setUntukKelas, tahunKelas,
+  type Hari, type Jadual, type Sesi, type SetWaktu, type Waktu,
 } from "@/data/jadual-jenis";
 
 /**
@@ -16,9 +16,12 @@ import {
  * waktu ialah lebih 1,000 sel — mustahil disunting pada telefon, dan mudah
  * tersalah taip pada baris yang salah. Pentadbir juga menyusun jadual satu
  * kelas pada satu masa, jadi skrin mengikut cara kerja itu.
+ *
+ * Waktu dan rehat datang dari SET WAKTU kelas itu, yang ditentukan tahunnya.
+ * Rehat sekolah ini berperingkat dan menganjakkan waktu selepasnya, jadi
+ * setiap kumpulan tahun ada senarai waktunya sendiri.
  */
 
-/** Pilihan subjek: 13 panitia, ditambah aktiviti bukan PdP. */
 const PILIHAN: { kod: string; nama: string }[] = [
   ...PANITIA.map((p) => ({ kod: p.kod, nama: p.nama })),
   { kod: "PERHIMPUNAN", nama: "Perhimpunan" },
@@ -28,6 +31,7 @@ const PILIHAN: { kod: string; nama: string }[] = [
 ];
 
 const NAMA_SUBJEK = new Map(PILIHAN.map((p) => [p.kod, p.nama]));
+const TAHUN = [1, 2, 3, 4, 5, 6];
 
 export default function PanelJadual({
   awal, kelas, bolehWaktu,
@@ -35,7 +39,7 @@ export default function PanelJadual({
   awal: Jadual;
   /** Kelas yang pengguna INI dibenarkan sunting — ditentukan pelayan. */
   kelas: string[];
-  /** Waktu sesi dikongsi semua kelas, jadi hanya pentadbir ke atas. */
+  /** Set waktu dikongsi banyak kelas, jadi hanya pentadbir ke atas. */
   bolehWaktu: boolean;
 }) {
   const [jadual, setJadual] = useState<Jadual>(awal);
@@ -46,10 +50,85 @@ export default function PanelJadual({
   const [baca, setBaca] = useState<HasilBaca | null>(null);
   const [naik, setNaik] = useState(false);
 
+  const kelasIni = jadual.kelas[pilih];
+  const set = setUntukKelas(jadual, pilih);
+  const waktu = set?.senarai ?? [];
+
+  const terisi = useMemo(() => {
+    const h = kelasIni?.hari ?? {};
+    return Object.values(h).reduce((n, w) => n + Object.keys(w ?? {}).length, 0);
+  }, [kelasIni]);
+
+  const subjekDigunakan = useMemo(() => {
+    const ada = new Set<string>();
+    for (const hariIni of Object.values(kelasIni?.hari ?? {})) {
+      for (const slot of Object.values(hariIni ?? {})) ada.add(slot.subjek);
+    }
+    return PILIHAN.map((p) => p.kod).filter((k) => ada.has(k));
+  }, [kelasIni]);
+
+  async function jalan(f: () => Promise<{ ok: boolean; mesej: string }>) {
+    setSibuk(true);
+    try {
+      setHasil(await f());
+    } catch (e) {
+      setHasil({ ok: false, mesej: e instanceof Error ? e.message : "Gagal menyimpan." });
+    } finally {
+      setSibuk(false);
+    }
+  }
+
+  const simpan = () =>
+    jalan(() => simpanJadualKelas(pilih, jadual.kelas[pilih] ?? { hari: {} }));
+
+  function ubahSlot(hari: Hari, waktuId: string, subjek: string) {
+    setJadual((j) => {
+      const k = j.kelas[pilih] ?? { hari: {} };
+      const hariIni = { ...(k.hari[hari] ?? {}) };
+      // Memilih "—" MEMBUANG slot, bukan menyimpan subjek kosong. Slot kosong
+      // dan slot bernilai "" kelihatan sama di skrin tetapi berbeza dalam
+      // data, dan perbezaan itu muncul sebagai sel hantu di laman awam.
+      if (!subjek) delete hariIni[waktuId];
+      else hariIni[waktuId] = { ...(hariIni[waktuId] ?? {}), subjek };
+      return { ...j, kelas: { ...j.kelas, [pilih]: { ...k, hari: { ...k.hari, [hari]: hariIni } } } };
+    });
+  }
+
+  function ubahGuru(kod: string, nama: string) {
+    setJadual((j) => {
+      const k = j.kelas[pilih] ?? { hari: {} };
+      const guru = { ...(k.guruSubjek ?? {}) };
+      // Nama kosong MEMBUANG entri — kalau tidak, laman awam memapar baris
+      // guru yang kosong di bawah subjek.
+      if (nama.trim()) guru[kod] = nama.trim();
+      else delete guru[kod];
+      return { ...j, kelas: { ...j.kelas, [pilih]: { ...k, guruSubjek: guru } } };
+    });
+  }
+
+  function ubahSet(id: string, i: number, medan: keyof Waktu, nilai: string | boolean) {
+    setJadual((j) => ({
+      ...j,
+      set: j.set.map((s) =>
+        s.id !== id ? s : { ...s, senarai: s.senarai.map((w, n) => (n === i ? { ...w, [medan]: nilai } : w)) },
+      ),
+    }));
+  }
+
+  function ubahSetMedan(id: string, medan: "nama" | "sesi", nilai: string) {
+    setJadual((j) => ({
+      ...j,
+      set: j.set.map((s) => (s.id === id ? { ...s, [medan]: nilai } : s)),
+    }));
+  }
+
+  function ubahTahunSet(tahun: number, idSet: string) {
+    setJadual((j) => ({ ...j, tahunSet: { ...j.tahunSet, [tahun]: idSet } }));
+  }
+
   async function muatNaikFail(borang: HTMLFormElement) {
     const fd = new FormData(borang);
     fd.set("kelas", pilih);
-    fd.set("sesi", sesi);
     setNaik(true);
     setBaca(null);
     try {
@@ -75,89 +154,13 @@ export default function PanelJadual({
         kelas: {
           ...j.kelas,
           [pilih]: {
-            ...draf,
+            hari: draf.hari,
             ...(Object.keys(guruSubjek).length > 0 ? { guruSubjek } : {}),
           },
         },
       };
     });
   }
-
-  const kelasIni = jadual.kelas[pilih];
-  const sesi: Sesi = kelasIni?.sesi ?? "pagi";
-  const waktu = jadual.waktu[sesi];
-
-  const terisi = useMemo(() => {
-    const h = kelasIni?.hari ?? {};
-    return Object.values(h).reduce((n, w) => n + Object.keys(w ?? {}).length, 0);
-  }, [kelasIni]);
-
-  function ubahSlot(hari: Hari, waktuId: string, subjek: string) {
-    setJadual((j) => {
-      const k = j.kelas[pilih] ?? { sesi: "pagi" as Sesi, hari: {} };
-      const hariIni = { ...(k.hari[hari] ?? {}) };
-      // Memilih "—" MEMBUANG slot, bukan menyimpan subjek kosong. Slot kosong
-      // dan slot bernilai "" kelihatan sama di skrin tetapi berbeza dalam
-      // data, dan perbezaan itu akan muncul sebagai sel hantu di laman awam.
-      if (!subjek) delete hariIni[waktuId];
-      else hariIni[waktuId] = { ...(hariIni[waktuId] ?? {}), subjek };
-      return { ...j, kelas: { ...j.kelas, [pilih]: { ...k, hari: { ...k.hari, [hari]: hariIni } } } };
-    });
-  }
-
-  /** Subjek yang benar-benar wujud dalam jadual kelas ini, ikut urutan tetap. */
-  const subjekDigunakan = useMemo(() => {
-    const ada = new Set<string>();
-    for (const hariIni of Object.values(kelasIni?.hari ?? {})) {
-      for (const slot of Object.values(hariIni ?? {})) ada.add(slot.subjek);
-    }
-    return PILIHAN.map((p) => p.kod).filter((k) => ada.has(k));
-  }, [kelasIni]);
-
-  function ubahGuru(kod: string, nama: string) {
-    setJadual((j) => {
-      const k = j.kelas[pilih] ?? { sesi: "pagi" as Sesi, hari: {} };
-      const guru = { ...(k.guruSubjek ?? {}) };
-      // Nama kosong MEMBUANG entri, bukan menyimpan rentetan kosong —
-      // kalau tidak, laman awam memapar baris guru yang kosong.
-      if (nama.trim()) guru[kod] = nama.trim();
-      else delete guru[kod];
-      return { ...j, kelas: { ...j.kelas, [pilih]: { ...k, guruSubjek: guru } } };
-    });
-  }
-
-  function ubahSesi(baharu: Sesi) {
-    setJadual((j) => {
-      const k = j.kelas[pilih] ?? { sesi: baharu, hari: {} };
-      // Waktu sesi pagi dan petang mempunyai id yang berbeza, jadi slok
-      // sedia ada tidak lagi sepadan. Dikosongkan supaya tiada slot yatim
-      // yang tidak boleh dilihat mahupun dibuang.
-      return { ...j, kelas: { ...j.kelas, [pilih]: { sesi: baharu, hari: {} } } };
-    });
-  }
-
-  function ubahWaktu(s: Sesi, i: number, medan: keyof Waktu, nilai: string | boolean) {
-    setJadual((j) => {
-      const senarai = j.waktu[s].map((w, n) => (n === i ? { ...w, [medan]: nilai } : w));
-      return { ...j, waktu: { ...j.waktu, [s]: senarai } };
-    });
-  }
-
-  async function jalan(f: () => Promise<{ ok: boolean; mesej: string }>) {
-    setSibuk(true);
-    try {
-      setHasil(await f());
-    } catch (e) {
-      setHasil({ ok: false, mesej: e instanceof Error ? e.message : "Gagal menyimpan." });
-    } finally {
-      setSibuk(false);
-    }
-  }
-
-  const simpan = () =>
-    jalan(() =>
-      simpanJadualKelas(pilih, jadual.kelas[pilih] ?? { sesi: "pagi", hari: {} }),
-    );
 
   return (
     <>
@@ -176,18 +179,14 @@ export default function PanelJadual({
           </select>
         </label>
 
-        <label className="text-[11px] font-bold uppercase tracking-wide text-slate-500">
-          Sesi
-          <select
-            value={sesi}
-            onChange={(e) => ubahSesi(e.target.value as Sesi)}
-            className="mt-1 block w-40 rounded-lg border border-garis px-3 py-2 text-sm font-normal normal-case tracking-normal text-slate-800"
-          >
-            {SESI.map((s) => (
-              <option key={s} value={s}>{NAMA_SESI[s]}</option>
-            ))}
-          </select>
-        </label>
+        <p className="text-sm text-slate-600">
+          Waktu &amp; rehat:{" "}
+          <b>{set ? set.nama : "(tiada set waktu)"}</b>
+          <span className="mt-0.5 block text-xs text-slate-500">
+            Ditentukan oleh tahun kelas ini
+            {tahunKelas(pilih) !== null && ` (Tahun ${tahunKelas(pilih)})`}.
+          </span>
+        </p>
 
         <span className="ml-auto text-sm text-slate-500">{terisi} waktu diisi</span>
       </div>
@@ -362,73 +361,120 @@ export default function PanelJadual({
         )}
       </section>
 
-      {/* ---------- Waktu sesi — pentadbir ke atas sahaja ---------- */}
+      {/* ---------- Set waktu & rehat — pentadbir ke atas sahaja ---------- */}
       {bolehWaktu && (
-      <section className="mt-5 rounded-xl border border-garis bg-white">
-        <button
-          type="button"
-          onClick={() => setBukaWaktu((b) => !b)}
-          className="flex w-full items-center justify-between p-4 text-left"
-        >
-          <span>
-            <span className="block text-base font-bold text-navy-800">Waktu sesi</span>
-            <span className="mt-0.5 block text-sm text-slate-600">
-              Menukar waktu di sini mengubah paparan SEMUA kelas dalam sesi itu.
+        <section className="mt-5 rounded-xl border border-garis bg-white">
+          <button
+            type="button"
+            onClick={() => setBukaWaktu((b) => !b)}
+            className="flex w-full items-center justify-between p-4 text-left"
+          >
+            <span>
+              <span className="block text-base font-bold text-navy-800">
+                Waktu &amp; rehat
+              </span>
+              <span className="mt-0.5 block text-sm text-slate-600">
+                Tiga kumpulan rehat. Menukar waktu di sini mengubah paparan
+                SEMUA kelas dalam kumpulan itu.
+              </span>
             </span>
-          </span>
-          <span aria-hidden="true" className="text-slate-400">{bukaWaktu ? "▾" : "▸"}</span>
-        </button>
+            <span aria-hidden="true" className="text-slate-400">{bukaWaktu ? "▾" : "▸"}</span>
+          </button>
 
-        {bukaWaktu && (
-          <div className="border-t border-garis p-4">
-            {SESI.map((s) => (
-              <div key={s} className="mt-4 first:mt-0">
-                <h3 className="text-[11px] font-bold uppercase tracking-wide text-slate-500">
-                  {NAMA_SESI[s]}
-                </h3>
-                <ul className="mt-2 space-y-2">
-                  {jadual.waktu[s].map((w, i) => (
-                    <li key={w.id} className="flex flex-wrap items-center gap-2">
-                      <input
-                        type="time" value={w.mula}
-                        onChange={(e) => ubahWaktu(s, i, "mula", e.target.value)}
-                        className="rounded-lg border border-garis px-2 py-1.5 text-sm"
-                      />
-                      <span className="text-slate-400">–</span>
-                      <input
-                        type="time" value={w.tamat}
-                        onChange={(e) => ubahWaktu(s, i, "tamat", e.target.value)}
-                        className="rounded-lg border border-garis px-2 py-1.5 text-sm"
-                      />
-                      <label className="flex items-center gap-1.5 text-xs text-slate-600">
+          {bukaWaktu && (
+            <div className="border-t border-garis p-4">
+              <p className="rounded-xl border border-[#e9d9ae] bg-[#fdf9f0] p-3 text-sm leading-relaxed text-[#7a5a12]">
+                <b>Sahkan tetapan ini dahulu.</b> Hanya satu angka di sini
+                yang datang dari sekolah: rehat Tahun 1 bermula 3:30 petang,
+                dan semua rehat 30 minit. Waktu mula sesi, bilangan waktu, dan
+                tahun mana masuk kumpulan mana ialah tetapan permulaan sahaja.
+              </p>
+
+              {/* Tahun → set */}
+              <h3 className="mt-4 text-[11px] font-bold uppercase tracking-wide text-slate-500">
+                Tahun mana guna kumpulan mana
+              </h3>
+              <ul className="mt-2 grid gap-2 sm:grid-cols-2">
+                {TAHUN.map((t) => (
+                  <li key={t} className="flex items-center gap-2">
+                    <span className="w-20 shrink-0 text-sm text-slate-600">Tahun {t}</span>
+                    <select
+                      value={jadual.tahunSet?.[t] ?? ""}
+                      onChange={(e) => ubahTahunSet(t, e.target.value)}
+                      className="min-w-0 flex-1 rounded-lg border border-garis px-2.5 py-2 text-sm"
+                    >
+                      {jadual.set.map((s) => (
+                        <option key={s.id} value={s.id}>{s.nama}</option>
+                      ))}
+                    </select>
+                  </li>
+                ))}
+              </ul>
+
+              {/* Setiap set */}
+              {jadual.set.map((s: SetWaktu) => (
+                <div key={s.id} className="mt-6 rounded-xl border border-garis p-3">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <input
+                      type="text" value={s.nama}
+                      onChange={(e) => ubahSetMedan(s.id, "nama", e.target.value)}
+                      className="min-w-0 flex-1 rounded-lg border border-garis px-3 py-2 text-sm font-semibold"
+                    />
+                    <select
+                      value={s.sesi}
+                      onChange={(e) => ubahSetMedan(s.id, "sesi", e.target.value)}
+                      className="rounded-lg border border-garis px-2.5 py-2 text-sm"
+                    >
+                      {SESI.map((x) => (
+                        <option key={x} value={x}>{NAMA_SESI[x]}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <ul className="mt-3 space-y-2">
+                    {s.senarai.map((w, i) => (
+                      <li key={w.id} className="flex flex-wrap items-center gap-2">
                         <input
-                          type="checkbox" checked={Boolean(w.rehat)}
-                          onChange={(e) => ubahWaktu(s, i, "rehat", e.target.checked)}
+                          type="time" value={w.mula}
+                          onChange={(e) => ubahSet(s.id, i, "mula", e.target.value)}
+                          className="rounded-lg border border-garis px-2 py-1.5 text-sm"
                         />
-                        Bukan waktu PdP
-                      </label>
-                      {w.rehat && (
+                        <span className="text-slate-400">–</span>
                         <input
-                          type="text" value={w.label ?? ""} placeholder="Rehat"
-                          onChange={(e) => ubahWaktu(s, i, "label", e.target.value)}
-                          className="w-32 rounded-lg border border-garis px-2 py-1.5 text-sm"
+                          type="time" value={w.tamat}
+                          onChange={(e) => ubahSet(s.id, i, "tamat", e.target.value)}
+                          className="rounded-lg border border-garis px-2 py-1.5 text-sm"
                         />
-                      )}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            ))}
-            <button
-              type="button" disabled={sibuk}
-              onClick={() => jalan(() => simpanWaktuSesi(jadual.waktu))}
-              className="mt-4 rounded-lg border border-navy-800 px-4 py-2.5 text-sm font-semibold text-navy-800 disabled:opacity-60"
-            >
-              Simpan waktu sesi
-            </button>
-          </div>
-        )}
-      </section>
+                        <label className="flex items-center gap-1.5 text-xs text-slate-600">
+                          <input
+                            type="checkbox" checked={Boolean(w.rehat)}
+                            onChange={(e) => ubahSet(s.id, i, "rehat", e.target.checked)}
+                          />
+                          Rehat
+                        </label>
+                        {w.rehat && (
+                          <input
+                            type="text" value={w.label ?? ""} placeholder="Rehat"
+                            onChange={(e) => ubahSet(s.id, i, "label", e.target.value)}
+                            className="w-32 rounded-lg border border-garis px-2 py-1.5 text-sm"
+                          />
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ))}
+
+              <button
+                type="button" disabled={sibuk}
+                onClick={() => jalan(() => simpanSetWaktu(jadual.set, jadual.tahunSet))}
+                className="mt-4 rounded-lg border border-navy-800 px-4 py-2.5 text-sm font-semibold text-navy-800 disabled:opacity-60"
+              >
+                Simpan waktu &amp; rehat
+              </button>
+            </div>
+          )}
+        </section>
       )}
 
       {hasil && (
@@ -454,8 +500,6 @@ export default function PanelJadual({
           disentuh. Ia mencetuskan binaan semula laman ibu bapa.
         </span>
       </div>
-
-
     </>
   );
 }

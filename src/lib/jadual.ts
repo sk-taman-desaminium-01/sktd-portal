@@ -5,7 +5,7 @@ import { pastikanBoleh, pengguna } from "./akses";
 import { kelasBolehSunting } from "./guru-kelas";
 import { klienTulis } from "./supabase-pelayan";
 import { binaSemulaLamanAwam } from "./bina-semula";
-import { JADUAL_KOSONG, type Jadual, type KelasJadual, type Sesi, type Waktu } from "@/data/jadual-jenis";
+import { JADUAL_KOSONG, naikTarafJadual, type Jadual, type KelasJadual, type SetWaktu } from "@/data/jadual-jenis";
 
 /**
  * Jadual Waktu — baca dan simpan.
@@ -39,14 +39,10 @@ export async function ambilJadual(): Promise<Jadual> {
   if (!isi) return JADUAL_KOSONG;
 
   try {
-    const data = JSON.parse(isi) as Jadual;
-    // Jadual lama mungkin tiada medan yang ditambah kemudian; isi dari lalai
-    // supaya skrin tidak pecah pada data yang sah tetapi tidak lengkap.
-    return {
-      waktu: data.waktu ?? JADUAL_KOSONG.waktu,
-      kelas: data.kelas ?? {},
-      dikemaskini: data.dikemaskini,
-    };
+    // `naikTarafJadual` menerima bentuk LAMA (satu senarai waktu per sesi)
+    // dan menukarkannya kepada set. Data yang sudah tersimpan tidak hilang
+    // apabila bentuknya berubah.
+    return naikTarafJadual(JSON.parse(isi));
   } catch {
     // Peraturan #4: jangan pulangkan kosong secara senyap — jadual kosong
     // kelihatan sama seperti "belum diisi", dan admin akan menyimpan di
@@ -89,7 +85,8 @@ export async function simpanJadualKelas(
   }
 
   const bersih: Jadual = {
-    waktu: semasa.waktu,
+    set: semasa.set,
+    tahunSet: semasa.tahunSet,
     kelas: { ...semasa.kelas, [label]: data },
     dikemaskini: new Date().toISOString(),
   };
@@ -103,11 +100,28 @@ export async function simpanJadualKelas(
  * paparan setiap kelas. Itu keputusan peringkat sekolah, bukan keputusan
  * seorang guru kelas.
  */
-export async function simpanWaktuSesi(waktu: Record<Sesi, Waktu[]>): Promise<HasilJadual> {
+export async function simpanSetWaktu(
+  set: SetWaktu[],
+  tahunSet: Record<number, string>,
+): Promise<HasilJadual> {
   await pastikanBoleh("urus_guru_kelas");
 
-  if (!waktu?.pagi?.length || !waktu?.petang?.length) {
-    return { ok: false, mesej: "Setiap sesi mesti ada sekurang-kurangnya satu waktu." };
+  if (!Array.isArray(set) || set.length === 0) {
+    return { ok: false, mesej: "Sekurang-kurangnya satu set waktu diperlukan." };
+  }
+  for (const s of set) {
+    if (!s.senarai?.length) {
+      return { ok: false, mesej: `Set "${s.nama}" tiada waktu langsung.` };
+    }
+  }
+  // Setiap tahun mesti menunjuk kepada set yang WUJUD, kalau tidak kelas
+  // tahun itu tidak akan ada waktu langsung dan skrinnya kelihatan kosong
+  // tanpa sebab yang jelas.
+  const idSah = new Set(set.map((s) => s.id));
+  for (const [tahun, id] of Object.entries(tahunSet ?? {})) {
+    if (!idSah.has(id)) {
+      return { ok: false, mesej: `Tahun ${tahun} menunjuk kepada set yang tidak wujud.` };
+    }
   }
 
   let semasa: Jadual;
@@ -118,8 +132,8 @@ export async function simpanWaktuSesi(waktu: Record<Sesi, Waktu[]>): Promise<Has
   }
 
   return tulis(
-    { waktu, kelas: semasa.kelas, dikemaskini: new Date().toISOString() },
-    "Waktu sesi disimpan.",
+    { set, tahunSet, kelas: semasa.kelas, dikemaskini: new Date().toISOString() },
+    "Waktu & rehat disimpan.",
   );
 }
 

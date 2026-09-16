@@ -33,6 +33,7 @@ export const NAMA_SESI: Record<Sesi, string> = {
 };
 
 /** Satu waktu dalam sehari. `rehat` menandakan ia bukan waktu PdP. */
+/** Satu waktu dalam sehari. `rehat` menandakan ia bukan waktu PdP. */
 export interface Waktu {
   id: string;
   mula: string;   // "07:30"
@@ -48,8 +49,24 @@ export interface Slot {
   guru?: string;
 }
 
-export interface KelasJadual {
+/**
+ * Satu SET WAKTU — senarai waktu lengkap untuk sekumpulan tahun.
+ *
+ * KENAPA SET DAN BUKAN SATU SENARAI PER SESI: rehat sekolah ini berperingkat.
+ * Tahun 1 berehat pada 3:30, kumpulan lain pada waktu berbeza — dan kerana
+ * rehat MENGANJAKKAN semua waktu selepasnya, senarai waktu setiap kumpulan
+ * benar-benar berlainan, bukan sekadar satu blok yang ditanda berbeza.
+ *
+ * Satu set boleh dikongsi beberapa tahun; pemetaannya dalam `tahunSet`.
+ */
+export interface SetWaktu {
+  id: string;
+  nama: string;
   sesi: Sesi;
+  senarai: Waktu[];
+}
+
+export interface KelasJadual {
   /** hari → id waktu → slot. Slot yang tiada bermakna waktu kosong. */
   hari: Partial<Record<Hari, Record<string, Slot>>>;
   /**
@@ -66,51 +83,143 @@ export interface KelasJadual {
 }
 
 export interface Jadual {
-  /** Set waktu berasingan untuk setiap sesi — sekolah ini ada dua sesi. */
-  waktu: Record<Sesi, Waktu[]>;
+  set: SetWaktu[];
+  /** tahun 1–6 → id set. Ia yang menentukan sesi DAN waktu rehat kelas itu. */
+  tahunSet: Record<number, string>;
   kelas: Record<string, KelasJadual>;
   /** ISO. Dipapar kepada ibu bapa supaya mereka tahu ia terkini. */
   dikemaskini?: string;
 }
 
 /**
- * Waktu permulaan yang boleh disunting admin.
+ * Waktu SEBENAR sekolah, diambil terus dari dua jadual rasmi yang diberi
+ * pihak sekolah (jadual guru sesi pagi, dan jadual kelas 2 MAJU sesi petang).
+ * Ini BUKAN tekaan.
  *
- * ⚠️ INI BUKAN WAKTU RASMI SEKOLAH — ia corak biasa sekolah rendah yang
- * diletakkan supaya skrin tidak kosong pada hari pertama. Admin MESTI
- * membetulkannya kepada waktu sebenar sebelum jadual diterbitkan; skrin
- * menyatakan perkara itu.
+ * Perhatikan blok yang tidak sekata: pagi blok 6 hanya 20 minit
+ * (10:10–10:30), dan rehat petang 15:30–15:50 juga 20 minit. Jadi jangan
+ * jana waktu secara berkira — salin apa yang sekolah gunakan.
  */
-export const WAKTU_LALAI: Record<Sesi, Waktu[]> = {
-  pagi: [
-    { id: "p1", mula: "07:30", tamat: "08:00" },
-    { id: "p2", mula: "08:00", tamat: "08:30" },
-    { id: "p3", mula: "08:30", tamat: "09:00" },
-    { id: "p4", mula: "09:00", tamat: "09:30" },
-    { id: "pr", mula: "09:30", tamat: "10:00", rehat: true, label: "Rehat" },
-    { id: "p5", mula: "10:00", tamat: "10:30" },
-    { id: "p6", mula: "10:30", tamat: "11:00" },
-    { id: "p7", mula: "11:00", tamat: "11:30" },
-    { id: "p8", mula: "11:30", tamat: "12:00" },
-    { id: "p9", mula: "12:00", tamat: "12:30" },
-    { id: "p10", mula: "12:30", tamat: "13:00" },
-  ],
-  petang: [
-    { id: "t1", mula: "13:00", tamat: "13:30" },
-    { id: "t2", mula: "13:30", tamat: "14:00" },
-    { id: "t3", mula: "14:00", tamat: "14:30" },
-    { id: "t4", mula: "14:30", tamat: "15:00" },
-    { id: "tr", mula: "15:00", tamat: "15:30", rehat: true, label: "Rehat" },
-    { id: "t5", mula: "15:30", tamat: "16:00" },
-    { id: "t6", mula: "16:00", tamat: "16:30" },
-    { id: "t7", mula: "16:30", tamat: "17:00" },
-    { id: "t8", mula: "17:00", tamat: "17:30" },
-    { id: "t9", mula: "17:30", tamat: "18:00" },
-    { id: "t10", mula: "18:00", tamat: "18:30" },
-  ],
+const BLOK_PAGI: [string, string][] = [
+  ["07:40", "08:10"], ["08:10", "08:40"], ["08:40", "09:10"], ["09:10", "09:40"],
+  ["09:40", "10:10"], ["10:10", "10:30"], ["10:30", "11:00"], ["11:00", "11:30"],
+  ["11:30", "12:00"], ["12:00", "12:30"], ["12:30", "13:00"],
+];
+
+const BLOK_PETANG: [string, string][] = [
+  ["13:00", "13:30"], ["13:30", "14:00"], ["14:00", "14:30"], ["14:30", "15:00"],
+  ["15:00", "15:30"], ["15:30", "15:50"], ["15:50", "16:20"], ["16:20", "16:50"],
+  ["16:50", "17:20"], ["17:20", "17:50"],
+];
+
+/** Bina senarai waktu daripada blok, dengan satu blok ditanda rehat. */
+function bina(awalan: string, blok: [string, string][], rehatKe: number): Waktu[] {
+  return blok.map(([mula, tamat], i) => ({
+    id: `${awalan}${i + 1}`,
+    mula,
+    tamat,
+    ...(i + 1 === rehatKe ? { rehat: true, label: "Rehat" } : {}),
+  }));
+}
+
+/**
+ * Set waktu permulaan, dari jadual rasmi sekolah.
+ *
+ * REHAT BERPERINGKAT: jadual pagi sekolah melabelkan waktu 5, 6 dan 7 sebagai
+ * "5/R4", "6/R5", "7/R6" — iaitu rehat Tahun 4 pada waktu 5, Tahun 5 pada
+ * waktu 6, dan Tahun 6 pada waktu 7. Blok waktunya SAMA; yang berbeza hanya
+ * blok mana yang menjadi rehat. Sesi petang pula berkongsi satu rehat pada
+ * waktu 6 (15:30).
+ *
+ * ⚠️ Pemetaan tahun → set masih perlu disahkan pentadbir; sekolah boleh
+ * menukar susunan tahun antara sesi bila-bila masa.
+ */
+export const SET_LALAI: SetWaktu[] = [
+  { id: "petang", nama: "Sesi Petang — rehat waktu 6 (3:30)", sesi: "petang",
+    senarai: bina("t", BLOK_PETANG, 6) },
+  { id: "pagi-r4", nama: "Sesi Pagi — rehat waktu 5 (R4)", sesi: "pagi",
+    senarai: bina("p", BLOK_PAGI, 5) },
+  { id: "pagi-r5", nama: "Sesi Pagi — rehat waktu 6 (R5)", sesi: "pagi",
+    senarai: bina("p", BLOK_PAGI, 6) },
+  { id: "pagi-r6", nama: "Sesi Pagi — rehat waktu 7 (R6)", sesi: "pagi",
+    senarai: bina("p", BLOK_PAGI, 7) },
+];
+
+/** Tetapan permulaan tahun → set. MESTI disahkan pentadbir. */
+export const TAHUN_SET_LALAI: Record<number, string> = {
+  1: "petang",
+  2: "petang",
+  3: "petang",
+  4: "pagi-r4",
+  5: "pagi-r5",
+  6: "pagi-r6",
 };
 
-export const JADUAL_KOSONG: Jadual = { waktu: WAKTU_LALAI, kelas: {} };
+export const JADUAL_KOSONG: Jadual = {
+  set: SET_LALAI,
+  tahunSet: TAHUN_SET_LALAI,
+  kelas: {},
+};
+
+/** Tahun daripada label kelas "4 NILAM" → 4. Null jika bentuknya tidak dikenali. */
+export function tahunKelas(label: string): number | null {
+  const m = /^([1-6])\s+/.exec(label.trim());
+  return m ? Number(m[1]) : null;
+}
+
+/** Set waktu yang dipakai kelas ini. Null jika tidak dapat ditentukan. */
+export function setUntukKelas(jadual: Jadual, label: string): SetWaktu | null {
+  const tahun = tahunKelas(label);
+  if (tahun === null) return null;
+  const id = jadual.tahunSet?.[tahun];
+  return jadual.set.find((s) => s.id === id) ?? jadual.set[0] ?? null;
+}
+
+/**
+ * Terima jadual dalam bentuk LAMA (satu senarai waktu per sesi) dan
+ * tukarkannya kepada set. Dikekalkan supaya data yang sudah tersimpan tidak
+ * hilang apabila bentuknya berubah — peraturan keras #2, dalam bentuk lain.
+ */
+export function naikTarafJadual(data: unknown): Jadual {
+  const d = data as Partial<Jadual> & {
+    waktu?: Record<string, Waktu[]>;
+    kelas?: Record<string, KelasJadual & { sesi?: Sesi }>;
+  };
+  if (!d || typeof d !== "object") return JADUAL_KOSONG;
+
+  if (Array.isArray(d.set) && d.set.length > 0) {
+    return {
+      set: d.set,
+      tahunSet: d.tahunSet ?? TAHUN_SET_LALAI,
+      kelas: d.kelas ?? {},
+      dikemaskini: d.dikemaskini,
+    };
+  }
+
+  // Bentuk lama: waktu.pagi / waktu.petang, dan setiap kelas menyimpan sesinya.
+  if (d.waktu?.pagi || d.waktu?.petang) {
+    const set: SetWaktu[] = [];
+    if (d.waktu.pagi?.length) {
+      set.push({ id: "pagi", nama: "Sesi Pagi", sesi: "pagi", senarai: d.waktu.pagi });
+    }
+    if (d.waktu.petang?.length) {
+      set.push({ id: "petang", nama: "Sesi Petang", sesi: "petang", senarai: d.waktu.petang });
+    }
+    const tahunSet: Record<number, string> = {};
+    for (let t = 1; t <= 6; t++) {
+      // Cari sesi yang paling kerap digunakan kelas tahun itu.
+      const kelasTahun = Object.entries(d.kelas ?? {}).filter(([k]) => tahunKelas(k) === t);
+      const petang = kelasTahun.filter(([, v]) => v.sesi === "petang").length;
+      const pilih = petang > kelasTahun.length / 2 ? "petang" : "pagi";
+      tahunSet[t] = set.find((x) => x.id === pilih)?.id ?? set[0]?.id ?? "pagi";
+    }
+    const kelas: Record<string, KelasJadual> = {};
+    for (const [k, v] of Object.entries(d.kelas ?? {})) kelas[k] = { hari: v.hari, guruSubjek: v.guruSubjek };
+    return { set: set.length ? set : SET_LALAI, tahunSet, kelas, dikemaskini: d.dikemaskini };
+  }
+
+  return JADUAL_KOSONG;
+}
 
 /** Jam 24 → paparan mesra: "7:30 pg", "1:00 ptg". */
 export function jamPapar(hhmm: string): string {
