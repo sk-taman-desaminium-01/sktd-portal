@@ -54,11 +54,11 @@ const nextConfig: NextConfig = {
        * untuk had yang mereka tidak tahu wujud. Jadual waktu Excel dan PDF
        * sekolah lazimnya melepasi 1 MB.
        *
-       * 12 MB, bukan 10: pengekodan multipart menambah beberapa peratus di
-       * atas saiz fail sebenar. Had 10 MB yang sebenar dikuatkuasakan dalam
+       * 16 MB untuk had fail 10 MB: fail dihantar sebagai base64 (lihat
+       * src/data/fail-base64.ts) yang menambah kira-kira 33%. Had 10 MB yang sebenar dikuatkuasakan dalam
        * `muatNaik()`, di mana ralatnya boleh menyebut saiz fail itu.
        */
-      bodySizeLimit: "12mb",
+      bodySizeLimit: "16mb",
     },
   },
 

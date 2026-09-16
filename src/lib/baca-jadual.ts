@@ -3,6 +3,7 @@
 import { pengguna } from "./akses";
 import { kelasBolehSunting } from "./guru-kelas";
 import { semakFail } from "./storan";
+import { muatanKeFail, type MuatanFail } from "@/data/fail-base64";
 import { setUntukKelas, type KelasJadual, type Waktu } from "@/data/jadual-jenis";
 import { binaDraf, binaDrafDariGrid, binaDrafDariKedudukan } from "./jadual-huraian";
 import { bacaDokumen } from "./baca-dokumen";
@@ -54,14 +55,17 @@ export interface HasilBaca {
 
 /* ---------------------------------------------------------------- tindakan */
 
-export async function naikFailJadual(data: FormData): Promise<HasilBaca> {
+export async function naikFailJadual(
+  kelas: string,
+  muatan: MuatanFail,
+): Promise<HasilBaca> {
   // SELURUH tindakan dibalut. Sebarang lontaran yang terlepas dari sini
   // TIDAK sampai kepada pengguna sebagai ralat yang boleh dibaca — Next
   // menggantikannya dengan "An unexpected response was received from the
   // server", yang tidak menyebut apa yang gagal mahupun di mana. Itu berlaku,
   // dan ia menyembunyikan puncanya selama beberapa pusingan.
   try {
-    return await jalankan(data);
+    return await jalankan(kelas, muatan);
   } catch (e) {
     return {
       ok: false,
@@ -72,20 +76,19 @@ export async function naikFailJadual(data: FormData): Promise<HasilBaca> {
   }
 }
 
-async function jalankan(data: FormData): Promise<HasilBaca> {
+async function jalankan(kelas: string, muatan: MuatanFail): Promise<HasilBaca> {
   const saya = await pengguna();
   if (!saya?.peranan) return { ok: false, mesej: "Tidak dibenarkan." };
 
-  const label = String(data.get("kelas") ?? "").trim();
-  const fail = data.get("fail");
+  const label = kelas.trim();
+  if (!muatan?.data) return { ok: false, mesej: "Tiada fail dipilih." };
+  const fail = muatanKeFail(muatan);
 
   const dibenar = await kelasBolehSunting();
   if (dibenar !== null && !dibenar.includes(label)) {
     return { ok: false, mesej: `Anda bukan guru kelas ${label}.` };
   }
-  if (!(fail instanceof File) || fail.size === 0) {
-    return { ok: false, mesej: "Tiada fail dipilih." };
-  }
+  if (fail.size === 0) return { ok: false, mesej: "Fail itu kosong." };
 
   // Jenis dan saiz disemak SEBELUM apa-apa dibaca — pembacaan memuatkan
   // seluruh fail ke dalam ingatan, jadi had itu mesti dikuatkuasakan dahulu.
