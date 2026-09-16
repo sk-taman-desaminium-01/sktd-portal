@@ -37,7 +37,9 @@ export default async function Admin() {
       : []),
     ...(bolehPengurusan
       ? [{ href: "/admin/pengurusan", nama: "Buku Pengurusan", ikon: "📕",
-           ringkas: "Muat naik buku tahunan; sistem membaca dan menyenaraikan isinya." }]
+           ringkas: "Muat naik buku tahunan; sistem membaca dan menyenaraikan isinya." },
+         { href: "/admin/carta", nama: "Carta Organisasi", ikon: "🗂️",
+           ringkas: "Dari Guru Besar hingga guru dan kakitangan. Boleh disunting dan dimuat turun." }]
       : []),
     ...(bolehAkses
       ? [{ href: "/admin/akses", nama: "Senarai Akses", ikon: "🔑",

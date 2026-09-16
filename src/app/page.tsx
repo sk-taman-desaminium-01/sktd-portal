@@ -238,21 +238,20 @@ export default async function Hab() {
           Sebelum ini semua app dalam SATU grid rata: guru terpaksa mengimbas
           setiap kad untuk mencari satu. Buku Pengurusan sudah membahagikan
           kerja sekolah kepada unit dan setiap guru sudah tahu unit mereka,
-          jadi hab mengikut pembahagian yang sama. Rujukan muka surat
-          dikekalkan supaya sesiapa boleh menyemak dari mana ia datang. */}
+          jadi hab mengikut pembahagian yang sama.
+
+          Rujukan muka surat SENGAJA tidak dipapar (keputusan pengguna,
+          16 Sep 2026): ia betul tetapi menjadikan skrin bersepah, dan guru
+          tidak membuka hab untuk menyemak nombor muka surat. Nilainya
+          dikekalkan dalam `bahagian.ts` untuk rujukan kita. */}
       {kadIkutBahagian(saya.peranan).map(({ bahagian, kad }) => (
         <section key={bahagian.kod} className="mx-auto mt-10 max-w-4xl">
-          <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-            <h2 className="text-[11px] font-bold uppercase tracking-widest text-emas">
-              {bahagian.nama}
-            </h2>
-            {bahagian.muka && (
-              <span className="text-[11px] text-white/35">
-                Buku Pengurusan m.{bahagian.muka}
-              </span>
-            )}
-          </div>
-          <p className="mt-1 text-sm text-white/55">{bahagian.ringkas}</p>
+          <h2 className="text-[11px] font-bold uppercase tracking-widest text-emas">
+            {bahagian.nama}
+          </h2>
+          {bahagian.ringkas && (
+            <p className="mt-1 text-sm text-white/55">{bahagian.ringkas}</p>
+          )}
 
           <div className="mt-4 grid gap-4 sm:grid-cols-2">
             {kad.map((app) => (

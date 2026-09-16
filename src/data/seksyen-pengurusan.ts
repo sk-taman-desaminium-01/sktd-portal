@@ -31,8 +31,15 @@ export interface JenisSeksyen {
    * Bentuk data yang dijangka:
    *  `jadual` — baris dan lajur (senarai guru, takwim)
    *  `senarai` — baris "PERANAN : NAMA" (jawatankuasa, panitia)
+   *  `tugas`   — senarai berbulet di bawah tajuk peranan (bidang tugas)
+   *
+   * `tugas` ditambah selepas m.115-116 edisi 2025 dilaporkan "tidak boleh
+   * dibaca". Ia BOLEH dibaca; ia cuma tiada nama. Muka itu menyenaraikan
+   * BIDANG TUGAS Guru Penasihat Ko Akademik — dan sistem yang hanya tahu
+   * dua bentuk membuangnya lalu berkata "semak rapi", yang menghantar admin
+   * mencari kesilapan yang tidak wujud.
    */
-  bentuk: "jadual" | "senarai";
+  bentuk: "jadual" | "senarai" | "tugas";
   /** Bolehkah seksyen ini dipapar di laman AWAM? Lalai: tidak. */
   bolehAwam: boolean;
   /** Apa yang seksyen ini boleh suapkan ke bahagian lain sistem. */

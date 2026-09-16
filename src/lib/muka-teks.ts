@@ -478,8 +478,31 @@ export function barisKeSel(baris: ItemMuka[]): SelBaris[] {
   return sel.filter((s) => s.teks !== "");
 }
 
+/**
+ * Aksara dari fon simbol (Wingdings, Symbol) mendarat dalam Kawasan Guna
+ * Persendirian Unicode: U+E000–U+F8FF.
+ *
+ * Ia KELIHATAN kosong pada skrin tetapi BUKAN kosong — `trim()` tidak
+ * membuangnya. Diukur pada m.115 edisi 2025: setiap bulet senarai bidang
+ * tugas ialah U+F0A7, dan kerana ia disangka teks, seluruh muka itu
+ * dilaporkan "tidak boleh dibaca" sedangkan ia dibaca sempurna.
+ *
+ * Bahaya yang lebih senyap: satu aksara begini melekat pada hujung nama
+ * menjadikan padanan nama gagal tanpa sebarang tanda di skrin.
+ */
+const RE_PUA = /[\uE000-\uF8FF]/g;
+
+/** Aksara kawalan dan ruang sifar-lebar yang turut tidak kelihatan. */
+const RE_HALIMUNAN = /[\u200B-\u200D\uFEFF\u00AD]/g;
+
 function kemas(t: string): string {
-  return buangGandaan(t.replace(/ /g, " ").replace(/\s+/g, " ").trim());
+  const asal = t.replace(RE_HALIMUNAN, "").replace(/\u00a0/g, " ");
+  // Sel yang SELURUHNYA simbol ialah penanda senarai. Ia ditukar kepada
+  // bulet sebenar supaya ia kelihatan dalam skrin semakan, bukan menjadi
+  // sel kosong yang misterius.
+  const tanpaSimbol = asal.replace(RE_PUA, "").trim();
+  if (tanpaSimbol === "" && RE_PUA.test(asal)) return "\u2022";
+  return buangGandaan(tanpaSimbol.replace(/\s+/g, " ").trim());
 }
 
 /**

@@ -22,6 +22,8 @@ import { normalkanMuka, jadualMuka, type ItemMentah } from "./muka-teks.ts";
 export interface MukaBaca {
   muka: number;
   baris: string[];
+  /** Baris yang sudah dipecah kepada sel — penting untuk muka dua lajur. */
+  sel: string[][];
   jadual: string[][] | null;
   /** Putaran yang dikesan dan dibetulkan. 0 untuk muka biasa. */
   putaran: number;
@@ -54,6 +56,7 @@ export async function mukaDariPdf(
       keluar.push({
         muka: n,
         baris: muka.baris,
+        sel: muka.sel,
         jadual: jadualMuka(muka),
         putaran: muka.putaran,
         bilItem: muka.item.length,
@@ -62,7 +65,7 @@ export async function mukaDariPdf(
     } catch {
       // Peraturan #10: satu muka rosak tidak menjatuhkan seluruh kerja.
       // Muka itu direkod sebagai kosong, dan ringkasan akan menyebutnya.
-      keluar.push({ muka: n, baris: [], jadual: null, putaran: 0, bilItem: 0,
+      keluar.push({ muka: n, baris: [], sel: [], jadual: null, putaran: 0, bilItem: 0,
                     amaran: ["Muka ini tidak dapat dibaca — ia dilangkau."] });
     }
     if (lapor) {

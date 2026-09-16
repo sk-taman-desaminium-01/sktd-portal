@@ -7,6 +7,7 @@ import { bacaDokumen } from "./baca-dokumen";
 import { muatanKeFail, type MuatanFail } from "@/data/fail-base64";
 import { kesanSeksyen, type SeksyenDikesan, type MukaDokumen } from "./pengurusan-huraian";
 import { JENIS_SEKSYEN, type KodSeksyen } from "@/data/seksyen-pengurusan";
+import { bacaPenunjukKod } from "@/data/carta";
 import {
   simpanDokumen, tukarSeksyen, padamDokumen,
   type SeksyenUntukSimpan,
@@ -89,6 +90,28 @@ export async function huraiMuka(muka: MukaBaca[]): Promise<HasilHurai> {
       muka: m.muka, baris: m.baris, jadual: m.jadual, gambar: m.bilItem <= 3,
     }));
     const seksyen = kesanSeksyen(dok);
+
+    // PENUNJUK KOD JAWATAN disimpan sebagai seksyennya sendiri.
+    //
+    // Ia bukan sekadar nota kaki: ia yang memberitahu sistem bahawa "GAG"
+    // bermaksud Guru Pendidikan Islam Sekolah Rendah di sekolah INI. Sumber
+    // pihak ketiga memberi maksud yang LAIN sama sekali, jadi buku itu sendiri
+    // mesti menang. Disimpan sebagai seksyen supaya admin boleh melihat dan
+    // membetulkannya seperti mana-mana data lain.
+    const penunjuk = bacaPenunjukKod(muka.flatMap((m) => m.baris));
+    const kodPenunjuk = Object.entries(penunjuk);
+    if (kodPenunjuk.length > 0) {
+      seksyen.push({
+        kod: "lain",
+        tajuk: "Penunjuk Kod Jawatan",
+        mukaMula: 0, mukaAkhir: 0,
+        bentuk: "jadual",
+        lajur: ["Kod", "Jawatan"],
+        baris: kodPenunjuk.map(([k, v]) => [k, v]),
+        keyakinan: 100,
+        amaran: [],
+      });
+    }
 
     if (seksyen.length === 0) {
       return {

@@ -6,7 +6,7 @@
  * muka jawatankuasa ialah senarai "PERANAN : NAMA" dengan baris sambungan,
  * muka senarai guru ialah jadual berlajur.
  */
-import { tajukMuka, huraiSenarai, huraiJadual, kesanSeksyen } from "../src/lib/pengurusan-huraian.ts";
+import { tajukMuka, huraiSenarai, huraiJadual, kesanSeksyen, huraiTugas, kelihatanTugas } from "../src/lib/pengurusan-huraian.ts";
 import { kesanJenis } from "../src/data/seksyen-pengurusan.ts";
 
 let lulus = 0, gagal = 0;
@@ -41,10 +41,26 @@ const senarai = huraiSenarai([
   "SETIAUSAHA : ADHLINA NADHRAH BINTI YUZAIDI",
 ]);
 semak("bilangan baris", senarai.length, 4);
-semak("baris pertama", senarai[0], ["PENYELARAS", "NOOR HANISAH BINTI OTHMAN"]);
-semak("sambungan warisi peranan", senarai[1], ["PENYELARAS", "MOHD NASSER BIN SAPARI"]);
-semak("sambungan kedua", senarai[2], ["PENYELARAS", "SITI AMINAH BINTI ALI"]);
-semak("peranan baharu", senarai[3], ["SETIAUSAHA", "ADHLINA NADHRAH BINTI YUZAIDI"]);
+// Lajur pertama ialah SUB-JAWATANKUASA. Tanpanya, 263 baris jawatankuasa
+// dalam buku sebenar menjadi senarai rata "PENGERUSI / SETIAUSAHA / AJK"
+// yang berulang tanpa sesiapa tahu jawatankuasa MANA.
+semak("baris pertama", senarai[0], ["DISIPLIN", "PENYELARAS", "NOOR HANISAH BINTI OTHMAN"]);
+semak("sambungan warisi peranan", senarai[1], ["DISIPLIN", "PENYELARAS", "MOHD NASSER BIN SAPARI"]);
+semak("sambungan kedua", senarai[2], ["DISIPLIN", "PENYELARAS", "SITI AMINAH BINTI ALI"]);
+semak("peranan baharu", senarai[3], ["DISIPLIN", "SETIAUSAHA", "ADHLINA NADHRAH BINTI YUZAIDI"]);
+
+// Jawatankuasa BAHARU mesti memutuskan warisan peranan — kalau tidak, baris
+// sambungan pertama jawatankuasa baharu mewarisi "AJK" dari yang sebelumnya.
+const duaJK = huraiSenarai([
+  "1. KEWANGAN", "AJK : A BINTI B", ": C BINTI D",
+  "2. LADAP", ": E BINTI F", "PENYELARAS : G BINTI H",
+]);
+semak("kumpulan kedua dikesan", duaJK.map((b) => b[0]), ["KEWANGAN", "KEWANGAN", "LADAP"]);
+semak("peranan tidak merentas jawatankuasa", duaJK[2], ["LADAP", "PENYELARAS", "G BINTI H"]);
+
+// Koma bertitik menggantikan titik bertindih — berlaku pada m.55 buku sebenar.
+semak("koma bertitik diterima",
+  huraiSenarai(["1. SPSK", "AJK : A BINTI B", "; SEMUA KETUA PANITIA"]).length, 2);
 
 console.log("\n— enjin jadual dari koordinat —");
 /* Bentuk SEBENAR m.47: BIL | NAMA | KOD | OPSYEN */
@@ -77,6 +93,39 @@ semak("seksyen 1 ambil sambungan", seksyen[0].baris.length, 3);
 semak("seksyen 2 jenis", seksyen[1].kod, "takwim");
 semak("seksyen 2 lajur", seksyen[1].lajur, ["MINGGU", "TARIKH", "AKTIVITI"]);
 semak("muka hadapan diabaikan", seksyen.every((s) => s.mukaMula >= 3), true);
+
+
+
+console.log("\n— enjin bidang tugas —");
+/* Bentuk SEBENAR m.115 edisi 2025. Bulet ialah U+F0A7 (glif Wingdings dalam
+   Kawasan Guna Persendirian Unicode) yang `kemas()` normalkan kepada "•".
+   Sebelum ini ia disangka teks, dan seluruh muka dilaporkan "tidak boleh
+   dibaca" sedangkan ia dibaca sempurna — cuma tiada nama di dalamnya. */
+const selTugas = [
+  ["GURU PENASIHAT KO AKADEMIK/ JURULATIH PASUKAN KHAS SEKOLAH"],
+  ["\u2022", "Membentuk jawatankuasa dalam pasukan."],
+  ["\u2022", "Merancang meningkatkan pengetahuan, kemahiran dan minat pelajar dalam"],
+  ["permainan ataupertandingan."],
+  ["\u2022", "Berusaha mendapatkan khidmat nasihat dari mereka yang pakar."],
+  ["KETUA RUMAH SUKAN"],
+  ["\u2022", "Memastikan adanya senarai nama ahli Rumah Sukan yang lengkap."],
+];
+const tugas = huraiTugas(selTugas);
+semak("bilangan tugas", tugas.length, 4);
+semak("peranan pertama", tugas[0][0], "GURU PENASIHAT KO AKADEMIK/ JURULATIH PASUKAN KHAS SEKOLAH");
+semak("bulet dibuang dari teks", tugas[0][1], "Membentuk jawatankuasa dalam pasukan.");
+semak("ayat melimpah dicantum", tugas[1][1],
+  "Merancang meningkatkan pengetahuan, kemahiran dan minat pelajar dalam permainan ataupertandingan.");
+semak("peranan bertukar pada tajuk baharu", tugas[3][0], "KETUA RUMAH SUKAN");
+
+semak("muka tugas dikesan", kelihatanTugas([{ muka: 1, baris: [], sel: selTugas }]), true);
+/* Muka senarai nama TIDAK boleh disangka bidang tugas, walaupun ia
+   mengandungi beberapa baris berbulet. */
+semak("muka senarai nama tidak disangka tugas",
+  kelihatanTugas([{ muka: 1, baris: [], sel: [
+    ["PENGERUSI : A BINTI B"], ["SETIAUSAHA : C BINTI D"], ["AJK : E BINTI F"],
+    ["\u2022", "nota kecil"], [": G BINTI H"], [": I BINTI J"], [": K BINTI L"],
+  ] }]), false);
 
 console.log(`\n${lulus} lulus, ${gagal} gagal`);
 process.exit(gagal > 0 ? 1 : 0);
