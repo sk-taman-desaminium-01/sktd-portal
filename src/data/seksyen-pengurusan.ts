@@ -57,6 +57,19 @@ export interface JenisSeksyen {
    * bukan dua belas.
    */
   gabungSemua?: boolean;
+  /**
+   * Tajuk yang BERBEZA memulakan seksyen baharu, walaupun kodnya sama.
+   *
+   * Takwim dicetak bulan demi bulan dengan tajuk sendiri setiap bulan.
+   * Dicantum menjadi satu, ia 527 baris merentas 120 muka — betul sebagai
+   * data, tetapi mustahil disemak: admin membuka "Semak isi" dan menghadapi
+   * setahun penuh sekaligus.
+   *
+   * Dipecah ikut tajuk, ia menjadi satu seksyen setiap bulan. Paparan takwim
+   * tetap menggabungkannya semula (`barisIkutKod` mengumpul setiap seksyen
+   * berkod sama), jadi guru tetap melihat SATU kalendar.
+   */
+  pecahIkutTajuk?: boolean;
 }
 
 export const JENIS_SEKSYEN: JenisSeksyen[] = [
@@ -85,7 +98,7 @@ export const JENIS_SEKSYEN: JenisSeksyen[] = [
     kod: "takwim", nama: "Takwim & Program", bentuk: "jadual", bolehAwam: true,
     kunci: ["takwim", "program dan aktiviti", "program & aktiviti",
             "penggal persekolahan", "hari kelepasan"],
-    gabungSemua: true,
+    pecahIkutTajuk: true,
     suapan: "Menjana DRAF pengumuman untuk setiap program — admin semak dan terbit.",
   },
   {
