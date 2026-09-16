@@ -7,9 +7,18 @@ export const metadata = { title: "eRPM — Panitia" };
 /**
  * Ruang eRPM mengikut panitia.
  *
- * eRPM bukan satu app tunggal; ia satu app SETIAP panitia. Kad "eRPM" di hab
- * membawa ke sini, bukan ke mana-mana sistem tunggal, kerana itulah bentuk
- * sebenarnya: satu panitia sudah hidup, dua belas lagi belum.
+ * eRPM bukan satu app tunggal; ia satu ruang SETIAP panitia. Kad "eRPM" di
+ * hab membawa ke sini, bukan ke mana-mana sistem tunggal, kerana itulah
+ * bentuk sebenarnya.
+ *
+ * SEMUA panitia sudah ada ruangnya (17 Sep 2026). Pendidikan Islam ialah app
+ * penuh di gpi.edu.my; yang lain ialah ruang yang panitia bina sendiri —
+ * Google Drive, Google Sites, Canva, Linktree. Portal hanya mengumpulkan
+ * pautan itu di satu tempat.
+ *
+ * Bahagian "belum disediakan" DIKEKALKAN dalam kod walaupun kosong hari ini:
+ * panitia baharu boleh ditambah bila-bila masa, dan ia perlu muncul dengan
+ * jujur sebagai belum ada, bukan hilang begitu sahaja.
  */
 export default async function Erpm() {
   const saya = await pengguna();
@@ -30,9 +39,8 @@ export default async function Erpm() {
         </h1>
         <div className="my-4 h-0.5 w-36 bg-gradient-to-r from-transparent via-emas to-transparent" />
         <p className="text-sm leading-relaxed text-white/75">
-          Penilaian PBD dalam talian mengikut panitia mata pelajaran — Unit
-          Kurikulum, Buku Pengurusan m.80–88. Setiap panitia mempunyai ruangnya
-          sendiri.
+          Setiap panitia mempunyai ruang eRPM sendiri. Ruang itu milik panitia
+          masing-masing — portal ini hanya mengumpulkan pautannya.
         </p>
 
         {/* --- Yang sudah hidup --- */}
@@ -74,7 +82,9 @@ export default async function Erpm() {
           </ul>
         </section>
 
-        {/* --- Yang belum --- */}
+        {/* --- Yang belum. Tersembunyi bila kosong: tajuk "0 panitia" ialah
+             bunyi, bukan maklumat. --- */}
+        {belum.length > 0 && (
         <section className="mt-10">
           <h2 className="text-[11px] font-bold uppercase tracking-widest text-white/40">
             Belum disediakan · {belum.length} panitia
@@ -103,6 +113,7 @@ export default async function Erpm() {
             ))}
           </ul>
         </section>
+        )}
       </div>
     </main>
   );

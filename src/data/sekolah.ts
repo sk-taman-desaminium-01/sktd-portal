@@ -219,9 +219,16 @@ export const SEKOLAH = {
     // Lihat KAD_TAMBAHAN dalam `bahagian.ts`.
     {
       id: "erpm", nama: "eRPM", ikon: "RPM", warna: "#146b56",
-      fungsi: "Penilaian PBD dalam talian untuk setiap subjek — tanda SP, TP, laporan.",
-      domain: "erpm.sktd.edu.my", domainCadangan: true, status: "bina",
-      catatan: "Kini Pendidikan Islam sahaja, di gpi.edu.my",
+      fungsi: "Ruang eRPM setiap panitia mata pelajaran.",
+      // SEDIA, bukan "bina", dan TIADA domain cadangan (17 Sep 2026).
+      //
+      // `erpm.sktd.edu.my` ialah domain yang tidak pernah wujud dan tidak
+      // akan dibina: setiap panitia sudah pun membina ruang eRPM mereka
+      // sendiri — Google Drive, Google Sites, Canva, Linktree. Tugas portal
+      // ialah mengumpulkan pautan itu di satu tempat, dan itu sudah siap.
+      // Menyenaraikan domain yang tidak wujud menjanjikan kerja yang tiada
+      // sesiapa merancang untuk buat.
+      domain: "portal.sktd.edu.my/erpm", status: "sedia",
     },
     {
       id: "findelima", nama: "FinDelima", ikon: "ID", warna: "#7a4b12",

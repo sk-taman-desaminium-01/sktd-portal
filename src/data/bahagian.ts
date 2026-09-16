@@ -268,17 +268,17 @@ export const KAD_TAMBAHAN: KadBaharu[] = [
 /**
  * Pindaan kepada kad sedia ada dalam `sekolah.ts`.
  *
- * eRPM tiada `pautan` di sana kerana belum ada domainnya sendiri. Tetapi ia
- * SUDAH ada isi yang berguna — panitia Pendidikan Islam hidup di gpi.edu.my —
- * jadi kad itu membuka halaman panitia dalam portal ini, bukan jalan mati.
+ * eRPM membuka halaman panitia DALAM portal ini. Ia bukan app berasingan,
+ * dan tidak akan menjadi satu: setiap panitia sudah membina ruang eRPM
+ * mereka sendiri, dan tugas portal ialah mengumpulkan pautan itu.
  */
 const PINDAAN: Record<string, Partial<KadPortal>> = {
   // Urus Laman menerbitkan kandungan awam — itu kuasa, bukan kemudahan.
   urusweb: { perlu: "terbit_kandungan" },
   erpm: {
     pautan: "/erpm",
-    fungsi: "Penilaian PBD dalam talian mengikut panitia mata pelajaran.",
-    catatan: "1 daripada 13 panitia sudah hidup — Pendidikan Islam di gpi.edu.my.",
+    fungsi: "Ruang eRPM setiap panitia mata pelajaran.",
+    akses: "Semua guru",
   },
 };
 
