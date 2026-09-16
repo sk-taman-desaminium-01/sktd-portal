@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { tambahAkses, tukarPeranan, tarikAkses, type BarisAkses, type Hasil } from "@/lib/akses-urus";
 import { NAMA_PERANAN, type Peranan } from "@/lib/peranan";
 
@@ -26,13 +27,45 @@ export default function PanelAkses({ baris, peranan: perananPilihan }: {
   peranan: Peranan[];
 }) {
   const [hasil, setHasil] = useState<Hasil | null>(null);
-  const [sibuk, setSibuk] = useState(false);
+  // SATU baris yang sibuk, bukan seluruh skrin.
+  // Versi sebelum ini menggunakan satu boolean `sibuk` untuk semua butang,
+  // jadi menekan "Benarkan" membuatkan "Tambah" berdetik serentak — dan
+  // kalau tindakan pelayan melontar, `sibuk` tidak pernah dimatikan dan
+  // SETIAP butang tersekat selama-lamanya.
+  const [sibukId, setSibukId] = useState<string | null>(null);
+  const [berjaya, setBerjaya] = useState<string | null>(null);
+  const router = useRouter();
 
-  async function jalan(f: () => Promise<Hasil>) {
-    setSibuk(true);
-    setHasil(await f());
-    setSibuk(false);
+  async function jalan(id: string, f: () => Promise<Hasil>) {
+    setSibukId(id);
+    setBerjaya(null);
+    try {
+      const r = await f();
+      setHasil(r);
+      if (r.ok) {
+        setBerjaya(id);
+        // Tarik senarai terkini dari pelayan supaya orang yang baru
+        // dibenarkan BERGERAK ke bahagian "Dibenarkan" di depan mata admin.
+        // Tanpa ini, tindakan itu berjaya tetapi skrin kelihatan tidak
+        // berubah — dan admin menekannya berulang kali.
+        router.refresh();
+        window.setTimeout(() => setBerjaya((b) => (b === id ? null : b)), 2500);
+      }
+    } catch (e) {
+      // Tindakan pelayan boleh melontar (rangkaian putus, ralat tidak
+      // dijangka). Tanpa tangkapan ini, skrin membeku tanpa memberitahu
+      // apa-apa — itu yang berlaku sebelum ini.
+      setHasil({
+        ok: false,
+        mesej: e instanceof Error ? e.message : "Tindakan gagal. Cuba muat semula halaman.",
+      });
+    } finally {
+      // `finally` supaya keadaan sibuk SENTIASA dimatikan, walau apa pun.
+      setSibukId(null);
+    }
   }
+
+  const sibuk = sibukId !== null;
 
   const aktif = baris.filter((b) => b.dibenarkan);
   // Dua jenis orang berkumpul di sini, dan kita SENGAJA tidak membezakannya:
@@ -52,7 +85,7 @@ export default function PanelAkses({ baris, peranan: perananPilihan }: {
         </p>
         <form
           className="mt-4 grid gap-3 sm:grid-cols-[1fr_1fr_auto_auto]"
-          action={(d) => jalan(() => tambahAkses(d))}
+          action={(d) => jalan("tambah", () => tambahAkses(d))}
         >
           <input name="nama" required placeholder="Nama penuh"
             className="rounded-lg border border-garis px-3 py-2.5 text-sm" />
@@ -63,7 +96,7 @@ export default function PanelAkses({ baris, peranan: perananPilihan }: {
               <option key={p} value={p}>{NAMA_PERANAN[p]}</option>
             ))}
           </select>
-          <button disabled={sibuk}
+          <button disabled={sibukId === "tambah"}
             className="rounded-lg bg-navy-800 px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-50">
             Tambah
           </button>
@@ -99,8 +132,8 @@ export default function PanelAkses({ baris, peranan: perananPilihan }: {
                 </span>
                 <select
                   defaultValue={b.peranan}
-                  disabled={sibuk}
-                  onChange={(e) => jalan(() => tukarPeranan(b.id, e.target.value as Peranan))}
+                  disabled={sibukId === b.id}
+                  onChange={(e) => jalan(b.id, () => tukarPeranan(b.id, e.target.value as Peranan))}
                   className="rounded-lg border border-garis px-2.5 py-2 text-sm"
                 >
                   {perananPilihan.map((p) => (
@@ -108,8 +141,8 @@ export default function PanelAkses({ baris, peranan: perananPilihan }: {
                   ))}
                 </select>
                 <button
-                  disabled={sibuk}
-                  onClick={() => jalan(() => tarikAkses(b.id, false))}
+                  disabled={sibukId === b.id}
+                  onClick={() => jalan(b.id, () => tarikAkses(b.id, false))}
                   className="rounded-lg border border-[#a32a2a] px-3 py-2 text-xs font-semibold text-[#a32a2a] disabled:opacity-50"
                 >
                   Tarik akses
@@ -148,8 +181,8 @@ export default function PanelAkses({ baris, peranan: perananPilihan }: {
                     meluluskan seorang guru ialah satu tindakan, bukan dua. */}
                 <select
                   defaultValue={b.peranan}
-                  disabled={sibuk}
-                  onChange={(e) => jalan(() => tukarPeranan(b.id, e.target.value as Peranan))}
+                  disabled={sibukId === b.id}
+                  onChange={(e) => jalan(b.id, () => tukarPeranan(b.id, e.target.value as Peranan))}
                   className="rounded-lg border border-garis px-2.5 py-2 text-sm"
                 >
                   {perananPilihan.map((p) => (
@@ -157,11 +190,17 @@ export default function PanelAkses({ baris, peranan: perananPilihan }: {
                   ))}
                 </select>
                 <button
-                  disabled={sibuk}
-                  onClick={() => jalan(() => tarikAkses(b.id, true))}
-                  className="rounded-lg bg-navy-800 px-3.5 py-2 text-xs font-semibold text-white hover:bg-navy-700 disabled:opacity-50"
+                  disabled={sibukId === b.id}
+                  onClick={() => jalan(b.id, () => tarikAkses(b.id, true))}
+                  className={`rounded-lg px-3.5 py-2 text-xs font-semibold text-white disabled:opacity-60 ${
+                    berjaya === b.id ? "bg-[#167a4b]" : "bg-navy-800 hover:bg-navy-700"
+                  }`}
                 >
-                  Benarkan
+                  {sibukId === b.id
+                    ? "Sekejap…"
+                    : berjaya === b.id
+                      ? "✓ Dibenarkan"
+                      : "Benarkan"}
                 </button>
               </li>
             ))}

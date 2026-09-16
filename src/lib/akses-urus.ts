@@ -77,11 +77,19 @@ export async function tukarPeranan(id: string, peranan: Peranan): Promise<Hasil>
   if (!perananBolehDiberi(saya.peranan).includes(peranan)) {
     return { ok: false, mesej: "Peranan tidak sah." };
   }
-  const db = klienTulis();
-  await db.minta(`pbd_guru?id=eq.${id}`, {
-    method: "PATCH",
-    body: JSON.stringify({ peranan }),
-  });
+  // MESTI menangkap: tindakan pelayan yang MELONTAR tidak pernah memulangkan
+  // Hasil, jadi pemanggil di pelayar tidak pernah mematikan keadaan "sibuk"
+  // dan SETIAP butang pada skrin tersekat berdetik. Ralat mesti pulang
+  // sebagai nilai, bukan sebagai lontaran.
+  try {
+    const db = klienTulis();
+    await db.minta(`pbd_guru?id=eq.${id}`, {
+      method: "PATCH",
+      body: JSON.stringify({ peranan }),
+    });
+  } catch (e) {
+    return { ok: false, mesej: e instanceof Error ? e.message : "Gagal menukar peranan." };
+  }
   revalidatePath("/admin/akses");
   return { ok: true, mesej: "Peranan dikemas kini." };
 }
@@ -95,11 +103,30 @@ export async function tukarPeranan(id: string, peranan: Peranan): Promise<Hasil>
  */
 export async function tarikAkses(id: string, dibenarkan: boolean): Promise<Hasil> {
   await pastikanBoleh("urus_akses");
-  const db = klienTulis();
-  await db.minta(`pbd_guru?id=eq.${id}`, {
-    method: "PATCH",
-    body: JSON.stringify({ dibenarkan }),
-  });
-  revalidatePath("/admin/akses");
-  return { ok: true, mesej: dibenarkan ? "Akses dipulihkan." : "Akses ditarik. Rekod dikekalkan untuk audit." };
+  try {
+    const db = klienTulis();
+    const baris = (await db.minta(`pbd_guru?id=eq.${id}`, {
+      method: "PATCH",
+      headers: { Prefer: "return=representation" },
+      body: JSON.stringify({ dibenarkan }),
+    })) as { id: string; nama: string }[];
+
+    // PostgREST memulangkan senarai KOSONG bila tiada baris sepadan — dan
+    // status HTTPnya tetap 200. Tanpa semakan ini, "tiada apa berubah"
+    // dilaporkan sebagai kejayaan, iaitu tepat apa yang berlaku: butang
+    // ditekan, mesej hijau muncul, orang itu tidak bergerak ke mana-mana.
+    if (!Array.isArray(baris) || baris.length === 0) {
+      return { ok: false, mesej: "Rekod itu tidak dijumpai — mungkin ia sudah dibuang. Muat semula halaman." };
+    }
+
+    revalidatePath("/admin/akses");
+    return {
+      ok: true,
+      mesej: dibenarkan
+        ? `${baris[0].nama} kini dibenarkan masuk.`
+        : `Akses ${baris[0].nama} ditarik. Rekod dikekalkan untuk audit.`,
+    };
+  } catch (e) {
+    return { ok: false, mesej: e instanceof Error ? e.message : "Gagal mengemas kini akses." };
+  }
 }
