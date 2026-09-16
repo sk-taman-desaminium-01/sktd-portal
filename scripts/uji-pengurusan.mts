@@ -53,15 +53,15 @@ semak("peranan baharu", senarai[3], ["DISIPLIN", "SETIAUSAHA", "ADHLINA NADHRAH 
 // Jawatankuasa BAHARU mesti memutuskan warisan peranan — kalau tidak, baris
 // sambungan pertama jawatankuasa baharu mewarisi "AJK" dari yang sebelumnya.
 const duaJK = huraiSenarai([
-  "1. KEWANGAN", "AJK : A BINTI B", ": C BINTI D",
-  "2. LADAP", ": E BINTI F", "PENYELARAS : G BINTI H",
+  "1. KEWANGAN", "AJK : AMINAH BINTI YUSOF", ": CHE ROHANA BINTI DAUD",
+  "2. LADAP", ": ERNA BINTI FAUZI", "PENYELARAS : GHAZALI BIN HASHIM",
 ]);
 semak("kumpulan kedua dikesan", duaJK.map((b) => b[0]), ["KEWANGAN", "KEWANGAN", "LADAP"]);
-semak("peranan tidak merentas jawatankuasa", duaJK[2], ["LADAP", "PENYELARAS", "G BINTI H"]);
+semak("peranan tidak merentas jawatankuasa", duaJK[2], ["LADAP", "PENYELARAS", "GHAZALI BIN HASHIM"]);
 
 // Koma bertitik menggantikan titik bertindih — berlaku pada m.55 buku sebenar.
 semak("koma bertitik diterima",
-  huraiSenarai(["1. SPSK", "AJK : A BINTI B", "; SEMUA KETUA PANITIA"]).length, 2);
+  huraiSenarai(["1. SPSK", "AJK : AMINAH BINTI YUSOF", "; SEMUA KETUA PANITIA"]).length, 2);
 
 console.log("\n— enjin jadual dari koordinat —");
 /* Bentuk SEBENAR m.47: BIL | NAMA | KOD | OPSYEN */

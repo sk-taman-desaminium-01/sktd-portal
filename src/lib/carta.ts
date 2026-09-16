@@ -136,8 +136,20 @@ function bacaBarisWarga(sel: string[]): Warga | null {
       if (t.split(/\s+/).length >= 2 && t.length > nama.length) nama = t;
     }
   }
-  nama = namaBersih(nama);
+  // Kod jawatan yang melekat di hujung nama: "BAIDURIAH BINTI BAHROM KPT
+  // (KETUA PEMBANTU TADBIR)". Senarai AKP dalam buku menulisnya begitu, dan
+  // kod itu bukan sebahagian nama sesiapa.
+  nama = namaBersih(
+    nama
+      .replace(/\s+[A-Z]{2,6}\s*\([^)]*\)\s*$/, "")
+      .replace(/\s*\([^)]*\)\s*$/, "")
+      .trim(),
+  );
   if (nama.length < 4 || KEPALA.test(nama)) return null;
+  // OPSYEN BUKAN NAMA. Bila baris tiada penanda nasab, sel terpanjang
+  // kadang-kadang ialah opsyen ("PENDIDIKAN AWAL KANAK-KANAK") dan bukan
+  // orang. Penapis nama yang sama seperti carta menolaknya.
+  if (!kelihatanNama(nama)) return null;
 
   const opsyen = bersih.find((c, i) =>
     i !== iKod && c.length > 4 && c !== nama && !KEPALA.test(c) && !/\d{2,}/.test(c)) ?? null;
@@ -187,7 +199,14 @@ export function indukUnit(tajuk: string, kodSeksyen: string): string {
   if (/KOKURIKULUM/.test(t)) return "PK3";
   if (/PENDIDIKAN KHAS/.test(t)) return "PKPK";
   if (/KURIKULUM|PANITIA/.test(t)) return "PK1";
-  if (/PENGURUSAN|PENTADBIRAN/.test(t)) return "PGB";
+  // Unit Pengurusan & Pentadbiran duduk di bawah PK PENTADBIRAN, bukan
+  // bersebelahan Penolong Kanan.
+  //
+  // Buku menyenaraikan Guru Besar sebagai pengerusinya — itu betul dari segi
+  // tadbir urus, tetapi carta bukan senarai pengerusi. Diletakkan di bawah
+  // Guru Besar, unit itu kelihatan setaraf dengan lima Penolong Kanan, dan
+  // pengguna melaporkannya sebagai salah. Dalam carta KPM ia di bawah PK1.
+  if (/PENGURUSAN|PENTADBIRAN/.test(t)) return "PK1";
   if (kodSeksyen === "kokurikulum") return "PK3";
   if (kodSeksyen === "panitia" || kodSeksyen === "gurukelas") return "PK1";
   return "PGB";
