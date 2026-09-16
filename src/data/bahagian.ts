@@ -126,16 +126,10 @@ export type KadBaharu = AppPortal & {
 
 export const KAD_TAMBAHAN: KadBaharu[] = [
   /* --- Pengurusan & Pentadbiran --- */
-  {
-    id: "pengurusan", bahagian: "pentadbiran",
-    nama: "Buku Pengurusan", ikon: "BPT", warna: "#5b3a80",
-    fungsi: "Buku pengurusan tahunan — sumber senarai guru kelas, panitia, takwim dan mesyuarat.",
-    domain: "portal.sktd.edu.my/admin/pengurusan", pautan: "/admin/pengurusan",
-    status: "sedia", akses: "Pentadbir & admin",
-    // Buku pengurusan mengandungi nombor telefon guru dan butiran jawatankuasa
-    // dalaman. Guru biasa tidak sepatutnya melihat kad ini pun.
-    perlu: "urus_pengurusan",
-  },
+  // Kad "Buku Pengurusan" DIBUANG dari hab (17 Sep 2026): ia menunjuk ke
+  // /admin/pengurusan, destinasi yang SAMA seperti alat "Buku Pengurusan"
+  // dalam Urus Laman. Dua kad ke satu tempat bermakna guru membaca
+  // kedua-duanya sebelum sedar ia benda yang sama.
   {
     id: "takwim", bahagian: "pentadbiran",
     nama: "Takwim", ikon: "TKW", warna: "#123561",
