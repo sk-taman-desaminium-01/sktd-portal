@@ -22,6 +22,29 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   basePath: "/portal",
 
+  experimental: {
+    serverActions: {
+      /**
+       * WAJIB kerana portal disajikan melalui proksi.
+       *
+       * Next membandingkan hos dalam tajuk `Origin` permintaan dengan hos
+       * app sendiri (`x-forwarded-host` atau `host`) dan MENOLAK tindakan
+       * bila kedua-duanya berbeza — perlindungan CSRF.
+       *
+       * Melalui proksi Cloudflare, pelayar menghantar
+       * `Origin: https://sktd.edu.my` sedangkan Vercel menerima
+       * `Host: portal.sktd.edu.my`. Ia tidak sama, jadi SETIAP Server Action
+       * ditolak: meluluskan guru, menukar peranan, menerbitkan pos. Memuat
+       * halaman (GET) tidak disemak begitu, jadi skrin kelihatan normal
+       * sepenuhnya — itulah sebabnya kegagalan ini mengelirukan.
+       *
+       * Kedua-dua hos disenaraikan kerana portal boleh dicapai melalui
+       * kedua-duanya, dan kedua-duanya milik sekolah.
+       */
+      allowedOrigins: ["sktd.edu.my", "portal.sktd.edu.my"],
+    },
+  },
+
   async redirects() {
     return [
       {
