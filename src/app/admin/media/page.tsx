@@ -10,7 +10,7 @@ export default async function MediaPage() {
   return (
     <main className="mx-auto max-w-4xl px-5 py-10">
       <Link href="/admin" className="text-sm text-slate-500 hover:text-navy-700">
-        ← Urus Laman Web
+        ← Urus Laman
       </Link>
 
       <h1 className="mt-3 text-2xl font-bold text-navy-800">Pustaka Media</h1>

@@ -80,6 +80,29 @@ const kembar = [{ nama: "AHMAD BIN ALI", id: 1 }, { nama: "AHMAD BIN ALI", id: 2
 sama("nama berulang menolak padanan",
   cariPadanan("Ahmad Bin Ali", kembar, (x) => x.nama), null);
 
+/* ---------------------------------------------- nama vs ayat pelan strategik */
+
+/* Carta organisasi pernah memapar ayat Pelan Strategik sebagai "orang".
+   Setiap contoh di bawah diambil terus dari skrin yang pengguna laporkan. */
+const { kelihatanNama } = await import("../src/data/carta.ts");
+
+for (const nama of [
+  "SHABARIAH BINTI ISMAIL",
+  "MOHAN A/L BATUMALAI",
+  "OOI KEM YON",
+  "NURUL ATIKAH IZZATI BINTI MOHD ZULKIFLI",
+]) uji(`nama sebenar diterima: ${nama}`, kelihatanNama(nama));
+
+for (const bukan of [
+  "Menyusun perancangan LADAP secara sistematik",
+  "Hanya 10% murid merekodkan AINS menggunakan peranti sendiri di rumah.",
+  "MATLAMAT STRATEGIK",
+  "PELAN TINDAKAN",
+  "2027 2028 2029",
+  "Memastikan 30% murid Tahun 6 mendapat sekurang-kurangnya 5 bintang",
+  "Murid selalu terlupa email moe dan password peribadi",
+]) uji(`ayat ditolak: ${bukan.slice(0, 34)}`, !kelihatanNama(bukan));
+
 console.log(`\n${lulus} lulus, ${gagal.length} gagal`);
 for (const g of gagal) console.log(`  ✗ ${g}`);
 process.exit(gagal.length === 0 ? 0 : 1);

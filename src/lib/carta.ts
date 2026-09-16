@@ -15,7 +15,7 @@
  */
 
 import {
-  ARA_JAWATAN, ara, arasKod, kekananan, rujukanKumpulan,
+  ARA_JAWATAN, ara, arasKod, kekananan, rujukanKumpulan, kelihatanNama,
   type NodCarta,
 } from "../data/carta.ts";
 import { kunciNama, namaBersih } from "./nama.ts";
@@ -202,10 +202,38 @@ export function indukUnit(tajuk: string, kodSeksyen: string): string {
  * itu betul dari segi tadbir urus, tetapi menyalinnya ke dalam carta
  * menghasilkan Guru Besar yang muncul sembilan kali.
  */
+export interface PentadbirTerkini {
+  jawatan: string;
+  nama: string;
+}
+
+/**
+ * Padankan jawatan Barisan Pentadbir kepada kod eOperasi.
+ *
+ * Barisan Pentadbir ialah senarai yang admin sunting sendiri, dan ia yang
+ * TERKINI. Buku Pengurusan pula ialah rekod bertarikh — Guru Besar dan
+ * Penolong Kanan sudah bertukar sejak buku itu dicetak.
+ *
+ * Carta mesti mengikut yang terkini. Buku kekal sebagai sumber struktur
+ * (unit apa, jawatankuasa apa); orang di puncaknya datang dari senarai
+ * yang manusia jaga.
+ */
+export function kodDariJawatan(jawatan: string): string | null {
+  const t = jawatan.toUpperCase();
+  if (/GURU\s*BESAR|PENGETUA/.test(t)) return "PGB";
+  if (/PENDIDIKAN\s*KHAS/.test(t)) return "PKPK";
+  if (/PETANG/.test(t)) return "PKP";
+  if (/HAL\s*EHWAL|HEM/.test(t)) return "PK2";
+  if (/KOKURIKULUM/.test(t)) return "PK3";
+  if (/PENTADBIRAN|KURIKULUM|PENOLONG\s*KANAN\s*1|\bPK1\b/.test(t)) return "PK1";
+  return null;
+}
+
 export function binaCarta(
   seksyen: SeksyenCarta[],
   namaSekolah: string,
   penunjuk: Record<string, string> = {},
+  terkini: PentadbirTerkini[] = [],
 ): { punca: NodCarta; warga: Warga[]; tidakDitempatkan: Warga[] } {
   kiraan = 0;
   // Kod dari penunjuk buku diterima walaupun kita tidak pernah melihatnya.
@@ -223,12 +251,20 @@ export function binaCarta(
   const sudah = new Set<string>();
   const pakai = (w: Warga) => { sudah.add(kunciNama(w.nama)); return w; };
 
+  // Barisan Pentadbir menang ke atas buku bagi puncak carta.
+  const gantian = new Map<string, PentadbirTerkini>();
+  for (const t of terkini) {
+    const kod = kodDariJawatan(t.jawatan);
+    if (kod && t.nama.trim() && !gantian.has(kod)) gantian.set(kod, t);
+  }
+
   const gb = ikutKod.get("PGB")?.[0];
+  const gbTerkini = gantian.get("PGB");
   const punca = nod({
-    label: gb ? namaBersih(gb.nama) : namaSekolah,
-    jawatan: namaKod("PGB"),
+    label: gbTerkini ? namaBersih(gbTerkini.nama) : gb ? namaBersih(gb.nama) : namaSekolah,
+    jawatan: gbTerkini?.jawatan || namaKod("PGB"),
     kod: "PGB",
-    jenis: gb ? "orang" : "unit",
+    jenis: gbTerkini || gb ? "orang" : "unit",
   });
   if (gb) pakai(gb);
 
@@ -240,9 +276,14 @@ export function binaCarta(
   ])];
   for (const kod of kodAras1) {
     const orang = ikutKod.get(kod)?.[0];
-    if (!orang) continue;
-    const n = nod({ label: namaBersih(orang.nama), jawatan: namaKod(kod), kod });
-    pakai(orang);
+    const baharu = gantian.get(kod);
+    if (!orang && !baharu) continue;
+    const n = nod({
+      label: namaBersih(baharu?.nama ?? orang!.nama),
+      jawatan: baharu?.jawatan || namaKod(kod),
+      kod,
+    });
+    if (orang) pakai(orang);
     pk.set(kod, n);
     punca.anak.push(n);
   }
@@ -279,7 +320,10 @@ export function binaCarta(
           })()
         : nodUnit;
 
+      // Ayat pelan strategik, matlamat dan KPI bukan orang. Membiarkannya
+      // masuk menghasilkan carta yang setiap nod ketiganya ialah satu ayat.
       const rujuk = rujukanKumpulan(nama);
+      if (!rujuk && !kelihatanNama(nama)) continue;
       const w = rujuk ? null : warga.find((x) => kunciNama(x.nama) === kunciNama(nama));
       if (w) pakai(w);
 
@@ -292,7 +336,15 @@ export function binaCarta(
       }));
     }
 
+    // SEKSYEN YANG BUKAN TENTANG ORANG tidak menjadi unit carta.
+    //
+    // Muka Pelan Strategik, SWOT dan KPI menghasilkan banyak baris yang
+    // menyerupai pasangan JAWATAN : NAMA. Selepas penapis nama, seksyen
+    // begitu tinggal hampir kosong — dan unit yang hampir kosong dalam carta
+    // lebih mengelirukan daripada unit yang tiada langsung.
     if (nodUnit.anak.length === 0) continue;
+    const bilOrang = kiraOrang(nodUnit);
+    if (bilOrang < 2) continue;
     for (const k of kumpulan.values()) k.anak.sort(ikutKekananan);
     nodUnit.anak.sort(ikutKekananan);
     induk(indukUnit(s.tajuk, s.kod)).anak.push(nodUnit);

@@ -8,6 +8,7 @@ import {
   suntingBaris, tambahBaris, padamBaris,
 } from "./pengurusan";
 import { binaCarta, kiraOrang, kiraPenempatan, type SeksyenCarta } from "./carta";
+import { senaraiPentadbir } from "./pentadbir";
 import type { NodCarta } from "@/data/carta";
 
 /**
@@ -68,7 +69,17 @@ export async function ambilCarta(): Promise<HasilCarta> {
       });
     }
 
-    const { punca, tidakDitempatkan } = binaCarta(untuk, SEKOLAH.namaPenuh, penunjuk);
+    // Barisan Pentadbir ialah yang TERKINI; buku ialah rekod bertarikh.
+    // Guru Besar dan Penolong Kanan sudah bertukar sejak buku dicetak, jadi
+    // carta mengikut senarai yang manusia jaga, bukan senarai yang dicetak.
+    let terkini: { jawatan: string; nama: string }[] = [];
+    try {
+      terkini = (await senaraiPentadbir()).map((p) => ({ jawatan: p.jawatan, nama: p.nama }));
+    } catch {
+      // Tiada kebenaran atau tiada data — carta tetap dibina dari buku.
+    }
+
+    const { punca, tidakDitempatkan } = binaCarta(untuk, SEKOLAH.namaPenuh, penunjuk, terkini);
     return {
       ok: true,
       punca,

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { SEKOLAH } from "@/data/sekolah";
 import { ambilCarta } from "@/lib/tindakan-carta";
 import PanelCarta from "./PanelCarta";
+import PokokCarta from "./PokokCarta";
 
 export const metadata = { title: "Carta Organisasi" };
 
@@ -20,7 +21,7 @@ export default async function Carta() {
   return (
     <main className="mx-auto max-w-4xl px-5 py-10">
       <Link href="/admin" className="tiada-cetak text-sm text-slate-500 hover:text-navy-700">
-        ← Urus Laman Web
+        ← Urus Laman
       </Link>
 
       <div className="tiada-cetak mt-3">
@@ -57,6 +58,12 @@ export default async function Carta() {
               jawatankuasa mereka berada pada muka yang berupa gambar.
             </p>
           )}
+
+          <PokokCarta
+            punca={hasil.punca}
+            tahun={hasil.tahun ?? new Date().getFullYear()}
+            namaSekolah={SEKOLAH.namaPenuh}
+          />
 
           <PanelCarta
             punca={hasil.punca}

@@ -138,18 +138,18 @@ export const KAD_TAMBAHAN: KadBaharu[] = [
     perlu: "urus_pengurusan",
   },
   {
-    id: "mesyuarat", bahagian: "pentadbiran",
-    nama: "Mesyuarat", ikon: "MSY", warna: "#123561",
-    fungsi: "Senarai panggilan mesyuarat sepanjang tahun, ikut takwim sekolah.",
-    domain: "portal.sktd.edu.my/mesyuarat", pautan: "/mesyuarat", status: "sedia",
+    id: "takwim", bahagian: "pentadbiran",
+    nama: "Takwim", ikon: "TKW", warna: "#123561",
+    fungsi: "Takwim sekolah sepanjang tahun — minggu, tarikh, hari dan program.",
+    domain: "portal.sktd.edu.my/takwim", pautan: "/takwim", status: "sedia",
     // SKOP DIPENDEKKAN dengan sengaja (keputusan pengguna, 17 Sep 2026):
     // TIADA muat naik minit curai, dan TIADA nama orang yang bertindak.
     // Kad ini menjawab satu soalan sahaja — "bila mesyuarat seterusnya?" —
     // dan menjawabnya terus dari takwim Buku Pengurusan. Minit mesyuarat
     // mengandungi perbincangan dalaman; menyimpannya dalam portal ialah
     // keputusan berasingan yang belum dibuat.
-    catatan: "Senarai panggilan mesyuarat sahaja. Minit dan tindakan susulan "
-      + "TIDAK disimpan di sini.",
+    catatan: "Program dan panggilan mesyuarat digabung dalam satu kalendar. "
+      + "Minit dan tindakan susulan TIDAK disimpan di sini.",
   },
   {
     id: "tempahan", bahagian: "pentadbiran",
@@ -268,7 +268,7 @@ export const KAD_TAMBAHAN: KadBaharu[] = [
  * jadi kad itu membuka halaman panitia dalam portal ini, bukan jalan mati.
  */
 const PINDAAN: Record<string, Partial<KadPortal>> = {
-  // Urus Laman Web menerbitkan kandungan awam — itu kuasa, bukan kemudahan.
+  // Urus Laman menerbitkan kandungan awam — itu kuasa, bukan kemudahan.
   urusweb: { perlu: "terbit_kandungan" },
   erpm: {
     pautan: "/erpm",

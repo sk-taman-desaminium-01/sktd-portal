@@ -17,7 +17,7 @@ export default function manifest(): MetadataRoute.Manifest {
     categories: ["education", "productivity"],
     shortcuts: [
       { name: "eRPM Panitia", short_name: "eRPM", url: `${AWALAN}/erpm` },
-      { name: "Urus Laman Web", short_name: "Urus", url: `${AWALAN}/admin` },
+      { name: "Urus Laman", short_name: "Urus", url: `${AWALAN}/admin` },
     ],
     orientation: "portrait",
     background_color: "#0b2545",
