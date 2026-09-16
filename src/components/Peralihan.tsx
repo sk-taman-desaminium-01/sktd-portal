@@ -80,7 +80,16 @@ export default function Peralihan() {
       role="status"
       aria-live="polite"
       aria-label="Membuka laman sekolah"
-      className="fixed inset-0 z-[100] grid place-items-center bg-navy-900/95 backdrop-blur-sm"
+      // `pointer-events: none` WAJIB.
+      //
+      // Skrin ini muncul pada `pointerdown` — sebelum `click`. Tanpa baris
+      // ini ia berada di bawah kursor menjelang `mouseup`, jadi `<a>` tidak
+      // pernah menerima klik dan navigasi TIDAK BERLAKU. Hasilnya cincin
+      // berputar selama-lamanya di halaman yang sama. Ia dilaporkan pengguna
+      // pada 17 Sep 2026, dan ia pepijat yang SAMA seperti menutup menu
+      // burger pada `pointerdown` dahulu: memindahkan elemen sebelum klik
+      // selesai membatalkan klik itu.
+      className="pointer-events-none fixed inset-0 z-[100] grid place-items-center bg-navy-900/95 backdrop-blur-sm"
       style={{ animation: "sktd-masuk 160ms ease-out" }}
     >
       <style>{`
