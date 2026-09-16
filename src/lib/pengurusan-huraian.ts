@@ -298,10 +298,53 @@ function nilaiSah(nilai: string): boolean {
   return kelihatanNama(nilai) || rujukanKumpulan(nilai);
 }
 
+/**
+ * Tajuk DOKUMEN yang menyamar sebagai jawatan.
+ *
+ * Muka bidang tugas disusun "2.0 BIDANG TUGAS : LEMBAGA DISIPLIN" dan
+ * "13.3.4 Visi : Generasi Berilmu". Bentuknya sama persis dengan
+ * "PENGERUSI : NAMA", jadi penghurai senarai menerimanya — dan hasilnya
+ * ialah "jawatan" bernama BIDANG TUGAS yang dipegang oleh "orang" bernama
+ * LEMBAGA DISIPLIN DAN PENGAWAS.
+ *
+ * Tiada jawatan sebenar bermula dengan nombor berperingkat, dan tiada
+ * jawatan sebenar bernama Visi, Misi atau Matlamat.
+ */
+const RE_TAJUK_DOKUMEN =
+  /^(\d+(\.\d+)*\s|BIDANG\s+TUGAS\b|MATLAMAT\b|VISI\b|MISI\b|OBJEKTIF\b|ASPIRASI\b|PIAGAM\b|FUNGSI\b)/i;
+
+function jawatanSah(jawatan: string): boolean {
+  const t = jawatan.trim();
+  if (t.length < 2 || t.length > 60) return false;
+  return !RE_TAJUK_DOKUMEN.test(t);
+}
+
+/**
+ * Buang akronim unit yang melekat pada hujung nama.
+ *
+ * "IRHAMI BINTI ISMAILRMT" — akronim seksyen (RMT) berada dalam lajur
+ * bersebelahan dengan jurang yang terlalu kecil untuk dikira sempadan sel,
+ * jadi ia dicantum terus ke nama tanpa ruang.
+ *
+ * Hanya akronim yang BENAR-BENAR muncul dalam tajuk seksyen dibuang. Itu
+ * yang menjadikannya selamat: tanpa syarat itu, mana-mana nama yang berakhir
+ * dengan tiga huruf besar akan dipotong.
+ */
+export function buangAkronimMelekat(nama: string, tajuk: string): string {
+  const akronim = [...tajuk.matchAll(/\(([A-Z]{2,6})\)/g)].map((m) => m[1]);
+  let t = nama.trim();
+  for (const a of akronim) {
+    const re = new RegExp(`(?<=[A-Za-z]{3})${a}$`);
+    if (re.test(t)) t = t.replace(re, "").trim();
+  }
+  return t;
+}
+
 /** Simpan satu nilai, memecahkan pasangan tertanam bila ada. */
 function tolakNilai(
   keluar: BarisSenarai[], kumpulan: string, peranan: string, nilai: string,
 ): string {
+  if (!jawatanSah(peranan)) return peranan;
   const pecah = pecahPasanganDalam(nilai);
   if (!pecah) {
     if (nilaiSah(nilai)) keluar.push([kumpulan, peranan, nilai]);
@@ -682,12 +725,23 @@ export function kesanSeksyen(muka: MukaDokumen[]): SeksyenDikesan[] {
           ? huraiSenaraiDariSel(m.sel, kumpulan)
           : huraiSenarai(m.baris, kumpulan);
         if (hasil.length) kumpulan = hasil[hasil.length - 1][0];
-        baris.push(...hasil);
+        for (const r of hasil) {
+          baris.push([r[0], r[1], buangAkronimMelekat(r[2], `${s.tajuk} ${r[0]}`)]);
+        }
       }
-      // Muka bidang tugas dalam seksyen senarai TIDAK dibuang — ia
-      // dilampirkan sebagai barisnya sendiri supaya tiada apa hilang.
-      for (const m of mukaTugas) {
-        for (const t of huraiTugas(m.sel ?? [])) baris.push([t[0], "Bidang Tugas", t[1]]);
+      // MUKA BIDANG TUGAS TIDAK DICAMPUR ke dalam seksyen senarai.
+      //
+      // Ia pernah dilampirkan sebagai baris `[peranan, "Bidang Tugas", ayat]`
+      // supaya tiada apa hilang. Tetapi seksyen senarai berlajur
+      // [Jawatankuasa, Jawatan, Nama], jadi ayat tugasan muncul di bawah
+      // "Nama" — dan skrin semakan berbohong tentang apa yang dilihat admin.
+      // Satu seksyen, satu bentuk. Amaran di bawah menyebut berapa muka
+      // yang ditinggalkan, jadi ia tidak hilang senyap.
+      if (mukaTugas.length > 0) {
+        amaran.push(
+          `${mukaTugas.length} muka dalam seksyen ini ialah BIDANG TUGAS, bukan senarai nama — ` +
+          "ia tidak dimasukkan di sini supaya seksyen ini kekal satu bentuk.",
+        );
       }
     } else {
       const grid = s.muka
