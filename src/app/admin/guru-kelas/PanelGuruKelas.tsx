@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { tetapGuruKelas, buangGuruKelas, type TugasanKelas } from "@/lib/guru-kelas";
+import Carian, { padan } from "@/components/Carian";
 
 /**
  * Senarai semua kelas, satu baris satu kelas, dengan pemilih guru.
@@ -20,6 +21,7 @@ export default function PanelGuruKelas({
   const [petaan, setPetaan] = useState(awal);
   const [hasil, setHasil] = useState<{ ok: boolean; mesej: string } | null>(null);
   const [sibukKelas, setSibukKelas] = useState<string | null>(null);
+  const [cari, setCari] = useState("");
 
   async function ubah(label: string, guruId: string) {
     setSibukKelas(label);
@@ -55,6 +57,12 @@ export default function PanelGuruKelas({
 
   const kosong = kelas.filter((k) => !petaan[k]).length;
 
+  // Carian meliputi nama kelas DAN nama guru yang ditugaskan — pentadbir
+  // kadang mencari "kelas mana Cikgu Wan pegang?", bukan hanya nama kelas.
+  const dipapar = kelas.filter(
+    (k) => padan(k, cari) || padan(petaan[k]?.nama, cari),
+  );
+
   return (
     <>
       {hasil && (
@@ -74,8 +82,14 @@ export default function PanelGuruKelas({
         </p>
       )}
 
+      <Carian
+        nilai={cari} setNilai={setCari}
+        label="Cari kelas atau nama guru"
+        jumlah={kelas.length} ditapis={dipapar.length}
+      />
+
       <ul className="mt-3 divide-y divide-garis rounded-xl border border-garis bg-white">
-        {kelas.map((k) => {
+        {dipapar.map((k) => {
           const ada = petaan[k];
           return (
             <li key={k} className="flex flex-wrap items-center gap-3 p-4">

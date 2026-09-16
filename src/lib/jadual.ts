@@ -94,6 +94,52 @@ export async function simpanJadualKelas(
 }
 
 /**
+ * Simpan jadual BANYAK kelas sekaligus.
+ *
+ * SATU tulisan, bukan satu tulisan setiap kelas. Menyimpan 57 kelas satu demi
+ * satu bermakna 57 kitaran baca-ubah-tulis ke atas baris JSON yang SAMA —
+ * perlahan, dan setiap kitaran menimpa apa yang kitaran sebelumnya baru
+ * tulis kalau dua berjalan bertindih. Menggabungkan dalam ingatan dahulu
+ * menghapuskan kedua-dua masalah itu.
+ *
+ * Pentadbir ke atas sahaja: ini menyentuh kelas milik orang lain.
+ */
+export async function simpanJadualBanyak(
+  masukan: { kelas: string; data: KelasJadual }[],
+): Promise<HasilJadual> {
+  await pastikanBoleh("urus_guru_kelas");
+
+  if (!Array.isArray(masukan) || masukan.length === 0) {
+    return { ok: false, mesej: "Tiada jadual untuk disimpan." };
+  }
+
+  let semasa: Jadual;
+  try {
+    semasa = await ambilJadual();
+  } catch (e) {
+    return { ok: false, mesej: e instanceof Error ? e.message : "Gagal membaca jadual semasa." };
+  }
+
+  const kelas = { ...semasa.kelas };
+  for (const m of masukan) {
+    if (!m?.kelas || !m.data) continue;
+    // Nama guru yang sudah ada dikekalkan untuk subjek yang fail baharu
+    // tidak menyebutnya — sama seperti muat naik satu fail.
+    const lama = kelas[m.kelas];
+    const guruSubjek = { ...(lama?.guruSubjek ?? {}), ...(m.data.guruSubjek ?? {}) };
+    kelas[m.kelas] = {
+      hari: m.data.hari,
+      ...(Object.keys(guruSubjek).length > 0 ? { guruSubjek } : {}),
+    };
+  }
+
+  return tulis(
+    { set: semasa.set, tahunSet: semasa.tahunSet, kelas, dikemaskini: new Date().toISOString() },
+    `${masukan.length} jadual kelas disimpan.`,
+  );
+}
+
+/**
  * Simpan waktu sesi. Pentadbir ke atas SAHAJA.
  *
  * Waktu dikongsi semua kelas dalam sesi itu, jadi satu suntingan mengubah
