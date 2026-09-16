@@ -50,16 +50,50 @@ export default function Peralihan() {
       setTunjuk(true);
     };
 
+    /**
+     * JARING TERAKHIR: paksa navigasi kalau ia tidak bermula.
+     *
+     * Pengguna melaporkan portal tersekat pada skrin pemuat — cincin
+     * berputar, halaman tidak bertukar. Puncanya dikesan sebagai pramuat
+     * Speculation Rules ke atas laluan berautentikasi, dan pramuat itu
+     * sudah dibuang. Tetapi diagnosis SATU punca tidak mencukupi untuk
+     * kegagalan yang saya tidak dapat hasilkan semula: saya tiada sesi
+     * log masuk pengguna.
+     *
+     * Jadi jaring ini tidak bergantung pada punca langsung. Kalau 1.2 saat
+     * selepas KLIK dokumen ini masih di sini, navigasi dipaksa dengan
+     * `location.assign`. Ia dicetuskan pada `click`, bukan `pointerdown`:
+     * klik bermakna pengguna benar-benar memilih untuk pergi, jadi memaksa
+     * navigasi tidak pernah membawa sesiapa ke tempat yang mereka tidak
+     * mahu.
+     */
+    const lepas = (e: MouseEvent) => {
+      if (e.defaultPrevented || e.button !== 0) return;
+      if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+      const sasaran = (e.target as HTMLElement | null)?.closest("a");
+      if (!sasaran) return;
+      const href = sasaran.getAttribute("href") ?? "";
+      if (!KELUAR.test(href)) return;
+      const penuh = sasaran.href;
+      window.setTimeout(() => {
+        if (document.visibilityState === "hidden") return;
+        if (window.location.href === penuh) return;
+        window.location.assign(penuh);
+      }, 1200);
+    };
+
     // Kembali melalui butang "back" memaparkan halaman dari cache bfcache
     // dengan keadaan React yang SAMA — termasuk skrin pemuat yang tidak
     // pernah ditutup. `pageshow` ialah satu-satunya isyarat yang menangkapnya.
     const kembali = () => setTunjuk(false);
 
     document.addEventListener("pointerdown", tekan, true);
+    document.addEventListener("click", lepas, true);
     window.addEventListener("pageshow", kembali);
     window.addEventListener("pagehide", kembali);
     return () => {
       document.removeEventListener("pointerdown", tekan, true);
+      document.removeEventListener("click", lepas, true);
       window.removeEventListener("pageshow", kembali);
       window.removeEventListener("pagehide", kembali);
     };
