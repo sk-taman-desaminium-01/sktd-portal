@@ -44,7 +44,7 @@ export interface Waktu {
 
 export interface Slot {
   subjek: string;
-  /** Nama guru — pilihan, dan TIDAK dipapar di laman awam. */
+  /** Tindihan untuk slot ini sahaja; biasanya kosong. Lihat `guruSubjek`. */
   guru?: string;
 }
 
@@ -52,6 +52,17 @@ export interface KelasJadual {
   sesi: Sesi;
   /** hari → id waktu → slot. Slot yang tiada bermakna waktu kosong. */
   hari: Partial<Record<Hari, Record<string, Slot>>>;
+  /**
+   * kod subjek → nama guru yang mengajarnya DALAM KELAS INI.
+   *
+   * Dipetakan per subjek dan bukan per slot kerana dalam sekolah rendah
+   * subjek yang sama dalam satu kelas diajar guru yang sama sepanjang
+   * minggu. Itu 13 isian dan bukan 55, dan ia menghapuskan seluruh kelas
+   * pepijat "nama berbeza pada slot yang sepatutnya sama".
+   *
+   * Kalau satu slot benar-benar berbeza, `Slot.guru` menindihnya.
+   */
+  guruSubjek?: Record<string, string>;
 }
 
 export interface Jadual {
