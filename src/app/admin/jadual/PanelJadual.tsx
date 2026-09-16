@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import { simpanJadualKelas, simpanSetWaktu } from "@/lib/jadual";
 import { naikFailJadual, type HasilBaca } from "@/lib/baca-jadual";
 import PukalJadual from "./PukalJadual";
-import { PANITIA } from "@/data/panitia";
+import { SUBJEK } from "@/data/subjek";
 import { semakSaiz } from "@/data/had-fail";
 import Carian, { padan } from "@/components/Carian";
 import { failKeMuatan } from "@/data/fail-base64";
@@ -26,13 +26,8 @@ import {
  * setiap kumpulan tahun ada senarai waktunya sendiri.
  */
 
-const PILIHAN: { kod: string; nama: string }[] = [
-  ...PANITIA.map((p) => ({ kod: p.kod, nama: p.nama })),
-  { kod: "PERHIMPUNAN", nama: "Perhimpunan" },
-  { kod: "PSS", nama: "Pusat Sumber" },
-  { kod: "KOKO", nama: "Kokurikulum" },
-  { kod: "PAK21", nama: "Aktiviti PAK21" },
-];
+/** Senarai subjek datang dari SATU tempat — lihat src/data/subjek.ts. */
+const PILIHAN = SUBJEK;
 
 const NAMA_SUBJEK = new Map(PILIHAN.map((p) => [p.kod, p.nama]));
 const TAHUN = [1, 2, 3, 4, 5, 6];

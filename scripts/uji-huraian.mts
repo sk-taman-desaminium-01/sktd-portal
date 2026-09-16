@@ -6,6 +6,7 @@
  */
 import { padanSubjek, binaDraf, binaDrafDariGrid, binaDrafDariKedudukan, namaGuruDariSel, padanHari } from "../src/lib/jadual-huraian.ts";
 import { SET_LALAI } from "../src/data/jadual-jenis.ts";
+import { KOD_SUBJEK, namaSubjek } from "../src/data/subjek.ts";
 
 /** Waktu sebenar sekolah — sesi pagi, rehat pada waktu 5 (R4). */
 const WAKTU = SET_LALAI.find((s) => s.id === "pagi-r4")!.senarai;
@@ -147,6 +148,25 @@ semak("waktu 3 = BM (gabung)", isnin[pdp[2].id]?.subjek, "BM");
 semak("waktu 4 kosong", isnin[pdp[3].id], undefined);
 semak("guru BM dari sel gabung", k!.draf.guruSubjek?.BM, "WAN");
 semak("Selasa waktu 1 = SAINS", (k!.draf.hari.selasa ?? {})[pdp[0].id]?.subjek, "SAINS");
+
+console.log("\n— senarai subjek: SATU sumber —");
+/* Ujian ini wujud kerana senarai subjek pernah berpecah kepada empat
+   salinan. TASMIK ditambah kepada penghurai sahaja, jadi sistem MEMBACA
+   TASMIK dengan betul tetapi dropdown tiada pilihan itu — pentadbir melihat
+   sel kosong pada hari Rabu, tanpa sebarang ralat. Kalau seseorang menambah
+   kod kepada penghurai dan terlupa senarai subjek, ujian ini gagal. */
+const kodPenghurai = ["BM","BI","MM","SAINS","SEJ","PAI","PM","RBT","PJPK","PSV","PMZ","AR","BC",
+                      "TASMIK","PERHIMPUNAN","PSS","KOKO","PAK21"];
+for (const kod of kodPenghurai) {
+  semak(`${kod} ada dalam senarai subjek`, KOD_SUBJEK.includes(kod), true);
+}
+semak("TASMIK ada nama paparan", namaSubjek("TASMIK"), "Tasmik");
+semak("kod tak dikenali dipulangkan apa adanya", namaSubjek("XYZ"), "XYZ");
+// Setiap kod yang padanSubjek() boleh pulangkan mesti boleh dipapar.
+for (const contoh of ["TASMIK","PER","MT","SN","PJ","BA","P.ISLAM (Q)"]) {
+  const kod = padanSubjek(contoh);
+  semak(`padanan "${contoh}" boleh dipapar`, kod === null || KOD_SUBJEK.includes(kod), true);
+}
 
 console.log(`\n${lulus} lulus, ${gagal} gagal`);
 process.exit(gagal > 0 ? 1 : 0);
