@@ -20,6 +20,13 @@ export const HAD_SAIZ = 10 * 1024 * 1024;
 
 export const JENIS_DIBENARKAN = [
   "image/png", "image/jpeg", "image/webp", "image/avif", "application/pdf",
+  // Dokumen yang boleh dibaca sistem — jadual waktu, Buku Pengurusan.
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document", // .docx
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",       // .xlsx
+  "application/vnd.ms-excel.sheet.macroEnabled.12",                          // .xlsm
+  "text/csv",
+  // Sesetengah pelayar menghantar CSV sebagai text/plain.
+  "text/plain",
 ];
 
 function tetapan() {

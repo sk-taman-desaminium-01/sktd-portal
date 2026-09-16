@@ -4,7 +4,8 @@ import { pengguna } from "./akses";
 import { kelasBolehSunting } from "./guru-kelas";
 import { muatNaik } from "./storan";
 import { type KelasJadual, type Sesi } from "@/data/jadual-jenis";
-import { binaDraf } from "./jadual-huraian";
+import { binaDraf, binaDrafDariGrid } from "./jadual-huraian";
+import { bacaDokumen } from "./baca-dokumen";
 
 /**
  * Baca fail jadual waktu yang dimuat naik, dan CADANGKAN draf.
@@ -42,19 +43,6 @@ export interface HasilBaca {
 
 /* ------------------------------------------------------------ baca dokumen */
 
-async function teksDariPdf(buf: ArrayBuffer): Promise<string> {
-  const { extractText, getDocumentProxy } = await import("unpdf");
-  const pdf = await getDocumentProxy(new Uint8Array(buf));
-  const { text } = await extractText(pdf, { mergePages: true });
-  return Array.isArray(text) ? text.join("\n") : text;
-}
-
-async function teksDariDocx(buf: ArrayBuffer): Promise<string> {
-  const mammoth = (await import("mammoth")).default;
-  const { value } = await mammoth.extractRawText({ buffer: Buffer.from(buf) });
-  return value;
-}
-
 /* ---------------------------------------------------------------- tindakan */
 
 export async function naikFailJadual(data: FormData): Promise<HasilBaca> {
@@ -83,23 +71,10 @@ export async function naikFailJadual(data: FormData): Promise<HasilBaca> {
     return { ok: false, mesej: e instanceof Error ? e.message : "Muat naik gagal." };
   }
 
-  const jenis = fail.type;
-  const buf = await fail.arrayBuffer();
-  let teks = "";
-
+  // Satu pembaca untuk semua format — dikongsi dengan Buku Pengurusan.
+  let dok;
   try {
-    if (jenis === "application/pdf") teks = await teksDariPdf(buf);
-    else if (jenis.includes("wordprocessingml") || fail.name.toLowerCase().endsWith(".docx")) {
-      teks = await teksDariDocx(buf);
-    } else {
-      return {
-        ok: true, fail: url,
-        mesej:
-          "Fail disimpan, tetapi jenis ini tidak boleh dibaca automatik. " +
-          "Buka fail itu di sebelah dan isi grid di bawah.",
-        amaran: ["Hanya PDF (berteks) dan DOCX boleh dibaca."],
-      };
-    }
+    dok = await bacaDokumen(fail);
   } catch (e) {
     return {
       ok: true, fail: url,
@@ -108,29 +83,37 @@ export async function naikFailJadual(data: FormData): Promise<HasilBaca> {
     };
   }
 
-  const bersih = teks.replace(/ /g, " ").trim();
-  if (bersih.length < 40) {
-    // Tiada lapisan teks = hampir pasti imbasan. JANGAN teka.
+  if (dok.jenis === "imbasan" || dok.jenis === "lain") {
     return {
-      ok: true, fail: url, teks: bersih,
+      ok: true, fail: url, teks: dok.teks || undefined,
       mesej:
-        "Fail disimpan, tetapi ia tidak mengandungi teks yang boleh dibaca — " +
-        "kemungkinan besar ia imbasan atau gambar. Sistem TIDAK meneka isinya. " +
-        "Buka fail itu di sebelah dan isi grid di bawah.",
-      amaran: ["Imbasan memerlukan OCR, yang tidak berjalan di pelayan ini."],
+        "Fail disimpan, tetapi isinya TIDAK boleh dibaca automatik. Sistem " +
+        "tidak meneka. Buka fail itu di sebelah dan isi grid di bawah.",
+      amaran: dok.amaran,
     };
   }
 
-  const { draf, dikenal, jumlah } = binaDraf(bersih, sesi);
+  // GRID DAHULU. Excel, CSV dan jadual DOCX menyimpan baris dan lajur sebenar,
+  // jadi kita tahu sel mana di bawah hari yang mana — padanan kedudukan, bukan
+  // tekaan urutan. Teks rata hanya digunakan bila tiada struktur (PDF).
+  const dariGrid = dok.grid.length > 0 ? binaDrafDariGrid(dok.grid, sesi) : null;
+  const { draf, dikenal, jumlah } = dariGrid ?? binaDraf(dok.teks, sesi);
+  const bersih = dok.teks;
+  const kaedah = dariGrid ? "struktur jadual" : "teks";
+  const jumlahGuru = Object.keys(draf.guruSubjek ?? {}).length;
+
   return {
     ok: true,
     fail: url,
     teks: bersih.slice(0, 4000),
     draf,
     keyakinan: { dikenal, jumlah },
+    amaran: dok.amaran.length > 0 ? dok.amaran : undefined,
     mesej:
       dikenal === 0
         ? "Fail dibaca, tetapi tiada subjek dikenal pasti. Isi grid secara manual."
-        : `Fail dibaca. ${dikenal} slot dikenal pasti — SEMAK setiap satu sebelum menyimpan.`,
+        : `Fail dibaca melalui ${kaedah}. ${dikenal} slot dikenal pasti` +
+          (jumlahGuru > 0 ? ` dan ${jumlahGuru} nama guru` : "") +
+          " — SEMAK setiap satu sebelum menyimpan.",
   };
 }
