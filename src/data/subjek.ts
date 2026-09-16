@@ -25,7 +25,11 @@ export interface Subjek {
 }
 
 export const SUBJEK: Subjek[] = [
-  ...PANITIA.map((p) => ({ kod: p.kod, nama: p.nama, panitia: true })),
+  // `bukanSubjek` ditapis: Prasekolah ada ruang eRPM tetapi bukan mata
+  // pelajaran, dan kod palsu dalam senarai ini menjadi padanan palsu pada
+  // setiap jadual waktu yang mengandungi perkataan itu.
+  ...PANITIA.filter((p) => !p.bukanSubjek)
+    .map((p) => ({ kod: p.kod, nama: p.nama, panitia: true })),
 
   // Aktiviti yang muncul dalam jadual waktu tetapi bukan panitia.
   // TASMIK diambil dari jadual rasmi sekolah — ia bacaan al-Quran
