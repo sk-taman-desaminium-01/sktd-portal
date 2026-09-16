@@ -6,7 +6,7 @@
  * muka jawatankuasa ialah senarai "PERANAN : NAMA" dengan baris sambungan,
  * muka senarai guru ialah jadual berlajur.
  */
-import { tajukMuka, huraiSenarai, huraiSenaraiDariSel, huraiJadual, kesanSeksyen, huraiTugas, kelihatanTugas } from "../src/lib/pengurusan-huraian.ts";
+import { tajukMuka, huraiSenarai, huraiSenaraiDariSel, huraiJadual, kesanSeksyen, huraiTugas, kelihatanTugas, buangAkronimMelekat } from "../src/lib/pengurusan-huraian.ts";
 import { buangKurunganGanda } from "../src/lib/muka-teks.ts";
 import { kesanJenis } from "../src/data/seksyen-pengurusan.ts";
 
@@ -167,6 +167,55 @@ semak("kurungan berganda diruntuhkan",
   "PELAPORAN PEN SEK RENDAH (PPSR)");
 semak("kurungan tunggal tidak diusik",
   buangKurunganGanda("SISTEM (SPSK)"), "SISTEM (SPSK)");
+
+console.log("\n— sampah yang pengguna jumpa semasa menyemak —");
+
+/* 1. TAJUK DOKUMEN MENYAMAR SEBAGAI JAWATAN.
+      Muka bidang tugas disusun "2.0 BIDANG TUGAS : LEMBAGA DISIPLIN",
+      bentuk yang sama persis dengan "PENGERUSI : NAMA". Hasilnya "jawatan"
+      bernama BIDANG TUGAS dipegang "orang" bernama LEMBAGA DISIPLIN. */
+semak("nombor berperingkat ditolak",
+  huraiSenarai(["2.0 BIDANG TUGAS : LEMBAGA DISIPLIN DAN PENGAWAS"]).length, 0);
+semak("Visi ditolak",
+  huraiSenarai(['13.3.4 Visi : GENERASI BERILMU SIHAT PROGRESIF']).length, 0);
+semak("Matlamat ditolak",
+  huraiSenarai(["13.3.3 Matlamat : MENJADIKAN WARGA SEKOLAH SIHAT SELALU"]).length, 0);
+semak("jawatan sebenar diterima",
+  huraiSenarai(["PENGERUSI : SHABARIAH BINTI ISMAIL"]).length, 1);
+
+/* 2. AKRONIM UNIT MELEKAT PADA NAMA.
+      Akronim seksyen berada dalam lajur bersebelahan dengan jurang terlalu
+      kecil untuk dikira sempadan sel, jadi ia dicantum tanpa ruang. */
+semak("akronim dalam tajuk dibuang dari nama",
+  buangAkronimMelekat("IRHAMI BINTI ISMAILRMT",
+    "RANCANGAN MAKANAN TAMBAHAN (RMT) & PROGRAM SUSU SEKOLAH (PSS)"),
+  "IRHAMI BINTI ISMAIL");
+semak("akronim yang TIADA dalam tajuk tidak diusik",
+  buangAkronimMelekat("IRHAMI BINTI ISMAILRMT", "JAWATANKUASA KEWANGAN"),
+  "IRHAMI BINTI ISMAILRMT");
+semak("nama biasa tidak dipotong",
+  buangAkronimMelekat("AHMAD BIN ALI", "UNIT (RMT) SEKOLAH"), "AHMAD BIN ALI");
+
+/* 3. SATU SEKSYEN, SATU BENTUK.
+      Muka bidang tugas pernah dilampirkan ke dalam seksyen senarai sebagai
+      baris [peranan, "Bidang Tugas", ayat] — jadi ayat tugasan muncul di
+      bawah lajur "Nama", dan skrin semakan berbohong tentang apa yang
+      dilihat admin. */
+const campur = kesanSeksyen([
+  { muka: 1, baris: ["UNIT HAL EHWAL MURID", "PENGERUSI : SHABARIAH BINTI ISMAIL"],
+    sel: [["UNIT HAL EHWAL MURID"], ["PENGERUSI : SHABARIAH BINTI ISMAIL"]] },
+  { muka: 2, baris: ["KETUA RUMAH SUKAN", "Memastikan senarai nama ahli lengkap."],
+    sel: [["KETUA RUMAH SUKAN"], ["\u2022", "Memastikan senarai nama ahli lengkap."],
+          ["\u2022", "Membuat pengagihan tugas kepada semua ahli."],
+          ["\u2022", "Membentuk jawatankuasa rumah di kalangan pelajar."],
+          ["\u2022", "Menyediakan laporan selepas setiap aktiviti."],
+          ["\u2022", "Menguruskan peralatan sukan rumah."],
+          ["\u2022", "Melaporkan keputusan pertandingan yang disertai."]] },
+]);
+semak("ayat tugasan tidak masuk senarai nama",
+  campur[0]?.baris.some((b) => b[2]?.startsWith("Mem")) ?? false, false);
+semak("muka bidang tugas dilaporkan dalam amaran",
+  campur[0]?.amaran.some((a) => a.includes("BIDANG TUGAS")) ?? false, true);
 
 console.log(`\n${lulus} lulus, ${gagal} gagal`);
 process.exit(gagal > 0 ? 1 : 0);
