@@ -27,8 +27,11 @@ export default async function Admin() {
       ringkas: "Tulis pengumuman atau aktiviti." },
     { href: "/admin/pentadbir", nama: "Barisan Pentadbir", ikon: "👤",
       ringkas: "Nama, jawatan, urutan dan gambar di halaman Tentang." },
-    { href: "/admin/media", nama: "Pustaka Media", ikon: "🖼️",
-      ringkas: "Muat naik gambar dan PDF, salin URLnya." },
+    // Pustaka Media dibuang sebagai skrin berasingan (keputusan pengguna,
+    // 17 Sep 2026). Gambar kini dimuat naik TERUS dalam borang pos —
+    // memuat naik di satu skrin lalu menyalin URL ke skrin lain ialah tiga
+    // langkah untuk satu gambar, dan URL yang tersalah tampal tidak
+    // kelihatan sehingga pos itu terbit.
     { href: "/admin/jadual", nama: "Jadual Waktu", ikon: "🗓️",
       ringkas: "Jadual setiap kelas. Ibu bapa melihatnya di laman sekolah." },
     ...(bolehGuruKelas

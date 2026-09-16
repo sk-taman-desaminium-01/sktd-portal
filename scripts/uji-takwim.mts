@@ -54,5 +54,26 @@ const bulan = ikutBulan(acara);
 semak("satu bulan", bulan.length, 1);
 semak("nama bulan", bulan[0].bulan, "Januari 2025");
 
+console.log("\n— sel bergabung merentas banyak tarikh —");
+/* Program bertempoh dicetak dalam SATU sel yang menduduki beberapa baris
+   tarikh. Memecahkannya pada setiap tarikh menghasilkan dua serpihan yang
+   kedua-duanya tidak bermakna — dilaporkan pengguna pada edisi 2026. */
+const bergabung = leraiTakwim(
+  ["MINGGU", "TARIKH", "HARI", "PENGURUSAN KURIKULUM"],
+  [
+    ["KEDUA", "12-Jan-26", "ISNIN", "FORMATIF 1 (12.1.2026 -"],
+    ["", "13-Jan-26", "SELASA", "30.3.2026) & MESYUARAT"],
+    ["", "14-Jan-26", "RABU", "PANITIA BIL 1"],
+    // Sel KOSONG menamatkan blok bergabung — itulah cara buku memisahkan
+    // program bertempoh daripada program seterusnya.
+    ["", "15-Jan-26", "KHAMIS", ""],
+    ["KETIGA", "19-Jan-26", "ISNIN", "GOTONG-ROYONG"],
+  ],
+);
+semak("sel bergabung kekal satu acara", bergabung.length, 2);
+semak("teks penuh disambung", bergabung[0].program,
+  "FORMATIF 1 (12.1.2026 - 30.3.2026) & MESYUARAT PANITIA BIL 1");
+semak("acara berasingan tidak tercantum", bergabung[1].program, "GOTONG-ROYONG");
+
 console.log(`\n${lulus} lulus, ${gagal.length} gagal`);
 process.exit(gagal.length === 0 ? 0 : 1);

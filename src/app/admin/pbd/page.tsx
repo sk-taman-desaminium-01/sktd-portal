@@ -79,6 +79,8 @@ export default async function UrusPbd() {
           }))}
           senaraiGuru={guru}
           senaraiKelas={kelas.map((k) => ({ tahun: k.tahun, kelas: k.kelas }))}
+          tahunSesi={sesi.tahun_sesi}
+          jumlahMurid={jumlahMurid}
         />
       )}
     </main>

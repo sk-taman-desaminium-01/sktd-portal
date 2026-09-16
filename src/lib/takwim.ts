@@ -211,7 +211,7 @@ function leraiSatuMuka(lajur: string[], baris: string[][]): AcaraTakwim[] {
     if (c === iTarikh || c === iHari || c === iMinggu) continue;
 
     const adaTarikhBaris = new Set(barisTarikh.map((t) => t.i));
-    let larian: { mula: number; teks: string[]; lintasTarikh: boolean } | null = null;
+    let larian: { mula: number; teks: string[]; lintasTarikh: boolean; bergabung: boolean } | null = null;
     const tutup = () => {
       if (!larian) return;
       const program = larian.teks.join(" ").replace(/\s+/g, " ").trim();
@@ -226,11 +226,44 @@ function leraiSatuMuka(lajur: string[], baris: string[][]): AcaraTakwim[] {
       });
     };
 
+    let kosongBerturut = 0;
     for (let i = 0; i < baris.length; i++) {
       const nilai = (baris[i][c] ?? "").replace(/\s+/g, " ").trim();
-      if (nilai === "") { tutup(); continue; }
+      if (nilai === "") {
+        kosongBerturut++;
+        // SATU baris kosong TIDAK menamatkan serpihan yang belum selesai.
+        //
+        // Grid muka mempunyai lebih banyak baris daripada baris teks, jadi
+        // sel bergabung menghasilkan lompang satu baris di antara barisnya.
+        // Menutup larian pada lompang itu memecahkan
+        // "FORMATIF 1 (12.1.2026 -" daripada "30.3.2026)" — dan itulah
+        // sebabnya 25 serpihan tergantung kekal selepas percubaan pertama.
+        const tergantung =
+          larian !== null &&
+          (/[-–—,&/(]$/.test(larian.teks[larian.teks.length - 1]) ||
+            kurunganTerbuka(larian.teks.join(" ")));
+        if (!tergantung || kosongBerturut > 1) tutup();
+        continue;
+      }
+      kosongBerturut = 0;
 
       const barisBertarikh = adaTarikhBaris.has(i);
+      // SEL BERGABUNG MERENTAS BANYAK TARIKH.
+      //
+      // Program bertempoh dicetak dalam satu sel yang menduduki beberapa
+      // baris tarikh: "FORMATIF 1 (12.1.2026 - 30.3.2026) & MESYUARAT".
+      // Memecahkannya pada setiap tarikh menghasilkan "FORMATIF 1 (12.1.2026 -"
+      // dan "30.3.2026) & MESYUARAT" sebagai dua program yang kedua-duanya
+      // tidak bermakna.
+      //
+      // Isyaratnya ada dalam teks itu sendiri: serpihan yang belum selesai
+      // berakhir dengan sempang, koma, "&" atau kurungan yang belum ditutup.
+      // Ayat Melayu yang lengkap tidak berakhir begitu.
+      const belumSelesai =
+        larian !== null &&
+        (/[-–—,&/(]$/.test(larian.teks[larian.teks.length - 1]) ||
+          kurunganTerbuka(larian.teks.join(" ")) ||
+          /^[)\]]/.test(nilai));
       // SATU LARIAN MELINTASI SATU TARIKH SAHAJA.
       //
       // Ini peraturan yang menampung KEDUA-DUA bentuk buku tanpa mengetahui
@@ -239,19 +272,37 @@ function leraiSatuMuka(lajur: string[], baris: string[][]): AcaraTakwim[] {
       //     memulakan larian baharu dan satu baris = satu acara.
       //   · 2026 — teks program membalut merentas baris tanpa tarikh, dan
       //     hanya baris tengah yang bertarikh; larian itu kekal utuh.
-      if (larian && barisBertarikh && larian.lintasTarikh) tutup();
+      // Setelah larian dikenal pasti sebagai SEL BERGABUNG, hanya sel KOSONG
+      // menamatkannya. Sel bergabung ialah blok teks bersambungan yang
+      // menduduki beberapa baris tarikh; memecahkannya di tengah pada tarikh
+      // seterusnya menghasilkan separuh ayat — dan separuh yang kedua
+      // kelihatan seperti program yang berasingan.
+      if (larian && barisBertarikh && larian.lintasTarikh && !belumSelesai && !larian.bergabung) {
+        tutup();
+      }
 
       if (larian) {
+        if (belumSelesai && barisBertarikh) larian.bergabung = true;
         larian.teks.push(nilai);
         if (barisBertarikh) larian.lintasTarikh = true;
       } else {
-        larian = { mula: i, teks: [nilai], lintasTarikh: barisBertarikh };
+        larian = { mula: i, teks: [nilai], lintasTarikh: barisBertarikh, bergabung: false };
       }
     }
     tutup();
   }
 
   return keluar;
+}
+
+/** Adakah teks ini mempunyai kurungan yang dibuka tetapi belum ditutup? */
+function kurunganTerbuka(teks: string): boolean {
+  let dalam = 0;
+  for (const c of teks) {
+    if (c === "(") dalam++;
+    else if (c === ")") dalam = Math.max(0, dalam - 1);
+  }
+  return dalam > 0;
 }
 
 /**
