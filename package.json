@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "uji:jadual": "node --experimental-strip-types --no-warnings scripts/uji-huraian.mts"
+    "uji:jadual": "node --experimental-strip-types --no-warnings scripts/uji-huraian.mts",
+    "uji:pengurusan": "node --experimental-strip-types --no-warnings scripts/uji-pengurusan.mts"
   },
   "dependencies": {
     "@clerk/localizations": "^4.17.0",
