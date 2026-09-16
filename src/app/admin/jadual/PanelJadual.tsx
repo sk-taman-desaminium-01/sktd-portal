@@ -285,8 +285,12 @@ export default function PanelJadual({
           lajur sebenar, jadi sistem tahu sel mana di bawah hari yang mana.
           DOCX berjadual juga baik. PDF berteks boleh dibaca tetapi kurang
           tepat. PDF imbasan dan gambar TIDAK boleh — ia perlu OCR, yang tidak
-          berjalan di pelayan ini. Fail tetap disimpan supaya anda boleh
-          merujuknya sambil mengisi grid.
+          berjalan di pelayan ini.
+        </p>
+        <p className="mt-2 text-xs leading-relaxed text-slate-500">
+          <b>Fail anda tidak disimpan.</b> Ia dibaca sekali, kemudian
+          dilupakan — yang kekal hanyalah jadual yang anda sahkan di atas.
+          Simpan salinan fail itu sendiri kalau anda perlukannya kemudian.
         </p>
 
         {baca && (
@@ -318,14 +322,7 @@ export default function PanelJadual({
                   Isi grid dengan cadangan ini
                 </button>
               )}
-              {baca.fail && (
-                <a
-                  href={baca.fail} target="_blank" rel="noreferrer"
-                  className="rounded-lg border border-garis bg-white px-3.5 py-2 text-xs font-semibold text-navy-700"
-                >
-                  Buka fail asal ↗
-                </a>
-              )}
+
             </div>
 
             {baca.teks && (

@@ -2,7 +2,7 @@
 
 import { pengguna } from "./akses";
 import { kelasBolehSunting } from "./guru-kelas";
-import { muatNaik } from "./storan";
+import { semakFail } from "./storan";
 import { setUntukKelas, type KelasJadual, type Waktu } from "@/data/jadual-jenis";
 import { binaDraf, binaDrafDariGrid } from "./jadual-huraian";
 import { bacaDokumen } from "./baca-dokumen";
@@ -24,15 +24,23 @@ import { ambilJadual } from "./jadual";
  *    beritahu, bukan meneka — tekaan pada jadual bermakna ibu bapa membaca
  *    subjek yang salah untuk anak mereka.
  *
- * Fail asal SENTIASA disimpan, walaupun pembacaan gagal: ia sumber kebenaran,
- * dan guru kelas boleh merujuknya sambil mengisi grid.
+ * FAIL TIDAK DISIMPAN. Ia dibaca dalam ingatan dan dilupakan.
+ *
+ * Keputusan pengguna (16 Sep 2026): fail jadual dipadam sebaik dibaca. Kami
+ * pergi satu langkah lagi dan tidak menulisnya langsung — menyimpan lalu
+ * memadam serta-merta ialah dua operasi storan untuk fail yang tiada sesiapa
+ * akan buka. Guru kelas baru sahaja memilih fail itu dari peranti mereka;
+ * salinan mereka masih ada di situ.
+ *
+ * INI BERBEZA DENGAN BUKU PENGURUSAN, dan sengaja: PDF Buku Pengurusan ialah
+ * sumber kebenaran yang disimpan dan hanya diganti apabila edisi baharu
+ * dimuat naik (docs/buku-pengurusan.md). Jadual waktu pula sementara — yang
+ * kekal ialah grid yang guru kelas sahkan, bukan failnya.
  */
 
 export interface HasilBaca {
   ok: boolean;
   mesej: string;
-  /** URL fail yang disimpan — sentiasa ada jika muat naik berjaya. */
-  fail?: string;
   /** Teks mentah yang dibaca, untuk guru bandingkan. */
   teks?: string;
   /** Cadangan jadual. Tiada jika fail tidak boleh dibaca. */
@@ -61,15 +69,10 @@ export async function naikFailJadual(data: FormData): Promise<HasilBaca> {
     return { ok: false, mesej: "Tiada fail dipilih." };
   }
 
-  // Fail asal disimpan DAHULU, sebelum apa-apa pembacaan. Kalau pembacaan
-  // gagal, fail itu masih ada untuk dirujuk guru kelas.
-  let url: string;
-  try {
-    const hasil = await muatNaik(fail, "jadual");
-    url = hasil.url;
-  } catch (e) {
-    return { ok: false, mesej: e instanceof Error ? e.message : "Muat naik gagal." };
-  }
+  // Jenis dan saiz disemak SEBELUM apa-apa dibaca — pembacaan memuatkan
+  // seluruh fail ke dalam ingatan, jadi had itu mesti dikuatkuasakan dahulu.
+  const tolak = semakFail(fail);
+  if (tolak) return { ok: false, mesej: tolak };
 
   // Waktu kelas ini menentukan berapa slot ada dan mana yang rehat. Ia
   // datang dari SET WAKTU tahun kelas itu, bukan dari fail — fail hanya
@@ -83,7 +86,7 @@ export async function naikFailJadual(data: FormData): Promise<HasilBaca> {
   }
   if (senaraiWaktu.length === 0) {
     return {
-      ok: true, fail: url,
+      ok: true,
       mesej:
         "Fail disimpan, tetapi kelas ini belum ada set waktu. Pentadbir perlu " +
         "menetapkan waktu & rehat bagi tahun kelas ini dahulu.",
@@ -96,7 +99,7 @@ export async function naikFailJadual(data: FormData): Promise<HasilBaca> {
     dok = await bacaDokumen(fail);
   } catch (e) {
     return {
-      ok: true, fail: url,
+      ok: true,
       mesej: "Fail disimpan, tetapi gagal dibaca. Isi grid di bawah secara manual.",
       amaran: [e instanceof Error ? e.message : "Ralat membaca fail."],
     };
@@ -104,7 +107,7 @@ export async function naikFailJadual(data: FormData): Promise<HasilBaca> {
 
   if (dok.jenis === "imbasan" || dok.jenis === "lain") {
     return {
-      ok: true, fail: url, teks: dok.teks || undefined,
+      ok: true, teks: dok.teks || undefined,
       mesej:
         "Fail disimpan, tetapi isinya TIDAK boleh dibaca automatik. Sistem " +
         "tidak meneka. Buka fail itu di sebelah dan isi grid di bawah.",
@@ -123,7 +126,6 @@ export async function naikFailJadual(data: FormData): Promise<HasilBaca> {
 
   return {
     ok: true,
-    fail: url,
     teks: bersih.slice(0, 4000),
     draf,
     keyakinan: { dikenal, jumlah },
