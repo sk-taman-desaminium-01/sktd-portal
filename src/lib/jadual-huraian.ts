@@ -10,7 +10,7 @@
  * terus oleh Node semasa ujian; alias hanya difahami oleh penyusun Next.
  */
 
-import { PANITIA } from "../data/panitia.ts";
+import { KOD_SUBJEK } from "../data/subjek.ts";
 import {
   HARI, NAMA_HARI,
   type Hari, type KelasJadual, type Waktu,
@@ -93,7 +93,7 @@ export function padanSubjek(teks: string): string | null {
   return terbaik?.kod ?? null;
 }
 
-const KOD_SAH = new Set([...PANITIA.map((p) => p.kod), "PERHIMPUNAN", "PSS", "KOKO", "PAK21"]);
+const KOD_SAH = new Set(KOD_SUBJEK);
 
 
 /* ------------------------------------------------------------ bina cadangan */
