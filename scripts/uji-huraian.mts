@@ -185,7 +185,14 @@ semak("pentadbir NAMPAK Disiplin", pentadbir.includes("disiplin"), true);
 semak("admin mutlak nampak semua pentadbir punya",
       pentadbir.every((k) => mutlak.includes(k)), true);
 // Kad biasa mesti kekal untuk semua orang.
-semak("guru nampak ePBD", guru.includes("epbd"), true);
+//
+// "epbd" tunggal sudah tiada — ia dipecah kepada ePBD-Guru dan ePBD-Slip
+// (17 Sep 2026). Kedua-duanya mesti kelihatan kepada guru biasa: halaman
+// masing-masing yang menapis kelas dan subjek mana mereka boleh sentuh,
+// bukan kad yang disembunyikan.
+semak("guru nampak ePBD-Guru", guru.includes("pbd-guru"), true);
+semak("guru nampak ePBD-Slip", guru.includes("pbd-slip"), true);
+semak("kad ePBD lama sudah tiada", guru.includes("epbd"), false);
 semak("guru nampak Jadual Waktu", guru.includes("jadual"), true);
 semak("tiada peranan → tiada kad pentadbiran", kadUntuk(null).includes("urusweb"), false);
 
