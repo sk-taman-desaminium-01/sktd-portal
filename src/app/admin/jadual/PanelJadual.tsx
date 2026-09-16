@@ -65,6 +65,27 @@ export default function PanelJadual({
     });
   }
 
+  /** Subjek yang benar-benar wujud dalam jadual kelas ini, ikut urutan tetap. */
+  const subjekDigunakan = useMemo(() => {
+    const ada = new Set<string>();
+    for (const hariIni of Object.values(kelasIni?.hari ?? {})) {
+      for (const slot of Object.values(hariIni ?? {})) ada.add(slot.subjek);
+    }
+    return PILIHAN.map((p) => p.kod).filter((k) => ada.has(k));
+  }, [kelasIni]);
+
+  function ubahGuru(kod: string, nama: string) {
+    setJadual((j) => {
+      const k = j.kelas[pilih] ?? { sesi: "pagi" as Sesi, hari: {} };
+      const guru = { ...(k.guruSubjek ?? {}) };
+      // Nama kosong MEMBUANG entri, bukan menyimpan rentetan kosong —
+      // kalau tidak, laman awam memapar baris guru yang kosong.
+      if (nama.trim()) guru[kod] = nama.trim();
+      else delete guru[kod];
+      return { ...j, kelas: { ...j.kelas, [pilih]: { ...k, guruSubjek: guru } } };
+    });
+  }
+
   function ubahSesi(baharu: Sesi) {
     setJadual((j) => {
       const k = j.kelas[pilih] ?? { sesi: baharu, hari: {} };
@@ -179,6 +200,39 @@ export default function PanelJadual({
         </table>
       </div>
 
+      {/* ---------- Guru subjek ---------- */}
+      <section className="mt-5 rounded-xl border border-garis bg-white p-4">
+        <h2 className="text-base font-bold text-navy-800">Guru subjek</h2>
+        <p className="mt-1 text-sm leading-relaxed text-slate-600">
+          Nama guru bagi setiap subjek dalam kelas ini. <b>Ibu bapa akan
+          melihat nama ini</b> di laman sekolah, jadi gunakan nama yang guru
+          berkenaan selesa dipaparkan secara awam.
+        </p>
+
+        {subjekDigunakan.length === 0 ? (
+          <p className="mt-3 text-sm text-slate-500">
+            Isi jadual di atas dahulu — subjek yang digunakan akan muncul di sini.
+          </p>
+        ) : (
+          <ul className="mt-3 grid gap-2 sm:grid-cols-2">
+            {subjekDigunakan.map((kod) => (
+              <li key={kod} className="flex items-center gap-2">
+                <span className="w-32 shrink-0 text-sm text-slate-600">
+                  {NAMA_SUBJEK.get(kod) ?? kod}
+                </span>
+                <input
+                  type="text"
+                  value={kelasIni?.guruSubjek?.[kod] ?? ""}
+                  placeholder="Nama guru"
+                  onChange={(e) => ubahGuru(kod, e.target.value)}
+                  className="min-w-0 flex-1 rounded-lg border border-garis px-3 py-2 text-sm"
+                />
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
       {/* ---------- Waktu sesi — pentadbir ke atas sahaja ---------- */}
       {bolehWaktu && (
       <section className="mt-5 rounded-xl border border-garis bg-white">
@@ -272,10 +326,7 @@ export default function PanelJadual({
         </span>
       </div>
 
-      <p className="mt-3 text-xs text-slate-400">
-        Subjek dipapar penuh kepada ibu bapa: {NAMA_SUBJEK.get("BM")} dan
-        seterusnya — bukan kod.
-      </p>
+
     </>
   );
 }
