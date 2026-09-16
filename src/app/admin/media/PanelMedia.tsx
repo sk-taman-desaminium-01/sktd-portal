@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { naikMedia, buangMedia, type Media } from "@/lib/media";
+import { semakSaiz } from "@/data/had-fail";
 
 function saizPapar(b: number | null) {
   if (!b) return "—";
@@ -19,8 +20,20 @@ export default function PanelMedia({ awal }: { awal: Media[] }) {
   async function naik(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const borang = e.currentTarget;
+    const fd = new FormData(borang);
+
+    // Sama seperti muat naik jadual: gagal di sini, dengan saiz disebut.
+    const fail = fd.get("fail");
+    if (fail instanceof File) {
+      const ralat = semakSaiz(fail);
+      if (ralat) {
+        setHasil({ ok: false, mesej: ralat });
+        return;
+      }
+    }
+
     setSibuk(true);
-    const r = await naikMedia(new FormData(borang));
+    const r = await naikMedia(fd);
     setSibuk(false);
     setHasil(r);
     if (r.ok) {

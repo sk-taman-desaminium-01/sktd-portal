@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { simpanJadualKelas, simpanSetWaktu } from "@/lib/jadual";
 import { naikFailJadual, type HasilBaca } from "@/lib/baca-jadual";
 import { PANITIA } from "@/data/panitia";
+import { semakSaiz } from "@/data/had-fail";
 import {
   HARI, NAMA_HARI, NAMA_SESI, SESI, jamPapar, setUntukKelas, tahunKelas,
   type Hari, type Jadual, type Sesi, type SetWaktu, type Waktu,
@@ -128,6 +129,19 @@ export default function PanelJadual({
 
   async function muatNaikFail(borang: HTMLFormElement) {
     const fd = new FormData(borang);
+
+    // Semak saiz DI SINI, sebelum apa-apa dihantar. Kalau kita biarkan fail
+    // besar pergi, ia ditolak oleh lapisan pengangkutan yang tidak tahu
+    // apa-apa tentang fail itu, dan mesejnya tidak menyebut saiz langsung.
+    const fail = fd.get("fail");
+    if (fail instanceof File) {
+      const ralat = semakSaiz(fail);
+      if (ralat) {
+        setBaca({ ok: false, mesej: ralat });
+        return;
+      }
+    }
+
     fd.set("kelas", pilih);
     setNaik(true);
     setBaca(null);
