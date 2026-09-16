@@ -44,6 +44,10 @@ export type Permohonan =
   | { keadaan: "gagal"; mesej: string };
 
 export interface Pengguna {
+  /** id baris `pbd_guru`. Null untuk admin mutlak (mereka datang dari env,
+   *  bukan dari jadual) — mereka tidak memerlukannya kerana kuasa mereka
+   *  tidak bergantung kepada tugasan kelas. */
+  id: string | null;
   emel: string;
   nama: string | null;
   peranan: PerananBerkesan | null; // null = tiada dalam senarai akses
@@ -69,15 +73,15 @@ export async function pengguna(): Promise<Pengguna | null> {
   const nama = u?.fullName ?? u?.firstName ?? null;
 
   if (senaraiMutlak().includes(emel)) {
-    return { emel, nama, peranan: "admin_mutlak", mutlak: true, rasmi: true };
+    return { id: null, emel, nama, peranan: "admin_mutlak", mutlak: true, rasmi: true };
   }
 
   // Bukan mutlak → semak senarai akses dalam DB.
   try {
     const db = klienTulis();
     const baris = (await db.minta(
-      `pbd_guru?select=peranan,dibenarkan,nama&email=eq.${encodeURIComponent(emel)}`,
-    )) as { peranan: Peranan; dibenarkan: boolean; nama: string }[];
+      `pbd_guru?select=id,peranan,dibenarkan,nama&email=eq.${encodeURIComponent(emel)}`,
+    )) as { id: string; peranan: Peranan; dibenarkan: boolean; nama: string }[];
 
     const r = baris[0];
 
@@ -108,21 +112,21 @@ export async function pengguna(): Promise<Pengguna | null> {
       const permohonan = rasmi
         ? await rekodPermohonan(db, emel, nama, u!.id)
         : undefined;
-      return { emel, nama, peranan: null, mutlak: false, rasmi, permohonan };
+      return { id: null, emel, nama, peranan: null, mutlak: false, rasmi, permohonan };
     }
 
     // Ada tetapi belum dibenarkan → tiada peranan.
     if (!r.dibenarkan) {
       return {
-        emel, nama, peranan: null, mutlak: false, rasmi: domainRasmi(emel),
+        id: r.id, emel, nama, peranan: null, mutlak: false, rasmi: domainRasmi(emel),
         permohonan: { keadaan: "menunggu" },
       };
     }
-    return { emel, nama: r.nama ?? nama, peranan: r.peranan, mutlak: false, rasmi: domainRasmi(emel) };
+    return { id: r.id, emel, nama: r.nama ?? nama, peranan: r.peranan, mutlak: false, rasmi: domainRasmi(emel) };
   } catch {
     // DB gagal: JANGAN beri kuasa secara senyap. Orang biasa dianggap tiada
     // peranan (gagal tertutup); admin mutlak sudah pulang di atas.
-    return { emel, nama, peranan: null, mutlak: false, rasmi: domainRasmi(emel) };
+    return { id: null, emel, nama, peranan: null, mutlak: false, rasmi: domainRasmi(emel) };
   }
 }
 
