@@ -127,13 +127,24 @@ export type KadBaharu = AppPortal & {
 export const KAD_TAMBAHAN: KadBaharu[] = [
   /* --- Pengurusan & Pentadbiran --- */
   {
+    id: "pengurusan", bahagian: "pentadbiran",
+    nama: "Buku Pengurusan", ikon: "BPT", warna: "#5b3a80",
+    fungsi: "Buku pengurusan tahunan — sumber senarai guru kelas, panitia, takwim dan mesyuarat.",
+    domain: "portal.sktd.edu.my/admin/pengurusan", pautan: "/admin/pengurusan",
+    status: "sedia", akses: "Pentadbir & admin",
+    // Buku pengurusan mengandungi nombor telefon guru dan butiran jawatankuasa
+    // dalaman. Guru biasa tidak sepatutnya melihat kad ini pun.
+    perlu: "urus_pengurusan",
+  },
+  {
     id: "mesyuarat", bahagian: "pentadbiran",
     nama: "Mesyuarat & Minit", ikon: "MSY", warna: "#123561",
-    fungsi: "Takwim mesyuarat, kehadiran, minit curai dan tindakan susulan.",
-    domain: "portal.sktd.edu.my/mesyuarat", domainCadangan: true, status: "akan",
-    catatan: "Buku Pengurusan m.144 — takwim mesyuarat pengurusan sudah ada, sistem belum.",
+    fungsi: "Takwim mesyuarat sepanjang tahun, ditarik terus dari Buku Pengurusan.",
+    domain: "portal.sktd.edu.my/mesyuarat", pautan: "/mesyuarat", status: "bina",
+    catatan: "Takwim sudah hidup dari Buku Pengurusan. Kehadiran, minit dan "
+      + "tindakan susulan belum dibina.",
     rancangan: [
-      "Takwim mesyuarat sepanjang tahun, ditarik dari Buku Pengurusan",
+      "✓ Takwim mesyuarat sepanjang tahun, ditarik dari Buku Pengurusan",
       "Jemputan dan pengesahan kehadiran",
       "Minit curai dimuat naik dan dikongsi kepada ahli",
       "Senarai tindakan dengan pemilik dan tarikh akhir",

@@ -37,6 +37,19 @@ export interface JenisSeksyen {
   bolehAwam: boolean;
   /** Apa yang seksyen ini boleh suapkan ke bahagian lain sistem. */
   suapan?: string;
+  /**
+   * Gabungkan SEMUA kemunculan jenis ini menjadi satu seksyen, walaupun
+   * berselang-seli dengan jenis lain.
+   *
+   * Hanya untuk takwim dan mesyuarat, dan sebabnya khusus: buku sebenar
+   * menyusunnya bulan demi bulan — takwim Januari, mesyuarat, takwim
+   * Februari, mesyuarat — jadi setiap bulan dikesan sebagai seksyen
+   * berasingan. Tetapi takwim ialah SATU kalendar, bukan dua belas. Setiap
+   * baris sudah membawa tarikhnya sendiri, jadi menggabungkannya tidak
+   * menghilangkan apa-apa dan memberi admin satu senarai untuk disemak,
+   * bukan dua belas.
+   */
+  gabungSemua?: boolean;
 }
 
 export const JENIS_SEKSYEN: JenisSeksyen[] = [
@@ -65,11 +78,13 @@ export const JENIS_SEKSYEN: JenisSeksyen[] = [
     kod: "takwim", nama: "Takwim & Program", bentuk: "jadual", bolehAwam: true,
     kunci: ["takwim", "program dan aktiviti", "program & aktiviti",
             "penggal persekolahan", "hari kelepasan"],
+    gabungSemua: true,
     suapan: "Menjana DRAF pengumuman untuk setiap program — admin semak dan terbit.",
   },
   {
     kod: "mesyuarat", nama: "Takwim Mesyuarat", bentuk: "jadual", bolehAwam: false,
     kunci: ["mesyuarat pengurusan", "takwim mesyuarat", "jadual mesyuarat"],
+    gabungSemua: true,
     suapan: "Menghidupkan kad Mesyuarat: takwim, kehadiran dan minit.",
   },
   {
