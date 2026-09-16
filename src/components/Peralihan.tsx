@@ -65,11 +65,17 @@ export default function Peralihan() {
     };
   }, []);
 
-  // Jaring keselamatan: kalau navigasi dibatalkan atau gagal, skrin ini
-  // tidak boleh menjadi dinding kekal.
+  // JARING KESELAMATAN 5 SAAT, bukan 12.
+  //
+  // Skrin ini menjadikan menunggu terasa disengajakan — tetapi ia juga
+  // MENYEMBUNYIKAN kegagalan. Apabila navigasi tidak berlaku langsung,
+  // cincin berputar kelihatan seperti sistem sedang bekerja sedangkan
+  // tiada apa berlaku, dan pengguna menunggu 12 saat sebelum tahu.
+  // Lima saat sudah melepasi navigasi yang paling perlahan pada rangkaian
+  // ini (diukur: 1.4 saat), jadi selepas itu skrin ini berbohong.
   useEffect(() => {
     if (!tunjuk) return;
-    const masa = window.setTimeout(() => setTunjuk(false), 12_000);
+    const masa = window.setTimeout(() => setTunjuk(false), 5_000);
     return () => window.clearTimeout(masa);
   }, [tunjuk]);
 
