@@ -42,8 +42,13 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
           ...msMY.signIn,
           start: {
             ...msMY.signIn?.start,
-            title: "Portal Kakitangan",
-            subtitle: "Log masuk dengan emel rasmi sekolah anda.",
+            // Kunci yang betul ialah `titleCombined` — itu yang dipapar bila
+            // hanya pembekal sosial (Google) yang aktif. `title` pula untuk
+            // borang emel/kata laluan. Percubaan pertama menindih `subtitle`
+            // dan tidak mengubah apa-apa; disahkan dengan mencari rentetan
+            // itu dalam node_modules/@clerk/localizations/dist/ms-MY.mjs.
+            titleCombined: "Teruskan ke Portal Kakitangan SKTD",
+            title: "Daftar masuk ke Portal Kakitangan SKTD",
           },
         },
       }}
