@@ -22,6 +22,12 @@ export function domainRasmi(emel: string): boolean {
   return DOMAIN_RASMI.some((d) => emel.toLowerCase().endsWith(d));
 }
 
+/** Apa yang berlaku kepada catatan permohonan pada log masuk pertama. */
+export type Permohonan =
+  | { keadaan: "direkod" }
+  | { keadaan: "menunggu" }
+  | { keadaan: "gagal"; mesej: string };
+
 export interface Pengguna {
   emel: string;
   nama: string | null;
@@ -29,6 +35,8 @@ export interface Pengguna {
   mutlak: boolean;
   /** Emel dari domain rasmi sekolah? */
   rasmi: boolean;
+  /** Hanya diisi untuk orang yang belum ada peranan. */
+  permohonan?: Permohonan;
 }
 
 function senaraiMutlak(): string[] {
@@ -70,12 +78,29 @@ export async function pengguna(): Promise<Pengguna | null> {
     // Itu memberi akses SIFAR — ia hanya meletakkan nama mereka di hadapan
     // admin. Kelulusan tetap tindakan manusia.
     if (!r) {
-      if (domainRasmi(emel)) await rekodPermohonan(db, emel, nama, u!.id);
-      return { emel, nama, peranan: null, mutlak: false, rasmi: domainRasmi(emel) };
+      // TIADA TAPISAN DOMAIN DI SINI, dan itu disengajakan.
+      //
+      // Versi pertama hanya merekod emel yang berakhir dengan @moe-dl.edu.my
+      // atau @moe.edu.my. Kakitangan KPM juga menggunakan variasi lain
+      // (@moe.gov.my antaranya) — dan bagi mereka, log masuk menulis SIFAR
+      // baris dan gagal tanpa sebarang tanda. Guru nampak "akses belum
+      // diberikan", admin nampak senarai kosong, dan tiada sesiapa tahu
+      // mengapa. Itulah yang berlaku.
+      //
+      // Merekod semua orang yang log masuk adalah selamat: baris itu memberi
+      // akses SIFAR. Domain yang bukan rasmi ditandakan dalam senarai supaya
+      // admin nampak perbezaannya dan boleh menolaknya.
+      const permohonan = await rekodPermohonan(db, emel, nama, u!.id);
+      return { emel, nama, peranan: null, mutlak: false, rasmi: domainRasmi(emel), permohonan };
     }
 
     // Ada tetapi belum dibenarkan → tiada peranan.
-    if (!r.dibenarkan) return { emel, nama, peranan: null, mutlak: false, rasmi: domainRasmi(emel) };
+    if (!r.dibenarkan) {
+      return {
+        emel, nama, peranan: null, mutlak: false, rasmi: domainRasmi(emel),
+        permohonan: { keadaan: "menunggu" },
+      };
+    }
     return { emel, nama: r.nama ?? nama, peranan: r.peranan, mutlak: false, rasmi: domainRasmi(emel) };
   } catch {
     // DB gagal: JANGAN beri kuasa secara senyap. Orang biasa dianggap tiada
@@ -101,7 +126,7 @@ async function rekodPermohonan(
   emel: string,
   nama: string | null,
   clerkId: string,
-) {
+): Promise<Permohonan> {
   try {
     await db.minta("pbd_guru", {
       method: "POST",
@@ -114,10 +139,15 @@ async function rekodPermohonan(
         dibenarkan: false,   // SIFAR akses sehingga manusia meluluskannya
       }),
     });
+    return { keadaan: "direkod" };
   } catch (e) {
-    // Jangan halang log masuk kerana catatan gagal — tetapi jangan senyap
-    // sepenuhnya (peraturan #4): log supaya ia boleh dilihat.
-    console.warn("[akses] gagal merekod permohonan untuk", emel, e);
+    // Jangan halang log masuk kerana catatan gagal — TETAPI jangan telan.
+    // Peraturan keras #4. Kegagalan di sini dipapar terus pada skrin orang
+    // yang cuba masuk, supaya mereka boleh membacanya kepada admin. Versi
+    // sebelum ini hanya console.warn, dan tiada siapa pernah melihatnya.
+    const mesej = e instanceof Error ? e.message : String(e);
+    console.warn("[akses] gagal merekod permohonan untuk", emel, mesej);
+    return { keadaan: "gagal", mesej };
   }
 }
 

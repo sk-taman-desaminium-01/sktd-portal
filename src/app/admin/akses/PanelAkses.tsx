@@ -4,6 +4,20 @@ import { useState } from "react";
 import { tambahAkses, tukarPeranan, tarikAkses, type BarisAkses, type Hasil } from "@/lib/akses-urus";
 import { NAMA_PERANAN, type Peranan } from "@/lib/peranan";
 
+/**
+ * Emel dari domain rasmi sekolah?
+ *
+ * Log masuk kini merekod SESIAPA yang berjaya masuk, bukan hanya domain
+ * rasmi — kerana menapis di situ bermakna kakitangan yang menggunakan
+ * variasi domain KPM lain hilang tanpa jejak. Tandanya dipindahkan ke sini:
+ * admin nampak domain luar dengan jelas dan boleh menolaknya.
+ */
+function luarDomain(emel: string | null): boolean {
+  if (!emel) return true;
+  const e = emel.toLowerCase();
+  return !e.endsWith("@moe-dl.edu.my") && !e.endsWith("@moe.edu.my");
+}
+
 export default function PanelAkses({ baris, peranan: perananPilihan }: {
   baris: BarisAkses[];
   /** Peranan yang pengguna INI dibenarkan berikan — ditentukan pelayan,
@@ -68,7 +82,14 @@ export default function PanelAkses({ baris, peranan: perananPilihan }: {
               <li key={b.id} className="flex flex-wrap items-center gap-3 p-4">
                 <span className="min-w-0 flex-1">
                   <span className="block font-semibold text-navy-800">{b.nama}</span>
-                  <span className="block truncate text-xs text-slate-500">{b.email}</span>
+                  <span className="block truncate text-xs text-slate-500">
+                    {b.email}
+                    {luarDomain(b.email) && (
+                      <span className="ml-1.5 rounded bg-[#fdf3dc] px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-[#9a6b06]">
+                        luar domain
+                      </span>
+                    )}
+                  </span>
                 </span>
                 <select
                   defaultValue={b.peranan}
@@ -106,7 +127,14 @@ export default function PanelAkses({ baris, peranan: perananPilihan }: {
               <li key={b.id} className="flex flex-wrap items-center gap-3 p-4 opacity-70">
                 <span className="min-w-0 flex-1">
                   <span className="block font-semibold text-slate-600">{b.nama}</span>
-                  <span className="block truncate text-xs text-slate-500">{b.email}</span>
+                  <span className="block truncate text-xs text-slate-500">
+                    {b.email}
+                    {luarDomain(b.email) && (
+                      <span className="ml-1.5 rounded bg-[#fdf3dc] px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-[#9a6b06]">
+                        luar domain
+                      </span>
+                    )}
+                  </span>
                 </span>
                 <button
                   disabled={sibuk}
