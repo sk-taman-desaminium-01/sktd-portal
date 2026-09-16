@@ -7,6 +7,7 @@ import { kadIkutBahagian } from "@/data/bahagian";
 import KadApp from "@/components/KadApp";
 import { NAMA_PERANAN } from "@/lib/peranan";
 import { pengguna } from "@/lib/akses";
+import { kelasBolehSunting } from "@/lib/guru-kelas";
 import { boleh } from "@/lib/peranan";
 import Link from "next/link";
 
@@ -130,6 +131,10 @@ export default async function Hab() {
   const admin = saya?.peranan === "admin" || saya?.peranan === "admin_mutlak";
 
   const nama = user?.fullName ?? user?.firstName ?? "Cikgu";
+
+  // Kelas yang pengguna ini pegang sebagai guru kelas. `null` bermakna semua
+  // kelas (pentadbir & admin) — itu bukan "guru kelas", jadi tidak dipapar.
+  const kelasSaya = saya?.peranan ? await kelasBolehSunting() : [];
   const emel = user?.emailAddresses[0]?.emailAddress ?? "";
 
   // Log masuk berjaya TETAPI belum ada dalam senarai akses.
@@ -177,6 +182,14 @@ export default async function Hab() {
             </span>
           </span>
           {emel && <span className="mt-0.5 block truncate text-xs text-white/60">{emel}</span>}
+          {/* Guru bertanya "saya guru kelas mana?" — jawapannya di sini,
+              pada skrin pertama selepas log masuk, bukan tersembunyi dalam
+              skrin jadual. */}
+          {Array.isArray(kelasSaya) && kelasSaya.length > 0 && (
+            <span className="mt-1.5 block text-xs text-emas-muda">
+              Guru kelas: <b>{kelasSaya.join(" · ")}</b>
+            </span>
+          )}
         </span>
         <SignOutButton>
           <button className="shrink-0 rounded-lg border border-white/25 px-3.5 py-2 text-xs font-semibold text-white/80 hover:bg-white/10">

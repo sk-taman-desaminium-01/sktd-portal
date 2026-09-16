@@ -19,6 +19,7 @@ export default async function Admin() {
   const [pos, saya] = await Promise.all([senaraiPos(), pengguna()]);
   const draf = pos.filter((p) => p.status === "draf").length;
   const bolehAkses = boleh(saya?.peranan ?? null, "urus_akses");
+  const bolehGuruKelas = boleh(saya?.peranan ?? null, "urus_guru_kelas");
 
   const ALAT: { href: string; nama: string; ringkas: string; ikon: string }[] = [
     { href: "/admin/pos", nama: "Pos baharu", ikon: "✎",
@@ -29,6 +30,10 @@ export default async function Admin() {
       ringkas: "Muat naik gambar dan PDF, salin URLnya." },
     { href: "/admin/jadual", nama: "Jadual Waktu", ikon: "🗓️",
       ringkas: "Jadual setiap kelas. Ibu bapa melihatnya di laman sekolah." },
+    ...(bolehGuruKelas
+      ? [{ href: "/admin/guru-kelas", nama: "Guru Kelas", ikon: "🧑‍🏫",
+           ringkas: "Tetapkan siapa guru kelas. Mereka menyunting jadual kelas itu." }]
+      : []),
     { href: "/bina/urusweb", nama: "Buku Pengurusan", ikon: "📕",
       ringkas: "Muat naik PDF tahunan dan sahkan isinya." },
     ...(bolehAkses

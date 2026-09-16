@@ -12,8 +12,8 @@
 
 import { PANITIA } from "../data/panitia.ts";
 import {
-  HARI, NAMA_HARI, WAKTU_LALAI,
-  type Hari, type KelasJadual, type Sesi,
+  HARI, NAMA_HARI,
+  type Hari, type KelasJadual, type Waktu,
 } from "../data/jadual-jenis.ts";
 
 /* ----------------------------------------------------------- padanan subjek */
@@ -24,20 +24,30 @@ import {
  * dan guru kelas menyemak hasilnya sebelum apa-apa disimpan.
  */
 const ALIAS: Record<string, string[]> = {
+  // Kod pendek di bawah diambil terus dari jadual rasmi sekolah (2 MAJU
+  // sesi petang, dan jadual guru sesi pagi) — bukan tekaan. Sekolah menulis
+  // MT untuk Matematik, SN untuk Sains, PJ/PK untuk PJPK, BA untuk Bahasa
+  // Arab, dan PER untuk Perhimpunan.
   BM: ["bahasa melayu", "b melayu", "b.melayu", "bm", "bmm", "melayu"],
   BI: ["bahasa inggeris", "b inggeris", "b.inggeris", "bi", "english", "inggeris"],
   MM: ["matematik", "math", "mm", "mt"],
   SAINS: ["sains", "science", "sn"],
   SEJ: ["sejarah", "sej", "sj"],
-  PAI: ["pendidikan islam", "p islam", "p.islam", "pai", "agama islam", "islam"],
+  PAI: [
+    "pendidikan islam", "p islam", "p.islam", "pai", "agama islam", "islam",
+    // Sekolah memecahkan Pendidikan Islam kepada komponen: (Q) Al-Quran,
+    // (U) Ulum Syariah, (J) Jawi. Semuanya subjek yang sama pada slip.
+    "p islam q", "p islam u", "p islam j", "pai ppki", "al quran", "ulum jawi",
+  ],
   PM: ["pendidikan moral", "p moral", "pm", "moral"],
   RBT: ["reka bentuk", "rbt", "reka bentuk dan teknologi"],
-  PJPK: ["pendidikan jasmani", "pjpk", "pj", "pjk", "jasmani", "kesihatan"],
+  PJPK: ["pendidikan jasmani", "pjpk", "pj", "pjk", "jasmani", "kesihatan", "pk"],
   PSV: ["pendidikan seni", "psv", "seni visual", "seni"],
   PMZ: ["pendidikan muzik", "pmz", "muzik"],
-  AR: ["bahasa arab", "b arab", "arab", "ar", "bar"],
+  AR: ["bahasa arab", "b arab", "arab", "ar", "bar", "ba"],
   BC: ["bahasa cina", "b cina", "cina", "bc"],
-  PERHIMPUNAN: ["perhimpunan", "himpunan"],
+  PERHIMPUNAN: ["perhimpunan", "himpunan", "per"],
+  TASMIK: ["tasmik"],
   PSS: ["pusat sumber", "pss", "perpustakaan", "nilam"],
   KOKO: ["kokurikulum", "koko", "ko-kurikulum"],
   PAK21: ["pak21", "pak 21"],
@@ -98,8 +108,8 @@ const KOD_SAH = new Set([...PANITIA.map((p) => p.kod), "PERHIMPUNAN", "PSS", "KO
  * paling selamat, dan skor keyakinan memberitahu guru kelas sejauh mana ia
  * boleh dipercayai sebelum mereka menyemak sel demi sel.
  */
-export function binaDraf(teks: string, sesi: Sesi): { draf: KelasJadual; dikenal: number; jumlah: number } {
-  const waktu = WAKTU_LALAI[sesi].filter((w) => !w.rehat);
+export function binaDraf(teks: string, senaraiWaktu: Waktu[]): { draf: KelasJadual; dikenal: number; jumlah: number } {
+  const waktu = senaraiWaktu.filter((w) => !w.rehat);
   const baris = teks.split(/\r?\n/);
 
   // Cari baris permulaan setiap hari.
@@ -136,7 +146,7 @@ export function binaDraf(teks: string, sesi: Sesi): { draf: KelasJadual; dikenal
     if (Object.keys(slot).length > 0) hari[h] = slot;
   });
 
-  return { draf: { sesi, hari }, dikenal, jumlah: waktu.length * HARI.length };
+  return { draf: { hari }, dikenal, jumlah: waktu.length * HARI.length };
 }
 
 
@@ -190,7 +200,28 @@ export function namaGuruDariSel(sel: string, kod: string | null): string | null 
   baki = baki.replace(/\s+/g, " ").trim();
 
   const perkataan = baki.split(" ").filter((w) => w.length > 1 && /^[a-z]+$/.test(w));
-  if (perkataan.length < 2) return null;
+
+  // SATU perkataan sudah memadai.
+  //
+  // Jadual rasmi sekolah menulis nama guru sebagai satu nama sahaja di bawah
+  // subjek — "WAN", "SRI", "SUHAILA", "NASSER". Menuntut dua perkataan (versi
+  // pertama) akan TERLEPAS hampir setiap guru dalam fail sebenar mereka.
+  //
+  // Yang perlu ditolak ialah KOD KELAS dan kod bilik, yang muncul di tempat
+  // sama dalam jadual GURU: "6 INT", "5 SUK", "M2". Semuanya mengandungi
+  // digit atau ialah singkatan pendek yang menyertai digit, jadi ujian di
+  // bawah membuangnya tanpa membuang nama sebenar.
+  if (perkataan.length === 0) return null;
+  if (perkataan.length === 1) {
+    const w = perkataan[0];
+    // Nama sebenar jarang sependek 2 huruf; kod bilik selalu begitu.
+    if (w.length < 3) return null;
+    // Kalau teks asal mempunyai digit bersebelahan perkataan itu, ia hampir
+    // pasti kod kelas ("6 INT") dan bukan nama.
+    if (/\d/.test(teks)) return null;
+    // Perkataan yang ialah alias subjek lain bukan nama.
+    for (const [, a] of ALIAS_NORMAL) if (a === w) return null;
+  }
 
   // Cari semula dalam teks ASAL supaya huruf besar/kecil asal dikekalkan.
   const corak = new RegExp(perkataan.map((w) => w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("[^a-zA-Z]+"), "i");
@@ -211,7 +242,10 @@ function kemasNama(nama: string): string | null {
     .replace(/[\s.,;:/|)\]}>"\u2019\u201d-]+$/, "")
     .replace(/\s+/g, " ")
     .trim();
-  if (bersih.length < 4 || bersih.length > 70) return null;
+  // Had bawah 3, bukan 4: jadual sebenar sekolah mengandungi nama guru
+  // sependek "WAN" dan "SRI". Had 4 menolaknya secara senyap, dan ujian
+  // menangkapnya hanya selepas kod sekolah sebenar dimasukkan.
+  if (bersih.length < 3 || bersih.length > 70) return null;
   return bersih;
 }
 
@@ -266,9 +300,9 @@ function cariBarisHari(grid: string[][]): { baris: number; lajur: Partial<Record
  */
 export function binaDrafDariGrid(
   helaian: string[][][],
-  sesi: Sesi,
+  senaraiWaktu: Waktu[],
 ): { draf: KelasJadual; dikenal: number; jumlah: number } | null {
-  const waktu = WAKTU_LALAI[sesi].filter((w) => !w.rehat);
+  const waktu = senaraiWaktu.filter((w) => !w.rehat);
 
   for (const asal of helaian) {
     for (const grid of [asal, alih(asal)]) {
@@ -310,7 +344,7 @@ export function binaDrafDariGrid(
         const guruSubjek = guruTerbanyak(kutipan);
         return {
           draf: {
-            sesi, hari,
+            hari,
             ...(Object.keys(guruSubjek).length > 0 ? { guruSubjek } : {}),
           },
           dikenal,

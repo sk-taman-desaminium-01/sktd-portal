@@ -5,6 +5,10 @@
  * Tiada Supabase, tiada Clerk, tiada fail sebenar — hanya logik tulen.
  */
 import { padanSubjek, binaDraf, binaDrafDariGrid, namaGuruDariSel } from "../src/lib/jadual-huraian.ts";
+import { SET_LALAI } from "../src/data/jadual-jenis.ts";
+
+/** Waktu sebenar sekolah — sesi pagi, rehat pada waktu 5 (R4). */
+const WAKTU = SET_LALAI.find((s) => s.id === "pagi-r4")!.senarai;
 
 let lulus = 0, gagal = 0;
 const semak = (nama: string, dapat: unknown, jangka: unknown) => {
@@ -34,7 +38,7 @@ RABU     Perhimpunan | Bahasa Melayu | Bahasa Inggeris | Matematik | Sains
 KHAMIS   Bahasa Inggeris | Matematik | Pendidikan Islam | Bahasa Melayu | Muzik
 JUMAAT   Pendidikan Islam | Bahasa Melayu | Matematik | Bahasa Inggeris | Sains
 `;
-const { draf, dikenal, jumlah } = binaDraf(teks, "pagi");
+const { draf, dikenal, jumlah } = binaDraf(teks, WAKTU);
 console.log(`  dikenal: ${dikenal} / ${jumlah}`);
 semak("5 hari dijumpai", Object.keys(draf.hari).sort(), ["isnin", "jumaat", "khamis", "rabu", "selasa"]);
 semak("Isnin slot pertama", Object.values(draf.hari.isnin ?? {})[0], { subjek: "BM" });
@@ -43,7 +47,7 @@ semak("Khamis ada PMZ", Object.values(draf.hari.khamis ?? {}).some((s) => s.subj
 semak("dikenal = 25", dikenal, 25);
 
 console.log("\n— teks tanpa hari —");
-const kosong = binaDraf("Tiada apa-apa di sini", "pagi");
+const kosong = binaDraf("Tiada apa-apa di sini", WAKTU);
 semak("tiada hari → tiada slot", Object.keys(kosong.draf.hari).length, 0);
 
 console.log("\n— nama guru dalam sel —");
@@ -54,6 +58,16 @@ semak("tiada nama", namaGuruDariSel("BAHASA MELAYU", "BM"), null);
 semak("bilik bukan nama", namaGuruDariSel("SAINS BILIK 4A", "SAINS"), null);
 semak("nama tanpa gelaran", namaGuruDariSel("SAINS - Rosnah Abdullah", "SAINS"), "Rosnah Abdullah");
 
+semak("nama satu perkataan", namaGuruDariSel("BM\nWAN", "BM"), "WAN");
+semak("kod kelas bukan nama", namaGuruDariSel("PER\n6 INT", "PERHIMPUNAN"), null);
+semak("kod bilik pendek", namaGuruDariSel("SN M2", "SAINS"), null);
+semak("kod sekolah MT", padanSubjek("MT"), "MM");
+semak("kod sekolah SN", padanSubjek("SN"), "SAINS");
+semak("kod sekolah PJ", padanSubjek("PJ"), "PJPK");
+semak("kod sekolah BA", padanSubjek("BA"), "AR");
+semak("P.ISLAM (Q)", padanSubjek("P.ISLAM (Q)"), "PAI");
+semak("TASMIK", padanSubjek("TASMIK"), "TASMIK");
+
 console.log("\n— draf dari GRID (hari melintang) —");
 const kepala = ["WAKTU", "ISNIN", "SELASA", "RABU", "KHAMIS", "JUMAAT"];
 const gridMelintang = [[
@@ -63,7 +77,7 @@ const gridMelintang = [[
   ["9:30", "REHAT", "REHAT", "REHAT", "REHAT", "REHAT"],
   ["10:00", "SAINS", "SAINS", "SAINS", "SAINS", "SAINS"],
 ]];
-const g = binaDrafDariGrid(gridMelintang, "pagi");
+const g = binaDrafDariGrid(gridMelintang, WAKTU);
 semak("grid dibaca", g !== null, true);
 semak("Isnin slot 1 = BM", Object.values(g!.draf.hari.isnin ?? {})[0], { subjek: "BM" });
 semak("Rabu slot 1 = Perhimpunan", Object.values(g!.draf.hari.rabu ?? {})[0], { subjek: "PERHIMPUNAN" });
@@ -81,12 +95,12 @@ const gridMenegak = [[
   ["SELASA", "SAINS", "BAHASA INGGERIS"],
   ["RABU", "PENDIDIKAN ISLAM", "BAHASA MELAYU"],
 ]];
-const gv = binaDrafDariGrid(gridMenegak, "pagi");
+const gv = binaDrafDariGrid(gridMenegak, WAKTU);
 semak("orientasi menegak dibaca", gv !== null, true);
 semak("Isnin slot 1 = BM (menegak)", Object.values(gv!.draf.hari.isnin ?? {})[0], { subjek: "BM" });
 
 console.log("\n— grid tanpa hari —");
-semak("tiada hari → null", binaDrafDariGrid([[["a", "b"], ["c", "d"]]], "pagi"), null);
+semak("tiada hari → null", binaDrafDariGrid([[["a", "b"], ["c", "d"]]], WAKTU), null);
 
 console.log(`\n${lulus} lulus, ${gagal} gagal`);
 process.exit(gagal > 0 ? 1 : 0);

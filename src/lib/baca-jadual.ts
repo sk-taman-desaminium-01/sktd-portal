@@ -3,9 +3,10 @@
 import { pengguna } from "./akses";
 import { kelasBolehSunting } from "./guru-kelas";
 import { muatNaik } from "./storan";
-import { type KelasJadual, type Sesi } from "@/data/jadual-jenis";
+import { setUntukKelas, type KelasJadual, type Waktu } from "@/data/jadual-jenis";
 import { binaDraf, binaDrafDariGrid } from "./jadual-huraian";
 import { bacaDokumen } from "./baca-dokumen";
+import { ambilJadual } from "./jadual";
 
 /**
  * Baca fail jadual waktu yang dimuat naik, dan CADANGKAN draf.
@@ -50,7 +51,6 @@ export async function naikFailJadual(data: FormData): Promise<HasilBaca> {
   if (!saya?.peranan) return { ok: false, mesej: "Tidak dibenarkan." };
 
   const label = String(data.get("kelas") ?? "").trim();
-  const sesi = (String(data.get("sesi") ?? "pagi") as Sesi) === "petang" ? "petang" : "pagi";
   const fail = data.get("fail");
 
   const dibenar = await kelasBolehSunting();
@@ -69,6 +69,25 @@ export async function naikFailJadual(data: FormData): Promise<HasilBaca> {
     url = hasil.url;
   } catch (e) {
     return { ok: false, mesej: e instanceof Error ? e.message : "Muat naik gagal." };
+  }
+
+  // Waktu kelas ini menentukan berapa slot ada dan mana yang rehat. Ia
+  // datang dari SET WAKTU tahun kelas itu, bukan dari fail — fail hanya
+  // memberitahu subjek apa, bukan jam berapa sekolah bermula.
+  let senaraiWaktu: Waktu[];
+  try {
+    const jadual = await ambilJadual();
+    senaraiWaktu = setUntukKelas(jadual, label)?.senarai ?? [];
+  } catch {
+    senaraiWaktu = [];
+  }
+  if (senaraiWaktu.length === 0) {
+    return {
+      ok: true, fail: url,
+      mesej:
+        "Fail disimpan, tetapi kelas ini belum ada set waktu. Pentadbir perlu " +
+        "menetapkan waktu & rehat bagi tahun kelas ini dahulu.",
+    };
   }
 
   // Satu pembaca untuk semua format — dikongsi dengan Buku Pengurusan.
@@ -96,8 +115,8 @@ export async function naikFailJadual(data: FormData): Promise<HasilBaca> {
   // GRID DAHULU. Excel, CSV dan jadual DOCX menyimpan baris dan lajur sebenar,
   // jadi kita tahu sel mana di bawah hari yang mana — padanan kedudukan, bukan
   // tekaan urutan. Teks rata hanya digunakan bila tiada struktur (PDF).
-  const dariGrid = dok.grid.length > 0 ? binaDrafDariGrid(dok.grid, sesi) : null;
-  const { draf, dikenal, jumlah } = dariGrid ?? binaDraf(dok.teks, sesi);
+  const dariGrid = dok.grid.length > 0 ? binaDrafDariGrid(dok.grid, senaraiWaktu) : null;
+  const { draf, dikenal, jumlah } = dariGrid ?? binaDraf(dok.teks, senaraiWaktu);
   const bersih = dok.teks;
   const kaedah = dariGrid ? "struktur jadual" : "teks";
   const jumlahGuru = Object.keys(draf.guruSubjek ?? {}).length;
