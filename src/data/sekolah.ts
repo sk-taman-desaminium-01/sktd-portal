@@ -207,7 +207,7 @@ export const SEKOLAH = {
   // kita hanya pautkan, tidak akses ke dalam atau bina semula.
   portal: [
     {
-      id: "urusweb", nama: "Urus Laman Web", ikon: "WEB", warna: "#123561",
+      id: "urusweb", nama: "Urus Laman", ikon: "WEB", warna: "#123561",
       fungsi: "Pos pengumuman & aktiviti, urus Buku Pengurusan dan barisan pentadbir.",
       domain: "sktd.edu.my/admin", pautan: "/admin", status: "bina",
       akses: "Pentadbir, guru kanan & admin",

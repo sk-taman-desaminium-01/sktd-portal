@@ -56,7 +56,7 @@ export default function RalatAdmin({
           href="/portal/admin"
           className="rounded-lg border border-garis px-4 py-2.5 text-sm font-semibold text-navy-700 hover:border-navy-700"
         >
-          Urus Laman Web
+          Urus Laman
         </a>
       </div>
 

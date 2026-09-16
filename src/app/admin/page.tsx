@@ -3,7 +3,7 @@ import { senaraiPos } from "@/lib/cms";
 import { pengguna } from "@/lib/akses";
 import { boleh } from "@/lib/peranan";
 
-export const metadata = { title: "Urus Laman Web" };
+export const metadata = { title: "Urus Laman" };
 
 /**
  * Tapak urus laman — padanan `webAdminSenarai()` dalam mockup.
@@ -55,7 +55,7 @@ export default async function Admin() {
     <main className="mx-auto max-w-4xl px-5 py-10">
       <div className="flex flex-wrap items-baseline justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-navy-800">Urus Laman Web</h1>
+          <h1 className="text-2xl font-bold text-navy-800">Urus Laman</h1>
           <p className="mt-1 text-sm text-slate-500">
             {pos.length} pos · {draf} draf
           </p>

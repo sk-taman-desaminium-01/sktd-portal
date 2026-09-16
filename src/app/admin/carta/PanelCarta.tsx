@@ -101,7 +101,16 @@ export default function PanelCarta({ punca, tahun, namaSekolah, semuaDisahkan }:
       {/* Baris alat: carian di kiri, muat turun di kanan. Butang itu duduk
           DALAM baris ini, bukan terapung di atas carta — itu yang menjadikan
           ia tidak bertindan pada skrin telefon. */}
-      <div className="tiada-cetak mt-6 flex items-center gap-3 rounded-xl border border-garis bg-white p-3">
+      <h2 className="tiada-cetak mt-8 text-base font-bold text-navy-800">
+        Semak dan betulkan
+      </h2>
+      <p className="tiada-cetak mt-1 text-sm leading-relaxed text-slate-500">
+        Nama di puncak carta mengikut <b>Barisan Pentadbir</b>, bukan buku —
+        jadi ia kekal terkini apabila Guru Besar atau Penolong Kanan bertukar.
+        Nama lain datang dari Buku Pengurusan dan boleh dibetulkan di sini.
+      </p>
+
+      <div className="tiada-cetak mt-3 flex items-center gap-3 rounded-xl border border-garis bg-white p-3">
         <input
           value={tapis}
           onChange={(e) => setTapis(e.target.value)}

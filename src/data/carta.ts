@@ -165,6 +165,44 @@ export interface NodCarta {
  * Melayannya sebagai orang mencipta nod hantu dalam carta yang tiada sesiapa
  * boleh dipadankan dengannya.
  */
+/**
+ * Adakah teks ini KELIHATAN seperti nama orang?
+ *
+ * Penapis ini wujud kerana carta organisasi mula memapar ayat Pelan
+ * Strategik sebagai "orang": "Menyusun perancangan LADAP secara sistematik",
+ * "Hanya 10% murid merekodkan AINS", "MATLAMAT STRATEGIK", "2027 2028 2029".
+ * Muka pelan strategik penuh dengan ayat bertitik bertindih, dan penghurai
+ * senarai menerima setiap satu sebagai pasangan JAWATAN : NAMA.
+ *
+ * Empat isyarat, dan setiap satu menolak sesuatu yang benar-benar berlaku:
+ *
+ *   · HURUF BESAR — nama dalam buku ini ditulis besar; ayat pelan strategik
+ *     ditulis biasa. Ini isyarat terkuat.
+ *   · TIADA NOMBOR — "Memastikan 30% murid Tahun 6", "2027 2028 2029".
+ *   · PANJANG MUNASABAH — nama terpanjang dalam buku 2025 ialah 39 aksara.
+ *   · PENANDA NASAB ATAU TIGA PERKATAAN — "MATLAMAT STRATEGIK" ialah dua
+ *     perkataan huruf besar tanpa penanda nasab; nama sebenar hampir selalu
+ *     membawa BIN/BINTI/A-L, dan yang tidak (nama Cina) hampir selalu tiga
+ *     perkataan atau lebih.
+ */
+const RE_NASAB_NAMA = /\b(BIN|BINTI|BT|A\/L|A\/P|AL)\b/i;
+
+export function kelihatanNama(nilai: string): boolean {
+  const t = (nilai ?? "").replace(/\s+/g, " ").trim();
+  if (t.length < 5 || t.length > 60) return false;
+  if (/\d/.test(t)) return false;
+  if (/[.!?]$/.test(t) && !/\b[A-Z]\.$/.test(t)) return false;
+
+  const huruf = t.replace(/[^A-Za-z]/g, "");
+  if (huruf.length < 5) return false;
+  const besar = huruf.replace(/[^A-Z]/g, "").length / huruf.length;
+  if (besar < 0.85) return false;
+
+  const perkataan = t.split(/\s+/).filter((w) => w.length > 1);
+  if (perkataan.length < 2) return false;
+  return RE_NASAB_NAMA.test(t) || perkataan.length >= 3;
+}
+
 export function rujukanKumpulan(nilai: string): boolean {
   const t = nilai.trim().toUpperCase();
   if (/^(SEMUA|SETIAP)\b/.test(t)) return true;

@@ -212,7 +212,7 @@ export default async function Hab() {
               <li>
                 <Link href="/admin"
                   className="block rounded-xl bg-white/5 p-4 ring-1 ring-white/10 hover:ring-emas">
-                  <span className="block font-semibold text-white">Urus Laman Web</span>
+                  <span className="block font-semibold text-white">Urus Laman</span>
                   <span className="mt-1 block text-sm text-white/65">
                     Pengumuman &amp; aktiviti. Terbit terus ke sktd.edu.my.
                   </span>
