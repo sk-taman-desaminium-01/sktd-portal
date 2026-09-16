@@ -21,8 +21,11 @@ import Link from "next/link";
  */
 
 function BelumDiberiAkses({
-  nama, emel, rasmi,
-}: { nama: string; emel: string; rasmi: boolean }) {
+  nama, emel, rasmi, permohonan,
+}: {
+  nama: string; emel: string; rasmi: boolean;
+  permohonan?: import("@/lib/akses").Permohonan;
+}) {
   return (
     <main className="flex min-h-screen flex-col items-center justify-center bg-navy-900 bg-[radial-gradient(120%_70%_at_50%_0%,#17406f,var(--color-navy-900)_60%)] px-5 py-14 text-white">
       <div className="w-full max-w-lg text-center">
@@ -49,17 +52,40 @@ function BelumDiberiAkses({
           )}
         </div>
 
-        <div className="mt-6 rounded-xl bg-white/5 p-5 text-left ring-1 ring-white/10">
-          <p className="text-sm font-semibold text-emas-muda">Apa perlu dibuat</p>
-          <p className="mt-2 text-sm leading-relaxed text-white/75">
-            Hubungi <b>pentadbir sekolah</b> dan minta akaun anda ditambah ke
-            senarai akses portal. Beritahu mereka emel di atas — itu yang
-            mereka perlukan.
-          </p>
-          <p className="mt-3 text-xs leading-relaxed text-white/50">
-            Selepas ditambah, log keluar dan masuk semula.
-          </p>
-        </div>
+        {/* Keadaan catatan permohonan — dipapar supaya kegagalan tidak
+            tersembunyi. Sebelum ini kegagalan hanya pergi ke log pelayan,
+            yang bermakna guru DAN admin sama-sama tidak tahu mengapa nama itu
+            tidak pernah muncul. */}
+        {permohonan?.keadaan === "gagal" ? (
+          <div className="mt-6 rounded-xl bg-[#fbeaea] p-5 text-left">
+            <p className="text-sm font-semibold text-[#8f2424]">
+              Nama anda TIDAK berjaya dihantar
+            </p>
+            <p className="mt-2 text-sm leading-relaxed text-[#8f2424]">
+              Sistem gagal merekodkan permohonan anda, jadi pentadbir tidak
+              akan nampak nama anda. Tunjukkan mesej ini kepada mereka:
+            </p>
+            <p className="mt-3 break-words rounded-lg bg-white/70 px-3 py-2 font-mono text-xs text-[#6b1c1c]">
+              {permohonan.mesej}
+            </p>
+          </div>
+        ) : (
+          <div className="mt-6 rounded-xl bg-white/5 p-5 text-left ring-1 ring-white/10">
+            <p className="text-sm font-semibold text-emas-muda">
+              {permohonan?.keadaan === "direkod"
+                ? "Nama anda sudah dihantar"
+                : "Menunggu kelulusan"}
+            </p>
+            <p className="mt-2 text-sm leading-relaxed text-white/75">
+              Nama dan emel anda kini berada dalam senarai pentadbir sekolah,
+              menunggu kelulusan. Anda tidak perlu menghantarnya lagi.
+            </p>
+            <p className="mt-3 text-xs leading-relaxed text-white/50">
+              Untuk menyegerakan, beritahu pentadbir. Selepas diluluskan, log
+              keluar dan masuk semula.
+            </p>
+          </div>
+        )}
 
         <div className="mt-7 flex flex-wrap justify-center gap-3">
           <SignOutButton>
@@ -89,7 +115,13 @@ export default async function Hab() {
   // Tanpa skrin ini guru nampak hab kosong dan fikir sistem rosak — dan pada
   // hari pertama, 150 guru yang keliru bermakna 150 soalan kepada pentadbir.
   if (!saya?.peranan) {
-    return <BelumDiberiAkses nama={nama} emel={emel} rasmi={saya?.rasmi ?? false} />;
+    return (
+      <BelumDiberiAkses
+        nama={nama} emel={emel}
+        rasmi={saya?.rasmi ?? false}
+        permohonan={saya?.permohonan}
+      />
+    );
   }
 
   return (
