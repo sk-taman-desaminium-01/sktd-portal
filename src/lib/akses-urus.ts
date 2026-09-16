@@ -26,7 +26,28 @@ export async function senaraiAkses(): Promise<BarisAkses[]> {
   return semua.filter((b) => !sembunyiBaris(saya.peranan, b.peranan));
 }
 
-export type Hasil = { ok: boolean; mesej: string };
+/**
+ * Hasil satu tindakan.
+ *
+ * `senarai` dibawa balik bersama supaya pelayar boleh mengemas kini skrin
+ * daripada data itu sendiri, tanpa bergantung kepada render semula pelayan.
+ * Bergantung kepada render semula pernah memberi "Minified React error #441"
+ * kepada admin: kegagalan dalam render itu memantul balik sebagai penolakan
+ * panggilan tindakan, dengan mesej React yang tidak bermakna kepada sesiapa.
+ */
+export type Hasil = { ok: boolean; mesej: string; senarai?: BarisAkses[] };
+
+/** Baca senarai untuk dipulangkan bersama hasil. Tidak melontar. */
+async function senaraiSelepasUbah(): Promise<BarisAkses[] | undefined> {
+  try {
+    return await senaraiAkses();
+  } catch {
+    // Kegagalan di sini tidak boleh membatalkan tindakan yang SUDAH berjaya.
+    // Pelayar akan kekal memapar senarai lamanya, dan mesej kejayaan tetap
+    // memberitahu apa yang berlaku.
+    return undefined;
+  }
+}
 
 export async function tambahAkses(data: FormData): Promise<Hasil> {
   const saya = await pastikanBoleh("urus_akses");
@@ -69,7 +90,7 @@ export async function tambahAkses(data: FormData): Promise<Hasil> {
     return { ok: false, mesej: e instanceof Error ? e.message : "Gagal menambah." };
   }
   revalidatePath("/admin/akses");
-  return { ok: true, mesej: `${nama} ditambah sebagai ${peranan}.` };
+  return { ok: true, mesej: `${nama} ditambah sebagai ${peranan}.`, senarai: await senaraiSelepasUbah() };
 }
 
 export async function tukarPeranan(id: string, peranan: Peranan): Promise<Hasil> {
@@ -91,7 +112,7 @@ export async function tukarPeranan(id: string, peranan: Peranan): Promise<Hasil>
     return { ok: false, mesej: e instanceof Error ? e.message : "Gagal menukar peranan." };
   }
   revalidatePath("/admin/akses");
-  return { ok: true, mesej: "Peranan dikemas kini." };
+  return { ok: true, mesej: "Peranan dikemas kini.", senarai: await senaraiSelepasUbah() };
 }
 
 /**
@@ -129,7 +150,11 @@ export async function tolakAkses(id: string): Promise<Hasil> {
       return { ok: false, mesej: "Rekod itu tidak dijumpai — mungkin ia sudah dibuang. Muat semula halaman." };
     }
     revalidatePath("/admin/akses");
-    return { ok: true, mesej: `Permohonan ${baris[0].nama} ditolak dan dibuang dari senarai.` };
+    return {
+      ok: true,
+      mesej: `Permohonan ${baris[0].nama} ditolak dan dibuang dari senarai.`,
+      senarai: await senaraiSelepasUbah(),
+    };
   } catch (e) {
     return { ok: false, mesej: e instanceof Error ? e.message : "Gagal menolak permohonan." };
   }
@@ -159,6 +184,7 @@ export async function tarikAkses(id: string, dibenarkan: boolean): Promise<Hasil
       mesej: dibenarkan
         ? `${baris[0].nama} kini dibenarkan masuk.`
         : `Akses ${baris[0].nama} ditarik. Rekod dikekalkan untuk audit.`,
+      senarai: await senaraiSelepasUbah(),
     };
   } catch (e) {
     return { ok: false, mesej: e instanceof Error ? e.message : "Gagal mengemas kini akses." };
