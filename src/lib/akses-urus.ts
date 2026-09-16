@@ -89,8 +89,13 @@ export async function tambahAkses(data: FormData): Promise<Hasil> {
   } catch (e) {
     return { ok: false, mesej: e instanceof Error ? e.message : "Gagal menambah." };
   }
+  // Baca DAHULU, revalidatePath KEMUDIAN. Membaca data permintaan (kuki
+  // Clerk, melalui senaraiAkses) SELEPAS menandakan laluan untuk disegarkan
+  // menyebabkan render pelayan gagal, dan kegagalan itu sampai kepada admin
+  // sebagai "Minified React error #441" tanpa sebarang petunjuk.
+  const senarai = await senaraiSelepasUbah();
   revalidatePath("/admin/akses");
-  return { ok: true, mesej: `${nama} ditambah sebagai ${peranan}.`, senarai: await senaraiSelepasUbah() };
+  return { ok: true, mesej: `${nama} ditambah sebagai ${peranan}.`, senarai };
 }
 
 export async function tukarPeranan(id: string, peranan: Peranan): Promise<Hasil> {
@@ -111,8 +116,9 @@ export async function tukarPeranan(id: string, peranan: Peranan): Promise<Hasil>
   } catch (e) {
     return { ok: false, mesej: e instanceof Error ? e.message : "Gagal menukar peranan." };
   }
+  const senarai = await senaraiSelepasUbah();
   revalidatePath("/admin/akses");
-  return { ok: true, mesej: "Peranan dikemas kini.", senarai: await senaraiSelepasUbah() };
+  return { ok: true, mesej: "Peranan dikemas kini.", senarai };
 }
 
 /**
@@ -149,11 +155,12 @@ export async function tolakAkses(id: string): Promise<Hasil> {
     if (!Array.isArray(baris) || baris.length === 0) {
       return { ok: false, mesej: "Rekod itu tidak dijumpai — mungkin ia sudah dibuang. Muat semula halaman." };
     }
+    const senarai = await senaraiSelepasUbah();
     revalidatePath("/admin/akses");
     return {
       ok: true,
       mesej: `Permohonan ${baris[0].nama} ditolak dan dibuang dari senarai.`,
-      senarai: await senaraiSelepasUbah(),
+      senarai,
     };
   } catch (e) {
     return { ok: false, mesej: e instanceof Error ? e.message : "Gagal menolak permohonan." };
@@ -178,13 +185,14 @@ export async function tarikAkses(id: string, dibenarkan: boolean): Promise<Hasil
       return { ok: false, mesej: "Rekod itu tidak dijumpai — mungkin ia sudah dibuang. Muat semula halaman." };
     }
 
+    const senarai = await senaraiSelepasUbah();
     revalidatePath("/admin/akses");
     return {
       ok: true,
       mesej: dibenarkan
         ? `${baris[0].nama} kini dibenarkan masuk.`
         : `Akses ${baris[0].nama} ditarik. Rekod dikekalkan untuk audit.`,
-      senarai: await senaraiSelepasUbah(),
+      senarai,
     };
   } catch (e) {
     return { ok: false, mesej: e instanceof Error ? e.message : "Gagal mengemas kini akses." };
