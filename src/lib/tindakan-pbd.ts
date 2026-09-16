@@ -6,7 +6,7 @@ import { namaSubjek } from "@/data/subjek";
 import {
   kuasaPbd, sesiSemasa, muridKelas, nilaiPendaftaran, simpanNilai,
   simpanUlasan, ulasanKelas, bolehTulisNilai, bolehLihatKelas, labelKelas,
-  tetapGuruSubjek, buangGuruSubjek,
+  tetapGuruSubjek, buangGuruSubjek, naikTahun, tetapSesi, senaraiSesi,
   type Nilai,
 } from "./pbd";
 
@@ -273,6 +273,57 @@ export async function buangTugasanGuruSubjek(id: string): Promise<HasilPbd> {
     await buangGuruSubjek(id);
     revalidatePath("/admin/pbd");
     return { ok: true, mesej: "Tugasan dibuang." };
+  } catch (e) {
+    return { ok: false, mesej: ralat(e) };
+  }
+}
+
+/**
+ * Tutup sesi semasa, buka sesi baharu, dan naikkan semua murid.
+ *
+ * Tiga langkah dalam SATU tindakan kerana ketiga-tiganya mesti berlaku
+ * bersama: sesi lama yang masih terbuka membenarkan keputusannya diubah
+ * selepas slip diedarkan, dan sesi baharu tanpa murid bermakna tiada
+ * sesiapa boleh mengisi apa-apa.
+ */
+export async function naikTahunTindakan(): Promise<HasilPbd> {
+  try {
+    await pastikanBoleh("urus_guru_kelas");
+    const sesi = await sesiSemasa();
+    if (!sesi) return { ok: false, mesej: "Tiada sesi untuk dinaikkan." };
+
+    const keSesi = sesi.tahun_sesi + 1;
+    const sedia = await senaraiSesi();
+    if (sedia.some((s) => s.tahun_sesi === keSesi)) {
+      return { ok: false, mesej: `Sesi ${keSesi} sudah wujud.` };
+    }
+
+    await tetapSesi(sesi.tahun_sesi, "tutup");
+    await tetapSesi(keSesi, "aktif");
+    const { dinaikkan, tamat } = await naikTahun(sesi.tahun_sesi, keSesi);
+
+    revalidatePath("/admin/pbd");
+    revalidatePath("/pbd");
+    return {
+      ok: true,
+      mesej:
+        `Sesi ${sesi.tahun_sesi} ditutup, sesi ${keSesi} dibuka. ` +
+        `${dinaikkan} murid dinaikkan satu tahun; ${tamat} murid Tahun 6 ditandakan tamat. ` +
+        `Keputusan sesi ${sesi.tahun_sesi} TIDAK disentuh — slipnya kekal boleh dicetak.`,
+    };
+  } catch (e) {
+    return { ok: false, mesej: ralat(e) };
+  }
+}
+
+export async function tukarStatusSesi(
+  tahunSesi: number, status: "aktif" | "tutup",
+): Promise<HasilPbd> {
+  try {
+    await pastikanBoleh("urus_guru_kelas");
+    await tetapSesi(tahunSesi, status);
+    revalidatePath("/admin/pbd");
+    return { ok: true, mesej: `Sesi ${tahunSesi} kini ${status}.` };
   } catch (e) {
     return { ok: false, mesej: ralat(e) };
   }

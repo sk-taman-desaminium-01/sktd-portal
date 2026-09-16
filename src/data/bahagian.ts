@@ -178,16 +178,27 @@ export const KAD_TAMBAHAN: KadBaharu[] = [
   },
 
   /* --- Kurikulum --- */
+  // DUA KAD, bukan satu (keputusan pengguna, 17 Sep 2026). Pengasingan ini
+  // mengikut pembahagian kerja sebenar: guru SUBJEK mengisi berkali-kali
+  // sepanjang penggal; guru KELAS mencetak slip sekali dua setahun. Satu kad
+  // yang memapar kedua-duanya memaksa setiap guru mengimbas bahagian yang
+  // bukan kerjanya.
   {
-    id: "pbd", bahagian: "kurikulum",
-    nama: "ePBD", ikon: "PBD", warna: "#1f6f5c",
-    fungsi: "Guru subjek mengisi TP; guru kelas menyemak dan mencetak slip.",
-    domain: "portal.sktd.edu.my/pbd", pautan: "/pbd", status: "bina",
+    id: "pbd-guru", bahagian: "kurikulum",
+    nama: "ePBD-Guru", ikon: "PBD", warna: "#1f6f5c",
+    fungsi: "Guru subjek mengisi Tahap Penguasaan dan gred sumatif murid.",
+    domain: "portal.sktd.edu.my/pbd/guru", pautan: "/pbd/guru", status: "bina",
     // TIADA `perlu`: setiap guru subjek perlu membukanya. Halaman itu
     // sendiri menapis kelas dan subjek mana mereka boleh sentuh.
-    akses: "Guru subjek, guru kelas, pentadbir & admin",
-    catatan: "TP dan gred sumatif sudah hidup, termasuk slip. Penandaan "
-      + "Standard Prestasi kekal di eRPM setiap panitia, bukan di sini.",
+    akses: "Guru subjek, pentadbir & admin",
+    catatan: "Penandaan Standard Prestasi kekal di eRPM setiap panitia.",
+  },
+  {
+    id: "pbd-slip", bahagian: "kurikulum",
+    nama: "ePBD-Slip", ikon: "SLP", warna: "#146b56",
+    fungsi: "Guru kelas menyemak slip kelasnya, menulis ulasan dan mencetak.",
+    domain: "portal.sktd.edu.my/pbd/slip", pautan: "/pbd/slip", status: "bina",
+    akses: "Guru kelas, pentadbir & admin",
   },
   {
     id: "jadual", bahagian: "kurikulum",

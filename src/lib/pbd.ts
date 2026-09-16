@@ -359,3 +359,78 @@ export async function buangGuruSubjek(id: string): Promise<void> {
     headers: { Prefer: "return=minimal" },
   });
 }
+
+
+/* ------------------------------------------------------------ naik tahun */
+
+/**
+ * Buka sesi baharu dan naikkan semua murid satu tahun.
+ *
+ * ⚠️ INI OPERASI PALING BERBAHAYA DALAM SISTEM, dan rekaannya yang
+ * menjadikannya selamat:
+ *
+ *   · KEPUTUSAN LAMA TIDAK DISENTUH. Murid mendapat pendaftaran BAHARU
+ *     untuk sesi baharu; pendaftaran lama dan nilainya kekal, jadi slip
+ *     tahun lepas boleh dicetak selamanya.
+ *   · BOLEH DIULANG. `unique (murid_id, tahun_sesi)` bermakna menekan
+ *     butang dua kali tidak mencipta murid pendua.
+ *   · BOLEH DIUNDUR sebelum nilai diisi — padam pendaftaran sesi baharu.
+ *   · TAHUN 6 TAMAT, tidak dinaikkan ke tahun 7.
+ *
+ * Kelas dibawa sebagai nilai AWAL sahaja; pentadbir menyusun semula selepas
+ * penstriman.
+ */
+export async function naikTahun(
+  dariSesi: number, keSesi: number,
+): Promise<{ dinaikkan: number; tamat: number }> {
+  const db = klienTulis();
+
+  const KEPING = 500;
+  const lama: { murid_id: string; tahun: number; kelas: string; aliran: string }[] = [];
+  for (let mula = 0; ; mula += KEPING) {
+    const keping = (await db.minta(
+      `pbd_pendaftaran?select=murid_id,tahun,kelas,aliran&tahun_sesi=eq.${dariSesi}` +
+        `&status=in.(aktif,pindah_masuk)&offset=${mula}&limit=${KEPING}`,
+    )) as typeof lama;
+    lama.push(...keping);
+    if (keping.length < KEPING) break;
+  }
+
+  const naik = lama.filter((x) => x.tahun < 6);
+  const tamat = lama.filter((x) => x.tahun === 6);
+
+  for (let i = 0; i < naik.length; i += 200) {
+    const muatan = naik.slice(i, i + 200).map((x) => ({
+      murid_id: x.murid_id, tahun_sesi: keSesi,
+      tahun: x.tahun + 1, kelas: x.kelas, aliran: x.aliran, status: "aktif",
+    }));
+    await db.minta("pbd_pendaftaran?on_conflict=murid_id,tahun_sesi", {
+      method: "POST",
+      headers: { Prefer: "resolution=ignore-duplicates,return=minimal" },
+      body: JSON.stringify(muatan),
+    });
+  }
+
+  // Tahun 6 tamat persekolahan. Statusnya ditukar, BUKAN dipadam — slip
+  // mereka mesti kekal boleh dicetak.
+  for (let i = 0; i < tamat.length; i += 100) {
+    const senarai = tamat.slice(i, i + 100).map((x) => x.murid_id).join(",");
+    if (!senarai) continue;
+    await db.minta(`pbd_murid?id=in.(${senarai})`, {
+      method: "PATCH",
+      headers: { Prefer: "return=minimal" },
+      body: JSON.stringify({ status: "tamat" }),
+    });
+  }
+
+  return { dinaikkan: naik.length, tamat: tamat.length };
+}
+
+export async function tetapSesi(tahunSesi: number, status: "aktif" | "tutup"): Promise<void> {
+  const db = klienTulis();
+  await db.minta("pbd_sesi?on_conflict=tahun_sesi", {
+    method: "POST",
+    headers: { Prefer: "resolution=merge-duplicates,return=minimal" },
+    body: JSON.stringify({ tahun_sesi: tahunSesi, status }),
+  });
+}

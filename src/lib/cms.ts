@@ -15,13 +15,22 @@ export interface PosCms {
   slug: string;
   kategori: string | null;
   ringkasan: string | null;
+  /**
+   * Gambar utama pos. Untuk aktiviti ia yang muncul dalam marquee laman awam.
+   *
+   * Lajur ini sudah lama wujud dalam DB dan laman awam sudah memaparkannya,
+   * tetapi CMS tidak pernah mendedahkannya — jadi admin memuat naik melalui
+   * Pustaka Media, menyalin URL, dan menampalnya. Tiga langkah untuk satu
+   * gambar. Sekarang ia dimuat naik terus dari borang pos.
+   */
+  gambar_utama: string | null;
   keutamaan: Keutamaan;
   status: Status;
   tarikh_terbit: string | null;
   updated_at: string;
 }
 
-const LAJUR = "id,jenis,tajuk,slug,kategori,ringkasan,keutamaan,status,tarikh_terbit,updated_at";
+const LAJUR = "id,jenis,tajuk,slug,kategori,ringkasan,gambar_utama,keutamaan,status,tarikh_terbit,updated_at";
 
 /**
  * Setiap tindakan CMS bermula di sini.
@@ -78,6 +87,15 @@ export async function simpanPos(data: FormData): Promise<HasilSimpan> {
     kategori: String(data.get("kategori") ?? "").trim() || null,
     ringkasan: String(data.get("ringkasan") ?? "").trim() || null,
     kandungan: String(data.get("kandungan") ?? "").trim() || null,
+    // MEDAN KOSONG BUKAN PADAM (peraturan keras #2) — kecuali apabila
+    // pengguna benar-benar menekan "Buang gambar", yang menghantar nilai
+    // khas ini. Tanpa pembezaan itu, menyimpan pos tanpa menyentuh gambar
+    // akan memadamkan gambar yang sudah ada.
+    ...(data.has("gambar_utama")
+      ? { gambar_utama: String(data.get("gambar_utama")).trim() === "__buang__"
+            ? null
+            : String(data.get("gambar_utama")).trim() || null }
+      : {}),
     keutamaan: String(data.get("keutamaan") ?? "biasa"),
     status,
     updated_at: new Date().toISOString(),

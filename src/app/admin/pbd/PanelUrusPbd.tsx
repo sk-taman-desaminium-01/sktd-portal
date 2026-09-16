@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { importMurid, type HasilImport } from "@/lib/import-murid";
-import { tugaskanGuruSubjek, buangTugasanGuruSubjek } from "@/lib/tindakan-pbd";
+import { tugaskanGuruSubjek, buangTugasanGuruSubjek, naikTahunTindakan } from "@/lib/tindakan-pbd";
 import { SUBJEK, namaSubjek } from "@/data/subjek";
 
 /**
@@ -24,12 +24,29 @@ export interface Tugasan {
 }
 
 export default function PanelUrusPbd({
-  tugasanAwal, senaraiGuru, senaraiKelas,
+  tugasanAwal, senaraiGuru, senaraiKelas, tahunSesi, jumlahMurid,
 }: {
   tugasanAwal: Tugasan[];
   senaraiGuru: { emel: string; nama: string }[];
   senaraiKelas: { tahun: number; kelas: string }[];
+  tahunSesi: number;
+  jumlahMurid: number;
 }) {
+  /* --------------------------------------------------------------- sesi */
+  const [sahNaik, setSahNaik] = useState(false);
+  const [sibukSesi, setSibukSesi] = useState(false);
+  const [mesejSesi, setMesejSesi] = useState<{ ok: boolean; teks: string } | null>(null);
+
+  async function naikTahun() {
+    setSibukSesi(true);
+    try {
+      const r = await naikTahunTindakan();
+      setMesejSesi({ ok: r.ok, teks: r.mesej });
+      if (r.ok) setSahNaik(false);
+    } finally {
+      setSibukSesi(false);
+    }
+  }
   /* ------------------------------------------------------------ import */
   const [teks, setTeks] = useState("");
   const [hasil, setHasil] = useState<HasilImport | null>(null);
@@ -100,6 +117,60 @@ export default function PanelUrusPbd({
 
   return (
     <>
+      {/* ---------------- Naik tahun ---------------- */}
+      <section className="mt-8 rounded-xl border border-garis bg-white p-5">
+        <h2 className="text-base font-bold text-navy-800">Hujung sesi</h2>
+        <p className="mt-1 text-sm leading-relaxed text-slate-500">
+          Menutup sesi {tahunSesi}, membuka sesi {tahunSesi + 1}, dan menaikkan
+          semua murid satu tahun. Murid Tahun 6 ditandakan tamat.
+        </p>
+        <p className="mt-2 text-sm leading-relaxed text-navy-800">
+          <b>Keputusan sesi {tahunSesi} tidak disentuh.</b> Murid mendapat
+          pendaftaran baharu untuk sesi baharu; yang lama kekal, jadi slip
+          sesi {tahunSesi} boleh dicetak selamanya. Menekan butang ini dua
+          kali tidak mencipta murid pendua.
+        </p>
+
+        {mesejSesi && (
+          <p
+            className={`mt-3 rounded-lg border p-3 text-sm leading-relaxed ${
+              mesejSesi.ok
+                ? "border-[#bfe3ce] bg-[#eef8f2] text-[#15693f]"
+                : "border-[#e9c4c4] bg-[#fdf1f1] text-[#8f2b2b]"
+            }`}
+          >
+            {mesejSesi.teks}
+          </p>
+        )}
+
+        <div className="mt-3">
+          {sahNaik ? (
+            <span className="flex flex-wrap items-center gap-2 text-sm">
+              <span className="text-[#8f2b2b]">
+                Naikkan {jumlahMurid} murid ke sesi {tahunSesi + 1}?
+              </span>
+              <button
+                onClick={() => void naikTahun()}
+                disabled={sibukSesi}
+                className="rounded-lg bg-navy-700 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
+              >
+                {sibukSesi ? "Menjalankan…" : "Ya, naikkan"}
+              </button>
+              <button onClick={() => setSahNaik(false)} className="text-sm text-slate-500 underline">
+                Batal
+              </button>
+            </span>
+          ) : (
+            <button
+              onClick={() => setSahNaik(true)}
+              className="rounded-lg border border-navy-700 px-4 py-2 text-sm font-semibold text-navy-700"
+            >
+              Tutup sesi {tahunSesi} &amp; naik tahun
+            </button>
+          )}
+        </div>
+      </section>
+
       {/* ---------------- Import murid ---------------- */}
       <section className="mt-8">
         <h2 className="text-base font-bold text-navy-800">Import senarai murid</h2>

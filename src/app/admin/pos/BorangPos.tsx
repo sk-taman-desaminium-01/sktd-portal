@@ -2,6 +2,10 @@
 
 import { useState } from "react";
 import { simpanPos, type HasilSimpan } from "@/lib/cms";
+import { naikMedia } from "@/lib/media";
+import {
+  kecilkanGambar, bolehDikecilkan, ceritaKecil, bait, HAD_GAMBAR_BAIT,
+} from "@/lib/kecilkan-gambar";
 
 /**
  * Borang pos. Butang Simpan Draf dan Terbit adalah BERASINGAN dan kelihatan
@@ -11,6 +15,42 @@ import { simpanPos, type HasilSimpan } from "@/lib/cms";
 export default function BorangPos() {
   const [hasil, setHasil] = useState<HasilSimpan | null>(null);
   const [sibuk, setSibuk] = useState(false);
+  const [gambar, setGambar] = useState<string>("");
+  const [naik, setNaik] = useState<string | null>(null);
+
+  /**
+   * Muat naik gambar TERUS dari borang pos.
+   *
+   * Pustaka Media dibuang sebagai skrin berasingan: ia bermakna admin
+   * memuat naik di satu tempat, menyalin URL, dan menampalnya di tempat
+   * lain — tiga langkah untuk satu gambar, dan URL yang tersalah tampal
+   * tidak kelihatan sehingga pos itu terbit.
+   *
+   * Gambar dikecilkan DALAM pelayar dahulu: muat naik sehingga 1 GB
+   * diterima, yang menyeberang rangkaian 200-400 KB.
+   */
+  async function pilihGambar(fail: File) {
+    if (!bolehDikecilkan(fail)) {
+      setNaik("Fail itu bukan gambar.");
+      return;
+    }
+    if (fail.size > HAD_GAMBAR_BAIT) {
+      setNaik(`Gambar ini ${bait(fail.size)} — had 1 GB.`);
+      return;
+    }
+    setNaik("Mengecilkan…");
+    const kecil = await kecilkanGambar(fail);
+    setNaik("Memuat naik…");
+    const fd = new FormData();
+    fd.set("fail", kecil.fail, kecil.fail.name);
+    const r = await naikMedia(fd);
+    if (r.ok && r.url) {
+      setGambar(r.url);
+      setNaik(ceritaKecil(kecil));
+    } else {
+      setNaik(r.mesej);
+    }
+  }
 
   async function hantar(data: FormData, status: "draf" | "terbit") {
     setSibuk(true);
@@ -50,6 +90,51 @@ export default function BorangPos() {
         <span className="text-sm font-semibold text-slate-700">Kategori</span>
         <input name="kategori" className="mt-1 w-full rounded-lg border border-garis px-3 py-2.5 text-sm" />
       </label>
+
+      {/* ---------- Gambar utama ---------- */}
+      <div>
+        <span className="text-sm font-semibold text-slate-700">Gambar</span>
+        <p className="mt-0.5 text-xs leading-relaxed text-slate-500">
+          Aktiviti yang <b>ada gambar</b> muncul dalam jalur bergerak di laman
+          utama. Pengumuman tidak — ia duduk di atas supaya ibu bapa sempat
+          membacanya.
+        </p>
+        <input type="hidden" name="gambar_utama" value={gambar} />
+
+        <div className="mt-2 flex flex-wrap items-center gap-3">
+          {gambar && gambar !== "__buang__" && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={gambar}
+              alt=""
+              className="h-20 w-28 rounded-lg border border-garis object-cover"
+            />
+          )}
+          <label className="cursor-pointer rounded-lg border border-navy-700 px-4 py-2 text-sm font-semibold text-navy-700">
+            {gambar && gambar !== "__buang__" ? "Tukar gambar" : "Pilih gambar"}
+            <input
+              type="file"
+              accept="image/*"
+              className="sr-only"
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                e.target.value = "";
+                if (f) void pilihGambar(f);
+              }}
+            />
+          </label>
+          {gambar && gambar !== "__buang__" && (
+            <button
+              type="button"
+              onClick={() => { setGambar("__buang__"); setNaik(null); }}
+              className="text-xs text-slate-500 underline hover:text-[#8f2424]"
+            >
+              Buang gambar
+            </button>
+          )}
+        </div>
+        {naik && <p className="mt-2 text-xs text-slate-500">{naik}</p>}
+      </div>
 
       <label className="block">
         <span className="text-sm font-semibold text-slate-700">Ringkasan</span>
