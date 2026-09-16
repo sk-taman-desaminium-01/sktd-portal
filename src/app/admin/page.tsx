@@ -27,6 +27,8 @@ export default async function Admin() {
       ringkas: "Nama, jawatan, urutan dan gambar di halaman Tentang." },
     { href: "/admin/media", nama: "Pustaka Media", ikon: "🖼️",
       ringkas: "Muat naik gambar dan PDF, salin URLnya." },
+    { href: "/admin/jadual", nama: "Jadual Waktu", ikon: "🗓️",
+      ringkas: "Jadual setiap kelas. Ibu bapa melihatnya di laman sekolah." },
     { href: "/bina/urusweb", nama: "Buku Pengurusan", ikon: "📕",
       ringkas: "Muat naik PDF tahunan dan sahkan isinya." },
     ...(bolehAkses
