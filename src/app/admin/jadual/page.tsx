@@ -1,13 +1,21 @@
 import Link from "next/link";
 import { ambilJadual } from "@/lib/jadual";
+import { kelasBolehSunting } from "@/lib/guru-kelas";
+import { bolehBuat } from "@/lib/akses";
 import { semuaKelas } from "@/data/kelas";
 import PanelJadual from "./PanelJadual";
 
 export const metadata = { title: "Jadual Waktu" };
 
 export default async function JadualAdmin() {
-  const jadual = await ambilJadual();
-  const kelas = semuaKelas();
+  const [jadual, dibenar, bolehWaktu] = await Promise.all([
+    ambilJadual(),
+    kelasBolehSunting(),
+    bolehBuat("urus_guru_kelas"),
+  ]);
+
+  // `null` = semua kelas (pentadbir & admin). Senarai = guru kelas.
+  const kelas = dibenar === null ? semuaKelas() : dibenar;
   const diisi = kelas.filter((k) => {
     const h = jadual.kelas[k]?.hari;
     return h && Object.values(h).some((w) => w && Object.keys(w).length > 0);
@@ -32,7 +40,15 @@ export default async function JadualAdmin() {
         akan mengubah paparan semua kelas sekaligus.
       </p>
 
-      <PanelJadual awal={jadual} kelas={kelas} />
+      {kelas.length === 0 ? (
+        <p className="mt-6 rounded-xl border border-garis bg-white p-6 text-center text-sm leading-relaxed text-slate-600">
+          Anda belum ditugaskan sebagai guru kelas bagi mana-mana kelas, jadi
+          tiada jadual untuk disunting di sini. Pentadbir sekolah yang
+          menetapkan tugasan itu.
+        </p>
+      ) : (
+        <PanelJadual awal={jadual} kelas={kelas} bolehWaktu={bolehWaktu} />
+      )}
     </main>
   );
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { simpanJadual } from "@/lib/jadual";
+import { simpanJadualKelas, simpanWaktuSesi } from "@/lib/jadual";
 import { PANITIA } from "@/data/panitia";
 import {
   HARI, NAMA_HARI, NAMA_SESI, SESI, jamPapar,
@@ -29,8 +29,14 @@ const PILIHAN: { kod: string; nama: string }[] = [
 const NAMA_SUBJEK = new Map(PILIHAN.map((p) => [p.kod, p.nama]));
 
 export default function PanelJadual({
-  awal, kelas,
-}: { awal: Jadual; kelas: string[] }) {
+  awal, kelas, bolehWaktu,
+}: {
+  awal: Jadual;
+  /** Kelas yang pengguna INI dibenarkan sunting — ditentukan pelayan. */
+  kelas: string[];
+  /** Waktu sesi dikongsi semua kelas, jadi hanya pentadbir ke atas. */
+  bolehWaktu: boolean;
+}) {
   const [jadual, setJadual] = useState<Jadual>(awal);
   const [pilih, setPilih] = useState<string>(kelas[0]);
   const [hasil, setHasil] = useState<{ ok: boolean; mesej: string } | null>(null);
@@ -76,16 +82,21 @@ export default function PanelJadual({
     });
   }
 
-  async function simpan() {
+  async function jalan(f: () => Promise<{ ok: boolean; mesej: string }>) {
     setSibuk(true);
     try {
-      setHasil(await simpanJadual(jadual));
+      setHasil(await f());
     } catch (e) {
       setHasil({ ok: false, mesej: e instanceof Error ? e.message : "Gagal menyimpan." });
     } finally {
       setSibuk(false);
     }
   }
+
+  const simpan = () =>
+    jalan(() =>
+      simpanJadualKelas(pilih, jadual.kelas[pilih] ?? { sesi: "pagi", hari: {} }),
+    );
 
   return (
     <>
@@ -168,7 +179,8 @@ export default function PanelJadual({
         </table>
       </div>
 
-      {/* ---------- Waktu sesi ---------- */}
+      {/* ---------- Waktu sesi — pentadbir ke atas sahaja ---------- */}
+      {bolehWaktu && (
       <section className="mt-5 rounded-xl border border-garis bg-white">
         <button
           type="button"
@@ -224,9 +236,17 @@ export default function PanelJadual({
                 </ul>
               </div>
             ))}
+            <button
+              type="button" disabled={sibuk}
+              onClick={() => jalan(() => simpanWaktuSesi(jadual.waktu))}
+              className="mt-4 rounded-lg border border-navy-800 px-4 py-2.5 text-sm font-semibold text-navy-800 disabled:opacity-60"
+            >
+              Simpan waktu sesi
+            </button>
           </div>
         )}
       </section>
+      )}
 
       {hasil && (
         <p
@@ -244,11 +264,11 @@ export default function PanelJadual({
           type="button" onClick={simpan} disabled={sibuk}
           className="rounded-lg bg-navy-800 px-4 py-2.5 text-sm font-semibold text-white hover:bg-navy-700 disabled:opacity-60"
         >
-          {sibuk ? "Menyimpan…" : "Simpan jadual"}
+          {sibuk ? "Menyimpan…" : `Simpan jadual ${pilih}`}
         </button>
         <span className="text-xs leading-relaxed text-slate-500">
-          Menyimpan menyimpan SEMUA kelas sekaligus dan mencetuskan binaan
-          semula laman ibu bapa.
+          Menyimpan hanya kelas <b>{pilih}</b> — kerja guru kelas lain tidak
+          disentuh. Ia mencetuskan binaan semula laman ibu bapa.
         </span>
       </div>
 

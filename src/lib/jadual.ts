@@ -1,10 +1,11 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { pastikanBoleh } from "./akses";
+import { pastikanBoleh, pengguna } from "./akses";
+import { kelasBolehSunting } from "./guru-kelas";
 import { klienTulis } from "./supabase-pelayan";
 import { binaSemulaLamanAwam } from "./bina-semula";
-import { JADUAL_KOSONG, type Jadual } from "@/data/jadual-jenis";
+import { JADUAL_KOSONG, type Jadual, type KelasJadual, type Sesi, type Waktu } from "@/data/jadual-jenis";
 
 /**
  * Jadual Waktu — baca dan simpan.
@@ -18,8 +19,17 @@ const SLUG = "jadual-waktu";
 
 export type HasilJadual = { ok: boolean; mesej: string };
 
+/**
+ * Baca jadual.
+ *
+ * Sesiapa yang ada peranan boleh MEMBACA — guru kelas perlu melihat jadual
+ * kelasnya untuk menyuntingnya, dan guru lain tidak mendapat apa-apa yang
+ * ibu bapa tidak dapat lihat di laman awam. Kawalan sebenar ada pada
+ * MENYIMPAN.
+ */
 export async function ambilJadual(): Promise<Jadual> {
-  await pastikanBoleh("terbit_kandungan");
+  const saya = await pengguna();
+  if (!saya?.peranan) throw new Error("Tidak dibenarkan.");
   const db = klienTulis();
   const baris = (await db.minta(
     `web_halaman?slug=eq.${SLUG}&select=kandungan`,
@@ -49,19 +59,72 @@ export async function ambilJadual(): Promise<Jadual> {
   }
 }
 
-export async function simpanJadual(jadual: Jadual): Promise<HasilJadual> {
-  await pastikanBoleh("terbit_kandungan");
+/**
+ * Simpan jadual SATU KELAS.
+ *
+ * Guru kelas menyimpan kelasnya sendiri; pentadbir dan admin menyimpan
+ * mana-mana kelas. Kebenaran disemak di PELAYAN pada setiap simpanan —
+ * menapis senarai kelas di skrin bukan kawalan, kerana sesiapa boleh
+ * menghantar nama kelas yang lain.
+ *
+ * Menyimpan SATU kelas pada satu masa, bukan seluruh jadual, kerana:
+ * simpanan seluruh jadual daripada guru kelas akan menulis semula kerja
+ * setiap guru lain dengan salinan yang mereka muat turun sebelum itu —
+ * kerja sehari boleh hilang tanpa sesiapa menekan apa-apa yang salah.
+ */
+export async function simpanJadualKelas(
+  label: string,
+  data: KelasJadual,
+): Promise<HasilJadual> {
+  const dibenar = await kelasBolehSunting();
+  if (dibenar !== null && !dibenar.includes(label)) {
+    return { ok: false, mesej: `Anda bukan guru kelas ${label}.` };
+  }
 
-  if (!jadual?.waktu?.pagi?.length || !jadual?.waktu?.petang?.length) {
-    return { ok: false, mesej: "Setiap sesi mesti ada sekurang-kurangnya satu waktu." };
+  let semasa: Jadual;
+  try {
+    semasa = await ambilJadual();
+  } catch (e) {
+    return { ok: false, mesej: e instanceof Error ? e.message : "Gagal membaca jadual semasa." };
   }
 
   const bersih: Jadual = {
-    waktu: jadual.waktu,
-    kelas: jadual.kelas ?? {},
+    waktu: semasa.waktu,
+    kelas: { ...semasa.kelas, [label]: data },
     dikemaskini: new Date().toISOString(),
   };
+  return tulis(bersih, `Jadual ${label} disimpan.`);
+}
 
+/**
+ * Simpan waktu sesi. Pentadbir ke atas SAHAJA.
+ *
+ * Waktu dikongsi semua kelas dalam sesi itu, jadi satu suntingan mengubah
+ * paparan setiap kelas. Itu keputusan peringkat sekolah, bukan keputusan
+ * seorang guru kelas.
+ */
+export async function simpanWaktuSesi(waktu: Record<Sesi, Waktu[]>): Promise<HasilJadual> {
+  await pastikanBoleh("urus_guru_kelas");
+
+  if (!waktu?.pagi?.length || !waktu?.petang?.length) {
+    return { ok: false, mesej: "Setiap sesi mesti ada sekurang-kurangnya satu waktu." };
+  }
+
+  let semasa: Jadual;
+  try {
+    semasa = await ambilJadual();
+  } catch (e) {
+    return { ok: false, mesej: e instanceof Error ? e.message : "Gagal membaca jadual semasa." };
+  }
+
+  return tulis(
+    { waktu, kelas: semasa.kelas, dikemaskini: new Date().toISOString() },
+    "Waktu sesi disimpan.",
+  );
+}
+
+/** Tulis JSON penuh dan cetuskan binaan semula laman ibu bapa. */
+async function tulis(bersih: Jadual, mesejOk: string): Promise<HasilJadual> {
   try {
     const db = klienTulis();
     await db.minta("web_halaman", {
@@ -86,7 +149,7 @@ export async function simpanJadual(jadual: Jadual): Promise<HasilJadual> {
   return {
     ok: true,
     mesej: bina.ok
-      ? "Jadual disimpan. Laman untuk ibu bapa sedang dibina semula."
-      : `Jadual disimpan, TETAPI binaan semula laman awam gagal: ${bina.sebab}`,
+      ? `${mesejOk} Laman untuk ibu bapa sedang dibina semula.`
+      : `${mesejOk} TETAPI binaan semula laman awam gagal: ${bina.sebab}`,
   };
 }
