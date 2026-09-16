@@ -44,7 +44,12 @@ export default function PanelAkses({ baris, peranan: perananPilihan }: {
   return (
     <>
       <section className="mt-8 rounded-xl border border-garis bg-white p-5">
-        <h2 className="text-base font-bold text-navy-800">Tambah orang</h2>
+        <h2 className="text-base font-bold text-navy-800">Tambah orang secara manual</h2>
+        <p className="mt-1 text-sm leading-relaxed text-slate-600">
+          Biasanya <b>tidak perlu</b>. Sesiapa yang log masuk dengan emel MOE
+          muncul sendiri di bawah, sedia untuk diluluskan. Guna borang ini
+          hanya untuk menyediakan akses sebelum orang itu pernah log masuk.
+        </p>
         <form
           className="mt-4 grid gap-3 sm:grid-cols-[1fr_1fr_auto_auto]"
           action={(d) => jalan(() => tambahAkses(d))}
@@ -117,17 +122,19 @@ export default function PanelAkses({ baris, peranan: perananPilihan }: {
 
       {ditarik.length > 0 && (
         <section className="mt-8">
-          <h2 className="text-base font-bold text-slate-500">
-            Tiada akses · {ditarik.length}
+          <h2 className="text-base font-bold text-navy-800">
+            Menunggu kelulusan · {ditarik.length}
           </h2>
-          <p className="mt-1 text-xs text-slate-500">
-            Rekod dikekalkan untuk audit — bukan dipadam.
+          <p className="mt-1 text-sm leading-relaxed text-slate-600">
+            Orang yang sudah log masuk tetapi belum diberi akses, dan orang
+            yang aksesnya pernah ditarik. Pilih peranan, kemudian tekan
+            Benarkan. Rekod dikekalkan untuk audit — tidak pernah dipadam.
           </p>
           <ul className="mt-3 divide-y divide-garis overflow-hidden rounded-xl border border-garis bg-slate-50">
             {ditarik.map((b) => (
-              <li key={b.id} className="flex flex-wrap items-center gap-3 p-4 opacity-70">
+              <li key={b.id} className="flex flex-wrap items-center gap-3 p-4">
                 <span className="min-w-0 flex-1">
-                  <span className="block font-semibold text-slate-600">{b.nama}</span>
+                  <span className="block font-semibold text-navy-800">{b.nama}</span>
                   <span className="block truncate text-xs text-slate-500">
                     {b.email}
                     {luarDomain(b.email) && (
@@ -137,12 +144,24 @@ export default function PanelAkses({ baris, peranan: perananPilihan }: {
                     )}
                   </span>
                 </span>
+                {/* Peranan boleh ditetapkan SEBELUM membenarkan, jadi
+                    meluluskan seorang guru ialah satu tindakan, bukan dua. */}
+                <select
+                  defaultValue={b.peranan}
+                  disabled={sibuk}
+                  onChange={(e) => jalan(() => tukarPeranan(b.id, e.target.value as Peranan))}
+                  className="rounded-lg border border-garis px-2.5 py-2 text-sm"
+                >
+                  {perananPilihan.map((p) => (
+                    <option key={p} value={p}>{NAMA_PERANAN[p]}</option>
+                  ))}
+                </select>
                 <button
                   disabled={sibuk}
                   onClick={() => jalan(() => tarikAkses(b.id, true))}
-                  className="rounded-lg border border-garis px-3 py-2 text-xs font-semibold text-navy-700 disabled:opacity-50"
+                  className="rounded-lg bg-navy-800 px-3.5 py-2 text-xs font-semibold text-white hover:bg-navy-700 disabled:opacity-50"
                 >
-                  Pulihkan
+                  Benarkan
                 </button>
               </li>
             ))}
