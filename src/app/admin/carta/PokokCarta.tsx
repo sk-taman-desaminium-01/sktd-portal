@@ -39,6 +39,8 @@ interface Kotak {
   bil: number;
   aras: number;
   anak: Kotak[];
+  /** Nod sumber — supaya kotak boleh diklik untuk melihat isinya. */
+  nod: NodCarta;
 }
 
 /** Susun atur pokok: lebar subpokok menentukan kedudukan induk. */
@@ -49,7 +51,7 @@ function susun(nod: NodCarta, aras: number, hadAras: number, mulaX: number): Kot
     return {
       x: mulaX, y: aras * (TINGGI + JURANG_Y),
       label: nod.label, jawatan: nod.jawatan,
-      bil: kiraDaun(nod), aras, anak: [],
+      bil: kiraDaun(nod), aras, anak: [], nod,
     };
   }
 
@@ -69,7 +71,7 @@ function susun(nod: NodCarta, aras: number, hadAras: number, mulaX: number): Kot
     x: (kiri + kanan) / 2,
     y: aras * (TINGGI + JURANG_Y),
     label: nod.label, jawatan: nod.jawatan,
-    bil: kiraDaun(nod), aras, anak,
+    bil: kiraDaun(nod), aras, anak, nod,
   };
 }
 
@@ -115,6 +117,7 @@ export default function PokokCarta({
   namaSekolah: string;
 }) {
   const [hadAras, setHadAras] = useState(2);
+  const [dibuka, setDibuka] = useState<NodCarta | null>(null);
   const svgRef = useRef<SVGSVGElement>(null);
 
   const { kotak, lebar, tinggi } = useMemo(() => {
@@ -261,7 +264,16 @@ export default function PokokCarta({
               const teksWarna = k.aras <= 1 ? "#ffffff" : "#123561";
               const baris = pecah(k.label, 24);
               return (
-                <g key={`${k.label}-${k.x}-${k.y}`} transform={`translate(${k.x}, ${k.y})`}>
+                <g
+                  key={`${k.label}-${k.x}-${k.y}`}
+                  transform={`translate(${k.x}, ${k.y})`}
+                  onClick={() => setDibuka(k.nod)}
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") setDibuka(k.nod); }}
+                  style={{ cursor: "pointer" }}
+                >
+                  <title>{`${k.label} — ${k.bil} orang. Klik untuk lihat senarai.`}</title>
                   <rect
                     width={LEBAR} height={TINGGI} rx="7"
                     fill={warna} stroke={k.aras <= 1 ? warna : "#c7d2e0"} strokeWidth="1.2"
@@ -291,6 +303,65 @@ export default function PokokCarta({
           </g>
         </svg>
       </div>
+
+      {/* Senarai penuh nod yang diklik. Kotak carta sengaja ringkas —
+          nama penuh 447 ahli tidak muat dalam kotak 178px, dan memaksanya
+          masuk menghasilkan carta yang tidak boleh dibaca mahupun dicetak. */}
+      {dibuka && (
+        <div className="mt-3 rounded-xl border border-garis bg-white p-4">
+          <div className="flex flex-wrap items-baseline justify-between gap-2">
+            <h3 className="font-bold text-navy-800">{dibuka.label}</h3>
+            <button
+              type="button"
+              onClick={() => setDibuka(null)}
+              className="text-xs text-slate-400 underline hover:text-navy-700"
+            >
+              Tutup
+            </button>
+          </div>
+          {dibuka.jawatan && (
+            <p className="mt-0.5 text-sm text-slate-500">{dibuka.jawatan}</p>
+          )}
+          <SenaraiNod nod={dibuka} />
+        </div>
+      )}
     </section>
+  );
+}
+
+/** Senarai rata semua orang di bawah satu nod, dikumpul ikut jawatankuasa. */
+function SenaraiNod({ nod }: { nod: NodCarta }) {
+  const kumpulan: { tajuk: string; orang: NodCarta[] }[] = [];
+  const kutip = (n: NodCarta, tajuk: string) => {
+    const orang = n.anak.filter((a) => a.jenis === "orang");
+    if (orang.length > 0) kumpulan.push({ tajuk, orang });
+    for (const a of n.anak.filter((x) => x.jenis === "unit")) kutip(a, a.label);
+  };
+  kutip(nod, nod.label);
+
+  if (kumpulan.length === 0) {
+    return <p className="mt-3 text-sm text-slate-500">Tiada nama di bawah nod ini.</p>;
+  }
+
+  return (
+    <div className="mt-3 space-y-4">
+      {kumpulan.map((k, i) => (
+        <div key={`${k.tajuk}-${i}`}>
+          <p className="text-[11px] font-bold uppercase tracking-wide text-slate-500">
+            {k.tajuk}
+          </p>
+          <ul className="mt-1 grid gap-x-4 gap-y-0.5 sm:grid-cols-2">
+            {k.orang.map((o) => (
+              <li key={o.id} className="text-sm text-navy-800">
+                {o.label}
+                {o.jawatan && (
+                  <span className="ml-1.5 text-xs text-slate-400">{o.jawatan}</span>
+                )}
+              </li>
+            ))}
+          </ul>
+        </div>
+      ))}
+    </div>
   );
 }

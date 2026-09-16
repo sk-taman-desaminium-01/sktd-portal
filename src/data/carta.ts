@@ -187,6 +187,17 @@ export interface NodCarta {
  */
 const RE_NASAB_NAMA = /\b(BIN|BINTI|BT|A\/L|A\/P|AL)\b/i;
 
+/**
+ * Perkataan yang TIDAK PERNAH muncul dalam nama orang di sekolah ini.
+ *
+ * Ia muncul dalam OPSYEN dan nama unit, yang kadang-kadang tersasar ke
+ * lajur nama apabila lajur beranjak: "PENDIDIKAN AWAL KANAK-KANAK" dibaca
+ * sebagai seorang guru. Tiga perkataan huruf besar — cukup untuk melepasi
+ * setiap ujian bentuk, dan hanya perbendaharaan kata yang boleh menolaknya.
+ */
+const KATA_BUKAN_NAMA =
+  /\b(PENDIDIKAN|PENGAJIAN|MATEMATIK|SAINS|SEJARAH|JASMANI|KESIHATAN|MUZIK|VISUAL|TEKNOLOGI|KURIKULUM|KOKURIKULUM|PENTADBIRAN|JAWATANKUASA|UNIT|PANITIA|KELAS|MURID|SEKOLAH|TAHUN|OPSYEN|JAWATAN)\b/i;
+
 export function kelihatanNama(nilai: string): boolean {
   const t = (nilai ?? "").replace(/\s+/g, " ").trim();
   if (t.length < 5 || t.length > 60) return false;
@@ -200,7 +211,12 @@ export function kelihatanNama(nilai: string): boolean {
 
   const perkataan = t.split(/\s+/).filter((w) => w.length > 1);
   if (perkataan.length < 2) return false;
-  return RE_NASAB_NAMA.test(t) || perkataan.length >= 3;
+
+  // Penanda nasab menang ke atas perbendaharaan kata: "NUR SAINS BINTI ALI"
+  // ialah nama yang sah walaupun mengandungi perkataan tersenarai.
+  if (RE_NASAB_NAMA.test(t)) return true;
+  if (KATA_BUKAN_NAMA.test(t)) return false;
+  return perkataan.length >= 3;
 }
 
 export function rujukanKumpulan(nilai: string): boolean {

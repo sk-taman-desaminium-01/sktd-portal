@@ -21,6 +21,7 @@
 
 import { gridDariKedudukan, type ItemKedudukan } from "./grid-kedudukan.ts";
 import { kesanJenis, type KodSeksyen } from "../data/seksyen-pengurusan.ts";
+import { kelihatanNama, rujukanKumpulan } from "../data/carta.ts";
 
 export interface MukaDokumen {
   muka: number;
@@ -164,6 +165,13 @@ export function tajukKumpulan(teks: string): string | null {
   // Huruf besar ATAU bercampur — buku sebenar mengandungi
   // "4. SKPM – Kualiti@Sekolah". Yang ditolak ialah ayat penuh.
   if (nama.split(/\s+/).length > 12) return null;
+  // NAMA ORANG BUKAN TAJUK JAWATANKUASA.
+  //
+  // Buku 2026 mengandungi senarai nama bernombor ("5. ZURAIZA BINTI CHE
+  // RAZAK") yang bentuknya sama persis dengan tajuk sub-jawatankuasa.
+  // Tanpa penapis ini, tiga nama guru menjadi "jawatankuasa" — dan satu
+  // daripadanya menelan 32 baris muka bertugas selepasnya.
+  if (kelihatanNama(nama)) return null;
   return nama;
 }
 
@@ -271,17 +279,36 @@ export function huraiSenarai(baris: string[], kumpulanAwal = ""): BarisSenarai[]
   return keluar;
 }
 
+/**
+ * Adakah nilai ini milik senarai jawatankuasa?
+ *
+ * Seksyen `senarai` bermaksud "PERANAN : NAMA". Nilai yang BUKAN nama dan
+ * bukan rujukan kumpulan tidak tergolong di sini, walaupun barisnya
+ * mengandungi titik bertindih.
+ *
+ * Ini penapis yang paling banyak membersihkan. Muka Pelan Strategik, SWOT,
+ * KPI dan jadual bertugas semuanya penuh baris bertitik bertindih, dan
+ * tanpa penapis ini setiap satunya menjadi "ahli jawatankuasa":
+ * "Menyusun perancangan LADAP secara sistematik", "MATLAMAT STRATEGIK",
+ * "2027 2028 2029". Menapisnya DI SINI bermakna ia tidak pernah masuk
+ * pangkalan data, tidak muncul dalam skrin semakan, dan tidak sampai ke
+ * carta — satu penapis, tiga tempat bersih.
+ */
+function nilaiSah(nilai: string): boolean {
+  return kelihatanNama(nilai) || rujukanKumpulan(nilai);
+}
+
 /** Simpan satu nilai, memecahkan pasangan tertanam bila ada. */
 function tolakNilai(
   keluar: BarisSenarai[], kumpulan: string, peranan: string, nilai: string,
 ): string {
   const pecah = pecahPasanganDalam(nilai);
   if (!pecah) {
-    keluar.push([kumpulan, peranan, nilai]);
+    if (nilaiSah(nilai)) keluar.push([kumpulan, peranan, nilai]);
     return peranan;
   }
   const [pertama, peranan2, kedua] = pecah;
-  keluar.push([kumpulan, peranan, pertama]);
+  if (nilaiSah(pertama)) keluar.push([kumpulan, peranan, pertama]);
   // Nilai kedua boleh mengandungi pasangan KETIGA — muka empat lajur wujud.
   return tolakNilai(keluar, kumpulan, peranan2, kedua);
 }
@@ -311,6 +338,25 @@ export function huraiSenaraiDariSel(sel: string[][], kumpulanAwal = ""): BarisSe
 
     for (let i = 0; i < isi.length; i++) {
       const c = isi[i];
+
+      // TITIK BERTINDIH DALAM SELNYA SENDIRI: ["PENGERUSI", ":", "NAMA"].
+      //
+      // Edisi 2026 menjajarkan titik bertindih pada lajurnya sendiri, jadi
+      // pemecahan sel mengasingkannya daripada kedua-dua belah. Bentuk itu
+      // tidak dikenali langsung sebelum ini, dan seluruh seksyen Ketua
+      // Panitia 2026 menghasilkan SIFAR baris — 152 baris pada 2025 menjadi
+      // 0 pada 2026, tanpa sebarang ralat.
+      if (/^[:：;]$/.test(c)) {
+        const label = i > 0 ? isi[i - 1].replace(/[:：;]\s*$/, "").trim() : "";
+        const nilai = (isi[i + 1] ?? "").trim();
+        if (label && !/^[:：;]/.test(isi[i - 1])) peranan = label;
+        if (peranan && nilai.length >= 2) {
+          peranan = tolakNilai(keluar, kumpulan, peranan, nilai);
+          i++; // nilai sudah digunakan
+        }
+        continue;
+      }
+
       // Sel yang BERMULA dengan titik bertindih ialah nilai bagi sel
       // sebelumnya — itulah bentuk muka dua lajur.
       if (/^[:：;]/.test(c)) {
@@ -596,7 +642,18 @@ export function kesanSeksyen(muka: MukaDokumen[]): SeksyenDikesan[] {
     // sebenarnya senarai bidang tugas. Mempercayai tajuk menghasilkan
     // seksyen kosong dan amaran yang menghantar admin mencari kesilapan
     // yang tidak wujud.
-    const bentuk = kelihatanTugas(s.muka) ? "tugas" : s.jenis.bentuk;
+    // BENTUK DINILAI PER MUKA, bukan sekali untuk seluruh seksyen.
+    //
+    // Satu seksyen boleh mengandungi muka senarai DAN muka bidang tugas —
+    // buku 2026 menyusunnya begitu: senarai jawatankuasa dahulu, kemudian
+    // bidang tugas setiap jawatan. Menilai sekali untuk seluruh seksyen
+    // bermakna satu muka berbulet menukar bentuk SEMUA muka, dan seksyen
+    // Ketua Panitia 2026 hilang sepenuhnya kerana itu: 152 baris pada 2025
+    // menjadi 0 pada 2026.
+    const mukaTugas = s.muka.filter((m) => kelihatanTugas([m]));
+    const mukaSenarai = s.muka.filter((m) => !kelihatanTugas([m]));
+    const bentuk: "jadual" | "senarai" | "tugas" =
+      mukaSenarai.length === 0 ? "tugas" : s.jenis.bentuk;
 
     if (bentuk === "tugas") {
       lajur = ["Peranan", "Bidang Tugas"];
@@ -606,12 +663,17 @@ export function kesanSeksyen(muka: MukaDokumen[]): SeksyenDikesan[] {
       // Kumpulan DITERUSKAN merentas muka: satu jawatankuasa boleh melimpah
       // ke muka berikutnya, dan tajuknya tidak dicetak semula di sana.
       let kumpulan = "";
-      for (const m of s.muka) {
+      for (const m of mukaSenarai) {
         const hasil = m.sel?.length
           ? huraiSenaraiDariSel(m.sel, kumpulan)
           : huraiSenarai(m.baris, kumpulan);
         if (hasil.length) kumpulan = hasil[hasil.length - 1][0];
         baris.push(...hasil);
+      }
+      // Muka bidang tugas dalam seksyen senarai TIDAK dibuang — ia
+      // dilampirkan sebagai barisnya sendiri supaya tiada apa hilang.
+      for (const m of mukaTugas) {
+        for (const t of huraiTugas(m.sel ?? [])) baris.push([t[0], "Bidang Tugas", t[1]]);
       }
     } else {
       const grid = s.muka

@@ -95,68 +95,182 @@ function adaTarikh(sel: string): boolean {
   return /\d{1,2}\s*[-/ ]\s*([A-Za-z]{3,9}|\d{1,2})\s*[-/ ]\s*\d{2,4}/.test(sel ?? "");
 }
 
+/** Nama hari, untuk mengecam lajur hari. */
+function adaHari(sel: string): boolean {
+  const t = (sel ?? "").trim().toUpperCase();
+  return HARI.includes(t);
+}
+
+const KEPALA_TAKWIM =
+  /^(MINGGU|TARIKH|HARI|BIL|PENGURUSAN|PROGRAM|AKTIVITI|CATATAN|UNIT)\b/i;
+
 /**
  * Leraikan baris takwim menjadi acara.
  *
- * `lajur` ialah nama lajur seperti dibaca dari buku. Ia diperlukan untuk
- * memberi nama unit kepada setiap program — tanpa itu, "MESYUARAT KURIKULUM
- * BIL 1" dan "GOTONG-ROYONG PERDANA" kelihatan sama walaupun satu milik
- * Kurikulum dan satu lagi milik HEM.
+ * ⚠️ SATU PROGRAM BOLEH MERENTAS BEBERAPA BARIS GRID, dan tarikhnya berada
+ * pada baris di TENGAH, bukan di atas. Bentuk sebenar edisi 2026:
+ *
+ *   ·  | ·         | ·     | ·  | MEYSUARAT SAINS,          | ·
+ *   ·  | 23-Feb-26 | ISNIN | ·  | TEKNOLOGI, KEJURUTERAAN   | ·
+ *   ·  | ·         | ·     | ·  | & MATEMATIK (STEM) BIL 1  | ·
+ *
+ * Membaca baris demi baris menghasilkan tiga "program" yang setiap satunya
+ * separuh ayat, dua daripadanya tanpa tarikh dan tanpa hari. Itulah yang
+ * dilaporkan pengguna: perkataan berulang, tarikh tiada, hari tiada.
+ *
+ * Maka setiap LAJUR unit dibaca sebagai jujukan LARIAN: sel berisi yang
+ * bersambungan digabung menjadi SATU program, dan tarikhnya diambil dari
+ * baris bertarikh yang paling hampir dengan TENGAH larian itu. Sel yang
+ * dijajarkan di tengah secara menegak — yang menyebabkan masalah ini —
+ * kini menjadi isyarat yang tepat.
  */
 export function leraiTakwim(lajur: string[], baris: string[][]): AcaraTakwim[] {
-  // Cari lajur minggu dan lajur tarikh dari KANDUNGAN, bukan dari tajuk —
-  // tajuk lajur berubah setiap edisi, kandungan tidak.
+  if (baris.length === 0) return [];
+  // SETIAP MUKA DIHURAI BERASINGAN.
+  //
+  // Seksyen takwim menggabungkan 120 muka menjadi satu senarai baris, dan
+  // kedudukan lajur TIDAK sama pada setiap muka — sesetengah muka ada lajur
+  // kosong tambahan di hadapan. Mengesan lajur sekali untuk keseluruhan
+  // seksyen bermakna 120 muka dibaca dengan kedudukan lajur satu muka, dan
+  // hampir semuanya tersasar: 592 acara menjadi 294, dengan Januari tinggal
+  // satu. Baris kepala yang dicetak semula pada setiap muka ialah sempadan
+  // yang boleh dipercayai.
+  const keping = pecahIkutMuka(baris);
+  if (keping.length > 1) {
+    return susunTakwim(buangPendua(keping.flatMap((k) => leraiSatuMuka(lajur, k))));
+  }
+  return susunTakwim(buangPendua(leraiSatuMuka(lajur, baris)));
+}
+
+/** Adakah baris ini kepala jadual yang dicetak semula pada muka baharu? */
+function barisKepalaTakwim(b: string[]): boolean {
+  const berisi = b.filter((c) => (c ?? "").trim() !== "");
+  if (berisi.length < 2) return false;
+  return berisi.filter((c) => KEPALA_TAKWIM.test(c.trim())).length >= 2;
+}
+
+function pecahIkutMuka(baris: string[][]): string[][][] {
+  const keping: string[][][] = [];
+  let semasa: string[][] = [];
+  for (const b of baris) {
+    if (barisKepalaTakwim(b)) {
+      if (semasa.length > 0) keping.push(semasa);
+      semasa = [];
+      continue;
+    }
+    semasa.push(b);
+  }
+  if (semasa.length > 0) keping.push(semasa);
+  return keping;
+}
+
+function leraiSatuMuka(lajur: string[], baris: string[][]): AcaraTakwim[] {
+  if (baris.length === 0) return [];
+  const lebar = Math.max(lajur.length, ...baris.map((b) => b.length));
+
+  // Lajur dikenali dari KANDUNGAN. Tajuk lajur berubah setiap edisi;
+  // tarikh dan nama hari tidak.
   let iTarikh = -1;
-  for (let c = 0; c < (lajur.length || 8); c++) {
-    const berapa = baris.filter((b) => adaTarikh(b[c] ?? "")).length;
-    if (berapa > baris.length * 0.3) { iTarikh = c; break; }
+  let iHari = -1;
+  for (let c = 0; c < lebar; c++) {
+    const bilTarikh = baris.filter((b) => adaTarikh(b[c] ?? "")).length;
+    const bilHari = baris.filter((b) => adaHari(b[c] ?? "")).length;
+    if (iTarikh < 0 && bilTarikh >= 3) iTarikh = c;
+    if (iHari < 0 && bilHari >= 3) iHari = c;
   }
-  if (iTarikh < 0) {
-    // Tiada lajur tarikh: cari tarikh di mana-mana sel setiap baris.
-    iTarikh = 0;
-  }
+  if (iTarikh < 0) return [];
   const iMinggu = iTarikh > 0 ? iTarikh - 1 : -1;
 
-  const keluar: AcaraTakwim[] = [];
+  /** Baris yang membawa tarikh, dengan minggu yang diwarisi menurun. */
+  const barisTarikh: { i: number; tarikh: string | null; tarikhTeks: string; hari: string; minggu: string }[] = [];
   let minggu = "";
-
-  for (const b of baris) {
+  for (let i = 0; i < baris.length; i++) {
     if (iMinggu >= 0) {
-      const m = (b[iMinggu] ?? "").trim();
-      // Minggu diwarisi MENURUN: buku hanya menulisnya pada baris pertama
-      // setiap minggu, dan baris lain dibiarkan kosong.
-      if (m !== "" && !adaTarikh(m)) minggu = m;
+      const m = (baris[i][iMinggu] ?? "").trim();
+      // Tajuk lajur dan tajuk bulan yang tersasar ke lajur minggu bukan
+      // nombor minggu — itu yang memaparkan "TARIKH" dan "PROGRAM DAN
+      // AKTIVITI BULAN MAC" sebagai minggu.
+      if (m !== "" && !adaTarikh(m) && !KEPALA_TAKWIM.test(m) && m.length <= 12) minggu = m;
     }
+    const sel = baris[i][iTarikh] ?? "";
+    if (!adaTarikh(sel)) continue;
+    const { tarikh, tarikhTeks } = pisahTarikhHari(sel);
+    const hari = iHari >= 0 ? (baris[i][iHari] ?? "").trim().toUpperCase() : pisahTarikhHari(sel).hari;
+    barisTarikh.push({ i, tarikh, tarikhTeks, hari: adaHari(hari) ? hari : "", minggu });
+  }
+  if (barisTarikh.length === 0) return [];
 
-    // Sel tarikh: yang ditetapkan, atau mana-mana sel yang membawa tarikh.
-    const selTarikh = adaTarikh(b[iTarikh] ?? "")
-      ? b[iTarikh]
-      : b.find((c) => adaTarikh(c)) ?? "";
-    const { tarikh, tarikhTeks, hari } = pisahTarikhHari(selTarikh);
+  /** Baris bertarikh paling hampir dengan tengah larian. */
+  const hampir = (tengah: number) =>
+    barisTarikh.reduce((a, b) =>
+      Math.abs(b.i - tengah) < Math.abs(a.i - tengah) ? b : a,
+    );
 
-    // Setiap lajur unit yang BERISI menjadi acaranya sendiri. Satu baris
-    // boleh membawa program dalam dua unit pada hari yang sama.
-    for (let c = 0; c < b.length; c++) {
-      if (c === iMinggu) continue;
-      const nilai = (b[c] ?? "").replace(/\s+/g, " ").trim();
-      if (nilai === "" || nilai === tarikhTeks || nilai === selTarikh.trim()) continue;
-      if (adaTarikh(nilai)) continue;
-      if (nilai === minggu) continue;
-      if (HARI.includes(nilai.toUpperCase())) continue;
-      if (nilai.length < 3) continue;
+  const keluar: AcaraTakwim[] = [];
+  for (let c = 0; c < lebar; c++) {
+    if (c === iTarikh || c === iHari || c === iMinggu) continue;
 
+    const adaTarikhBaris = new Set(barisTarikh.map((t) => t.i));
+    let larian: { mula: number; teks: string[]; lintasTarikh: boolean } | null = null;
+    const tutup = () => {
+      if (!larian) return;
+      const program = larian.teks.join(" ").replace(/\s+/g, " ").trim();
+      const tengah = larian.mula + (larian.teks.length - 1) / 2;
+      larian = null;
+      if (program.length < 3 || KEPALA_TAKWIM.test(program)) return;
+      if (adaTarikh(program) || adaHari(program)) return;
+      const t = hampir(tengah);
       keluar.push({
-        minggu,
-        tarikh,
-        tarikhTeks,
-        hari,
-        program: nilai,
-        unit: bersihUnit(lajur[c] ?? ""),
+        minggu: t.minggu, tarikh: t.tarikh, tarikhTeks: t.tarikhTeks,
+        hari: t.hari, program, unit: bersihUnit(lajur[c] ?? ""),
       });
+    };
+
+    for (let i = 0; i < baris.length; i++) {
+      const nilai = (baris[i][c] ?? "").replace(/\s+/g, " ").trim();
+      if (nilai === "") { tutup(); continue; }
+
+      const barisBertarikh = adaTarikhBaris.has(i);
+      // SATU LARIAN MELINTASI SATU TARIKH SAHAJA.
+      //
+      // Ini peraturan yang menampung KEDUA-DUA bentuk buku tanpa mengetahui
+      // edisi mana yang dibaca:
+      //   · 2025 — setiap baris membawa tarikhnya sendiri, jadi setiap baris
+      //     memulakan larian baharu dan satu baris = satu acara.
+      //   · 2026 — teks program membalut merentas baris tanpa tarikh, dan
+      //     hanya baris tengah yang bertarikh; larian itu kekal utuh.
+      if (larian && barisBertarikh && larian.lintasTarikh) tutup();
+
+      if (larian) {
+        larian.teks.push(nilai);
+        if (barisBertarikh) larian.lintasTarikh = true;
+      } else {
+        larian = { mula: i, teks: [nilai], lintasTarikh: barisBertarikh };
+      }
     }
+    tutup();
   }
 
-  return susunTakwim(keluar);
+  return keluar;
+}
+
+/**
+ * Buang acara yang sama pada tarikh yang sama.
+ *
+ * Takwim dibaca dari DUA seksyen (program dan mesyuarat) yang bertindih
+ * dalam buku, jadi acara yang sama boleh masuk dua kali. Ia juga berlaku
+ * apabila satu program dicetak merentas dua lajur unit.
+ */
+function buangPendua(senarai: AcaraTakwim[]): AcaraTakwim[] {
+  const dilihat = new Set<string>();
+  const keluar: AcaraTakwim[] = [];
+  for (const a of senarai) {
+    const kunci = `${a.tarikh ?? a.tarikhTeks}|${a.program.toUpperCase()}`;
+    if (dilihat.has(kunci)) continue;
+    dilihat.add(kunci);
+    keluar.push(a);
+  }
+  return keluar;
 }
 
 /** "PENGURUSAN HAL EHWAL MURID" → "Hal Ehwal Murid". */
