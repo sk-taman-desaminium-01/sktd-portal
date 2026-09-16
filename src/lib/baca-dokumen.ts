@@ -27,6 +27,8 @@ export interface ItemTeks {
   str: string;
   x: number;
   y: number;
+  /** Lebar teks. Diperlukan untuk mengira PUSAT, yang mendedahkan sel bergabung. */
+  w: number;
 }
 
 export interface Dokumen {
@@ -121,9 +123,9 @@ async function bacaPdf(buf: ArrayBuffer): Promise<Dokumen> {
     for (let n = 1; n <= pdf.numPages; n++) {
       const muka = await pdf.getPage(n);
       const isi = await muka.getTextContent();
-      const senarai: ItemTeks[] = (isi.items as { str: string; transform: number[] }[])
+      const senarai: ItemTeks[] = (isi.items as { str: string; transform: number[]; width?: number }[])
         .filter((i) => typeof i.str === "string" && i.str.trim() !== "")
-        .map((i) => ({ str: i.str, x: i.transform[4], y: i.transform[5] }));
+        .map((i) => ({ str: i.str, x: i.transform[4], y: i.transform[5], w: i.width ?? 0 }));
       if (senarai.length > 0) item.push(senarai);
       const g = gridDariKedudukan(senarai);
       if (g.length > 0) grid.push(g);

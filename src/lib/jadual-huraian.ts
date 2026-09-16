@@ -393,7 +393,7 @@ export function binaDrafDariGrid(
 /* ------------------------------------------- draf dari KOORDINAT PDF ----- */
 
 /** Serpihan teks dengan kedudukannya. Sama bentuk dengan `ItemTeks`. */
-export interface Kedudukan { str: string; x: number; y: number }
+export interface Kedudukan { str: string; x: number; y: number; w?: number }
 
 const RE_MASA = /(\d{1,2})[:.](\d{2})\s*[-–]\s*(\d{1,2})[:.](\d{2})/;
 
@@ -444,22 +444,20 @@ export function binaDrafDariKedudukan(
       bawah: i === labelHari.length - 1 ? -Infinity : sempadan[i],
     }));
 
-    // Sempadan lajur waktu: titik tengah antara kedudukan x masa.
-    const sempadanX: number[] = [];
-    for (let i = 0; i < lajurMasa.length - 1; i++) {
-      sempadanX.push((lajurMasa[i].x + lajurMasa[i + 1].x) / 2);
-    }
-    const jalurWaktu = lajurMasa.map((m, i) => ({
-      indeks: i,
-      kiri: i === 0 ? -Infinity : sempadanX[i - 1],
-      kanan: i === lajurMasa.length - 1 ? Infinity : sempadanX[i],
-    }));
+    // PUSAT setiap lajur, dikira dari label masa itu sendiri: label
+    // dipusatkan dalam lajurnya, jadi pusat label = pusat lajur. Mengukurnya
+    // begini bermakna tiada nombor ajaib — ia menyesuaikan diri dengan
+    // sebarang saiz fon atau susun atur.
+    const pusatLajur = lajurMasa.map((m) => m.x + (m.w ?? 0) / 2);
+    const lebarLajur =
+      pusatLajur.length > 1
+        ? (pusatLajur[pusatLajur.length - 1] - pusatLajur[0]) / (pusatLajur.length - 1)
+        : 60;
 
     // Jangan ambil apa-apa dari baris masa ke atas — itu kepala jadual.
     const hadAtas = Math.max(...lajurMasa.map((m) => m.y));
 
     const sel = new Map<string, string[]>();
-    const mulaX = new Map<string, number>();
     for (const it of item) {
       if (it.y >= hadAtas) continue;
       if (RE_MASA.test(it.str)) continue;
@@ -470,39 +468,28 @@ export function binaDrafDariKedudukan(
       if (/^(rehat|rest|break|recess)$/i.test(it.str.trim())) continue;
 
       const h = jalurHari.find((j) => it.y <= j.atas && it.y > j.bawah);
-      const w = jalurWaktu.find((j) => it.x >= j.kiri && it.x < j.kanan);
-      if (!h || !w) continue;
+      if (!h) continue;
 
-      const kunci = `${h.hari}|${w.indeks}`;
-      sel.set(kunci, [...(sel.get(kunci) ?? []), it.str.trim()]);
-      // Simpan x paling kiri dalam sel ini — ia isyarat sel bergabung.
-      mulaX.set(kunci, Math.min(mulaX.get(kunci) ?? Infinity, it.x));
-    }
+      /* SEL BERGABUNG DIKIRA, BUKAN DITEKA.
+         aSc memusatkan teks dalam selnya. Diukur pada fail sebenar sekolah:
+           · sel tunggal  → pusat teks jatuh TEPAT pada pusat lajur
+                            (PMZ 425.0 vs pusat lajur 425)
+           · sel bergabung→ pusat teks jatuh TEPAT pada titik tengah antara
+                            dua pusat lajur (BM 240.75 vs titik tengah 241)
+         Jadi sel dimiliki oleh setiap lajur yang pusatnya berada dalam
+         0.6 lebar lajur dari pusat teks: itu merangkumi kedua-dua lajur bagi
+         sel bergabung (jarak setengah lebar) dan hanya satu bagi sel tunggal
+         (jiran berada satu lebar penuh, di luar julat). */
+      const pusat = it.x + (it.w ?? 0) / 2;
+      const milik: number[] = [];
+      for (let i = 0; i < pusatLajur.length; i++) {
+        if (Math.abs(pusatLajur[i] - pusat) <= lebarLajur * 0.6) milik.push(i);
+      }
+      if (milik.length === 0) continue;
 
-    /* --- SEL BERGABUNG ---
-       Bila satu subjek merentang dua waktu, aSc melukis satu sel lebar dan
-       meletak teksnya di TENGAH gabungan itu. Teks itu jatuh dalam lajur
-       KANAN, jadi lajur kiri kelihatan kosong — pada fail sebenar sekolah
-       itu meninggalkan hampir separuh jadual kosong.
-
-       Isyaratnya tepat dan bukan tekaan: teks sel biasa bermula PADA
-       kedudukan x lajurnya; teks sel bergabung bermula jauh di KIRI itu,
-       kerana ia dipusatkan merentasi dua lajur. Jadi bila slot kiri kosong
-       dan jirannya bermula di kiri lajurnya sendiri, subjek itu disalin —
-       subjek SAHAJA, bukan teksnya, supaya nama guru tidak bercampur. */
-    for (const h of HARI) {
-      for (let i = lajurMasa.length - 1; i > 0; i--) {
-        const kanan = `${h}|${i}`;
-        const kiri = `${h}|${i - 1}`;
-        if (sel.has(kiri) || !sel.has(kanan)) continue;
-        const mula = mulaX.get(kanan);
-        if (mula === undefined) continue;
-        // Ambang: bermula sekurang-kurangnya seperempat lebar lajur di kiri.
-        const lebarLajur = lajurMasa[i].x - lajurMasa[i - 1].x;
-        if (mula < lajurMasa[i].x - lebarLajur * 0.25) {
-          const kod = padanSubjek(sel.get(kanan)!.join(" "));
-          if (kod) sel.set(kiri, [kod]);
-        }
+      for (const idx of milik) {
+        const kunci = `${h.hari}|${idx}`;
+        sel.set(kunci, [...(sel.get(kunci) ?? []), it.str.trim()]);
       }
     }
 
