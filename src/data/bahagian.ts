@@ -26,7 +26,10 @@
  *   · `badan`      — BKGK dan PIBG: badan berasingan, bukan unit sekolah
  */
 
-import { SEKOLAH, type AppPortal } from "./sekolah";
+// Import relatif dengan sambungan .ts supaya fail ini boleh dijalankan terus
+// oleh Node semasa ujian; Next mengendalikannya sama sahaja.
+import { SEKOLAH, type AppPortal } from "./sekolah.ts";
+import { boleh, type Keupayaan, type PerananBerkesan } from "../lib/peranan.ts";
 
 export const KOD_BAHAGIAN = [
   "pentadbiran",
@@ -114,7 +117,12 @@ const BAHAGIAN_APP: Record<string, KodBahagian> = {
  * `bina` = kerja sedang berjalan · `reka` = reka bentuk · `akan` = belum mula.
  */
 /** Perkara yang modul ini akan buat — dipapar di tapak pembinaannya. */
-export type KadBaharu = AppPortal & { bahagian: KodBahagian; rancangan?: string[] };
+export type KadBaharu = AppPortal & {
+  bahagian: KodBahagian;
+  rancangan?: string[];
+  /** Keupayaan yang DIPERLUKAN untuk melihat kad ini langsung. */
+  perlu?: Keupayaan;
+};
 
 export const KAD_TAMBAHAN: KadBaharu[] = [
   /* --- Pengurusan & Pentadbiran --- */
@@ -163,7 +171,9 @@ export const KAD_TAMBAHAN: KadBaharu[] = [
     nama: "Jadual Waktu", ikon: "JDL", warna: "#1b4a80",
     fungsi: "Jadual waktu setiap kelas — ibu bapa melihatnya di laman sekolah.",
     domain: "sktd.edu.my/jadual", pautan: "/admin/jadual", status: "sedia",
-    akses: "Pentadbir & admin", perluPentadbir: true,
+    // TIADA `perlu`: guru kelas menyunting jadual kelasnya sendiri di sini.
+    // Halaman itu sendiri menapis kelas mana mereka boleh sentuh.
+    akses: "Guru kelas, pentadbir & admin",
   },
 
   /* --- Kokurikulum --- */
@@ -201,7 +211,8 @@ export const KAD_TAMBAHAN: KadBaharu[] = [
     fungsi: "Rekod salah laku, tindakan dan pemantauan sahsiah murid.",
     domain: "portal.sktd.edu.my/disiplin", domainCadangan: true, status: "akan",
     catatan: "Buku Pengurusan m.89 — penyelaras disiplin sudah dilantik.",
-    perluPentadbir: true,
+    // Rekod salah laku murid. Bukan untuk semua kakitangan.
+    perlu: "lihat_data_murid",
     rancangan: [
       "Rekod salah laku dengan tarikh, saksi dan tindakan",
       "Akses terhad — bukan semua guru boleh membaca semua rekod",
@@ -233,7 +244,9 @@ export const KAD_TAMBAHAN: KadBaharu[] = [
  * SUDAH ada isi yang berguna — panitia Pendidikan Islam hidup di gpi.edu.my —
  * jadi kad itu membuka halaman panitia dalam portal ini, bukan jalan mati.
  */
-const PINDAAN: Record<string, Partial<AppPortal>> = {
+const PINDAAN: Record<string, Partial<KadPortal>> = {
+  // Urus Laman Web menerbitkan kandungan awam — itu kuasa, bukan kemudahan.
+  urusweb: { perlu: "terbit_kandungan" },
   erpm: {
     pautan: "/erpm",
     fungsi: "Penilaian PBD dalam talian mengikut panitia mata pelajaran.",
@@ -242,7 +255,19 @@ const PINDAAN: Record<string, Partial<AppPortal>> = {
 };
 
 /** Semua kad hab: yang sedia ada + yang tambahan, dengan bahagian masing-masing. */
-export type KadPortal = AppPortal & { bahagian: KodBahagian; rancangan?: string[] };
+export type KadPortal = AppPortal & {
+  bahagian: KodBahagian;
+  rancangan?: string[];
+  /**
+   * Keupayaan yang DIPERLUKAN untuk melihat kad ini.
+   *
+   * Kad tanpa `perlu` dilihat semua kakitangan. Kad dengan `perlu`
+   * DISEMBUNYIKAN sepenuhnya daripada yang tiada keupayaan itu — bukan
+   * dipaparkan berkunci. Guru biasa tidak sepatutnya tahu skrin pentadbiran
+   * itu wujud, apatah lagi melihat namanya.
+   */
+  perlu?: Keupayaan;
+};
 
 export function kadAsal(): KadPortal[] {
   const sedia = (SEKOLAH.portal as AppPortal[]).map((a) => ({
@@ -253,9 +278,22 @@ export function kadAsal(): KadPortal[] {
   return [...sedia, ...KAD_TAMBAHAN];
 }
 
-/** Kad dikumpul ikut bahagian, mengikut urutan `BAHAGIAN`. Bahagian kosong dibuang. */
-export function kadIkutBahagian(): { bahagian: Bahagian; kad: KadPortal[] }[] {
-  const semua = kadAsal();
+/**
+ * Kad dikumpul ikut bahagian, DITAPIS mengikut kuasa pengguna.
+ *
+ * Kad yang pengguna tiada keupayaannya DISEMBUNYIKAN, bukan dipaparkan
+ * berkunci. Keputusan pengguna (16 Sep 2026): "Guru biasa takkanlah dapat
+ * tengok kad admin kan?" — dan mereka betul. Kad berkunci tetap memberitahu
+ * guru biasa skrin apa yang wujud dan siapa boleh membukanya; itu maklumat
+ * yang mereka tidak perlukan.
+ *
+ * Bahagian yang menjadi kosong selepas ditapis turut hilang, supaya tiada
+ * tajuk bahagian yang menggantung tanpa isi.
+ */
+export function kadIkutBahagian(
+  peranan: PerananBerkesan | null,
+): { bahagian: Bahagian; kad: KadPortal[] }[] {
+  const semua = kadAsal().filter((k) => !k.perlu || boleh(peranan, k.perlu));
   return BAHAGIAN
     .map((b) => ({ bahagian: b, kad: semua.filter((k) => k.bahagian === b.kod) }))
     .filter((x) => x.kad.length > 0);

@@ -240,7 +240,7 @@ export default async function Hab() {
           kerja sekolah kepada unit dan setiap guru sudah tahu unit mereka,
           jadi hab mengikut pembahagian yang sama. Rujukan muka surat
           dikekalkan supaya sesiapa boleh menyemak dari mana ia datang. */}
-      {kadIkutBahagian().map(({ bahagian, kad }) => (
+      {kadIkutBahagian(saya.peranan).map(({ bahagian, kad }) => (
         <section key={bahagian.kod} className="mx-auto mt-10 max-w-4xl">
           <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
             <h2 className="text-[11px] font-bold uppercase tracking-widest text-emas">
@@ -256,12 +256,7 @@ export default async function Hab() {
 
           <div className="mt-4 grid gap-4 sm:grid-cols-2">
             {kad.map((app) => (
-              <KadApp
-                key={app.id}
-                app={app}
-                // Paparan sahaja — kawalan sebenar di pelayan pada setiap laluan.
-                terkunci={Boolean(app.perluPentadbir) && !admin}
-              />
+              <KadApp key={app.id} app={app} />
             ))}
           </div>
         </section>
