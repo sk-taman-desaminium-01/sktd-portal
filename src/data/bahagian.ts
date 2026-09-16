@@ -85,7 +85,8 @@ export const BAHAGIAN: Bahagian[] = [
   {
     kod: "badan",
     nama: "Badan & Persatuan",
-    ringkas: "Badan berasingan yang bukan unit sekolah — BKGK dan PIBG.",
+    // Kosong dengan sengaja: nama bahagian sudah cukup memberitahu.
+    ringkas: "",
     muka: null,
   },
 ];
@@ -138,17 +139,17 @@ export const KAD_TAMBAHAN: KadBaharu[] = [
   },
   {
     id: "mesyuarat", bahagian: "pentadbiran",
-    nama: "Mesyuarat & Minit", ikon: "MSY", warna: "#123561",
-    fungsi: "Takwim mesyuarat sepanjang tahun, ditarik terus dari Buku Pengurusan.",
-    domain: "portal.sktd.edu.my/mesyuarat", pautan: "/mesyuarat", status: "bina",
-    catatan: "Takwim sudah hidup dari Buku Pengurusan. Kehadiran, minit dan "
-      + "tindakan susulan belum dibina.",
-    rancangan: [
-      "✓ Takwim mesyuarat sepanjang tahun, ditarik dari Buku Pengurusan",
-      "Jemputan dan pengesahan kehadiran",
-      "Minit curai dimuat naik dan dikongsi kepada ahli",
-      "Senarai tindakan dengan pemilik dan tarikh akhir",
-    ],
+    nama: "Mesyuarat", ikon: "MSY", warna: "#123561",
+    fungsi: "Senarai panggilan mesyuarat sepanjang tahun, ikut takwim sekolah.",
+    domain: "portal.sktd.edu.my/mesyuarat", pautan: "/mesyuarat", status: "sedia",
+    // SKOP DIPENDEKKAN dengan sengaja (keputusan pengguna, 17 Sep 2026):
+    // TIADA muat naik minit curai, dan TIADA nama orang yang bertindak.
+    // Kad ini menjawab satu soalan sahaja — "bila mesyuarat seterusnya?" —
+    // dan menjawabnya terus dari takwim Buku Pengurusan. Minit mesyuarat
+    // mengandungi perbincangan dalaman; menyimpannya dalam portal ialah
+    // keputusan berasingan yang belum dibuat.
+    catatan: "Senarai panggilan mesyuarat sahaja. Minit dan tindakan susulan "
+      + "TIDAK disimpan di sini.",
   },
   {
     id: "tempahan", bahagian: "pentadbiran",

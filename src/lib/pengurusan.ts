@@ -184,6 +184,65 @@ export async function simpanDokumen(
   return { id: dok.id, versi, bilBaris };
 }
 
+/**
+ * Sunting satu baris, sambil MENYIMPAN apa yang PDF asalnya kata.
+ *
+ * `asal` diisi sekali sahaja — pada suntingan PERTAMA. Menulisnya semula pada
+ * setiap suntingan bermakna selepas dua kali sunting, "asal" ialah suntingan
+ * pertama dan bacaan sebenar PDF hilang selamanya.
+ */
+export async function suntingBaris(id: string, sel: string[]): Promise<void> {
+  const db = klienTulis();
+  const sedia = (await db.minta(
+    `pengurusan_baris?select=asal,sel&id=eq.${encodeURIComponent(id)}`,
+  )) as { asal: string[] | null; sel: string[] }[];
+  if (sedia.length === 0) throw new Error("Baris itu tiada.");
+
+  await db.minta(`pengurusan_baris?id=eq.${encodeURIComponent(id)}`, {
+    method: "PATCH",
+    headers: { Prefer: "return=minimal" },
+    body: JSON.stringify({
+      sel,
+      asal: sedia[0].asal ?? sedia[0].sel,
+      sumber: "sunting",
+    }),
+  });
+}
+
+/** Tambah seorang yang tertinggal dari bacaan. */
+export async function tambahBaris(seksyenId: string, sel: string[]): Promise<void> {
+  const db = klienTulis();
+  const akhir = (await db.minta(
+    `pengurusan_baris?select=urutan&seksyen_id=eq.${encodeURIComponent(seksyenId)}&order=urutan.desc&limit=1`,
+  )) as { urutan: number | null }[];
+  await db.minta("pengurusan_baris", {
+    method: "POST",
+    headers: { Prefer: "return=minimal" },
+    body: JSON.stringify({
+      seksyen_id: seksyenId, urutan: (akhir[0]?.urutan ?? -1) + 1,
+      sel, sumber: "tambah",
+    }),
+  });
+  await db.minta(`pengurusan_seksyen?id=eq.${encodeURIComponent(seksyenId)}`, {
+    method: "PATCH",
+    headers: { Prefer: "return=minimal" },
+    body: JSON.stringify({ bil_baris: await kiraBaris(seksyenId) }),
+  });
+}
+
+/** Padam satu baris yang tersalah baca sepenuhnya. */
+export async function padamBaris(id: string): Promise<void> {
+  const db = klienTulis();
+  await db.minta(`pengurusan_baris?id=eq.${encodeURIComponent(id)}`, {
+    method: "DELETE",
+    headers: { Prefer: "return=minimal" },
+  });
+}
+
+async function kiraBaris(seksyenId: string): Promise<number> {
+  return (await barisSeksyen(seksyenId)).length;
+}
+
 export async function tukarSeksyen(
   id: string,
   ubah: Partial<Pick<Seksyen, "kod" | "tajuk" | "paparan" | "status">>,

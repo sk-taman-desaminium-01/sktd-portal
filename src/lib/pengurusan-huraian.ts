@@ -40,6 +40,19 @@ export interface MukaDokumen {
   jadual?: string[][] | null;
   /** Muka ini gambar — hampir tiada teks. Dikira oleh `mukaGambar()`. */
   gambar?: boolean;
+  /**
+   * Baris yang sudah dipecah kepada SEL.
+   *
+   * Lebih baik daripada `baris` untuk senarai jawatankuasa, kerana muka
+   * bergaya carta menyusun DUA pasangan bersebelahan:
+   *
+   *   [BAHASA MELAYU] [: RAFIDAH ...] [SEJARAH] [: MOHAN ...]
+   *
+   * Digabungkan menjadi satu baris teks, pasangan kedua tertelan ke dalam
+   * nilai pasangan pertama dan seorang ketua panitia hilang. Dipecah kepada
+   * sel, kedua-duanya selamat.
+   */
+  sel?: string[][];
 }
 
 export interface SeksyenDikesan {
@@ -47,7 +60,7 @@ export interface SeksyenDikesan {
   tajuk: string;
   mukaMula: number;
   mukaAkhir: number;
-  bentuk: "jadual" | "senarai";
+  bentuk: "jadual" | "senarai" | "tugas";
   lajur: string[];
   baris: string[][];
   /** 0–100. Berapa yakin sistem dengan hasil ini. */
@@ -111,19 +124,74 @@ export function kelihatanTajuk(teks: string): boolean {
 
 /* ------------------------------------------------------- enjin: senarai */
 
-const RE_PERANAN = /^\s*(.*?)\s*[:：]\s*(.+?)\s*$/;
+/**
+ * "PERANAN : NAMA", dengan `;` turut diterima.
+ *
+ * Titik bertindih yang menjadi koma bertitik BUKAN andaian — ia berlaku dalam
+ * buku sebenar: `; SEMUA KETUA PANITIA UNIT KURIKULUM` pada m.55. Kekunci itu
+ * bersebelahan pada papan kekunci. Menolaknya bermakna seluruh baris itu
+ * hilang senyap, dan tiada sesiapa akan perasan seorang ahli jawatankuasa
+ * tiada dalam senarai.
+ */
+const RE_PERANAN = /^\s*(.*?)\s*[:：;]\s*(.+?)\s*$/;
 
 /**
- * Baris "PERANAN : NAMA".
+ * Tajuk SUB-JAWATANKUASA dalam senarai.
+ *
+ * Buku sebenar menyusun setiap unit begini:
+ *
+ *     UNIT PENGURUSAN & PENTADBIRAN     <- tajuk seksyen
+ *     PENGERUSI : SHABARIAH ...         <- pegawai unit
+ *     1. KEWANGAN                       <- SUB-JAWATANKUASA
+ *     SETIAUSAHA : SYAZA ...
+ *     AJK : IRHAMI ...
+ *     : NIK AMMAR ...                   <- sambungan
+ *     2. LADAP                          <- sub-jawatankuasa seterusnya
+ *
+ * Tanpa mengesan baris bernombor itu, 263 baris jawatankuasa menjadi senarai
+ * rata "PENGERUSI / SETIAUSAHA / AJK" yang berulang tanpa sesiapa tahu
+ * jawatankuasa MANA. Itu memusnahkan carta organisasi sebelum ia bermula.
+ */
+export function tajukKumpulan(teks: string): string | null {
+  const t = teks.trim();
+  if (t.length < 3 || t.length > 90) return null;
+  if (RE_PERANAN.test(t)) return null;
+
+  // "1. KEWANGAN", "A. UNIT", "5. BUKU PENGURUSAN & TAKWIM"
+  const m = /^([0-9]{1,2}|[A-Z])[.)]\s+(.{2,})$/.exec(t);
+  if (!m) return null;
+  const nama = m[2].trim();
+  // Huruf besar ATAU bercampur — buku sebenar mengandungi
+  // "4. SKPM – Kualiti@Sekolah". Yang ditolak ialah ayat penuh.
+  if (nama.split(/\s+/).length > 12) return null;
+  return nama;
+}
+
+/** Satu baris senarai: jawatankuasa, jawatan, nama. */
+export type BarisSenarai = [kumpulan: string, peranan: string, nama: string];
+
+/**
+ * Baris "PERANAN : NAMA", dikumpulkan mengikut sub-jawatankuasa.
  *
  * Baris sambungan ": NAMA LAIN" mewarisi peranan baris sebelumnya — itu cara
  * buku sebenar menyenaraikan beberapa orang bagi satu jawatan, dan
  * mengabaikannya bermakna kehilangan setiap ahli kecuali yang pertama.
  */
-export function huraiSenarai(baris: string[]): string[][] {
-  const keluar: string[][] = [];
+export function huraiSenarai(baris: string[], kumpulanAwal = ""): BarisSenarai[] {
+  const keluar: BarisSenarai[] = [];
   let peranan = "";
+  let kumpulan = kumpulanAwal;
+
   for (const b of baris) {
+    const tajuk = tajukKumpulan(b);
+    if (tajuk) {
+      kumpulan = tajuk;
+      // Jawatankuasa baharu bermula: peranan sebelumnya tidak lagi berkuat
+      // kuasa. Tanpa ini, baris sambungan pertama jawatankuasa baharu
+      // mewarisi "AJK" dari jawatankuasa LAIN.
+      peranan = "";
+      continue;
+    }
     const m = RE_PERANAN.exec(b);
     if (!m) continue;
     const label = m[1].trim();
@@ -131,9 +199,131 @@ export function huraiSenarai(baris: string[]): string[][] {
     if (!nilai || nilai.length < 2) continue;
     if (label) peranan = label;
     if (!peranan) continue;
-    keluar.push([peranan, nilai]);
+    keluar.push([kumpulan, peranan, nilai]);
   }
   return keluar;
+}
+
+/**
+ * Senarai "PERANAN : NAMA" dari SEL, bukan dari baris yang sudah dicantum.
+ *
+ * Satu baris muka boleh membawa lebih daripada satu pasangan apabila halaman
+ * disusun dua lajur. Diukur pada m.77 edisi 2025 — satu baris membawa
+ * KETUA PANITIA Bahasa Melayu DAN Sejarah. Membaca baris yang dicantum
+ * menyebabkan 13 ketua panitia menjadi 7, dan 6 orang hilang senyap.
+ */
+export function huraiSenaraiDariSel(sel: string[][], kumpulanAwal = ""): BarisSenarai[] {
+  const keluar: BarisSenarai[] = [];
+  let peranan = "";
+  let kumpulan = kumpulanAwal;
+
+  for (const baris of sel) {
+    const isi = baris.map((c) => c.trim()).filter((c) => c !== "");
+    if (isi.length === 0) continue;
+
+    // Baris satu sel: mungkin tajuk kumpulan, mungkin pasangan penuh.
+    if (isi.length === 1) {
+      const tajuk = tajukKumpulan(isi[0]);
+      if (tajuk) { kumpulan = tajuk; peranan = ""; continue; }
+    }
+
+    for (let i = 0; i < isi.length; i++) {
+      const c = isi[i];
+      // Sel yang BERMULA dengan titik bertindih ialah nilai bagi sel
+      // sebelumnya — itulah bentuk muka dua lajur.
+      if (/^[:：;]/.test(c)) {
+        const nilai = c.replace(/^[:：;]\s*/, "").trim();
+        if (nilai.length < 2) continue;
+        const label = i > 0 ? isi[i - 1].replace(/[:：;]\s*$/, "").trim() : "";
+        if (label && !/^[:：;]/.test(isi[i - 1])) peranan = label;
+        if (peranan) keluar.push([kumpulan, peranan, nilai]);
+        continue;
+      }
+      // "PERANAN : NAMA" dalam satu sel.
+      const m = RE_PERANAN.exec(c);
+      if (m && m[1].trim() && m[2].trim().length >= 2) {
+        peranan = m[1].trim();
+        keluar.push([kumpulan, peranan, m[2].trim()]);
+      }
+    }
+  }
+  return keluar;
+}
+
+/* --------------------------------------------------------- enjin: tugas */
+
+/**
+ * Muka BIDANG TUGAS: senarai berbulet di bawah tajuk peranan.
+ *
+ * Bentuk sebenar (m.115-116 edisi 2025) selepas dipecah kepada sel:
+ *
+ *     [GURU PENASIHAT KO AKADEMIK/ JURULATIH PASUKAN KHAS SEKOLAH]
+ *     []  [Membentuk jawatankuasa dalam pasukan.]
+ *     []  [Berusaha mendapatkan khidmat nasihat dari mereka yang pakar.]
+ *     [KETUA RUMAH SUKAN]
+ *     []  [Memastikan adanya senarai nama ahli Rumah Sukan yang lengkap.]
+ *
+ * Sel pertama KOSONG kerana bulet dalam buku ialah glif Wingdings yang tidak
+ * memetakan kepada sebarang aksara. Kekosongan itu sendiri ialah petunjuk:
+ * ia menandakan baris bulet dengan pasti, lebih pasti daripada mencari
+ * simbol yang berbeza pada setiap fail.
+ *
+ * Baris sambungan (ayat yang melimpah ke baris berikutnya) TIDAK mempunyai
+ * sel kosong di hadapannya, jadi ia dicantum ke tugas sebelumnya — kalau
+ * tidak, setiap ayat panjang pecah menjadi dua tugas yang separuh.
+ */
+export function huraiTugas(sel: string[][]): string[][] {
+  const keluar: string[][] = [];
+  let peranan = "";
+
+  for (const baris of sel) {
+    // Bulet ialah "•" selepas `kemas()` menormalkan glif Wingdings U+F0A7.
+    const kosongDiHadapan = baris.length > 1 && /^[\u2022\u25cf\u25aa*-]$/.test(baris[0].trim());
+    const isi = baris.map((c) => c.trim()).filter((c) => c !== "");
+    if (isi.length === 0) continue;
+    const teks = isi.join(" ").replace(/\s+/g, " ").trim();
+    if (teks === "" || /^\d+$/.test(teks)) continue;
+
+    if (kosongDiHadapan) {
+      // Bulet dibuang dari teks: lajur sudah bernama "Bidang Tugas", dan
+      // mengulang penanda senarai dalam setiap sel hanya menambah bising.
+      keluar.push([peranan, teks.replace(/^[\u2022\u25cf\u25aa*-]\s*/, "")]);
+      continue;
+    }
+    // Tiada bulet. Tajuk peranan, atau sambungan ayat sebelumnya?
+    // Tajuk ditulis huruf besar; sambungan ialah prosa biasa.
+    if (kelihatanTajuk(teks)) { peranan = teks; continue; }
+    const akhir = keluar[keluar.length - 1];
+    if (akhir) akhir[1] = `${akhir[1]} ${teks}`.replace(/\s+/g, " ");
+  }
+  return keluar.filter((b) => b[1].length > 3);
+}
+
+/**
+ * Adakah muka-muka ini BIDANG TUGAS dan bukan senarai nama?
+ *
+ * Diputuskan daripada bentuk, bukan daripada tajuk: tajuk "GURU PENASIHAT
+ * KO AKADEMIK" kelihatan persis seperti tajuk senarai nama, dan hanya
+ * kandungannya mendedahkan ia senarai tugasan.
+ */
+export function kelihatanTugas(muka: MukaDokumen[]): boolean {
+  let bulet = 0;
+  let pasangan = 0;
+  let jumlah = 0;
+  for (const m of muka) {
+    for (const baris of m.sel ?? []) {
+      const isi = baris.filter((c) => c.trim() !== "");
+      if (isi.length === 0) continue;
+      jumlah++;
+      if (baris.length > 1 && /^[\u2022\u25cf\u25aa*-]$/.test(baris[0].trim())) bulet++;
+      if (isi.some((c) => RE_PERANAN.test(c))) pasangan++;
+    }
+  }
+  if (jumlah < 6) return false;
+  // Lebih banyak baris berbulet daripada pasangan "PERANAN : NAMA", dan
+  // bulet itu majoriti muka. Dua syarat, bukan satu: muka senarai nama pun
+  // kadang mempunyai beberapa baris berbulet.
+  return bulet > pasangan && bulet >= jumlah * 0.4;
 }
 
 /* -------------------------------------------------------- enjin: jadual */
@@ -306,9 +496,28 @@ export function kesanSeksyen(muka: MukaDokumen[]): SeksyenDikesan[] {
     let lajur: string[] = [];
     let baris: string[][] = [];
 
-    if (s.jenis.bentuk === "senarai") {
-      lajur = ["Jawatan", "Nama"];
-      baris = s.muka.flatMap((m) => huraiSenarai(m.baris));
+    // BENTUK DINILAI SEMULA dari kandungan, bukan dipercayai dari tajuk.
+    // Tajuk "GURU PENASIHAT KO AKADEMIK" menjanjikan senarai nama; mukanya
+    // sebenarnya senarai bidang tugas. Mempercayai tajuk menghasilkan
+    // seksyen kosong dan amaran yang menghantar admin mencari kesilapan
+    // yang tidak wujud.
+    const bentuk = kelihatanTugas(s.muka) ? "tugas" : s.jenis.bentuk;
+
+    if (bentuk === "tugas") {
+      lajur = ["Peranan", "Bidang Tugas"];
+      for (const m of s.muka) baris.push(...huraiTugas(m.sel ?? []));
+    } else if (bentuk === "senarai") {
+      lajur = ["Jawatankuasa", "Jawatan", "Nama"];
+      // Kumpulan DITERUSKAN merentas muka: satu jawatankuasa boleh melimpah
+      // ke muka berikutnya, dan tajuknya tidak dicetak semula di sana.
+      let kumpulan = "";
+      for (const m of s.muka) {
+        const hasil = m.sel?.length
+          ? huraiSenaraiDariSel(m.sel, kumpulan)
+          : huraiSenarai(m.baris, kumpulan);
+        if (hasil.length) kumpulan = hasil[hasil.length - 1][0];
+        baris.push(...hasil);
+      }
     } else {
       const grid = s.muka
         .map((m) => (m.jadual?.length ? m.jadual : m.item?.length ? gridDariKedudukan(m.item) : null))
@@ -340,6 +549,13 @@ export function kesanSeksyen(muka: MukaDokumen[]): SeksyenDikesan[] {
       }
     }
 
+    if (bentuk === "tugas" && bentuk !== s.jenis.bentuk) {
+      amaran.push(
+        "Seksyen ini menyenaraikan BIDANG TUGAS, bukan nama orang — " +
+        "tiada nama untuk dibaca di sini, dan itu bukan kesilapan bacaan.",
+      );
+    }
+
     const bilGambar = s.muka.filter((m) => m.gambar).length;
     if (bilGambar > 0) {
       amaran.push(
@@ -350,7 +566,11 @@ export function kesanSeksyen(muka: MukaDokumen[]): SeksyenDikesan[] {
     // Keyakinan dikira ke atas muka BERTEKS sahaja. Membahagi dengan muka
     // gambar menghukum seksyen yang sebenarnya dibaca sempurna.
     const mukaTeks = Math.max(1, s.muka.length - bilGambar);
-    const keyakinan = Math.max(0, Math.min(100, Math.round((baris.length / mukaTeks) * 12)));
+    // Muka bidang tugas menghasilkan lebih sedikit baris setiap muka
+    // daripada senarai nama, jadi pembahagi yang sama menghukumnya tanpa
+    // sebab dan menandakannya "keyakinan rendah" sedangkan ia dibaca penuh.
+    const faktor = bentuk === "tugas" ? 8 : 12;
+    const keyakinan = Math.max(0, Math.min(100, Math.round((baris.length / mukaTeks) * faktor)));
     if (keyakinan < 30) {
       amaran.push("Sedikit sahaja data dikesan berbanding saiz seksyen — semak rapi.");
     }
@@ -360,7 +580,7 @@ export function kesanSeksyen(muka: MukaDokumen[]): SeksyenDikesan[] {
       tajuk: s.tajuk,
       mukaMula: s.muka[0]?.muka ?? 0,
       mukaAkhir: s.muka[s.muka.length - 1]?.muka ?? 0,
-      bentuk: s.jenis.bentuk,
+      bentuk,
       lajur,
       baris,
       keyakinan,

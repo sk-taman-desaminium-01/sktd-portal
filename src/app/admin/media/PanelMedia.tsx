@@ -3,6 +3,9 @@
 import { useState } from "react";
 import { naikMedia, buangMedia, type Media } from "@/lib/media";
 import { semakSaiz } from "@/data/had-fail";
+import {
+  kecilkanGambar, bolehDikecilkan, ceritaKecil, bait, HAD_GAMBAR_BAIT,
+} from "@/lib/kecilkan-gambar";
 
 function saizPapar(b: number | null) {
   if (!b) return "—";
@@ -16,26 +19,48 @@ export default function PanelMedia({ awal }: { awal: Media[] }) {
   const [hasil, setHasil] = useState<{ ok: boolean; mesej: string } | null>(null);
   const [sibuk, setSibuk] = useState(false);
   const [disalin, setDisalin] = useState<string | null>(null);
+  const [nota, setNota] = useState<string | null>(null);
 
   async function naik(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const borang = e.currentTarget;
     const fd = new FormData(borang);
 
-    // Sama seperti muat naik jadual: gagal di sini, dengan saiz disebut.
+    // GAMBAR DIKECILKAN DALAM PELAYAR DAHULU.
+    //
+    // Had 10 MB dikenakan pada apa yang DIHANTAR, bukan pada apa yang
+    // dipilih. Telefon menghasilkan gambar 8–15 MB dan kamera sekolah lebih
+    // besar lagi; menolaknya bermakna guru perlu mengecilkannya sendiri
+    // dengan alat luar sebelum boleh memuat naik. Sebaliknya pelayar
+    // mengecilkannya di sini, dan yang menyeberang rangkaian ialah
+    // kira-kira 200–400 KB.
     const fail = fd.get("fail");
-    if (fail instanceof File) {
-      const ralat = semakSaiz(fail);
-      if (ralat) {
-        setHasil({ ok: false, mesej: ralat });
-        return;
+    if (fail instanceof File && fail.size > 0) {
+      if (bolehDikecilkan(fail)) {
+        if (fail.size > HAD_GAMBAR_BAIT) {
+          setHasil({ ok: false, mesej: `Gambar ini ${bait(fail.size)} — had 1 GB.` });
+          return;
+        }
+        setSibuk(true);
+        setHasil({ ok: true, mesej: "Mengecilkan gambar…" });
+        const kecil = await kecilkanGambar(fail);
+        setSibuk(false);
+        if (kecil.kekalAsal) {
+          const ralat = semakSaiz(kecil.fail);
+          if (ralat) { setHasil({ ok: false, mesej: ralat }); return; }
+        }
+        fd.set("fail", kecil.fail, kecil.fail.name);
+        setNota(ceritaKecil(kecil));
+      } else {
+        const ralat = semakSaiz(fail);
+        if (ralat) { setHasil({ ok: false, mesej: ralat }); return; }
       }
     }
 
     setSibuk(true);
     const r = await naikMedia(fd);
     setSibuk(false);
-    setHasil(r);
+    setHasil(r.ok && nota ? { ok: true, mesej: `${r.mesej} ${nota}` } : r);
     if (r.ok) {
       borang.reset();
       // Muat semula senarai dari pelayan supaya id dan cap masa betul.

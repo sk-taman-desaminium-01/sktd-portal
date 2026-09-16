@@ -9,8 +9,13 @@ export const metadata = { title: "Mesyuarat" };
  *
  * Kad Mesyuarat dahulu ialah tapak pembinaan kosong. Ia kosong bukan kerana
  * datanya tiada: takwim mesyuarat setahun penuh SUDAH ada dalam Buku
- * Pengurusan, cuma tiada apa yang membacanya. Sekarang ada, jadi kad itu
- * memberi sesuatu yang berguna pada hari pertama, bukan janji.
+ * Pengurusan, cuma tiada apa yang membacanya.
+ *
+ * SKOPNYA SENGAJA PENDEK (keputusan pengguna, 17 Sep 2026): senarai panggilan
+ * mesyuarat sahaja. TIADA minit curai, TIADA nama orang yang bertindak.
+ * Minit mengandungi perbincangan dalaman, dan menyimpannya dalam portal
+ * ialah keputusan berasingan yang belum dibuat — jadi kad ini menjawab satu
+ * soalan yang jelas dan berhenti di situ.
  *
  * Hanya seksyen yang admin SAHKAN dipapar. Seksyen draf duduk dalam pangkalan
  * data tanpa memberi kesan — jadi buku yang tersalah baca tidak pernah sampai
@@ -73,9 +78,9 @@ export default async function Mesyuarat() {
       )}
 
       <p className="mt-6 text-xs leading-relaxed text-slate-500">
-        Kehadiran, minit curai dan senarai tindakan belum dibina. Yang hidup
-        setakat ini ialah takwim — dibaca terus dari Buku Pengurusan, jadi ia
-        berubah sendiri apabila edisi baharu disahkan.
+        Halaman ini menyenaraikan <b>panggilan mesyuarat</b> sahaja, terus dari
+        takwim Buku Pengurusan — jadi ia berubah sendiri apabila edisi baharu
+        disahkan. Minit curai dan senarai tindakan tidak disimpan di sini.
       </p>
     </main>
   );

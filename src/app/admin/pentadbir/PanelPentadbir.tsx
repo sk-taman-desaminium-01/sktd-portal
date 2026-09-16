@@ -4,7 +4,7 @@ import { useState } from "react";
 import Image from "next/image";
 import { simpanPentadbir, naikGambarPentadbir } from "@/lib/pentadbir";
 import PemotongWajah from "./PemotongWajah";
-import { semakSaiz } from "@/data/had-fail";
+import { bait, HAD_GAMBAR_BAIT } from "@/lib/kecilkan-gambar";
 import type { Pentadbir } from "@/data/sekolah";
 
 /** Huruf awal nama — dipapar bila tiada gambar. Sama logik dengan mockup. */
@@ -117,8 +117,15 @@ export default function PanelPentadbir({ awal }: { awal: Pentadbir[] }) {
                     const f = e.target.files?.[0];
                     e.target.value = "";
                     if (!f) return;
-                    const ralat = semakSaiz(f);
-                    if (ralat) { setHasil({ ok: false, mesej: ralat }); return; }
+                    // Had di sini ialah 1 GB, bukan had muat naik.
+                    // TIADA apa dihantar ke pelayan sebelum dipotong, dan
+                    // pemotong mengeluarkan 400x400 — beberapa puluh kilobait.
+                    // Menolak gambar 12 MB dari telefon di sini bermakna guru
+                    // perlu mengecilkannya sendiri dengan alat luar dahulu.
+                    if (f.size > HAD_GAMBAR_BAIT) {
+                      setHasil({ ok: false, mesej: `Gambar ini ${bait(f.size)} — had 1 GB.` });
+                      return;
+                    }
                     // Buka pemotong dahulu — tiada apa dimuat naik sehingga
                     // pengguna melihat dan menerima potongannya.
                     setPotong({ i, fail: f });

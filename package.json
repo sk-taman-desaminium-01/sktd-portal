@@ -9,7 +9,8 @@
     "lint": "eslint",
     "uji:jadual": "node --experimental-strip-types --no-warnings scripts/uji-huraian.mts",
     "uji:pengurusan": "node --experimental-strip-types --no-warnings scripts/uji-pengurusan.mts",
-    "uji:muka": "node --experimental-strip-types --no-warnings scripts/uji-muka.mts"
+    "uji:muka": "node --experimental-strip-types --no-warnings scripts/uji-muka.mts",
+    "uji:nama": "node --experimental-strip-types --no-warnings scripts/uji-nama.mts"
   },
   "dependencies": {
     "@clerk/localizations": "^4.17.0",
