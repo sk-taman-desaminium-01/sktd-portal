@@ -55,6 +55,24 @@ export interface HasilBaca {
 /* ---------------------------------------------------------------- tindakan */
 
 export async function naikFailJadual(data: FormData): Promise<HasilBaca> {
+  // SELURUH tindakan dibalut. Sebarang lontaran yang terlepas dari sini
+  // TIDAK sampai kepada pengguna sebagai ralat yang boleh dibaca — Next
+  // menggantikannya dengan "An unexpected response was received from the
+  // server", yang tidak menyebut apa yang gagal mahupun di mana. Itu berlaku,
+  // dan ia menyembunyikan puncanya selama beberapa pusingan.
+  try {
+    return await jalankan(data);
+  } catch (e) {
+    return {
+      ok: false,
+      mesej:
+        "Sistem gagal membaca fail itu. Tunjukkan mesej ini kepada admin: " +
+        (e instanceof Error ? `${e.name}: ${e.message}` : String(e)),
+    };
+  }
+}
+
+async function jalankan(data: FormData): Promise<HasilBaca> {
   const saya = await pengguna();
   if (!saya?.peranan) return { ok: false, mesej: "Tidak dibenarkan." };
 
