@@ -5,6 +5,7 @@ import { simpanJadualKelas, simpanSetWaktu } from "@/lib/jadual";
 import { naikFailJadual, type HasilBaca } from "@/lib/baca-jadual";
 import { PANITIA } from "@/data/panitia";
 import { semakSaiz } from "@/data/had-fail";
+import { failKeMuatan } from "@/data/fail-base64";
 import {
   HARI, NAMA_HARI, NAMA_SESI, SESI, jamPapar, setUntukKelas, tahunKelas,
   type Hari, type Jadual, type Sesi, type SetWaktu, type Waktu,
@@ -129,24 +130,27 @@ export default function PanelJadual({
 
   async function muatNaikFail(borang: HTMLFormElement) {
     const fd = new FormData(borang);
+    const fail = fd.get("fail");
+    if (!(fail instanceof File) || fail.size === 0) {
+      setBaca({ ok: false, mesej: "Tiada fail dipilih." });
+      return;
+    }
 
     // Semak saiz DI SINI, sebelum apa-apa dihantar. Kalau kita biarkan fail
     // besar pergi, ia ditolak oleh lapisan pengangkutan yang tidak tahu
     // apa-apa tentang fail itu, dan mesejnya tidak menyebut saiz langsung.
-    const fail = fd.get("fail");
-    if (fail instanceof File) {
-      const ralat = semakSaiz(fail);
-      if (ralat) {
-        setBaca({ ok: false, mesej: ralat });
-        return;
-      }
+    const ralat = semakSaiz(fail);
+    if (ralat) {
+      setBaca({ ok: false, mesej: ralat });
+      return;
     }
 
-    fd.set("kelas", pilih);
     setNaik(true);
     setBaca(null);
     try {
-      setBaca(await naikFailJadual(fd));
+      // Dihantar sebagai base64, BUKAN muat naik multipart — WAF Cloudflare
+      // menyekat muat naik PDF ke domain ini. Lihat src/data/fail-base64.ts.
+      setBaca(await naikFailJadual(pilih, await failKeMuatan(fail)));
     } catch (e) {
       setBaca({ ok: false, mesej: e instanceof Error ? e.message : "Muat naik gagal." });
     } finally {
