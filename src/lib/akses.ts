@@ -17,20 +17,24 @@ import { boleh, type Keupayaan, type Peranan, type PerananBerkesan } from "./per
  *  `unsupported_subscription_plan_features`), jadi sekatan ini kita buat
  *  sendiri — corak sama seperti `requireAllowedUser()` dalam repo erpm. */
 /**
- * Domain emel KPM yang dikira rasmi.
+ * Adakah ini emel MOE?
  *
- * `@moe.gov.my` ada dalam senarai ini kerana ia MEMANG emel MOE — kakitangan
- * KPM menggunakannya. Meninggalkannya bermakna orang sebenar disuruh "guna
- * emel MOE" sedangkan itulah yang mereka sedang guna.
+ * PERATURAN: domain mengandungi "moe". Itu sahaja.
  *
- * Senarai ini menentukan dua perkara sekaligus: siapa yang permohonannya
- * direkodkan, dan siapa yang diberitahu supaya bertukar akaun. Jadi menambah
- * domain di sini lebih baik daripada menambah kes khas di tempat lain.
+ * Senarai tetap tidak berfungsi di sini dan sudah pun gagal dua kali. KPM
+ * menggunakan pelbagai domain — @moe.edu.my, @moe-dl.edu.my, @moe.gov.my —
+ * dan setiap kali satu tertinggal, orang sebenar diberitahu "guna emel MOE"
+ * sedangkan itulah yang mereka sedang guna, dan log masuk mereka tidak
+ * pernah direkodkan. Padanan longgar gagal ke arah yang betul.
+ *
+ * Longgar itu selamat kerana ia TIDAK memberi akses. Ia hanya menentukan
+ * dua perkara: mesej yang dipapar, dan sama ada satu baris "menunggu"
+ * ditulis. Akses sebenar sentiasa datang daripada senarai akses yang
+ * diluluskan manusia.
  */
-const DOMAIN_RASMI = ["@moe-dl.edu.my", "@moe.edu.my", "@moe.gov.my"];
-
 export function domainRasmi(emel: string): boolean {
-  return DOMAIN_RASMI.some((d) => emel.toLowerCase().endsWith(d));
+  const domain = emel.toLowerCase().split("@")[1] ?? "";
+  return domain.includes("moe");
 }
 
 /** Apa yang berlaku kepada catatan permohonan pada log masuk pertama. */

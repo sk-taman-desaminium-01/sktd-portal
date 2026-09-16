@@ -69,8 +69,10 @@ function BelumDiberiAkses({
             <ul className="mt-3 space-y-1 font-mono text-xs text-[#7a5a12]">
               <li>nama@moe-dl.edu.my</li>
               <li>nama@moe.edu.my</li>
-              <li>nama@moe.gov.my</li>
             </ul>
+            <p className="mt-2 text-xs text-[#8a6a1a]">
+              Mana-mana emel MOE diterima, bukan dua ini sahaja.
+            </p>
             <p className="mt-3 text-xs leading-relaxed text-[#8a6a1a]">
               Tiada permohonan dihantar kepada pentadbir — menunggu tidak akan
               membuka akses untuk akaun ini.

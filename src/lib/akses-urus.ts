@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { pastikanBoleh } from "./akses";
+import { pastikanBoleh, domainRasmi } from "./akses";
 import { klienTulis } from "./supabase-pelayan";
 import { PERANAN, perananBolehDiberi, sembunyiBaris, type Peranan } from "./peranan";
 
@@ -46,8 +46,11 @@ export async function tambahAkses(data: FormData): Promise<Hasil> {
   }
 
   // Sekolah guna emel rasmi; membenarkan emel luar membuka pintu belakang.
-  if (!email.endsWith("@moe-dl.edu.my") && !email.endsWith("@moe.edu.my")) {
-    return { ok: false, mesej: "Hanya emel rasmi @moe-dl.edu.my atau @moe.edu.my dibenarkan." };
+  // Peraturan domain hidup di SATU tempat sahaja (`domainRasmi` dalam
+  // akses.ts). Menyalinnya ke sini pernah menyebabkan skrin log masuk dan
+  // borang ini tidak sependapat tentang emel yang sama.
+  if (!domainRasmi(email)) {
+    return { ok: false, mesej: "Hanya emel MOE dibenarkan (domain mesti mengandungi \"moe\")." };
   }
   // NOTA: emel admin mutlak SENGAJA tidak disekat di sini.
   // Menolaknya dengan mesej khas akan memberitahu sesiapa yang cuba bahawa
