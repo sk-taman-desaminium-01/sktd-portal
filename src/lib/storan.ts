@@ -79,6 +79,25 @@ export function namaSelamat(asal: string): string {
   return `${nama}-${cap}.${sambungan}`;
 }
 
+/**
+ * Semak jenis dan saiz tanpa menyimpan apa-apa.
+ *
+ * Diperlukan kerana bukan setiap fail yang dimuat naik disimpan: jadual
+ * waktu dibaca dalam ingatan dan dilupakan, jadi ia tidak melalui
+ * `muatNaik()` dan tidak akan mewarisi semakan di dalamnya.
+ *
+ * Pulangkan mesej ralat, atau null jika fail itu diterima.
+ */
+export function semakFail(fail: File): string | null {
+  if (!JENIS_DIBENARKAN.includes(fail.type) && fail.type !== "") {
+    return `Jenis fail tidak dibenarkan: ${fail.type}.`;
+  }
+  if (fail.size > HAD_SAIZ) {
+    return `Fail terlalu besar (${(fail.size / 1048576).toFixed(1)} MB). Had ${HAD_SAIZ / 1048576} MB.`;
+  }
+  return null;
+}
+
 export interface HasilMuatNaik {
   url: string;
   laluan: string;
