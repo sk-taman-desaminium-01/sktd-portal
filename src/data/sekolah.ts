@@ -55,7 +55,6 @@ export interface AppPortal {
   /** Ikon rasmi app luaran, relatif kepada `public/`. */
   logo?: string;
   akses?: string;
-  perluPentadbir?: boolean;
   catatan?: string;
   /** Ada bila app turut berguna kepada ibu bapa → dipapar di laman AWAM juga. */
   ibuBapa?: TugasIbuBapa;
@@ -211,7 +210,7 @@ export const SEKOLAH = {
       id: "urusweb", nama: "Urus Laman Web", ikon: "WEB", warna: "#123561",
       fungsi: "Pos pengumuman & aktiviti, urus Buku Pengurusan dan barisan pentadbir.",
       domain: "sktd.edu.my/admin", pautan: "/admin", status: "bina",
-      akses: "Pentadbir, guru kanan & admin", perluPentadbir: true,
+      akses: "Pentadbir, guru kanan & admin",
     },
     {
       id: "epbd", nama: "ePBD", ikon: "PBD", warna: "#1b4a80",

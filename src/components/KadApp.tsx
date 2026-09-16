@@ -39,12 +39,10 @@ function dalaman(tuju: string): boolean {
   return tuju.startsWith("/");
 }
 
-export default function KadApp({
-  app, terkunci,
-}: { app: KadPortal; terkunci: boolean }) {
-  const lencana = terkunci
-    ? { teks: "Tiada akses", kelas: "bg-[#eef1f5] text-slate-500" }
-    : LABEL[app.status];
+export default function KadApp({ app }: { app: KadPortal }) {
+  // Tiada lagi keadaan "terkunci": kad yang pengguna tidak boleh guna
+  // tidak sampai ke sini langsung — ia ditapis di `kadIkutBahagian()`.
+  const lencana = LABEL[app.status];
 
   const isi = (
     <>
@@ -79,18 +77,14 @@ export default function KadApp({
           {app.domain}
           {app.domainCadangan && <i> (cadangan)</i>}
         </span>
-        {!terkunci && (
-          <span className="shrink-0 font-semibold text-navy-700">
-            {app.luaran ? "Buka laman ↗" : app.pautan ? "Buka →" : "Lihat status →"}
-          </span>
-        )}
+        <span className="shrink-0 font-semibold text-navy-700">
+          {app.luaran ? "Buka laman ↗" : app.pautan ? "Buka →" : "Lihat status →"}
+        </span>
       </div>
     </>
   );
 
   const kelas = "flex h-full flex-col rounded-2xl bg-white p-5 text-left";
-  if (terkunci) return <div className={`${kelas} opacity-70`}>{isi}</div>;
-
   const tuju = tujuKad(app);
   const gaya = `${kelas} shadow-sm transition hover:ring-2 hover:ring-emas`;
 

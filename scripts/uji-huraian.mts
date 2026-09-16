@@ -7,6 +7,7 @@
 import { padanSubjek, binaDraf, binaDrafDariGrid, binaDrafDariKedudukan, namaGuruDariSel, padanHari } from "../src/lib/jadual-huraian.ts";
 import { SET_LALAI } from "../src/data/jadual-jenis.ts";
 import { KOD_SUBJEK, namaSubjek } from "../src/data/subjek.ts";
+import { kadIkutBahagian } from "../src/data/bahagian.ts";
 
 /** Waktu sebenar sekolah — sesi pagi, rehat pada waktu 5 (R4). */
 const WAKTU = SET_LALAI.find((s) => s.id === "pagi-r4")!.senarai;
@@ -167,6 +168,26 @@ for (const contoh of ["TASMIK","PER","MT","SN","PJ","BA","P.ISLAM (Q)"]) {
   const kod = padanSubjek(contoh);
   semak(`padanan "${contoh}" boleh dipapar`, kod === null || KOD_SUBJEK.includes(kod), true);
 }
+
+console.log("\n— kad hab ditapis ikut kuasa —");
+const kadUntuk = (p: Parameters<typeof kadIkutBahagian>[0]) =>
+  kadIkutBahagian(p).flatMap((b) => b.kad.map((k) => k.id));
+
+const guru = kadUntuk("guru");
+const pentadbir = kadUntuk("pentadbir");
+const mutlak = kadUntuk("admin_mutlak");
+
+// Inilah yang pengguna minta: guru biasa TIDAK nampak kad pentadbiran.
+semak("guru TIDAK nampak Urus Laman Web", guru.includes("urusweb"), false);
+semak("guru TIDAK nampak Disiplin", guru.includes("disiplin"), false);
+semak("pentadbir NAMPAK Urus Laman Web", pentadbir.includes("urusweb"), true);
+semak("pentadbir NAMPAK Disiplin", pentadbir.includes("disiplin"), true);
+semak("admin mutlak nampak semua pentadbir punya",
+      pentadbir.every((k) => mutlak.includes(k)), true);
+// Kad biasa mesti kekal untuk semua orang.
+semak("guru nampak ePBD", guru.includes("epbd"), true);
+semak("guru nampak Jadual Waktu", guru.includes("jadual"), true);
+semak("tiada peranan → tiada kad pentadbiran", kadUntuk(null).includes("urusweb"), false);
 
 console.log(`\n${lulus} lulus, ${gagal} gagal`);
 process.exit(gagal > 0 ? 1 : 0);
