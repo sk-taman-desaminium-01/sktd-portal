@@ -1,7 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { tambahAkses, tukarPeranan, tarikAkses, tolakAkses, type BarisAkses, type Hasil } from "@/lib/akses-urus";
+import {
+  tambahAkses, tukarPeranan, tarikAkses, tolakAkses, senaraiAkses,
+  type BarisAkses, type Hasil,
+} from "@/lib/akses-urus";
 import { NAMA_PERANAN, type Peranan } from "@/lib/peranan";
 
 /**
@@ -59,13 +62,43 @@ export default function PanelAkses({ baris, peranan: perananPilihan }: {
         window.setTimeout(() => setBerjaya((b) => (b === id ? null : b)), 2500);
       }
     } catch (e) {
-      // Tindakan pelayan boleh melontar (rangkaian putus, ralat tidak
-      // dijangka). Tanpa tangkapan ini, skrin membeku tanpa memberitahu
-      // apa-apa — itu yang berlaku sebelum ini.
-      setHasil({
-        ok: false,
-        mesej: e instanceof Error ? e.message : "Tindakan gagal. Cuba muat semula halaman.",
-      });
+      // PANGGILAN gagal — tetapi itu TIDAK bermakna tindakan gagal.
+      //
+      // Kegagalan boleh berlaku selepas pangkalan data dikemas kini, semasa
+      // Next memapar semula halaman. Admin yang melihat ralat lalu menekan
+      // butang itu berulang kali sedang bertindak atas maklumat yang salah.
+      //
+      // Jadi: baca keadaan SEBENAR dari pelayan dan laporkan itu. Kita tahu
+      // baris mana yang disentuh, jadi kita boleh berkata dengan pasti sama
+      // ada ia berjaya, bukan meneka.
+      try {
+        const segar = await senaraiAkses();
+        setSenarai(segar);
+        const baris = segar.find((b) => b.id === id);
+        const jadi = baris?.dibenarkan === true;
+        setHasil(
+          jadi || (id !== "tambah" && !baris)
+            ? {
+                ok: true,
+                mesej:
+                  "Tindakan BERJAYA. (Skrin sempat tersekat sebentar semasa memapar, " +
+                  "tetapi perubahan sudah tersimpan — senarai di bawah ialah keadaan sebenar.)",
+              }
+            : {
+                ok: false,
+                mesej:
+                  "Tindakan TIDAK berjaya. Senarai di bawah ialah keadaan sebenar. " +
+                  (e instanceof Error ? e.message : "Cuba sekali lagi."),
+              },
+        );
+      } catch {
+        setHasil({
+          ok: false,
+          mesej:
+            "Tidak dapat menghubungi pelayan untuk mengesahkan keputusan. " +
+            "Muat semula halaman untuk melihat keadaan sebenar.",
+        });
+      }
     } finally {
       // `finally` supaya keadaan sibuk SENTIASA dimatikan, walau apa pun.
       setSibukId(null);
@@ -170,7 +203,13 @@ export default function PanelAkses({ baris, peranan: perananPilihan }: {
             yang aksesnya pernah ditarik. Pilih peranan, kemudian tekan
             Benarkan. Rekod dikekalkan untuk audit — tidak pernah dipadam.
           </p>
-          <ul className="mt-3 divide-y divide-garis overflow-hidden rounded-xl border border-garis bg-slate-50">
+          {/* TIADA `overflow-hidden` di sini, dan itu disengajakan.
+              Baris dalam senarai ini mengandungi menu tiga titik yang terbuka
+              ke BAWAH baris. `overflow-hidden` (yang biasanya dipakai untuk
+              mengemas sudut bulat) memotong menu itu separuh jalan di dalam
+              kad. Sudut tetap kemas tanpanya kerana <li> tidak mempunyai
+              latar sendiri — tiada apa yang terkeluar dari lengkungan. */}
+          <ul className="mt-3 divide-y divide-garis rounded-xl border border-garis bg-slate-50">
             {ditarik.map((b) => (
               <li key={b.id} className="flex flex-wrap items-center gap-3 p-4">
                 <span className="min-w-0 flex-1">
@@ -231,11 +270,11 @@ export default function PanelAkses({ baris, peranan: perananPilihan }: {
                     <>
                       {/* Lapisan penutup: satu ketikan di luar menutup menu. */}
                       <span
-                        className="fixed inset-0 z-10"
+                        className="fixed inset-0 z-40"
                         aria-hidden="true"
                         onClick={() => setMenuId(null)}
                       />
-                      <span className="absolute right-0 z-20 mt-1 block w-56 overflow-hidden rounded-xl border border-garis bg-white shadow-lg">
+                      <span className="absolute right-0 z-50 mt-1 block w-56 overflow-hidden rounded-xl border border-garis bg-white shadow-lg">
                         <button
                           type="button"
                           onClick={() => {
