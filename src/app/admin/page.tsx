@@ -41,6 +41,10 @@ export default async function Admin() {
          { href: "/admin/carta", nama: "Carta Organisasi", ikon: "🗂️",
            ringkas: "Dari Guru Besar hingga guru dan kakitangan. Boleh disunting dan dimuat turun." }]
       : []),
+    ...(bolehGuruKelas
+      ? [{ href: "/admin/pbd", nama: "Urus ePBD", ikon: "📊",
+           ringkas: "Import murid dan tetapkan guru subjek yang mengisi TP." }]
+      : []),
     ...(bolehAkses
       ? [{ href: "/admin/akses", nama: "Senarai Akses", ikon: "🔑",
            ringkas: "Siapa boleh masuk portal, dan apa peranan mereka." }]

@@ -179,6 +179,17 @@ export const KAD_TAMBAHAN: KadBaharu[] = [
 
   /* --- Kurikulum --- */
   {
+    id: "pbd", bahagian: "kurikulum",
+    nama: "ePBD", ikon: "PBD", warna: "#1f6f5c",
+    fungsi: "Guru subjek mengisi TP; guru kelas menyemak dan mencetak slip.",
+    domain: "portal.sktd.edu.my/pbd", pautan: "/pbd", status: "bina",
+    // TIADA `perlu`: setiap guru subjek perlu membukanya. Halaman itu
+    // sendiri menapis kelas dan subjek mana mereka boleh sentuh.
+    akses: "Guru subjek, guru kelas, pentadbir & admin",
+    catatan: "Slip dan pengisian TP sudah hidup. Tanda SP setiap standard "
+      + "belum dibina — TP dimasukkan guru terus.",
+  },
+  {
     id: "jadual", bahagian: "kurikulum",
     nama: "Jadual Waktu", ikon: "JDL", warna: "#1b4a80",
     fungsi: "Jadual waktu setiap kelas — ibu bapa melihatnya di laman sekolah.",

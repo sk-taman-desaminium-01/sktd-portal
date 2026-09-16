@@ -502,7 +502,19 @@ function kemas(t: string): string {
   // sel kosong yang misterius.
   const tanpaSimbol = asal.replace(RE_PUA, "").trim();
   if (tanpaSimbol === "" && RE_PUA.test(asal)) return "\u2022";
-  return buangGandaan(tanpaSimbol.replace(/\s+/g, " ").trim());
+  return buangGandaan(buangKurunganGanda(tanpaSimbol.replace(/\s+/g, " ").trim()));
+}
+
+/**
+ * Runtuhkan kurungan berulang yang datang dari teks bertindih.
+ *
+ * Tajuk dua lapis menghasilkan "(PPSR)))" daripada "(PPSR)" — lapisan bayang
+ * menyumbang kurungan tutupnya sendiri pada kedudukan yang hampir sama.
+ * Tiada teks Melayu yang sah mengandungi "))" atau "((", jadi meruntuhkannya
+ * tidak boleh merosakkan apa-apa yang betul.
+ */
+export function buangKurunganGanda(t: string): string {
+  return t.replace(/\)\)+/g, ")").replace(/\(\(+/g, "(");
 }
 
 /**

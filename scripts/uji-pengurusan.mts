@@ -6,7 +6,8 @@
  * muka jawatankuasa ialah senarai "PERANAN : NAMA" dengan baris sambungan,
  * muka senarai guru ialah jadual berlajur.
  */
-import { tajukMuka, huraiSenarai, huraiJadual, kesanSeksyen, huraiTugas, kelihatanTugas } from "../src/lib/pengurusan-huraian.ts";
+import { tajukMuka, huraiSenarai, huraiSenaraiDariSel, huraiJadual, kesanSeksyen, huraiTugas, kelihatanTugas } from "../src/lib/pengurusan-huraian.ts";
+import { buangKurunganGanda } from "../src/lib/muka-teks.ts";
 import { kesanJenis } from "../src/data/seksyen-pengurusan.ts";
 
 let lulus = 0, gagal = 0;
@@ -126,6 +127,46 @@ semak("muka senarai nama tidak disangka tugas",
     ["PENGERUSI : A BINTI B"], ["SETIAUSAHA : C BINTI D"], ["AJK : E BINTI F"],
     ["\u2022", "nota kecil"], [": G BINTI H"], [": I BINTI J"], [": K BINTI L"],
   ] }]), false);
+
+console.log("\n— pepijat dilaporkan pengguna (edisi 2026) —");
+
+/* 1. DUA PASANGAN DALAM SATU NILAI. Muka bergaya carta menyusun dua pasangan
+      bersebelahan; bila pemecahan sel gagal menangkapnya, kedua-duanya
+      mendarat dalam satu nilai dan seorang ketua panitia hilang. */
+const dua = huraiSenarai([
+  "BAHASA MELAYU : RAFIDAH BINTI MOHD NOR SEJARAH : MOHAN A/L BATUMALAI",
+]);
+semak("dua pasangan dipecah", dua.length, 2);
+semak("pasangan pertama", dua[0], ["", "BAHASA MELAYU", "RAFIDAH BINTI MOHD NOR"]);
+semak("pasangan kedua", dua[1], ["", "SEJARAH", "MOHAN A/L BATUMALAI"]);
+
+/* Jawatan berbilang perkataan: sandaran ini mengambil jawatan PALING PENDEK
+   yang masih meninggalkan nama penuh. Pada muka sebenar, pemecahan SEL
+   menangkap "PEND JASMANI & KESIHATAN" dengan tepat — fungsi ini hanya
+   dipanggil bila pemecahan itu gagal, dan ketika itu berhati-hati lebih
+   baik daripada tepat: satu perkataan tersalah letak boleh dibetulkan
+   admin; nama yang ditelan hilang terus. */
+const panjang = huraiSenarai([
+  "BAHASA INGGERIS : NORAZLINA BINTI PAIMIN PEND JASMANI & KESIHATAN : MUHIRI BINTI GHAZALI",
+]);
+semak("kedua-dua orang dikekalkan", panjang.length, 2);
+semak("orang kedua betul", panjang[1][2], "MUHIRI BINTI GHAZALI");
+
+/* Nama biasa TIDAK boleh dipecah. */
+semak("nama biasa kekal utuh",
+  huraiSenarai(["AJK : NOR HASFARADZI BIN HASHIM AMER HAMZAH"]).length, 1);
+
+/* 2. SERPIHAN YATIM. pdf.js memecahkan huruf terakhir menjadi selnya sendiri,
+      dan huruf itu hilang senyap — "PANITIA" menjadi "PANITI". */
+const serpih = huraiSenaraiDariSel([["AJK", ": SEMUA KETUA PANITI", "A"]]);
+semak("huruf terakhir tidak hilang", serpih[0][2], "SEMUA KETUA PANITIA");
+
+/* 3. KURUNGAN BERGANDA dari tajuk dua lapis. */
+semak("kurungan berganda diruntuhkan",
+  buangKurunganGanda("PELAPORAN PEN SEK RENDAH (PPSR)))"),
+  "PELAPORAN PEN SEK RENDAH (PPSR)");
+semak("kurungan tunggal tidak diusik",
+  buangKurunganGanda("SISTEM (SPSK)"), "SISTEM (SPSK)");
 
 console.log(`\n${lulus} lulus, ${gagal} gagal`);
 process.exit(gagal > 0 ? 1 : 0);

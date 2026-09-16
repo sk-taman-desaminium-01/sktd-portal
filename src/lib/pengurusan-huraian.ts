@@ -167,6 +167,73 @@ export function tajukKumpulan(teks: string): string | null {
   return nama;
 }
 
+/**
+ * Satu nilai yang mengandungi PASANGAN KEDUA di dalamnya.
+ *
+ * Muka bergaya carta menyusun dua pasangan bersebelahan. Bila pemecahan sel
+ * gagal menangkapnya — dan ia gagal pada susun atur yang berbeza setiap
+ * edisi — kedua-duanya mendarat dalam satu nilai:
+ *
+ *   "RAFIDAH BINTI MOHD NOR SEJARAH : MOHAN A/L BATUMALAI"
+ *
+ * Akibatnya seorang ketua panitia hilang dan seorang lagi mewarisi jawatan
+ * yang salah. Nama orang TIDAK PERNAH mengandungi " : ", jadi kehadirannya
+ * di tengah nilai ialah bukti kukuh, bukan tekaan.
+ */
+const RE_NASAB = /^(BIN|BINTI|BT|A\/L|A\/P)$/i;
+
+export function pecahPasanganDalam(nilai: string): [string, string, string] | null {
+  const titik = nilai.search(/\s[:：;]\s/);
+  if (titik < 0) return null;
+
+  const kiri = nilai.slice(0, titik).trim();
+  const kanan = nilai.slice(titik + 1).replace(/^[:：;]\s*/, "").trim();
+  if (kanan.length < 3) return null;
+
+  // Cari sempadan antara NAMA dan JAWATAN dengan memanjangkan calon jawatan
+  // ke KIRI selagi bahagian yang tinggal masih kelihatan seperti nama penuh.
+  //
+  // Kenapa ini berfungsi, dan kenapa regex tamak tidak:
+  //
+  //   "RAFIDAH BINTI MOHD NOR SEJARAH"         -> jawatan "SEJARAH"
+  //   "NORAZLINA BINTI PAIMIN PEND JASMANI & KESIHATAN"
+  //                                            -> jawatan "PEND JASMANI & KESIHATAN"
+  //
+  // Nama jawatan boleh empat perkataan, jadi mengambil satu perkataan sahaja
+  // salah; mengambil sebanyak mungkin juga salah kerana ia menelan nama.
+  // Penanda nasab ialah sempadan yang sebenar: nama Melayu mengandunginya,
+  // nama jawatan tidak.
+  const kata = kiri.split(/\s+/);
+  let terbaik: number | null = null;
+  for (let potong = kata.length - 1; potong >= 1; potong--) {
+    const nama = kata.slice(0, potong);
+    const jawatan = kata.slice(potong);
+    // Bahagian nama mesti MASIH nama penuh: ada penanab nasab, dan tidak
+    // berakhir dengannya ("RAFIDAH BINTI" bukan nama lengkap).
+    if (!nama.some((w) => RE_NASAB.test(w))) break;
+    if (RE_NASAB.test(nama[nama.length - 1])) break;
+    // Jawatan ditulis huruf besar dan tiada penanda nasab.
+    if (jawatan.some((w) => RE_NASAB.test(w))) break;
+    if (jawatan.join(" ").length > 48) break;
+    // Ambil calon PERTAMA yang sah, iaitu jawatan yang PALING PENDEK.
+    //
+    // Ini pilihan berhati-hati, dan ia disengajakan. Fungsi ini ialah
+    // SANDARAN: muka dua lajur biasanya dipecah dengan betul oleh pemecahan
+    // sel, dan ia hanya sampai ke sini bila pemecahan itu gagal. Bila kita
+    // tidak pasti di mana nama berakhir, meletakkan satu perkataan pada
+    // jawatan yang salah boleh dibetulkan admin dalam satu klik; menelan
+    // nama orang ke dalam jawatan menghilangkan mereka sepenuhnya.
+    terbaik = potong;
+    break;
+  }
+  if (terbaik === null) return null;
+
+  const nama = kata.slice(0, terbaik).join(" ").trim();
+  const jawatan = kata.slice(terbaik).join(" ").trim();
+  if (nama.length < 3 || jawatan.length < 3) return null;
+  return [nama, jawatan, kanan];
+}
+
 /** Satu baris senarai: jawatankuasa, jawatan, nama. */
 export type BarisSenarai = [kumpulan: string, peranan: string, nama: string];
 
@@ -199,9 +266,24 @@ export function huraiSenarai(baris: string[], kumpulanAwal = ""): BarisSenarai[]
     if (!nilai || nilai.length < 2) continue;
     if (label) peranan = label;
     if (!peranan) continue;
-    keluar.push([kumpulan, peranan, nilai]);
+    tolakNilai(keluar, kumpulan, peranan, nilai);
   }
   return keluar;
+}
+
+/** Simpan satu nilai, memecahkan pasangan tertanam bila ada. */
+function tolakNilai(
+  keluar: BarisSenarai[], kumpulan: string, peranan: string, nilai: string,
+): string {
+  const pecah = pecahPasanganDalam(nilai);
+  if (!pecah) {
+    keluar.push([kumpulan, peranan, nilai]);
+    return peranan;
+  }
+  const [pertama, peranan2, kedua] = pecah;
+  keluar.push([kumpulan, peranan, pertama]);
+  // Nilai kedua boleh mengandungi pasangan KETIGA — muka empat lajur wujud.
+  return tolakNilai(keluar, kumpulan, peranan2, kedua);
 }
 
 /**
@@ -236,14 +318,27 @@ export function huraiSenaraiDariSel(sel: string[][], kumpulanAwal = ""): BarisSe
         if (nilai.length < 2) continue;
         const label = i > 0 ? isi[i - 1].replace(/[:：;]\s*$/, "").trim() : "";
         if (label && !/^[:：;]/.test(isi[i - 1])) peranan = label;
-        if (peranan) keluar.push([kumpulan, peranan, nilai]);
+        if (peranan) peranan = tolakNilai(keluar, kumpulan, peranan, nilai);
         continue;
       }
       // "PERANAN : NAMA" dalam satu sel.
       const m = RE_PERANAN.exec(c);
       if (m && m[1].trim() && m[2].trim().length >= 2) {
-        peranan = m[1].trim();
-        keluar.push([kumpulan, peranan, m[2].trim()]);
+        peranan = tolakNilai(keluar, kumpulan, m[1].trim(), m[2].trim());
+        continue;
+      }
+      // SERPIHAN YATIM: sel pendek yang bukan nilai dan bukan pasangan.
+      //
+      // pdf.js kadang memecahkan huruf terakhir sesuatu perkataan menjadi
+      // serpihannya sendiri, dan jurang kerningnya cukup lebar untuk
+      // menjadikannya sel berasingan. Tanpa baris ini, "SEMUA KETUA PANITIA"
+      // disimpan sebagai "SEMUA KETUA PANITI" dan huruf terakhir hilang
+      // senyap — dilaporkan pengguna pada edisi 2026.
+      const akhir = keluar[keluar.length - 1];
+      const bakiSel = isi.slice(i).join("").trim();
+      if (akhir && i > 0 && bakiSel.length <= 3 && !/[:：;]/.test(bakiSel)) {
+        akhir[2] = `${akhir[2]}${bakiSel}`;
+        break;
       }
     }
   }

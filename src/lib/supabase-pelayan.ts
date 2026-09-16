@@ -45,7 +45,24 @@ export function klienTulis() {
         // Peraturan #4: jangan telan. Admin mesti nampak kegagalan sebenar.
         throw new Error(`[supabase] ${res.status} ${await res.text()}`);
       }
-      return res.status === 204 ? null : res.json();
+      // BADAN KOSONG BUKAN JSON.
+      //
+      // `Prefer: return=minimal` menyebabkan PostgREST memulangkan 201
+      // dengan badan KOSONG — bukan 204. Memanggil `res.json()` ke atasnya
+      // melontar "SyntaxError: Unexpected end of JSON input", dan ralat itu
+      // sampai kepada pengguna sebagai kegagalan menyimpan sedangkan
+      // tulisan itu BERJAYA. Diukur pada muat naik Buku Pengurusan:
+      // seksyen tersimpan, tetapi skrin berkata gagal.
+      if (res.status === 204) return null;
+      const teks = await res.text();
+      if (teks.trim() === "") return null;
+      try {
+        return JSON.parse(teks);
+      } catch {
+        // Badan yang bukan JSON dan bukan kosong bermakna sesuatu di
+        // hadapan Supabase menjawab (WAF, proksi). Laporkan seadanya.
+        throw new Error(`[supabase] jawapan bukan JSON: ${teks.slice(0, 200)}`);
+      }
     },
   };
 }
