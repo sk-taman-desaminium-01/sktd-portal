@@ -10,6 +10,14 @@ import {
 import { semakTempahan, labelTarikh, type Bilik, type Tempahan } from "@/data/bilik";
 import { hantar, emelIkutPeranan } from "./notifikasi";
 import { simpanPermohonanPukal, penyeliaUnit } from "./inventori";
+import {
+  senaraiTetap, semuaTetap, tambahTetapPukal, padamTetap,
+  petaSubjekBilik, tetapSubjekBilik, janaSemulaDariJadual,
+} from "./bilik-tetap";
+import {
+  tetapBerlanggar, sebabTetap, hariTarikh, type Tetap,
+} from "@/data/bilik-tetap";
+import { HARI, NAMA_HARI, type Hari } from "@/data/jadual-jenis";
 
 /**
  * Tempahan Bilik Khas — tindakan pelayan.
@@ -52,6 +60,10 @@ export interface PapanBilik {
    */
   belumSedia: boolean;
   bilik: Bilik[];
+  /** Waktu yang sudah "dimiliki" — dari jadual waktu, atau ditutup pentadbir. */
+  tetap: Tetap[];
+  /** Kod subjek → id bilik. Pemetaan yang menjana sekatan dari jadual waktu. */
+  petaSubjek: Record<string, string>;
   tempahan: Tempahan[];
   hariIni: string;
   dari: string;
@@ -76,20 +88,22 @@ export async function papanBilik(dari?: string, hari = 14): Promise<PapanBilik |
   };
 
   try {
-    const [bilik, tempahan] = await Promise.all([
+    const [bilik, tempahan, tetap, petaSubjek] = await Promise.all([
       // Pentadbir melihat bilik yang dinyahaktifkan juga — kalau tidak,
       // bilik yang tersalah nyahaktif hilang dan tiada cara memulihkannya.
       senaraiBilik(asas.bolehUrus),
       tempahanJulat(mula, akhir),
+      senaraiTetap().catch(() => [] as Tetap[]),
+      petaSubjekBilik().catch(() => ({} as Record<string, string>)),
     ]);
-    return { ...asas, belumSedia: false, bilik, tempahan };
+    return { ...asas, belumSedia: false, bilik, tempahan, tetap, petaSubjek };
   } catch (e) {
     // PostgREST memulangkan 404/42P01 bila jadual tiada. Itu bukan pepijat —
     // ia bermakna satu langkah pemasangan belum dibuat, dan skrin patut
     // mengatakannya dan bukan menghempas.
     const teks = e instanceof Error ? e.message : String(e);
     if (/bilik_khas|tempahan_bilik|42P01|does not exist|Not Found|404/i.test(teks)) {
-      return { ...asas, belumSedia: true, bilik: [], tempahan: [] };
+      return { ...asas, belumSedia: true, bilik: [], tempahan: [], tetap: [], petaSubjek: {} };
     }
     throw e;
   }
@@ -119,6 +133,15 @@ export async function tempahTindakan(data: {
     const sedia = await tempahanBilikTarikh(data.bilik_id, data.tarikh);
     const semak = semakTempahan(data, sedia, hariIniMY());
     if (!semak.ok) return { ok: false, mesej: semak.sebab ?? "Tempahan tidak sah." };
+
+    // WAKTU YANG SUDAH DIMILIKI. Jadual waktu sekolah mengatakan kelas
+    // Pendidikan Moral berada di Makmal 2 pada Selasa pagi; tiada siapa
+    // patut boleh menempahnya. Disemak di PELAYAN, bukan hanya di pelayar —
+    // pelayar menjawab lebih awal, pelayan yang memutuskan.
+    const langgar = tetapBerlanggar(data, await senaraiTetap().catch(() => []));
+    if (langgar) {
+      return { ok: false, mesej: sebabTetap(langgar) };
+    }
 
     const rekod = await simpanTempahan({
       bilik_id: data.bilik_id,
@@ -224,6 +247,110 @@ export async function padamBilikTindakan(id: string): Promise<HasilBilik> {
           ? "Bilik dipadam."
           : "Bilik ini pernah ditempah, jadi ia DISEMBUNYIKAN dan bukan dipadam — " +
             "rekod tempahan lamanya kekal utuh.",
+    };
+  } catch (e) {
+    return { ok: false, mesej: ralat(e) };
+  }
+}
+
+/* ------------------------------------------------------- tempahan tetap */
+
+/**
+ * Tutup satu waktu berulang — pukal, mengikut hari dan julat tarikh.
+ *
+ * Pentadbir menanda "Makmal 2 tertutup setiap Selasa 8–10 pagi sepanjang
+ * penggal" sebagai SATU peraturan, bukan empat puluh baris tempahan.
+ * Empat puluh baris menjadi lapuk, menyusahkan untuk dibatalkan, dan
+ * mengaburkan sebab waktu itu tertutup.
+ */
+export async function tambahTetapTindakan(data: {
+  bilik_id: string; hari: string[]; mula: string; tamat: string;
+  sebab: string; dari_tarikh: string; hingga_tarikh: string;
+}): Promise<HasilBilik> {
+  try {
+    await pastikanBoleh("urus_bilik");
+  } catch {
+    return { ok: false, mesej: "Tiada kebenaran." };
+  }
+
+  const hari = data.hari.filter((h) => (HARI as readonly string[]).includes(h));
+  if (!data.bilik_id) return { ok: false, mesej: "Pilih bilik." };
+  if (hari.length === 0) return { ok: false, mesej: "Pilih sekurang-kurangnya satu hari." };
+  if (data.sebab.trim().length < 3) {
+    // Sekatan tanpa sebab menghantar guru bertanya kepada pentadbir kenapa
+    // bilik itu tertutup — kerja yang modul ini wujud untuk hapuskan.
+    return { ok: false, mesej: "Tulis sebab. Guru membacanya bila waktu itu ditolak." };
+  }
+  const semak = semakTempahan(
+    { tarikh: data.dari_tarikh || hariIniMY(), mula: data.mula, tamat: data.tamat },
+    [],
+  );
+  if (!semak.ok) return { ok: false, mesej: semak.sebab ?? "Waktu tidak sah." };
+
+  try {
+    await tambahTetapPukal(
+      hari.map((h) => ({
+        bilik_id: data.bilik_id, hari: h, mula: data.mula, tamat: data.tamat,
+        sebab: data.sebab.trim(), sumber: "manual", subjek: null, kelas: null,
+        dari_tarikh: data.dari_tarikh || null,
+        hingga_tarikh: data.hingga_tarikh || null,
+      })),
+    );
+    revalidatePath("/bilik");
+    return {
+      ok: true,
+      mesej:
+        `${hari.length} hari ditutup ${data.mula}–${data.tamat}` +
+        (data.dari_tarikh || data.hingga_tarikh
+          ? ` (${data.dari_tarikh || "mula"} hingga ${data.hingga_tarikh || "akhir"})`
+          : " sepanjang tahun") + ".",
+    };
+  } catch (e) {
+    return { ok: false, mesej: ralat(e) };
+  }
+}
+
+export async function padamTetapTindakan(id: string): Promise<HasilBilik> {
+  try {
+    await pastikanBoleh("urus_bilik");
+    await padamTetap(id);
+    revalidatePath("/bilik");
+    return { ok: true, mesej: "Waktu itu dibuka semula." };
+  } catch (e) {
+    return { ok: false, mesej: ralat(e) };
+  }
+}
+
+export async function petakanSubjekTindakan(
+  subjek: string, bilikId: string | null,
+): Promise<HasilBilik> {
+  try {
+    await pastikanBoleh("urus_bilik");
+    await tetapSubjekBilik(subjek, bilikId);
+    const hasil = await janaSemulaDariJadual();
+    revalidatePath("/bilik");
+    return {
+      ok: true,
+      mesej: bilikId
+        ? `${subjek} dipetakan. ${hasil.dijana} waktu ditutup mengikut jadual waktu sekolah.`
+        : `Pemetaan ${subjek} dibuang. Waktu yang dijana untuknya dibuka semula.`,
+    };
+  } catch (e) {
+    return { ok: false, mesej: ralat(e) };
+  }
+}
+
+export async function janaSemulaTindakan(): Promise<HasilBilik> {
+  try {
+    await pastikanBoleh("urus_bilik");
+    const hasil = await janaSemulaDariJadual();
+    revalidatePath("/bilik");
+    return {
+      ok: true,
+      mesej:
+        hasil.peta === 0
+          ? "Tiada subjek dipetakan ke bilik. Petakan satu dahulu — contohnya Pendidikan Moral ke Makmal 2."
+          : `${hasil.dijana} waktu ditutup daripada jadual waktu, bagi ${hasil.peta} subjek.`,
     };
   } catch (e) {
     return { ok: false, mesej: ralat(e) };

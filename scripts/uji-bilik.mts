@@ -10,6 +10,10 @@ import {
   type Tempahan,
 } from "../src/data/bilik.ts";
 import { penerimaBersih, masaLalu } from "../src/data/notifikasi.ts";
+import {
+  hariTarikh, terpakaiPada, tetapBerlanggar, sebabTetap, tempahanTerjejas,
+  type Tetap,
+} from "../src/data/bilik-tetap.ts";
 
 let lulus = 0;
 const gagal: string[] = [];
@@ -131,6 +135,71 @@ sama("jam", lalu("2026-09-17T09:00:00Z"), "3 jam lalu");
 sama("semalam", lalu("2026-09-16T10:00:00Z"), "semalam");
 sama("hari", lalu("2026-09-14T12:00:00Z"), "3 hari lalu");
 uji("tarikh rosak tidak menghempas", lalu("bukan tarikh") === "");
+
+/* --------------------------------------------------------- waktu tetap */
+
+/**
+ * Waktu yang sudah "dimiliki" sebelum sesiapa menempah — dari jadual waktu
+ * sekolah, atau ditutup pentadbir. Peraturan sempadan mesti SAMA seperti
+ * tempahan biasa: 09:00-10:00 dan 10:00-11:00 hidup bersama.
+ */
+const T2 = (x: Partial<Tetap> = {}): Tetap => ({
+  id: x.id ?? "t1", bilik_id: x.bilik_id ?? "b1", hari: x.hari ?? "selasa",
+  mula: x.mula ?? "08:00", tamat: x.tamat ?? "10:00",
+  sebab: x.sebab ?? "Kelas PM", sumber: x.sumber ?? "jadual",
+  subjek: x.subjek ?? "PM", kelas: x.kelas ?? "3 AMANAH",
+  dari_tarikh: x.dari_tarikh ?? null, hingga_tarikh: x.hingga_tarikh ?? null,
+  aktif: x.aktif ?? true,
+});
+
+// 2026-09-15 ialah Selasa; 2026-09-16 Rabu.
+sama("hari dari tarikh", hariTarikh("2026-09-15"), "selasa");
+sama("Sabtu tiada dalam minggu persekolahan", hariTarikh("2026-09-19"), null);
+sama("Ahad juga tiada", hariTarikh("2026-09-20"), null);
+uji("tarikh rosak tidak menghempas", hariTarikh("bukan") === null);
+
+uji("terpakai pada hari yang sama", terpakaiPada(T2(), "2026-09-15"));
+uji("tidak terpakai pada hari lain", !terpakaiPada(T2(), "2026-09-16"));
+uji("peraturan tidak aktif tidak terpakai", !terpakaiPada(T2({ aktif: false }), "2026-09-15"));
+uji("sebelum julat tidak terpakai",
+  !terpakaiPada(T2({ dari_tarikh: "2026-10-01" }), "2026-09-15"));
+uji("selepas julat tidak terpakai",
+  !terpakaiPada(T2({ hingga_tarikh: "2026-09-01" }), "2026-09-15"));
+uji("dalam julat terpakai",
+  terpakaiPada(T2({ dari_tarikh: "2026-09-01", hingga_tarikh: "2026-12-31" }), "2026-09-15"));
+
+const minta = (mula: string, tamat: string, bilik = "b1", tarikh = "2026-09-15") =>
+  ({ bilik_id: bilik, tarikh, mula, tamat });
+
+uji("tempahan dalam waktu kelas ditolak",
+  tetapBerlanggar(minta("09:00", "09:30"), [T2()]) !== null);
+uji("sempadan bersentuhan dibenarkan",
+  tetapBerlanggar(minta("10:00", "11:00"), [T2()]) === null);
+uji("sebelum kelas dibenarkan",
+  tetapBerlanggar(minta("07:00", "08:00"), [T2()]) === null);
+uji("bilik lain tidak terjejas",
+  tetapBerlanggar(minta("09:00", "09:30", "b2"), [T2()]) === null);
+uji("hari lain tidak terjejas",
+  tetapBerlanggar(minta("09:00", "09:30", "b1", "2026-09-16"), [T2()]) === null);
+
+uji("sebab dari jadual menyebut subjek dan kelas",
+  sebabTetap(T2()).includes("PM") && sebabTetap(T2()).includes("3 AMANAH"));
+uji("sebab manual menyebut ayat pentadbir",
+  sebabTetap(T2({ sumber: "manual", sebab: "Penyelenggaraan" })).includes("Penyelenggaraan"));
+
+/* Tempahan sedia ada yang akan terjejas oleh peraturan baharu — dipapar
+   sebelum peraturan itu disimpan, supaya tiada dua kumpulan tiba di pintu
+   yang sama. */
+const terjejas = tempahanTerjejas(
+  [{ bilik_id: "b1", hari: "selasa", mula: "08:00", tamat: "10:00" }],
+  [
+    T("09:00", "09:30", { id: "kena", tarikh: "2026-09-15" }),
+    T("11:00", "12:00", { id: "selamat", tarikh: "2026-09-15" }),
+    T("09:00", "09:30", { id: "hari-lain", tarikh: "2026-09-16" }),
+    T("09:00", "09:30", { id: "dibatal", tarikh: "2026-09-15", dibatalkan: true }),
+  ],
+);
+sama("hanya tempahan yang benar-benar berlanggar", terjejas.map((t) => t.id), ["kena"]);
 
 console.log(`\n${lulus} lulus, ${gagal.length} gagal`);
 for (const g of gagal) console.log(`  ✗ ${g}`);
