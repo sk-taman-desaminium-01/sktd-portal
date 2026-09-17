@@ -5,6 +5,7 @@
  * disalin dari WhatsApp, dari Word, dari skrin eOperasi — dan tiada dua
  * daripadanya menulis No. KP dengan cara yang sama.
  */
+import { pilihBacaan } from "../src/data/pilih-bacaan.ts";
 import { bacaBarisMurid, bacaSenaraiMurid, jantinaDariKp } from "../src/lib/kenal-murid.ts";
 
 let lulus = 0;
@@ -62,6 +63,55 @@ semak("umur luar julat diberi amaran",
 /* Dua murid tercantum dalam satu baris — berlaku bila disalin dari WhatsApp. */
 const cantum = bacaSenaraiMurid("AHMAD BIN ALI 060101101233 NUR AISYAH BINTI OMAR 070202105678");
 semak("baris bercantum dipecah", cantum.murid.length, 2);
+
+
+/* ------------------------------------------------- memilih bacaan terbaik */
+
+/**
+ * Fail iDMe jarang lurus. Dalam projek eGPI dahulu kami berkali-kali
+ * tersalah baca fail itu, dan puncanya sentiasa sama: kod meneka satu
+ * orientasi, teruskan dengannya, dan hasilnya sampah yang kelihatan seperti
+ * data. Ujian di sini menjaga penyelesaiannya — BERHENTI meneka, ukur.
+ */
+const BETUL = [
+  "1 AHMAD BIN ALI 060101101233",
+  "2 NUR AISYAH BINTI OMAR 070202105678",
+  "3 MUHAMMAD DANIAL BIN ZAKARIA 051212105566",
+].join("\n");
+
+/* Bacaan yang salah orientasi: nama dan No. KP berakhir dalam lajur
+   berlainan, jadi tiada baris membawa kedua-duanya. */
+const SALAH = [
+  "1 2 3",
+  "AHMAD BIN ALI NUR AISYAH BINTI OMAR MUHAMMAD DANIAL BIN ZAKARIA",
+].join("\n");
+
+const pilih = pilihBacaan([
+  { cara: "lajur menegak", teks: SALAH },
+  { cara: "sel mengikut baris", teks: BETUL },
+]);
+semak("bacaan yang menghasilkan No. KP dipilih", pilih?.cara, "sel mengikut baris");
+semak("skornya tiga", pilih?.skor, 3);
+semak("kedua-dua calon dilaporkan", pilih?.semua.length, 2);
+semak("calon yang salah berskor sifar",
+  pilih?.semua.find((c) => c.cara === "lajur menegak")?.skor, 0);
+
+semak("teks kosong diabaikan",
+  pilihBacaan([{ cara: "kosong", teks: "   " }, { cara: "betul", teks: BETUL }])?.cara, "betul");
+semak("tiada calon langsung memulangkan null", pilihBacaan([]), null);
+semak("semua calon kosong memulangkan null",
+  pilihBacaan([{ cara: "a", teks: "" }, { cara: "b", teks: "  " }]), null);
+
+/* Seri dipecahkan oleh urutan — calon pertama menang, dan urutan calon
+   disusun dari yang paling biasa kepada yang paling jarang. */
+semak("seri dimenangi calon pertama",
+  pilihBacaan([{ cara: "pertama", teks: BETUL }, { cara: "kedua", teks: BETUL }])?.cara, "pertama");
+
+/* Skor mengira No. KP SAH, bukan bilangan baris. Bacaan salah orientasi
+   menghasilkan banyak baris teks — ia cuma tidak menghasilkan No. KP. */
+const banyakBaris = Array.from({ length: 40 }, (_, i) => `BARIS SAMPAH NOMBOR ${i}`).join("\n");
+semak("banyak baris tanpa No. KP tidak menang",
+  pilihBacaan([{ cara: "sampah", teks: banyakBaris }, { cara: "betul", teks: BETUL }])?.cara, "betul");
 
 console.log(`\n${lulus} lulus, ${gagal.length} gagal`);
 process.exit(gagal.length === 0 ? 0 : 1);
