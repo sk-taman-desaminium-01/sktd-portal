@@ -99,8 +99,12 @@ export default function PanelPindaan({ dokumenId }: { dokumenId: string | null }
         <span>
           <span className="block text-sm font-bold text-navy-800">Pembetulan kekal</span>
           <span className="mt-0.5 block text-xs leading-relaxed text-slate-500">
-            Apa yang buku salah setiap tahun — Guru Besar yang sudah bersara, jawatan
-            yang tersalah eja. Dibetulkan sekali, dikenakan pada setiap edisi selepas ini.
+            Apa yang buku salah setiap tahun — jawatan tersalah eja, orang yang
+            sudah tiada. Dibetulkan sekali, dikenakan pada setiap edisi selepas ini.
+            <b className="mt-1 block font-semibold text-slate-600">
+              Pertukaran Guru Besar dan Penolong Kanan TIDAK perlu ditaip di sini —
+              ia menyusul sendiri selepas nama dikemas kini dalam kad Pentadbir.
+            </b>
           </span>
         </span>
         <span className="shrink-0 text-xs text-slate-400">

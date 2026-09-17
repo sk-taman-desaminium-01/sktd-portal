@@ -135,3 +135,55 @@ export function kenakanPindaanBanyak(baris: string[][], pindaan: Pindaan[]): Rin
   return { baris: keluar, diubah, digugur };
 }
 
+/* ------------------------------------------------------------ pewarisan */
+
+export interface Pewaris {
+  jawatan: string;
+  lama: string;
+  baharu: string;
+}
+
+/**
+ * PERTUKARAN PENTADBIR DIKENAKAN SENDIRI.
+ *
+ * Keputusan pengguna (17 Sep 2026): "PGB dan para PK tak perlu tekan. Auto
+ * jer selepas update nama-nama mereka di kad pentadbir."
+ *
+ * Mereka betul, dan sebabnya lebih kuat daripada kemudahan. Menukar nama
+ * Guru Besar dalam kad Pentadbir dan MELUPAKAN untuk membetulkan
+ * jawatankuasa menghasilkan portal yang bercakap dua perkara berbeza tentang
+ * siapa Guru Besar — dan tiada siapa akan perasan, kerana kedua-dua skrin
+ * kelihatan betul apabila dilihat berasingan.
+ *
+ * Jadi satu tindakan, bukan dua: nama ditukar di kad Pentadbir, dan setiap
+ * baris Buku Pengurusan yang menamakan orang lama menyusul sendiri.
+ *
+ * DUA PAGAR yang menjadikan ini selamat:
+ *
+ *  · Padanan SELURUH SEL melalui `kunciNama()`. "BILIK i-SHABARIAH" bukan
+ *    "SHABARIAH BINTI ISMAIL", jadi bilik itu tidak dinamakan semula
+ *    mengikut Guru Besar baharu. Itu bahaya yang sebenar, bukan teori.
+ *
+ *  · Ejaan yang dikemaskan BUKAN pertukaran orang. "PN. SHABARIAH BT ISMAIL"
+ *    menjadi "SHABARIAH BINTI ISMAIL" ialah orang yang SAMA; `kunciNama()`
+ *    menyeragamkan penanda nasab, jadi tiada pindaan dicipta.
+ */
+export function kesanPewaris(lama: Pentadbir[], baharu: Pentadbir[]): Pewaris[] {
+  const petaLama = new Map(lama.map((o) => [o.jawatan.trim().toLowerCase(), o.nama]));
+  const keluar: Pewaris[] = [];
+
+  for (const b of baharu) {
+    const sebelum = petaLama.get(b.jawatan.trim().toLowerCase());
+    if (!sebelum) continue;                       // jawatan baharu, bukan pertukaran
+    if (sebelum.trim() === "" || b.nama.trim() === "") continue;
+    if (kunciNama(sebelum) === kunciNama(b.nama)) continue;   // ejaan sahaja
+    keluar.push({ jawatan: b.jawatan.trim(), lama: sebelum.trim(), baharu: b.nama.trim() });
+  }
+  return keluar;
+}
+
+/** Bentuk seorang pentadbir, seperti dalam kad Pentadbir. */
+export interface Pentadbir {
+  jawatan: string;
+  nama: string;
+}
