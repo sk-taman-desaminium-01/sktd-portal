@@ -184,7 +184,7 @@ export const KAD_TAMBAHAN: KadBaharu[] = [
     id: "pbd", bahagian: "kurikulum",
     nama: "ePBD", ikon: "PBD", warna: "#1f6f5c",
     fungsi: "Guru subjek mengisi TP dan gred; guru kelas mencetak slip kelas.",
-    domain: "portal.sktd.edu.my/pbd", pautan: "/pbd", status: "bina",
+    domain: "portal.sktd.edu.my/pbd", pautan: "/pbd", status: "sedia",
     // TIADA `perlu`: setiap guru perlu membukanya. Halaman di dalamnya yang
     // menapis kelas dan subjek mana mereka boleh sentuh.
     akses: "Guru subjek, guru kelas, pentadbir & admin",
