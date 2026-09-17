@@ -119,7 +119,7 @@ export async function padamBilik(id: string): Promise<"dipadam" | "dinyahaktif">
 
 export async function simpanBilik(b: {
   id?: string; nama: string; muatan: number | null; nota: string | null; aktif: boolean;
-}): Promise<void> {
+}): Promise<Bilik | null> {
   const db = klienTulis();
   const badan = { nama: b.nama, muatan: b.muatan, nota: b.nota, aktif: b.aktif };
   if (b.id) {
@@ -128,11 +128,14 @@ export async function simpanBilik(b: {
       headers: { Prefer: "return=minimal" },
       body: JSON.stringify(badan),
     });
-  } else {
-    await db.minta("bilik_khas", {
-      method: "POST",
-      headers: { Prefer: "return=minimal" },
-      body: JSON.stringify(badan),
-    });
+    return null;
   }
+  // Rekod dipulangkan supaya skrin memegang id SEBENAR dan bukan id rekaan —
+  // id rekaan menjadikan baris itu mustahil disunting atau dipadam.
+  const hasil = (await db.minta("bilik_khas", {
+    method: "POST",
+    headers: { Prefer: "return=representation" },
+    body: JSON.stringify(badan),
+  })) as Bilik[];
+  return hasil[0] ?? null;
 }

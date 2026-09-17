@@ -16,6 +16,8 @@ const UNIT = "ICT";
 export interface HasilInventori {
   ok: boolean;
   mesej: string;
+  /** Rekod baharu dengan id SEBENAR — lihat nota dalam tindakan-bilik.ts. */
+  rekod?: { id: string };
 }
 
 function belumPasang(e: unknown): boolean {
@@ -84,7 +86,7 @@ export async function mohonTindakan(data: {
     const semak = semakPermohonan(data, barang);
     if (!semak.ok) return { ok: false, mesej: semak.sebab ?? "Permohonan tidak sah." };
 
-    await simpanPermohonan({
+    const rekod = await simpanPermohonan({
       barang_id: data.barang_id,
       kuantiti: data.kuantiti,
       tujuan: data.tujuan.trim(),
@@ -108,8 +110,10 @@ export async function mohonTindakan(data: {
     });
 
     revalidatePath("/inventori");
+    revalidatePath("/bilik");
     return {
       ok: true,
+      rekod: rekod ? { id: rekod.id } : undefined,
       mesej:
         (semak.sebab ? semak.sebab + " " : "") +
         "Permohonan dihantar. Unit akan dimaklumkan.",
@@ -196,7 +200,7 @@ export async function simpanBarangTindakan(b: {
     if (!Number.isInteger(kuantiti) || kuantiti < 0 || kuantiti > 100000) {
       return { ok: false, mesej: "Kuantiti mesti nombor bulat antara 0 dan 100,000." };
     }
-    await simpanBarang({
+    const rekod = await simpanBarang({
       id: b.id, unit: UNIT, nama,
       kategori: b.kategori.trim() || null,
       kuantiti,
@@ -205,7 +209,12 @@ export async function simpanBarangTindakan(b: {
       aktif: b.aktif,
     });
     revalidatePath("/inventori");
-    return { ok: true, mesej: b.id ? "Barang dikemas kini." : `"${nama}" ditambah.` };
+    revalidatePath("/bilik");
+    return {
+      ok: true,
+      rekod: rekod ? { id: rekod.id } : undefined,
+      mesej: b.id ? "Barang dikemas kini." : `"${nama}" ditambah.`,
+    };
   } catch (e) {
     return { ok: false, mesej: ralat(e) };
   }

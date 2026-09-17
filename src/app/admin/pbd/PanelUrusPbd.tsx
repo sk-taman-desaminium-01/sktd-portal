@@ -875,9 +875,30 @@ function SemakMurid({ senaraiKelas }: {
   const [pindah, setPindah] = useState<string | null>(null);
   const [cari, setCari] = useState("");
 
+  /**
+   * Tutup menu bila diketuk di luarnya.
+   *
+   * SASARAN DIPERIKSA, BUKAN PENYEBARAN DIHENTIKAN. Versi pertama bergantung
+   * pada `stopPropagation()` dalam menu, dan ia GAGAL sepenuhnya: dalam App
+   * Router, React melekatkan pendengar terwakilnya pada `document` — nod yang
+   * SAMA dengan pendengar penutup ini. `stopPropagation` menghentikan
+   * penyebaran ke nod INDUK; ia tidak menghentikan pendengar lain pada nod
+   * yang sama (itu kerja `stopImmediatePropagation`).
+   *
+   * Akibatnya: `pointerdown` pada "Sunting" menutup menu, React membuang
+   * butang itu daripada DOM, dan `click` yang menyusul tidak pernah sampai
+   * kepada sesiapa. Menu terbuka, ketukan hilang, butang kelihatan mati.
+   *
+   * Memeriksa `closest("[data-menu]")` tidak bergantung pada susunan
+   * pendengar langsung, jadi ia betul tanpa mengira cara React mewakilkan.
+   */
   useEffect(() => {
     if (!menu) return;
-    const tutup = () => setMenu(null);
+    const tutup = (e: PointerEvent) => {
+      const sasaran = e.target as Element | null;
+      if (sasaran?.closest?.("[data-menu]")) return;
+      setMenu(null);
+    };
     document.addEventListener("pointerdown", tutup);
     return () => document.removeEventListener("pointerdown", tutup);
   }, [menu]);
@@ -1004,9 +1025,8 @@ function SemakMurid({ senaraiKelas }: {
                       </span>
                     </span>
 
-                    <span className="relative shrink-0">
+                    <span data-menu className="relative shrink-0">
                       <button
-                        onPointerDown={(e) => e.stopPropagation()}
                         onClick={() => setMenu((x) => (x === m.pendaftaran_id ? null : m.pendaftaran_id))}
                         aria-label={`Tindakan untuk ${m.nama}`}
                         aria-haspopup="menu"
@@ -1023,8 +1043,7 @@ function SemakMurid({ senaraiKelas }: {
                       {menu === m.pendaftaran_id && (
                         <span
                           role="menu"
-                          onPointerDown={(e) => e.stopPropagation()}
-                          className="absolute right-0 top-full z-20 mt-1 flex w-44 flex-col overflow-hidden rounded-xl border border-garis bg-white py-1 shadow-lg"
+                            className="absolute right-0 top-full z-20 mt-1 flex w-44 flex-col overflow-hidden rounded-xl border border-garis bg-white py-1 shadow-lg"
                         >
                           <button
                             role="menuitem"

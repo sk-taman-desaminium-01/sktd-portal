@@ -84,13 +84,14 @@ export default function PanelBilik({ papan, barangIct }: {
         peralatan: perluAlat ? peralatan : [],
       });
       setNota({ ok: r.ok, teks: r.mesej });
-      if (r.ok) {
-        // Baris sementara supaya papan bergerak serta-merta. Ia digantikan
-        // oleh data sebenar pada muat semula seterusnya.
+      if (r.ok && r.rekod) {
+        // Baris sementara supaya papan bergerak serta-merta — dengan id
+        // SEBENAR dari pelayan. Id rekaan menjadikan baris itu mustahil
+        // dibatalkan: Postgres menolaknya sebagai uuid yang tidak sah.
         setTempahan((l) => [
           ...l,
           {
-            id: `baharu-${Date.now()}`, bilik_id: bilikId, tarikh, mula, tamat,
+            id: r.rekod!.id, bilik_id: bilikId, tarikh, mula, tamat,
             tujuan: tujuan.trim(), oleh: papan.sayaEmel, nama: "Anda",
             dibatalkan: false, dicipta: new Date().toISOString(),
           },
@@ -363,9 +364,30 @@ function UrusBilik({ bilik }: { bilik: PapanBilik["bilik"] }) {
 
   useEffect(() => setSenarai(bilik), [bilik]);
 
+  /**
+   * Tutup menu bila diketuk di luarnya.
+   *
+   * SASARAN DIPERIKSA, BUKAN PENYEBARAN DIHENTIKAN. Versi pertama bergantung
+   * pada `stopPropagation()` dalam menu, dan ia GAGAL sepenuhnya: dalam App
+   * Router, React melekatkan pendengar terwakilnya pada `document` — nod yang
+   * SAMA dengan pendengar penutup ini. `stopPropagation` menghentikan
+   * penyebaran ke nod INDUK; ia tidak menghentikan pendengar lain pada nod
+   * yang sama (itu kerja `stopImmediatePropagation`).
+   *
+   * Akibatnya: `pointerdown` pada "Sunting" menutup menu, React membuang
+   * butang itu daripada DOM, dan `click` yang menyusul tidak pernah sampai
+   * kepada sesiapa. Menu terbuka, ketukan hilang, butang kelihatan mati.
+   *
+   * Memeriksa `closest("[data-menu]")` tidak bergantung pada susunan
+   * pendengar langsung, jadi ia betul tanpa mengira cara React mewakilkan.
+   */
   useEffect(() => {
     if (!menu) return;
-    const tutup = () => setMenu(null);
+    const tutup = (e: PointerEvent) => {
+      const sasaran = e.target as Element | null;
+      if (sasaran?.closest?.("[data-menu]")) return;
+      setMenu(null);
+    };
     document.addEventListener("pointerdown", tutup);
     return () => document.removeEventListener("pointerdown", tutup);
   }, [menu]);
@@ -403,7 +425,9 @@ function UrusBilik({ bilik }: { bilik: PapanBilik["bilik"] }) {
       setSenarai((l) =>
         id
           ? l.map((x) => (x.id === id ? { ...x, ...bersih } : x))
-          : [...l, { id: `baharu-${Date.now()}`, aktif: true, ...bersih }],
+          : r.rekod
+            ? [...l, { id: r.rekod.id, aktif: true, ...bersih }]
+            : l,
       );
       setSunting(null);
     } finally {
@@ -538,9 +562,8 @@ function UrusBilik({ bilik }: { bilik: PapanBilik["bilik"] }) {
 
                     {/* Menu tiga titik. `shrink-0` supaya ia tidak pernah
                         dipicit keluar dari kad pada skrin sempit. */}
-                    <span className="relative shrink-0">
+                    <span data-menu className="relative shrink-0">
                       <button
-                        onPointerDown={(e) => e.stopPropagation()}
                         onClick={() => setMenu((m) => (m === b.id ? null : b.id))}
                         aria-label={`Tindakan untuk ${b.nama}`}
                         aria-haspopup="menu"
@@ -557,8 +580,7 @@ function UrusBilik({ bilik }: { bilik: PapanBilik["bilik"] }) {
                       {menu === b.id && (
                         <span
                           role="menu"
-                          onPointerDown={(e) => e.stopPropagation()}
-                          className="absolute right-0 top-full z-20 mt-1 flex w-44 flex-col overflow-hidden rounded-xl border border-garis bg-white py-1 shadow-lg"
+                            className="absolute right-0 top-full z-20 mt-1 flex w-44 flex-col overflow-hidden rounded-xl border border-garis bg-white py-1 shadow-lg"
                         >
                           <button
                             role="menuitem"
