@@ -3,6 +3,7 @@ import { klienTulis } from "./supabase-pelayan";
 import { pengguna } from "./akses";
 import { boleh } from "./peranan";
 import { kelasBolehSunting } from "./guru-kelas";
+import { rancangNaik, type Pendaftaran, type RancanganNaik } from "@/data/naik-tahun";
 
 /**
  * ePBD — pentaksiran bilik darjah.
@@ -380,29 +381,67 @@ export async function buangGuruSubjek(id: string): Promise<void> {
  * Kelas dibawa sebagai nilai AWAL sahaja; pentadbir menyusun semula selepas
  * penstriman.
  */
-export async function naikTahun(
-  dariSesi: number, keSesi: number,
-): Promise<{ dinaikkan: number; tamat: number }> {
+/**
+ * Baca pendaftaran satu sesi, berkeping-keping sehingga habis.
+ *
+ * Peraturan keras #1: had lalai Supabase 1,000 pernah memotong 87% data.
+ * Sekolah ini ada ~700 murid hari ini, jadi satu permintaan "cukup" —
+ * sehingga ia tidak lagi cukup, dan tiada siapa akan perasan.
+ */
+async function pendaftaranSesi(tahunSesi: number): Promise<Pendaftaran[]> {
   const db = klienTulis();
-
   const KEPING = 500;
-  const lama: { murid_id: string; tahun: number; kelas: string; aliran: string }[] = [];
+  const keluar: Pendaftaran[] = [];
   for (let mula = 0; ; mula += KEPING) {
     const keping = (await db.minta(
-      `pbd_pendaftaran?select=murid_id,tahun,kelas,aliran&tahun_sesi=eq.${dariSesi}` +
+      `pbd_pendaftaran?select=murid_id,tahun,kelas,aliran&tahun_sesi=eq.${tahunSesi}` +
         `&status=in.(aktif,pindah_masuk)&offset=${mula}&limit=${KEPING}`,
-    )) as typeof lama;
-    lama.push(...keping);
-    if (keping.length < KEPING) break;
+    )) as Pendaftaran[];
+    keluar.push(...keping);
+    if (keping.length < KEPING) return keluar;
+  }
+}
+
+/**
+ * LARIAN KERING. Tidak menulis apa-apa.
+ *
+ * Pengguna meminta sesi percubaan sebelum 1 Januari 2027, dan ini ialah
+ * bentuk paling berguna bagi percubaan itu: rancangan penuh atas data
+ * sebenar, dipapar, tanpa sebarang tulisan. Boleh dijalankan seberapa kerap
+ * yang dimahukan.
+ */
+export async function naikTahunKering(
+  dariSesi: number, keSesi: number,
+): Promise<RancanganNaik> {
+  const [lama, sasaran] = await Promise.all([
+    pendaftaranSesi(dariSesi),
+    pendaftaranSesi(keSesi),
+  ]);
+  return rancangNaik(lama, dariSesi, keSesi, sasaran.map((x) => x.murid_id));
+}
+
+/**
+ * Jalankan naik tahun.
+ *
+ * Rancangan dibina semula DI SINI, bukan diterima dari pelayar. Rancangan
+ * yang dihantar dari pelayar ialah rancangan yang boleh diubah dalam
+ * pelayar — dan "naikkan murid ini ke Tahun 6" bukan sesuatu yang patut
+ * boleh ditaip oleh sesiapa.
+ */
+export async function naikTahun(
+  dariSesi: number, keSesi: number,
+): Promise<{ dinaikkan: number; tamat: number; dilangkau: number }> {
+  const db = klienTulis();
+  const rancangan = await naikTahunKering(dariSesi, keSesi);
+
+  if (keSesi <= dariSesi) {
+    throw new Error(`Sesi sasaran (${keSesi}) mesti lebih lewat daripada sesi sumber (${dariSesi}).`);
   }
 
-  const naik = lama.filter((x) => x.tahun < 6);
-  const tamat = lama.filter((x) => x.tahun === 6);
-
-  for (let i = 0; i < naik.length; i += 200) {
-    const muatan = naik.slice(i, i + 200).map((x) => ({
+  for (let i = 0; i < rancangan.naik.length; i += 200) {
+    const muatan = rancangan.naik.slice(i, i + 200).map((x) => ({
       murid_id: x.murid_id, tahun_sesi: keSesi,
-      tahun: x.tahun + 1, kelas: x.kelas, aliran: x.aliran, status: "aktif",
+      tahun: x.ke, kelas: x.kelas, aliran: x.aliran, status: "aktif",
     }));
     await db.minta("pbd_pendaftaran?on_conflict=murid_id,tahun_sesi", {
       method: "POST",
@@ -413,8 +452,12 @@ export async function naikTahun(
 
   // Tahun 6 tamat persekolahan. Statusnya ditukar, BUKAN dipadam — slip
   // mereka mesti kekal boleh dicetak.
-  for (let i = 0; i < tamat.length; i += 100) {
-    const senarai = tamat.slice(i, i + 100).map((x) => x.murid_id).join(",");
+  //
+  // Ini berlaku SELEPAS kenaikan berjaya. Terbalik, satu kegagalan di
+  // pertengahan meninggalkan Tahun 6 ditanda tamat sementara Tahun 1–5
+  // masih di sesi lama — keadaan yang tiada siapa tahu cara membetulkan.
+  for (let i = 0; i < rancangan.tamat.length; i += 100) {
+    const senarai = rancangan.tamat.slice(i, i + 100).join(",");
     if (!senarai) continue;
     await db.minta(`pbd_murid?id=in.(${senarai})`, {
       method: "PATCH",
@@ -423,7 +466,11 @@ export async function naikTahun(
     });
   }
 
-  return { dinaikkan: naik.length, tamat: tamat.length };
+  return {
+    dinaikkan: rancangan.naik.length,
+    tamat: rancangan.tamat.length,
+    dilangkau: rancangan.sudahAda.length,
+  };
 }
 
 export async function tetapSesi(tahunSesi: number, status: "aktif" | "tutup"): Promise<void> {

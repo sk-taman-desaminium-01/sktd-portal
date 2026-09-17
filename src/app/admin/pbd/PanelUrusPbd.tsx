@@ -2,7 +2,8 @@
 
 import { useMemo, useState } from "react";
 import { importMuridKelas, type HasilImportKelas } from "@/lib/import-murid";
-import { tugaskanGuruSubjek, buangTugasanGuruSubjek, naikTahunTindakan } from "@/lib/tindakan-pbd";
+import { tugaskanGuruSubjek, buangTugasanGuruSubjek, naikTahunTindakan, cubaNaikTahun } from "@/lib/tindakan-pbd";
+import type { RancanganNaik } from "@/data/naik-tahun";
 import PilihCari from "@/components/PilihCari";
 import { SUBJEK, namaSubjek } from "@/data/subjek";
 
@@ -44,6 +45,29 @@ export default function PanelUrusPbd({
   const [sahNaik, setSahNaik] = useState(false);
   const [sibukSesi, setSibukSesi] = useState(false);
   const [mesejSesi, setMesejSesi] = useState<{ ok: boolean; teks: string } | null>(null);
+
+  const [cuba, setCuba] = useState<
+    { rancangan: RancanganNaik; gerak: { label: string; bil: number }[] } | null
+  >(null);
+
+  /**
+   * Larian kering. Tidak menulis apa-apa, boleh diulang.
+   *
+   * Butang sebenar dikunci sehingga ini dijalankan — naik tahun berlaku
+   * sekali setahun kepada setiap murid sekali, dan orang yang menekannya
+   * tidak akan pernah cukup biasa dengannya untuk perasan bila ia salah.
+   */
+  async function cubaDahulu() {
+    setSibukSesi(true);
+    setMesejSesi(null);
+    try {
+      const r = await cubaNaikTahun();
+      setMesejSesi({ ok: r.ok, teks: r.mesej });
+      setCuba(r.ok && r.rancangan ? { rancangan: r.rancangan, gerak: r.gerak ?? [] } : null);
+    } finally {
+      setSibukSesi(false);
+    }
+  }
 
   async function naikTahun() {
     setSibukSesi(true);
@@ -196,6 +220,18 @@ export default function PanelUrusPbd({
 
         {mesejSesi && <div className="mt-3"><Mesej ok={mesejSesi.ok} teks={mesejSesi.teks} /></div>}
 
+        {cuba && <SemakanNaik {...cuba} tahunSesi={tahunSesi} />}
+
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          <button
+            onClick={() => void cubaDahulu()}
+            disabled={sibukSesi}
+            className="rounded-lg border border-garis px-4 py-2 text-sm font-semibold text-navy-700 hover:border-navy-700 disabled:opacity-50"
+          >
+            {sibukSesi && !sahNaik ? "Menyemak…" : "Cuba dahulu (tiada apa ditulis)"}
+          </button>
+        </div>
+
         <div className="mt-3">
           {sahNaik ? (
             <span className="flex flex-wrap items-center gap-2 text-sm">
@@ -216,10 +252,17 @@ export default function PanelUrusPbd({
           ) : (
             <button
               onClick={() => setSahNaik(true)}
-              className="rounded-lg border border-navy-700 px-4 py-2 text-sm font-semibold text-navy-700"
+              disabled={!cuba}
+              title={cuba ? undefined : "Jalankan larian kering dahulu."}
+              className="rounded-lg border border-navy-700 px-4 py-2 text-sm font-semibold text-navy-700 disabled:border-garis disabled:text-slate-400"
             >
               Tutup sesi {tahunSesi} &amp; naik tahun
             </button>
+          )}
+          {!cuba && (
+            <p className="mt-2 text-xs text-slate-400">
+              Jalankan <b>Cuba dahulu</b> sebelum ini boleh ditekan.
+            </p>
           )}
         </div>
       </section>
@@ -477,6 +520,73 @@ function Berbilang({
           );
         })}
       </ul>
+    </div>
+  );
+}
+
+
+/**
+ * Apa yang AKAN berlaku — dibaca sebelum apa-apa ditulis.
+ *
+ * Taburan per tahun ialah semakan mata kasar yang paling berkesan: guru yang
+ * tahu sekolahnya ada kira-kira 120 murid setiap tahun akan nampak "Tahun 4:
+ * 12" dalam sesaat, sedangkan mereka tidak akan pernah membaca 700 nama.
+ */
+function SemakanNaik({ rancangan, gerak, tahunSesi }: {
+  rancangan: RancanganNaik;
+  gerak: { label: string; bil: number }[];
+  tahunSesi: number;
+}) {
+  return (
+    <div className="mt-3 rounded-xl border border-garis bg-navy-50/40 p-4">
+      <p className="text-xs font-bold uppercase tracking-wide text-slate-500">
+        Larian kering · sesi {tahunSesi} → {tahunSesi + 1}
+      </p>
+
+      <div className="mt-2 flex flex-wrap gap-4 text-sm">
+        <span><b className="text-navy-800">{rancangan.naik.length}</b> naik</span>
+        <span><b className="text-navy-800">{rancangan.tamat.length}</b> tamat (Tahun 6)</span>
+        {rancangan.sudahAda.length > 0 && (
+          <span><b className="text-navy-800">{rancangan.sudahAda.length}</b> dilangkau</span>
+        )}
+        {rancangan.ditolak.length > 0 && (
+          <span className="text-[#8f2b2b]"><b>{rancangan.ditolak.length}</b> ditolak</span>
+        )}
+      </div>
+
+      {rancangan.taburan.length > 0 && (
+        <p className="mt-2 text-xs text-slate-600">
+          Selepas naik:{" "}
+          {rancangan.taburan.map((t) => `Tahun ${t.tahun}: ${t.bil}`).join(" · ")}
+        </p>
+      )}
+
+      {rancangan.amaran.length > 0 && (
+        <ul className="mt-2 space-y-1">
+          {rancangan.amaran.map((a, i) => (
+            <li key={i} className="text-xs leading-relaxed text-[#7a5a12]">⚠ {a}</li>
+          ))}
+        </ul>
+      )}
+
+      {rancangan.ditolak.length > 0 && (
+        <ul className="mt-2 max-h-32 space-y-0.5 overflow-auto text-xs text-[#8f2b2b]">
+          {rancangan.ditolak.slice(0, 40).map((d, i) => (
+            <li key={i}>{d.murid_id} — {d.sebab}</li>
+          ))}
+        </ul>
+      )}
+
+      {gerak.length > 0 && (
+        <details className="mt-2">
+          <summary className="cursor-pointer text-xs text-slate-500">
+            Pergerakan setiap kelas ({gerak.length})
+          </summary>
+          <ul className="mt-1 max-h-48 space-y-0.5 overflow-auto text-xs text-slate-600">
+            {gerak.map((g) => <li key={g.label}>{g.label} · {g.bil} murid</li>)}
+          </ul>
+        </details>
+      )}
     </div>
   );
 }
