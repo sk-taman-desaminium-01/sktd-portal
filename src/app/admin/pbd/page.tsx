@@ -3,6 +3,7 @@ import { pengguna } from "@/lib/akses";
 import { boleh } from "@/lib/peranan";
 import { senaraiAkses } from "@/lib/akses-urus";
 import { sesiSemasa, kelasBerisi, tugasanSubjek } from "@/lib/pbd";
+import { semuaKelas } from "@/data/kelas";
 import PanelUrusPbd from "./PanelUrusPbd";
 
 export const metadata = { title: "Urus ePBD" };
@@ -79,6 +80,7 @@ export default async function UrusPbd() {
           }))}
           senaraiGuru={guru}
           senaraiKelas={kelas.map((k) => ({ tahun: k.tahun, kelas: k.kelas }))}
+          semuaKelas={semuaKelas()}
           tahunSesi={sesi.tahun_sesi}
           jumlahMurid={jumlahMurid}
         />

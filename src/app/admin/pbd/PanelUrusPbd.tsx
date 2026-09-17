@@ -1,18 +1,24 @@
 "use client";
 
-import { useState } from "react";
-import { importMurid, type HasilImport } from "@/lib/import-murid";
+import { useMemo, useState } from "react";
+import { importMuridKelas, type HasilImportKelas } from "@/lib/import-murid";
 import { tugaskanGuruSubjek, buangTugasanGuruSubjek, naikTahunTindakan } from "@/lib/tindakan-pbd";
+import PilihCari from "@/components/PilihCari";
 import { SUBJEK, namaSubjek } from "@/data/subjek";
 
 /**
- * Urus ePBD — import murid, dan tetapkan siapa mengajar apa.
+ * Urus ePBD — sesi, murid, dan siapa mengajar apa.
  *
- * DUA LANGKAH IMPORT, dan langkah pertama tidak menulis apa-apa.
- * Peraturan keras #5: import mesti larian kering dahulu. Import yang terus
- * menulis pernah menghasilkan 978 gred salah dalam projek lain kerana tiada
- * sesiapa melihat taburannya sebelum ia masuk. Butang "Simpan" hanya muncul
- * SELEPAS pentadbir melihat ringkasan.
+ * TIGA PEMBETULAN DARI MAKLUM BALAS PENGGUNA (17 Sep 2026):
+ *
+ *  1. Import murid tidak lagi menuntut CSV. Kelas dipilih dari senarai yang
+ *     sistem sudah tahu; hanya nama dan No. KP ditampal, dalam apa jua
+ *     bentuk ia datang. Jantina dikira dari digit terakhir No. KP.
+ *  2. Setiap pemilih panjang boleh dicari. 57 kelas dan 130 nama guru dalam
+ *     `<select>` bermakna menatal dengan ibu jari, dan memilih yang salah.
+ *  3. Seorang guru mengajar BANYAK subjek merentas banyak kelas. Menugaskan
+ *     satu demi satu bermakna dua belas klik untuk seorang guru; subjek dan
+ *     kelas kini kedua-duanya boleh dipilih berbilang.
  */
 
 export interface Tugasan {
@@ -24,11 +30,13 @@ export interface Tugasan {
 }
 
 export default function PanelUrusPbd({
-  tugasanAwal, senaraiGuru, senaraiKelas, tahunSesi, jumlahMurid,
+  tugasanAwal, senaraiGuru, senaraiKelas, semuaKelas, tahunSesi, jumlahMurid,
 }: {
   tugasanAwal: Tugasan[];
   senaraiGuru: { emel: string; nama: string }[];
   senaraiKelas: { tahun: number; kelas: string }[];
+  /** Setiap kelas sekolah, termasuk yang belum ada murid. */
+  semuaKelas: string[];
   tahunSesi: number;
   jumlahMurid: number;
 }) {
@@ -47,47 +55,88 @@ export default function PanelUrusPbd({
       setSibukSesi(false);
     }
   }
-  /* ------------------------------------------------------------ import */
+
+  /* ------------------------------------------------------------- import */
+  const [kelasImport, setKelasImport] = useState(semuaKelas[0] ?? "");
   const [teks, setTeks] = useState("");
-  const [hasil, setHasil] = useState<HasilImport | null>(null);
+  const [hasil, setHasil] = useState<HasilImportKelas | null>(null);
   const [sibukImport, setSibukImport] = useState(false);
 
   async function jalanImport(simpan: boolean) {
+    const [tahunStr, ...sisa] = kelasImport.split(" ");
+    const tahun = Number(tahunStr);
+    if (!tahun || sisa.length === 0) {
+      setHasil({ ok: false, kering: true, mesej: "Pilih kelas dahulu." });
+      return;
+    }
     if (teks.trim() === "") {
-      setHasil({ ok: false, kering: true, mesej: "Tampal isi CSV dahulu." });
+      setHasil({ ok: false, kering: true, mesej: "Tampal senarai nama dahulu." });
       return;
     }
     setSibukImport(true);
     try {
-      setHasil(await importMurid(teks, simpan));
-      if (simpan) setTeks("");
+      const r = await importMuridKelas(tahun, sisa.join(" "), teks, simpan);
+      setHasil(r);
+      if (r.ok && !r.kering) setTeks("");
     } finally {
       setSibukImport(false);
     }
   }
 
-  /* ---------------------------------------------------------- tugasan */
+  /* ------------------------------------------------------------ tugasan */
   const [tugasan, setTugasan] = useState(tugasanAwal);
   const [emel, setEmel] = useState(senaraiGuru[0]?.emel ?? "");
-  const [subjek, setSubjek] = useState(SUBJEK[0]?.kod ?? "");
-  const [kelasPilih, setKelasPilih] = useState(
-    senaraiKelas[0] ? `${senaraiKelas[0].tahun}|${senaraiKelas[0].kelas}` : "",
-  );
+  const [subjekPilih, setSubjekPilih] = useState<Set<string>>(new Set());
+  const [kelasPilih, setKelasPilih] = useState<Set<string>>(new Set());
   const [mesejTugas, setMesejTugas] = useState<{ ok: boolean; teks: string } | null>(null);
   const [sibukTugas, setSibukTugas] = useState<string | null>(null);
   const [cari, setCari] = useState("");
 
+  function togolSet(set: Set<string>, nilai: string): Set<string> {
+    const baharu = new Set(set);
+    if (baharu.has(nilai)) baharu.delete(nilai);
+    else baharu.add(nilai);
+    return baharu;
+  }
+
   async function tambah() {
-    const [tahun, kelas] = kelasPilih.split("|");
+    if (subjekPilih.size === 0 || kelasPilih.size === 0) {
+      setMesejTugas({ ok: false, teks: "Pilih sekurang-kurangnya satu subjek dan satu kelas." });
+      return;
+    }
     setSibukTugas("tambah");
+    const baharu: Tugasan[] = [];
     try {
-      const r = await tugaskanGuruSubjek(emel, subjek, Number(tahun), kelas);
-      setMesejTugas({ ok: r.ok, teks: r.mesej });
-      if (r.ok) {
-        setTugasan((s) => [
-          ...s.filter((t) => !(t.emel === emel && t.subjek === subjek && t.tahun === Number(tahun) && t.kelas === kelas)),
-          { id: `sementara-${Date.now()}`, emel, subjek, tahun: Number(tahun), kelas },
+      for (const s of subjekPilih) {
+        for (const k of kelasPilih) {
+          const [tahunStr, ...sisa] = k.split(" ");
+          const kelas = sisa.join(" ");
+          const r = await tugaskanGuruSubjek(emel, s, Number(tahunStr), kelas);
+          if (r.ok) {
+            baharu.push({
+              id: `sementara-${s}-${k}-${Date.now()}`,
+              emel, subjek: s, tahun: Number(tahunStr), kelas,
+            });
+          } else {
+            setMesejTugas({ ok: false, teks: r.mesej });
+          }
+        }
+      }
+      if (baharu.length > 0) {
+        setTugasan((lama) => [
+          ...lama.filter(
+            (t) =>
+              !baharu.some(
+                (b) =>
+                  b.emel === t.emel && b.subjek === t.subjek &&
+                  b.tahun === t.tahun && b.kelas === t.kelas,
+              ),
+          ),
+          ...baharu,
         ]);
+        setMesejTugas({ ok: true, teks: `${baharu.length} tugasan disimpan untuk ${emel}.` });
+        setSubjekPilih(new Set());
+        setKelasPilih(new Set());
       }
     } finally {
       setSibukTugas(null);
@@ -110,14 +159,29 @@ export default function PanelUrusPbd({
     ? tugasan.filter(
         (t) =>
           t.emel.toLowerCase().includes(carian) ||
-          t.subjek.toLowerCase().includes(carian) ||
+          namaSubjek(t.subjek).toLowerCase().includes(carian) ||
           `${t.tahun} ${t.kelas}`.toLowerCase().includes(carian),
       )
     : tugasan;
 
+  // Tugasan dikumpul MENGIKUT GURU. Seorang guru boleh memegang dua belas
+  // tugasan; senarai rata bermakna namanya berulang dua belas kali dan tiada
+  // sesiapa dapat melihat beban siapa.
+  const ikutGuru = useMemo(() => {
+    const peta = new Map<string, Tugasan[]>();
+    for (const t of ditapis) {
+      const ada = peta.get(t.emel);
+      if (ada) ada.push(t);
+      else peta.set(t.emel, [t]);
+    }
+    return [...peta.entries()].sort((a, b) => a[0].localeCompare(b[0]));
+  }, [ditapis]);
+
+  const namaGuru = (e: string) => senaraiGuru.find((g) => g.emel === e)?.nama || e;
+
   return (
     <>
-      {/* ---------------- Naik tahun ---------------- */}
+      {/* ---------------- Hujung sesi ---------------- */}
       <section className="mt-8 rounded-xl border border-garis bg-white p-5">
         <h2 className="text-base font-bold text-navy-800">Hujung sesi</h2>
         <p className="mt-1 text-sm leading-relaxed text-slate-500">
@@ -126,22 +190,11 @@ export default function PanelUrusPbd({
         </p>
         <p className="mt-2 text-sm leading-relaxed text-navy-800">
           <b>Keputusan sesi {tahunSesi} tidak disentuh.</b> Murid mendapat
-          pendaftaran baharu untuk sesi baharu; yang lama kekal, jadi slip
-          sesi {tahunSesi} boleh dicetak selamanya. Menekan butang ini dua
-          kali tidak mencipta murid pendua.
+          pendaftaran baharu; yang lama kekal, jadi slip sesi {tahunSesi} boleh
+          dicetak selamanya. Menekan dua kali tidak mencipta murid pendua.
         </p>
 
-        {mesejSesi && (
-          <p
-            className={`mt-3 rounded-lg border p-3 text-sm leading-relaxed ${
-              mesejSesi.ok
-                ? "border-[#bfe3ce] bg-[#eef8f2] text-[#15693f]"
-                : "border-[#e9c4c4] bg-[#fdf1f1] text-[#8f2b2b]"
-            }`}
-          >
-            {mesejSesi.teks}
-          </p>
-        )}
+        {mesejSesi && <div className="mt-3"><Mesej ok={mesejSesi.ok} teks={mesejSesi.teks} /></div>}
 
         <div className="mt-3">
           {sahNaik ? (
@@ -171,87 +224,95 @@ export default function PanelUrusPbd({
         </div>
       </section>
 
-      {/* ---------------- Import murid ---------------- */}
-      <section className="mt-8">
-        <h2 className="text-base font-bold text-navy-800">Import senarai murid</h2>
+      {/* ---------------- Masukkan murid ---------------- */}
+      <section className="mt-10">
+        <h2 className="text-base font-bold text-navy-800">Masukkan murid</h2>
         <p className="mt-1 text-sm leading-relaxed text-slate-500">
-          Tampal CSV dengan lajur <b>Nama</b>, <b>No. KP</b>, <b>Tahun</b>,{" "}
-          <b>Kelas</b> (dan <b>Jantina</b> jika ada). Nombor tahun dalam nama
-          kelas dibuang automatik — “3 AMANAH” disimpan sebagai tahun 3, kelas
-          AMANAH.
+          Pilih kelas, kemudian tampal senarai nama dan No. KP — dalam apa jua
+          bentuk ia datang. Sistem mengenal No. KP walaupun ditulis dengan
+          sempang, ruang atau titik, dan mengira jantina dari digit terakhirnya.
+          Kelas tidak perlu ditaip.
         </p>
 
-        <textarea
-          value={teks}
-          onChange={(e) => setTeks(e.target.value)}
-          rows={6}
-          placeholder={"Nama,No KP,Tahun,Kelas\nAHMAD BIN ALI,180101011234,3,AMANAH"}
-          className="mt-3 w-full rounded-xl border border-garis p-3 font-mono text-xs"
-        />
+        <div className="mt-3 rounded-xl border border-garis bg-white p-4">
+          <div className="max-w-xs">
+            <PilihCari
+              id="kelas-import"
+              label="Kelas"
+              pilihan={semuaKelas.map((k) => {
+                const ada = senaraiKelas.some((x) => `${x.tahun} ${x.kelas}` === k);
+                return { nilai: k, label: k, nota: ada ? "sudah ada murid" : undefined };
+              })}
+              nilai={kelasImport}
+              tukar={setKelasImport}
+              placeholder="Cari kelas…"
+            />
+          </div>
 
-        <div className="mt-3 flex flex-wrap gap-2">
-          <button
-            onClick={() => void jalanImport(false)}
-            disabled={sibukImport}
-            className="rounded-lg border border-navy-700 px-4 py-2 text-sm font-semibold text-navy-700 disabled:opacity-50"
-          >
-            {sibukImport ? "Menyemak…" : "Semak dahulu (tiada apa ditulis)"}
-          </button>
-          {hasil?.ok && hasil.kering && (
+          <textarea
+            value={teks}
+            onChange={(e) => setTeks(e.target.value)}
+            rows={8}
+            aria-label="Senarai nama dan No. KP"
+            placeholder={
+              "AHMAD BIN ALI 060101101233\n" +
+              "2. NUR AISYAH BINTI OMAR, 070202-10-5678\n" +
+              "051212105566 MUHAMMAD DANIAL BIN ZAKARIA"
+            }
+            className="mt-4 w-full rounded-xl border border-garis p-3 font-mono text-xs"
+          />
+
+          <div className="mt-3 flex flex-wrap gap-2">
             <button
-              onClick={() => void jalanImport(true)}
+              onClick={() => void jalanImport(false)}
               disabled={sibukImport}
-              className="rounded-lg bg-navy-700 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
+              className="rounded-lg border border-navy-700 px-4 py-2 text-sm font-semibold text-navy-700 disabled:opacity-50"
             >
-              Simpan {hasil.jumlah} murid
+              {sibukImport ? "Menyemak…" : "Semak dahulu (tiada apa ditulis)"}
             </button>
-          )}
+            {hasil?.ok && hasil.kering && (
+              <button
+                onClick={() => void jalanImport(true)}
+                disabled={sibukImport}
+                className="rounded-lg bg-navy-700 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
+              >
+                Simpan {hasil.jumlah} murid ke {kelasImport}
+              </button>
+            )}
+          </div>
         </div>
 
         {hasil && (
-          <div
-            className={`mt-3 rounded-xl border p-4 text-sm leading-relaxed ${
-              hasil.ok
-                ? "border-[#bfe3ce] bg-[#eef8f2] text-[#15693f]"
-                : "border-[#e9c4c4] bg-[#fdf1f1] text-[#8f2b2b]"
-            }`}
-          >
-            <p>{hasil.mesej}</p>
-
-            {hasil.tanpaKp !== undefined && hasil.tanpaKp > 0 && (
-              <p className="mt-2 text-[#8f2b2b]">
-                ⚠ {hasil.tanpaKp} murid tiada No. KP. Mereka tetap diimport,
-                tetapi tidak boleh dipadankan semula dengan pasti bila naik
-                tahun — dua murid senama dalam kelas sama tidak dapat
-                dibezakan.
-              </p>
-            )}
+          <div className="mt-3">
+            <Mesej ok={hasil.ok} teks={hasil.mesej} />
 
             {hasil.ralat && hasil.ralat.length > 0 && (
-              <ul className="mt-2 space-y-0.5 text-xs">
-                {hasil.ralat.slice(0, 10).map((r) => <li key={r}>· {r}</li>)}
-                {hasil.ralat.length > 10 && <li>· … {hasil.ralat.length - 10} lagi</li>}
+              <ul className="mt-2 space-y-0.5 rounded-lg border border-[#e9d9ae] bg-[#fdf9f0] p-3 text-xs leading-relaxed text-[#7a5a12]">
+                {hasil.ralat.slice(0, 12).map((r, i) => <li key={i}>⚠ {r}</li>)}
+                {hasil.ralat.length > 12 && <li>… {hasil.ralat.length - 12} lagi</li>}
               </ul>
             )}
 
-            {hasil.contoh && hasil.contoh.length > 0 && (
-              <div className="mt-3 overflow-x-auto rounded-lg border border-garis bg-white">
-                <table className="w-full text-xs text-slate-700">
-                  <thead className="bg-navy-50 text-left">
+            {hasil.murid && hasil.murid.length > 0 && (
+              <div className="mt-3 max-h-96 overflow-auto rounded-xl border border-garis bg-white">
+                <table className="w-full min-w-[30rem] text-left text-xs">
+                  <thead className="sticky top-0 bg-navy-50">
                     <tr>
-                      <th className="px-2 py-1">Nama</th>
-                      <th className="px-2 py-1">No. KP</th>
-                      <th className="px-2 py-1">Tahun</th>
-                      <th className="px-2 py-1">Kelas</th>
+                      <th className="px-3 py-2 font-semibold">#</th>
+                      <th className="px-3 py-2 font-semibold">Nama</th>
+                      <th className="px-3 py-2 font-semibold">No. KP</th>
+                      <th className="px-3 py-2 font-semibold">Jantina</th>
+                      <th className="px-3 py-2 font-semibold">Lahir</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-garis">
-                    {hasil.contoh.map((b, i) => (
-                      <tr key={i}>
-                        <td className="px-2 py-1">{b.nama}</td>
-                        <td className="px-2 py-1">{b.no_kp ? "✓" : "—"}</td>
-                        <td className="px-2 py-1">{b.tahun}</td>
-                        <td className="px-2 py-1">{b.kelas}</td>
+                    {hasil.murid.map((m, i) => (
+                      <tr key={i} className={m.amaran.length ? "bg-[#fffdf5]" : undefined}>
+                        <td className="px-3 py-1.5 text-slate-400">{i + 1}</td>
+                        <td className="px-3 py-1.5 font-medium text-navy-800">{m.nama}</td>
+                        <td className="px-3 py-1.5 font-mono text-slate-600">{m.no_kp ?? "—"}</td>
+                        <td className="px-3 py-1.5">{m.jantina ?? "—"}</td>
+                        <td className="px-3 py-1.5 text-slate-500">{m.lahir ?? "—"}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -266,73 +327,61 @@ export default function PanelUrusPbd({
       <section className="mt-10">
         <h2 className="text-base font-bold text-navy-800">Guru subjek</h2>
         <p className="mt-1 text-sm leading-relaxed text-slate-500">
-          Menentukan siapa boleh mengisi TP bagi subjek dan kelas mana. Guru
-          yang tidak ditugaskan tidak boleh menulis apa-apa — semakan itu di
-          pelayan, bukan sekadar menyembunyikan butang.
+          Menentukan siapa boleh mengisi TP bagi subjek dan kelas mana. Seorang
+          guru selalunya mengajar beberapa subjek merentas beberapa kelas —
+          pilih semuanya sekali gus.
         </p>
 
         {senaraiKelas.length === 0 ? (
           <p className="mt-3 rounded-xl border border-[#e9d9ae] bg-[#fdf9f0] p-4 text-sm text-[#7a5a12]">
-            Belum ada murid diimport, jadi belum ada kelas untuk ditugaskan.
+            Belum ada murid dimasukkan, jadi belum ada kelas untuk ditugaskan.
           </p>
         ) : (
-          <div className="mt-3 flex flex-wrap items-end gap-2 rounded-xl border border-garis bg-white p-4">
-            <label className="min-w-0 flex-1 text-xs text-slate-500">
-              Guru
-              <select
-                value={emel} onChange={(e) => setEmel(e.target.value)}
-                className="mt-1 block w-full rounded-lg border border-garis px-2 py-2 text-sm"
-              >
-                {senaraiGuru.map((g) => (
-                  <option key={g.emel} value={g.emel}>{g.nama || g.emel}</option>
-                ))}
-              </select>
-            </label>
-            <label className="text-xs text-slate-500">
-              Subjek
-              <select
-                value={subjek} onChange={(e) => setSubjek(e.target.value)}
-                className="mt-1 block rounded-lg border border-garis px-2 py-2 text-sm"
-              >
-                {SUBJEK.map((s) => (
-                  <option key={s.kod} value={s.kod}>{s.nama}</option>
-                ))}
-              </select>
-            </label>
-            <label className="text-xs text-slate-500">
-              Kelas
-              <select
-                value={kelasPilih} onChange={(e) => setKelasPilih(e.target.value)}
-                className="mt-1 block rounded-lg border border-garis px-2 py-2 text-sm"
-              >
-                {senaraiKelas.map((k) => (
-                  <option key={`${k.tahun}|${k.kelas}`} value={`${k.tahun}|${k.kelas}`}>
-                    {k.tahun} {k.kelas}
-                  </option>
-                ))}
-              </select>
-            </label>
+          <div className="mt-3 rounded-xl border border-garis bg-white p-4">
+            <div className="max-w-sm">
+              <PilihCari
+                id="guru-tugas"
+                label="Guru"
+                pilihan={senaraiGuru.map((g) => ({
+                  nilai: g.emel,
+                  label: g.nama || g.emel,
+                  nota: g.nama ? g.emel : undefined,
+                }))}
+                nilai={emel}
+                tukar={setEmel}
+                placeholder="Cari nama atau emel…"
+              />
+            </div>
+
+            <Berbilang
+              tajuk="Subjek"
+              pilihan={SUBJEK.map((s) => ({ nilai: s.kod, label: s.nama }))}
+              dipilih={subjekPilih}
+              togol={(v) => setSubjekPilih((s) => togolSet(s, v))}
+            />
+            <Berbilang
+              tajuk="Kelas"
+              pilihan={senaraiKelas.map((k) => ({
+                nilai: `${k.tahun} ${k.kelas}`,
+                label: `${k.tahun} ${k.kelas}`,
+              }))}
+              dipilih={kelasPilih}
+              togol={(v) => setKelasPilih((s) => togolSet(s, v))}
+            />
+
             <button
               onClick={() => void tambah()}
               disabled={sibukTugas !== null || !emel}
-              className="rounded-lg bg-navy-700 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
+              className="mt-4 rounded-lg bg-navy-700 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
             >
-              Tugaskan
+              {sibukTugas === "tambah"
+                ? "Menyimpan…"
+                : `Tugaskan ${subjekPilih.size} subjek × ${kelasPilih.size} kelas`}
             </button>
           </div>
         )}
 
-        {mesejTugas && (
-          <p
-            className={`mt-3 rounded-lg border p-3 text-sm ${
-              mesejTugas.ok
-                ? "border-[#bfe3ce] bg-[#eef8f2] text-[#15693f]"
-                : "border-[#e9c4c4] bg-[#fdf1f1] text-[#8f2b2b]"
-            }`}
-          >
-            {mesejTugas.teks}
-          </p>
-        )}
+        {mesejTugas && <div className="mt-3"><Mesej ok={mesejTugas.ok} teks={mesejTugas.teks} /></div>}
 
         {tugasan.length > 8 && (
           <input
@@ -344,31 +393,90 @@ export default function PanelUrusPbd({
           />
         )}
 
-        {tugasan.length > 0 && (
-          <ul className="mt-3 divide-y divide-garis overflow-hidden rounded-xl border border-garis bg-white">
-            {ditapis.map((t) => (
-              <li key={t.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 p-3 text-sm">
-                <span className="min-w-0 flex-1">
-                  <span className="block font-medium text-navy-800">{t.emel}</span>
-                  <span className="text-xs text-slate-500">
-                    {namaSubjek(t.subjek)} · {t.tahun} {t.kelas}
-                  </span>
-                </span>
-                <button
-                  onClick={() => void buang(t)}
-                  disabled={sibukTugas === t.id}
-                  className="rounded px-2 py-1 text-xs text-slate-400 hover:bg-[#fdf1f1] hover:text-[#8f2b2b] disabled:opacity-50"
-                >
-                  {sibukTugas === t.id ? "…" : "Buang"}
-                </button>
+        {ikutGuru.length > 0 && (
+          <ul className="mt-3 space-y-3">
+            {ikutGuru.map(([e, senarai]) => (
+              <li key={e} className="rounded-xl border border-garis bg-white p-4">
+                <p className="font-semibold text-navy-800">{namaGuru(e)}</p>
+                <p className="text-xs text-slate-500">{e} · {senarai.length} tugasan</p>
+                <ul className="mt-2 flex flex-wrap gap-1.5">
+                  {senarai.map((t) => (
+                    <li key={t.id}>
+                      <span className="inline-flex items-center gap-1.5 rounded-lg border border-garis px-2 py-1 text-xs">
+                        <span className="text-navy-800">
+                          {namaSubjek(t.subjek)} · {t.tahun} {t.kelas}
+                        </span>
+                        <button
+                          onClick={() => void buang(t)}
+                          disabled={sibukTugas === t.id}
+                          aria-label={`Buang ${namaSubjek(t.subjek)} ${t.tahun} ${t.kelas}`}
+                          className="text-slate-400 hover:text-[#8f2b2b] disabled:opacity-50"
+                        >
+                          ×
+                        </button>
+                      </span>
+                    </li>
+                  ))}
+                </ul>
               </li>
             ))}
-            {ditapis.length === 0 && (
-              <li className="p-4 text-sm text-slate-500">Tiada tugasan sepadan.</li>
-            )}
           </ul>
         )}
       </section>
     </>
+  );
+}
+
+function Mesej({ ok, teks }: { ok: boolean; teks: string }) {
+  return (
+    <p
+      className={`rounded-lg border p-3 text-sm leading-relaxed ${
+        ok
+          ? "border-[#bfe3ce] bg-[#eef8f2] text-[#15693f]"
+          : "border-[#e9c4c4] bg-[#fdf1f1] text-[#8f2b2b]"
+      }`}
+    >
+      {teks}
+    </p>
+  );
+}
+
+/** Pemilih berbilang berbentuk cip — untuk subjek dan kelas. */
+function Berbilang({
+  tajuk, pilihan, dipilih, togol,
+}: {
+  tajuk: string;
+  pilihan: { nilai: string; label: string }[];
+  dipilih: Set<string>;
+  togol: (nilai: string) => void;
+}) {
+  return (
+    <div className="mt-4">
+      <span className="text-xs font-semibold text-slate-500">
+        {tajuk}
+        {dipilih.size > 0 && <span className="ml-1.5 text-navy-700">({dipilih.size} dipilih)</span>}
+      </span>
+      <ul className="mt-1.5 flex flex-wrap gap-1.5">
+        {pilihan.map((p) => {
+          const aktif = dipilih.has(p.nilai);
+          return (
+            <li key={p.nilai}>
+              <button
+                type="button"
+                onClick={() => togol(p.nilai)}
+                aria-pressed={aktif}
+                className={`rounded-lg border px-2.5 py-1 text-xs transition ${
+                  aktif
+                    ? "border-navy-700 bg-navy-700 text-white"
+                    : "border-garis text-slate-600 hover:border-navy-700"
+                }`}
+              >
+                {p.label}
+              </button>
+            </li>
+          );
+        })}
+      </ul>
+    </div>
   );
 }
