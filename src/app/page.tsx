@@ -3,6 +3,7 @@ import { aset } from "@/lib/laluan";
 import { currentUser } from "@clerk/nextjs/server";
 import { SignOutButton } from "@clerk/nextjs";
 import { SEKOLAH } from "@/data/sekolah";
+import Loceng from "@/components/Loceng";
 import { kadIkutBahagian } from "@/data/bahagian";
 import KadApp from "@/components/KadApp";
 import { NAMA_PERANAN } from "@/lib/peranan";
@@ -152,6 +153,13 @@ export default async function Hab() {
 
   return (
     <main className="min-h-screen bg-navy-900 bg-[radial-gradient(120%_70%_at_50%_0%,#17406f,var(--color-navy-900)_60%)] px-5 py-14 text-white">
+      {/* Loceng duduk di sudut, bukan dalam aliran kepala — ia bukan
+          sebahagian daripada pengenalan portal, ia alat yang sentiasa berada
+          di tempat yang sama. */}
+      <div className="mx-auto mb-2 flex max-w-4xl justify-end">
+        <Loceng />
+      </div>
+
       {/* ---------- Kepala ---------- */}
       <header className="mx-auto flex max-w-xl flex-col items-center text-center">
         <Image src={aset("/logo-sktd.png")} alt="" width={72} height={72} priority className="w-16 sm:w-[72px]" />

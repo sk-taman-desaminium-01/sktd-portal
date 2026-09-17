@@ -17,7 +17,7 @@
  * log keluar — bukan dengan melonggarkan fail ini.
  */
 
-const VERSI = "portal-v1";
+const VERSI = "portal-v2";
 const ASET = `aset-${VERSI}`;
 
 self.addEventListener("install", () => self.skipWaiting());
@@ -54,5 +54,56 @@ self.addEventListener("fetch", (e) => {
         return res;
       })
     )
+  );
+});
+
+/* ----------------------------------------------------- pemberitahuan tolak */
+
+/**
+ * Pemberitahuan yang naik di skrin telefon walaupun portal ditutup.
+ *
+ * `userVisibleOnly: true` dituntut oleh setiap pelayar, dan ia bermakna
+ * SETIAP push MESTI memaparkan sesuatu. Push yang tiba tanpa muatan yang
+ * boleh dibaca tetap memaparkan pemberitahuan am — kalau tidak, pelayar
+ * menarik balik kebenaran tapak ini selepas beberapa kali.
+ */
+self.addEventListener("push", (e) => {
+  let data = {};
+  try {
+    data = e.data ? e.data.json() : {};
+  } catch {
+    data = { tajuk: "Portal SKTD", teks: e.data ? e.data.text() : "" };
+  }
+
+  const tajuk = data.tajuk || "Portal SKTD";
+  const pilihan = {
+    body: data.teks || "",
+    icon: "/portal/ikon-192.png",
+    badge: "/portal/ikon-192.png",
+    tag: data.tag || undefined,
+    data: { pautan: data.pautan || "/portal/notifikasi" },
+  };
+  e.waitUntil(self.registration.showNotification(tajuk, pilihan));
+});
+
+/**
+ * Ketukan pada pemberitahuan membuka tab yang SUDAH ada, kalau ada.
+ *
+ * Membuka tab baharu setiap kali meninggalkan guru dengan enam salinan
+ * portal selepas seminggu.
+ */
+self.addEventListener("notificationclick", (e) => {
+  e.notification.close();
+  const pautan = (e.notification.data && e.notification.data.pautan) || "/portal/notifikasi";
+  e.waitUntil(
+    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((tetingkap) => {
+      for (const w of tetingkap) {
+        if (w.url.includes("/portal") && "focus" in w) {
+          w.navigate(pautan);
+          return w.focus();
+        }
+      }
+      return self.clients.openWindow(pautan);
+    }),
   );
 });

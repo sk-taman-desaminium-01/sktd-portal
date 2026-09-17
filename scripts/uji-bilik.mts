@@ -9,6 +9,7 @@ import {
   bertindih, semakTempahan, keMinit, keJam, labelTarikh, ikutHari, susunTempahan,
   type Tempahan,
 } from "../src/data/bilik.ts";
+import { penerimaBersih, masaLalu } from "../src/data/notifikasi.ts";
 
 let lulus = 0;
 const gagal: string[] = [];
@@ -103,6 +104,33 @@ uji("hari lepas ditanda lalu", hari.find((h) => h.tarikh === "2026-09-28")?.lalu
 uji("hari akan datang tidak ditanda lalu", hari.find((h) => h.tarikh === "2026-10-02")?.lalu === false);
 sama("tempahan dalam hari disusun ikut waktu",
   hari.find((h) => h.tarikh === "2026-10-02")?.tempahan.map((t) => t.id), ["a", "c"]);
+
+/* ----------------------------------------------------------- notifikasi */
+
+/**
+ * Notifikasi ialah satu KEJADIAN, bukan mesej kepada seorang — dan peraturan
+ * yang paling mudah dilanggar ialah menghantar kepada orang yang
+ * mencetuskannya. Notifikasi yang memberitahu anda tentang perbuatan anda
+ * sendiri ialah bunyi, dan bunyi mengajar orang mengabaikan loceng.
+ */
+sama("pencetus dibuang dari senarai penerima",
+  penerimaBersih(["a@x.my", "b@x.my", "c@x.my"], "b@x.my"), ["a@x.my", "c@x.my"]);
+sama("huruf besar tidak menipu perbandingan",
+  penerimaBersih(["A@X.MY", "b@x.my"], "a@x.my"), ["b@x.my"]);
+sama("penerima berulang dibuang",
+  penerimaBersih(["a@x.my", "a@x.my", "b@x.my"], null), ["a@x.my", "b@x.my"]);
+sama("emel kosong diabaikan", penerimaBersih(["", "  ", "a@x.my"], null), ["a@x.my"]);
+sama("tiada pencetus bermakna semua terima",
+  penerimaBersih(["a@x.my", "b@x.my"], null).length, 2);
+
+const KINI = Date.parse("2026-09-17T12:00:00Z");
+const lalu = (iso: string) => masaLalu(iso, KINI);
+sama("baru sahaja", lalu("2026-09-17T11:59:40Z"), "baru sahaja");
+sama("minit", lalu("2026-09-17T11:45:00Z"), "15 minit lalu");
+sama("jam", lalu("2026-09-17T09:00:00Z"), "3 jam lalu");
+sama("semalam", lalu("2026-09-16T10:00:00Z"), "semalam");
+sama("hari", lalu("2026-09-14T12:00:00Z"), "3 hari lalu");
+uji("tarikh rosak tidak menghempas", lalu("bukan tarikh") === "");
 
 console.log(`\n${lulus} lulus, ${gagal.length} gagal`);
 for (const g of gagal) console.log(`  ✗ ${g}`);

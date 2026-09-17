@@ -7,7 +7,8 @@ import {
   senaraiBilik, tempahanJulat, tempahanBilikTarikh, simpanTempahan,
   batalTempahan, satuTempahan, simpanBilik, padamBilik, hariIniMY,
 } from "./bilik";
-import { semakTempahan, type Bilik, type Tempahan } from "@/data/bilik";
+import { semakTempahan, labelTarikh, type Bilik, type Tempahan } from "@/data/bilik";
+import { hantar, emelIkutPeranan } from "./notifikasi";
 
 /**
  * Tempahan Bilik Khas — tindakan pelayan.
@@ -125,6 +126,21 @@ export async function tempahTindakan(data: {
       oleh: saya.emel ?? "",
       nama: saya.nama ?? saya.emel ?? "",
     });
+    // Pentadbir diberitahu — mereka yang menguruskan bilik, dan mereka yang
+    // perlu tahu bila dewan ditempah pada hari majlis. Kegagalan di sini
+    // TIDAK membatalkan tempahan yang sudah berjaya.
+    const namaBilik = (await senaraiBilik()).find((b) => b.id === data.bilik_id)?.nama ?? "Bilik";
+    void hantar({
+      penerima: await emelIkutPeranan(["admin", "pentadbir"]),
+      jenis: "tempahan",
+      tajuk: `${namaBilik} ditempah`,
+      teks:
+        `${saya.nama ?? saya.emel} menempah ${namaBilik} pada ` +
+        `${labelTarikh(data.tarikh)}, ${data.mula}–${data.tamat}. Tujuan: ${tujuan}.`,
+      pautan: "/bilik",
+      oleh: saya.emel ?? null,
+    });
+
     revalidatePath("/bilik");
     return { ok: true, mesej: `Bilik ditempah ${data.mula}–${data.tamat}.` };
   } catch (e) {
