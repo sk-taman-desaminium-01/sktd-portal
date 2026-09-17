@@ -23,8 +23,10 @@ function luarDomain(emel: string | null): boolean {
   return !domain.includes("moe");
 }
 
-export default function PanelAkses({ baris, peranan: perananPilihan }: {
+export default function PanelAkses({ baris, peranan: perananPilihan, padanan }: {
   baris: BarisAkses[];
+  /** Nama akaun → siapa dia dalam Buku Pengurusan. Kosong bila buku belum ada. */
+  padanan?: Record<string, { namaBersih: string; jawatan: string; opsyen: string; skor: number } | null>;
   /** Peranan yang pengguna INI dibenarkan berikan — ditentukan pelayan,
    *  supaya `admin` tidak pernah muncul sebagai pilihan kepada bukan-mutlak. */
   peranan: Peranan[];
@@ -171,6 +173,7 @@ export default function PanelAkses({ baris, peranan: perananPilihan }: {
               <li key={b.id} className="flex flex-wrap items-center gap-3 p-4">
                 <span className="min-w-0 flex-1">
                   <span className="block font-semibold text-navy-800">{b.nama}</span>
+                  <Kenal b={b} padanan={padanan} />
                   <span className="block truncate text-xs text-slate-500">
                     {b.email}
                     {luarDomain(b.email) && (
@@ -224,6 +227,7 @@ export default function PanelAkses({ baris, peranan: perananPilihan }: {
               <li key={b.id} className="flex flex-wrap items-center gap-3 p-4">
                 <span className="min-w-0 flex-1">
                   <span className="block font-semibold text-navy-800">{b.nama}</span>
+                  <Kenal b={b} padanan={padanan} />
                   <span className="block truncate text-xs text-slate-500">
                     {b.email}
                     {luarDomain(b.email) && (
@@ -309,5 +313,41 @@ export default function PanelAkses({ baris, peranan: perananPilihan }: {
         </section>
       )}
     </>
+  );
+}
+
+
+/**
+ * Siapa orang ini, menurut Buku Pengurusan.
+ *
+ * Pentadbir yang meluluskan akses melihat "KPM-Guru NORA BINTI REMALI" dan
+ * emel berangka. Baris ini menjawab soalan yang mereka sebenarnya tanya:
+ * adakah orang ini warga sekolah, dan apa jawatannya.
+ *
+ * Ia BUKTI, bukan kelulusan automatik. Tiada padanan tidak bermakna orang
+ * itu penipu — guru baharu tiba sebelum buku dicetak semula — jadi nadanya
+ * neutral dan keputusan kekal di tangan manusia.
+ */
+function Kenal({ b, padanan }: {
+  b: BarisAkses;
+  padanan?: Record<string, { namaBersih: string; jawatan: string; opsyen: string; skor: number } | null>;
+}) {
+  if (!padanan) return null;
+  const p = padanan[b.nama];
+  if (!p) {
+    return (
+      <span className="mt-0.5 block text-xs text-slate-400">
+        Tiada nama sepadan dalam Buku Pengurusan
+      </span>
+    );
+  }
+  return (
+    <span className="mt-0.5 block text-xs text-[#167a4b]">
+      {p.jawatan || "Warga sekolah"}
+      {p.opsyen ? ` · ${p.opsyen}` : ""}
+      {p.skor < 100 && (
+        <span className="ml-1 text-slate-400">· padanan {p.skor}%</span>
+      )}
+    </span>
   );
 }

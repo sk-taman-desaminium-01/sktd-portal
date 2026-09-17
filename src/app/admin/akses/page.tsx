@@ -3,6 +3,8 @@ import { senaraiAkses } from "@/lib/akses-urus";
 import { pengguna } from "@/lib/akses";
 import { perananBolehDiberi } from "@/lib/peranan";
 import PanelAkses from "./PanelAkses";
+import { padanSenarai } from "@/lib/padan-akses";
+import { ara } from "@/data/carta";
 
 export const metadata = { title: "Senarai Akses" };
 
@@ -23,6 +25,23 @@ export const metadata = { title: "Senarai Akses" };
  */
 export default async function Akses() {
   const [baris, saya] = await Promise.all([senaraiAkses(), pengguna()]);
+
+  // Siapa setiap akaun itu, menurut Buku Pengurusan. Hanya jawatan dan
+  // opsyen dihantar ke pelayar — bukan seluruh rekod warga (peraturan #12:
+  // apa yang sampai ke pelayar adalah awam).
+  const peta = await padanSenarai(baris);
+  const padanan = Object.fromEntries(
+    baris.map((b) => {
+      const p = peta.get(b.nama);
+      if (!p?.warga) return [b.nama, null];
+      return [b.nama, {
+        namaBersih: p.namaBersih,
+        jawatan: ara(p.warga.kod)?.nama ?? p.warga.kod,
+        opsyen: p.warga.opsyen,
+        skor: p.skor,
+      }];
+    }),
+  );
 
   const menunggu = baris.filter((b) => !b.dibenarkan).length;
 
@@ -45,7 +64,11 @@ export default async function Akses() {
         </p>
       )}
 
-      <PanelAkses baris={baris} peranan={[...perananBolehDiberi(saya?.peranan ?? null)]} />
+      <PanelAkses
+        baris={baris}
+        peranan={[...perananBolehDiberi(saya?.peranan ?? null)]}
+        padanan={peta.size > 0 ? padanan : undefined}
+      />
     </main>
   );
 }

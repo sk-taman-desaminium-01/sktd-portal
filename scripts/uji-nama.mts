@@ -6,6 +6,7 @@
  * yang disingkatkan dalam satu sumber tetapi penuh dalam sumber lain.
  */
 import { namaBersih, kunciNama, bandingNama, cariPadanan } from "../src/lib/nama.ts";
+import { kenakanPindaan, kenakanPindaanBanyak, type Pindaan } from "../src/data/pindaan.ts";
 
 let lulus = 0;
 const gagal: string[] = [];
@@ -102,6 +103,57 @@ for (const bukan of [
   "Memastikan 30% murid Tahun 6 mendapat sekurang-kurangnya 5 bintang",
   "Murid selalu terlupa email moe dan password peribadi",
 ]) uji(`ayat ditolak: ${bukan.slice(0, 34)}`, !kelihatanNama(bukan));
+
+/* ------------------------------------------------------------------ pindaan */
+
+/**
+ * Pembetulan kekal. Ujian yang paling penting di sini ialah yang TIDAK
+ * berlaku: Bilik i-Shabariah mesti kekal bernama begitu selepas Guru Besar
+ * yang menamakannya bersara.
+ */
+const P = (x: Partial<Pindaan>): Pindaan => ({
+  id: x.id ?? "p1", jenis: x.jenis ?? "ganti_nama", dari: x.dari ?? "",
+  kepada: x.kepada ?? null, sebab: null, aktif: x.aktif ?? true,
+  oleh: null, dicipta: "",
+});
+
+const gantiGb = [P({ dari: "SHABARIAH BINTI ISMAIL", kepada: "AZIZAH BINTI OTHMAN" })];
+
+sama("Guru Besar lama digantikan dalam sel nama",
+  kenakanPindaan(["", "PENGERUSI", "SHABARIAH BINTI ISMAIL"], gantiGb).sel,
+  ["", "PENGERUSI", "AZIZAH BINTI OTHMAN"]);
+
+uji("nama khas Bilik i-Shabariah TIDAK tersentuh",
+  kenakanPindaan(["BILIK i-SHABARIAH", "PENYELARAS", "NORA BINTI REMALI"], gantiGb).kena.length === 0);
+
+uji("frasa yang mengandungi nama tidak tersentuh",
+  kenakanPindaan(["MAJLIS PERSARAAN (PN SHABARIAH BINTI ISMAIL)"], gantiGb).kena.length === 0);
+
+uji("ejaan berbeza tetap dipadan melalui kunciNama",
+  kenakanPindaan(["PENGERUSI", "PN. SHABARIAH BT ISMAIL"], gantiGb).sel[1] === "AZIZAH BINTI OTHMAN");
+
+const buang = [P({ jenis: "buang_nama", dari: "SHABARIAH BINTI ISMAIL" })];
+uji("orang yang sudah tiada menggugurkan barisnya",
+  kenakanPindaan(["", "PENGERUSI", "SHABARIAH BINTI ISMAIL"], buang).gugur);
+uji("buangan tidak menggugurkan baris orang lain",
+  !kenakanPindaan(["", "AJK", "MARIA BINTI KAMARUDDIN"], buang).gugur);
+
+const betulTeks = [P({ jenis: "ganti_teks", dari: "PROGRAM TRANSIS &ORIENTASI", kepada: "PROGRAM TRANSISI & ORIENTASI" })];
+sama("jawatan tersalah eja dibetulkan walau tanda baca berbeza",
+  kenakanPindaan(["", "PROGRAM TRANSIS & ORIENTASI", "ADHLINA NADHRAH BINTI YUZAINI"], betulTeks).sel,
+  ["", "PROGRAM TRANSISI & ORIENTASI", "ADHLINA NADHRAH BINTI YUZAINI"]);
+
+uji("pindaan yang dimatikan tidak berkuat kuasa",
+  kenakanPindaan(["PENGERUSI", "SHABARIAH BINTI ISMAIL"],
+    [P({ dari: "SHABARIAH BINTI ISMAIL", kepada: "AZIZAH BINTI OTHMAN", aktif: false })],
+  ).kena.length === 0);
+
+const banyak = kenakanPindaanBanyak([
+  ["", "PENGERUSI", "SHABARIAH BINTI ISMAIL"],
+  ["BILIK i-SHABARIAH", "PENYELARAS", "NORA BINTI REMALI"],
+  ["", "AJK", "MARIA BINTI KAMARUDDIN"],
+], gantiGb);
+sama("kiraan pukal betul", [banyak.baris.length, banyak.diubah, banyak.digugur], [3, 1, 0]);
 
 console.log(`\n${lulus} lulus, ${gagal.length} gagal`);
 for (const g of gagal) console.log(`  ✗ ${g}`);

@@ -60,6 +60,11 @@ export function namaBersih(mentah: string): string {
  *
  * Kurungan dibuang kerana buku sebenar menulis "IRNAWATI BINTI JOHAR (AKP)" —
  * catatan jawatan yang melekat pada nama.
+ *
+ * PENANDA NASAB DISERAGAMKAN. Orang yang sama ditulis "BINTI" dalam buku,
+ * "BT" dalam senarai eOperasi, dan "BTE" dalam e-mel — dan tanpa
+ * penyeragaman ini, ketiga-tiganya menjadi tiga orang berlainan. Itu bukan
+ * andaian: ia muncul dalam Buku Pengurusan sekolah ini sendiri.
  */
 export function kunciNama(mentah: string): string {
   return namaBersih(mentah)
@@ -67,7 +72,10 @@ export function kunciNama(mentah: string): string {
     .toUpperCase()
     .replace(/[^A-Z0-9\/ ]+/g, " ")
     .replace(/\s+/g, " ")
-    .trim();
+    .trim()
+    .split(" ")
+    .map((w) => (w === "BT" || w === "BTE" || w === "BINTE" ? "BINTI" : w === "B" ? "BIN" : w))
+    .join(" ");
 }
 
 /** Perkataan bermakna dalam satu nama — gelaran dan huruf tunggal dibuang. */
