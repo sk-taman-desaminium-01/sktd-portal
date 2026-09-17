@@ -6,7 +6,9 @@ import { namaSubjek } from "@/data/subjek";
 import {
   kuasaPbd, sesiSemasa, muridKelas, nilaiPendaftaran, simpanNilai,
   simpanUlasan, ulasanKelas, bolehTulisNilai, bolehLihatKelas, labelKelas,
-  tetapGuruSubjek, buangGuruSubjek, naikTahun, naikTahunKering, tetapSesi, senaraiSesi,
+  tetapGuruSubjek, buangGuruSubjek, naikTahun, naikTahunKering, undoNaikTahun,
+  padamSesi, tetapSesi, senaraiSesi, suntingMurid, buangPendaftaran,
+  tukarKelasMurid,
   type Nilai,
 } from "./pbd";
 import { gerakKelas, type RancanganNaik } from "@/data/naik-tahun";
@@ -344,6 +346,121 @@ export async function naikTahunTindakan(): Promise<HasilPbd> {
         `${dinaikkan} murid dinaikkan satu tahun; ${tamat} murid Tahun 6 ditandakan tamat` +
         (dilangkau > 0 ? `; ${dilangkau} dilangkau kerana sudah berdaftar` : "") + ". " +
         `Keputusan sesi ${sesi.tahun_sesi} TIDAK disentuh — slipnya kekal boleh dicetak.`,
+    };
+  } catch (e) {
+    return { ok: false, mesej: ralat(e) };
+  }
+}
+
+/**
+ * PATAH BALIK naik tahun.
+ *
+ * Sesi sasaran dibuang sepenuhnya dan sesi sumber dibuka semula, jadi
+ * keadaannya kembali seperti sebelum butang ditekan. Ia berhenti sendiri
+ * kalau guru sudah mula mengisi nilai dalam sesi baharu — lihat
+ * `undoNaikTahun()`.
+ */
+/* ------------------------------------------------------- betulkan murid */
+
+export interface MuridRingkas {
+  pendaftaran_id: string;
+  murid_id: string;
+  nama: string;
+  no_kp: string | null;
+}
+
+export async function muridKelasTindakan(
+  tahun: number, kelas: string,
+): Promise<{ ok: boolean; mesej: string; murid?: MuridRingkas[] }> {
+  try {
+    await pastikanBoleh("urus_guru_kelas");
+    const sesi = await sesiSemasa();
+    if (!sesi) return { ok: false, mesej: "Tiada sesi aktif." };
+    const senarai = await muridKelas(sesi.tahun_sesi, tahun, kelas);
+    return {
+      ok: true,
+      murid: senarai.map((m) => ({
+        pendaftaran_id: m.pendaftaran_id, murid_id: m.murid_id,
+        nama: m.nama, no_kp: m.no_kp,
+      })),
+      mesej: `${senarai.length} murid dalam ${tahun} ${kelas}.`,
+    };
+  } catch (e) {
+    return { ok: false, mesej: ralat(e) };
+  }
+}
+
+export async function suntingMuridTindakan(
+  muridId: string, nama: string, noKp: string,
+): Promise<HasilPbd> {
+  try {
+    await pastikanBoleh("urus_guru_kelas");
+    await suntingMurid(muridId, { nama, no_kp: noKp });
+    revalidatePath("/admin/pbd");
+    revalidatePath("/pbd");
+    return { ok: true, mesej: "Butiran murid dibetulkan." };
+  } catch (e) {
+    return { ok: false, mesej: ralat(e) };
+  }
+}
+
+export async function buangMuridTindakan(pendaftaranId: string): Promise<HasilPbd> {
+  try {
+    await pastikanBoleh("urus_guru_kelas");
+    await buangPendaftaran(pendaftaranId);
+    revalidatePath("/admin/pbd");
+    revalidatePath("/pbd");
+    return { ok: true, mesej: "Murid dikeluarkan dari kelas. Rekodnya kekal." };
+  } catch (e) {
+    return { ok: false, mesej: ralat(e) };
+  }
+}
+
+export async function tukarKelasTindakan(
+  pendaftaranId: string, tahun: number, kelas: string,
+): Promise<HasilPbd> {
+  try {
+    await pastikanBoleh("urus_guru_kelas");
+    await tukarKelasMurid(pendaftaranId, tahun, kelas);
+    revalidatePath("/admin/pbd");
+    revalidatePath("/pbd");
+    return { ok: true, mesej: `Dipindahkan ke ${tahun} ${kelas}. Nilai PBDnya ikut sama.` };
+  } catch (e) {
+    return { ok: false, mesej: ralat(e) };
+  }
+}
+
+export async function undoNaikTahunTindakan(): Promise<HasilPbd> {
+  try {
+    await pastikanBoleh("urus_guru_kelas");
+    const sesi = await senaraiSesi();
+    if (sesi.length < 2) {
+      return { ok: false, mesej: "Hanya ada satu sesi — tiada naik tahun untuk dipatahkan balik." };
+    }
+    const terkini = Math.max(...sesi.map((s) => s.tahun_sesi));
+    const sebelum = Math.max(...sesi.map((s) => s.tahun_sesi).filter((t) => t < terkini));
+
+    const { dibuang, dipulih } = await undoNaikTahun(sebelum, terkini);
+
+    await tetapSesi(sebelum, "aktif");
+    await tetapSesi(terkini, "tutup");
+    // Sesi sasaran yang kini kosong dibuang supaya senarai sesi tidak
+    // menyimpan tahun yang tidak pernah benar-benar bermula.
+    try {
+      await padamSesi(terkini);
+    } catch {
+      // Ia masih ada pendaftaran yang bukan dari naik tahun. Itu betul —
+      // sesi itu dikekalkan, cuma ditutup.
+    }
+
+    revalidatePath("/admin/pbd");
+    revalidatePath("/pbd");
+    return {
+      ok: true,
+      mesej:
+        `Dipatahkan balik. ${dibuang} pendaftaran sesi ${terkini} dibuang, ` +
+        `${dipulih} murid Tahun 6 dikembalikan kepada aktif. ` +
+        `Sesi ${sebelum} dibuka semula — keadaannya seperti sebelum naik tahun ditekan.`,
     };
   } catch (e) {
     return { ok: false, mesej: ralat(e) };

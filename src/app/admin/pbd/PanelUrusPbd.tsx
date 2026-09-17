@@ -1,8 +1,12 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { importMuridKelas, type HasilImportKelas } from "@/lib/import-murid";
-import { tugaskanGuruSubjek, buangTugasanGuruSubjek, naikTahunTindakan, cubaNaikTahun } from "@/lib/tindakan-pbd";
+import {
+  tugaskanGuruSubjek, buangTugasanGuruSubjek, naikTahunTindakan, cubaNaikTahun,
+  undoNaikTahunTindakan, muridKelasTindakan, suntingMuridTindakan,
+  buangMuridTindakan, tukarKelasTindakan, type MuridRingkas,
+} from "@/lib/tindakan-pbd";
 import type { RancanganNaik } from "@/data/naik-tahun";
 import PilihCari from "@/components/PilihCari";
 import { SUBJEK, namaSubjek } from "@/data/subjek";
@@ -64,6 +68,25 @@ export default function PanelUrusPbd({
       const r = await cubaNaikTahun();
       setMesejSesi({ ok: r.ok, teks: r.mesej });
       setCuba(r.ok && r.rancangan ? { rancangan: r.rancangan, gerak: r.gerak ?? [] } : null);
+    } finally {
+      setSibukSesi(false);
+    }
+  }
+
+  const [sahUndo, setSahUndo] = useState(false);
+
+  /**
+   * Patah balik selepas ujian.
+   *
+   * Operasi yang tiada jalan pulang bermakna orang takut mengujinya — dan
+   * operasi yang tidak pernah diuji ialah operasi yang gagal pada 1 Januari.
+   */
+  async function undoNaik() {
+    setSibukSesi(true);
+    try {
+      const r = await undoNaikTahunTindakan();
+      setMesejSesi({ ok: r.ok, teks: r.mesej });
+      if (r.ok) { setSahUndo(false); setCuba(null); }
     } finally {
       setSibukSesi(false);
     }
@@ -228,8 +251,37 @@ export default function PanelUrusPbd({
             disabled={sibukSesi}
             className="rounded-lg border border-garis px-4 py-2 text-sm font-semibold text-navy-700 hover:border-navy-700 disabled:opacity-50"
           >
-            {sibukSesi && !sahNaik ? "Menyemak…" : "Cuba dahulu (tiada apa ditulis)"}
+            {sibukSesi && !sahNaik ? "Menyemak…" : "Semak dahulu"}
           </button>
+
+          {/* PATAH BALIK. Ia bukan butang utama dan tidak sepatutnya kelihatan
+              seperti satu — tetapi ia mesti ada, kalau tidak naik tahun
+              menjadi operasi yang orang takut menguji. */}
+          {sahUndo ? (
+            <span className="flex flex-wrap items-center gap-2 text-sm">
+              <span className="text-[#8f2b2b]">
+                Buang sesi {tahunSesi + 1} dan buka semula sesi {tahunSesi}?
+              </span>
+              <button
+                onClick={() => void undoNaik()}
+                disabled={sibukSesi}
+                className="rounded-lg bg-[#8f2b2b] px-4 py-2 text-sm font-bold text-white disabled:opacity-50"
+              >
+                {sibukSesi ? "…" : "Ya, patah balik"}
+              </button>
+              <button onClick={() => setSahUndo(false)} className="text-sm text-slate-500 underline">
+                Batal
+              </button>
+            </span>
+          ) : (
+            <button
+              onClick={() => setSahUndo(true)}
+              disabled={sibukSesi}
+              className="text-sm text-slate-500 underline hover:text-[#8f2b2b] disabled:opacity-50"
+            >
+              Patah balik naik tahun
+            </button>
+          )}
         </div>
 
         <div className="mt-3">
@@ -253,7 +305,7 @@ export default function PanelUrusPbd({
             <button
               onClick={() => setSahNaik(true)}
               disabled={!cuba}
-              title={cuba ? undefined : "Jalankan larian kering dahulu."}
+              title={cuba ? undefined : "Tekan Semak dahulu."}
               className="rounded-lg border border-navy-700 px-4 py-2 text-sm font-semibold text-navy-700 disabled:border-garis disabled:text-slate-400"
             >
               Tutup sesi {tahunSesi} &amp; naik tahun
@@ -261,7 +313,7 @@ export default function PanelUrusPbd({
           )}
           {!cuba && (
             <p className="mt-2 text-xs text-slate-400">
-              Jalankan <b>Cuba dahulu</b> sebelum ini boleh ditekan.
+Tekan <b>Semak dahulu</b> sebelum ini boleh digunakan.
             </p>
           )}
         </div>
@@ -311,7 +363,7 @@ export default function PanelUrusPbd({
               disabled={sibukImport}
               className="rounded-lg border border-navy-700 px-4 py-2 text-sm font-semibold text-navy-700 disabled:opacity-50"
             >
-              {sibukImport ? "Menyemak…" : "Semak dahulu (tiada apa ditulis)"}
+              {sibukImport ? "Menyemak…" : "Semak dahulu"}
             </button>
             {hasil?.ok && hasil.kering && (
               <button
@@ -365,6 +417,9 @@ export default function PanelUrusPbd({
           </div>
         )}
       </section>
+
+      {/* ---------------- Betulkan murid ---------------- */}
+      <SemakMurid senaraiKelas={senaraiKelas} />
 
       {/* ---------------- Guru subjek ---------------- */}
       <section className="mt-10">
@@ -485,6 +540,18 @@ function Mesej({ ok, teks }: { ok: boolean; teks: string }) {
 }
 
 /** Pemilih berbilang berbentuk cip — untuk subjek dan kelas. */
+/**
+ * Pilihan berbilang, dengan CARIAN.
+ *
+ * Peraturan tetap dalam portal ini: apa-apa senarai yang boleh menjadi
+ * panjang mesti boleh dicari. Lima puluh tujuh kelas sebagai cip berderet
+ * bermakna guru mengimbas dengan mata sehingga jumpa — dan memilih kelas
+ * yang salah berlaku sekurang-kurangnya sekali setiap sesi.
+ *
+ * Kotak carian disembunyikan bila pilihannya lapan atau kurang; mencari
+ * antara tiga perkara bukan masalah yang perlu diselesaikan. Ambang yang
+ * sama dengan `PilihCari`, supaya kedua-duanya berkelakuan serupa.
+ */
 function Berbilang({
   tajuk, pilihan, dipilih, togol,
 }: {
@@ -493,14 +560,52 @@ function Berbilang({
   dipilih: Set<string>;
   togol: (nilai: string) => void;
 }) {
+  const [cari, setCari] = useState("");
+
+  const ditapis = useMemo(() => {
+    const t = cari.trim().toLowerCase();
+    if (!t) return pilihan;
+    return pilihan.filter((p) => p.label.toLowerCase().includes(t));
+  }, [pilihan, cari]);
+
+  // Yang SUDAH dipilih sentiasa kelihatan, walaupun ditapis keluar oleh
+  // carian. Cip yang hilang semasa menaip kelihatan seperti pilihan yang
+  // terbatal, dan pengguna menekannya semula.
+  const papar = useMemo(() => {
+    const nampak = new Set(ditapis.map((p) => p.nilai));
+    return [...ditapis, ...pilihan.filter((p) => dipilih.has(p.nilai) && !nampak.has(p.nilai))];
+  }, [ditapis, pilihan, dipilih]);
+
   return (
     <div className="mt-4">
-      <span className="text-xs font-semibold text-slate-500">
-        {tajuk}
-        {dipilih.size > 0 && <span className="ml-1.5 text-navy-700">({dipilih.size} dipilih)</span>}
-      </span>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <span className="text-xs font-semibold text-slate-500">
+          {tajuk}
+          {dipilih.size > 0 && <span className="ml-1.5 text-navy-700">· {dipilih.size} dipilih</span>}
+        </span>
+        {dipilih.size > 0 && (
+          <button
+            type="button"
+            onClick={() => pilihan.filter((p) => dipilih.has(p.nilai)).forEach((p) => togol(p.nilai))}
+            className="text-xs text-slate-500 underline hover:text-navy-700"
+          >
+            Kosongkan
+          </button>
+        )}
+      </div>
+
+      {pilihan.length > 8 && (
+        <input
+          value={cari}
+          onChange={(e) => setCari(e.target.value)}
+          placeholder={`Cari ${tajuk.toLowerCase()}…`}
+          aria-label={`Cari ${tajuk}`}
+          className="mt-1.5 w-full max-w-xs rounded-lg border border-garis px-3 py-1.5 text-xs"
+        />
+      )}
+
       <ul className="mt-1.5 flex flex-wrap gap-1.5">
-        {pilihan.map((p) => {
+        {papar.map((p) => {
           const aktif = dipilih.has(p.nilai);
           return (
             <li key={p.nilai}>
@@ -519,6 +624,9 @@ function Berbilang({
             </li>
           );
         })}
+        {papar.length === 0 && (
+          <li className="py-1 text-xs text-slate-400">Tiada yang sepadan.</li>
+        )}
       </ul>
     </div>
   );
@@ -540,7 +648,7 @@ function SemakanNaik({ rancangan, gerak, tahunSesi }: {
   return (
     <div className="mt-3 rounded-xl border border-garis bg-navy-50/40 p-4">
       <p className="text-xs font-bold uppercase tracking-wide text-slate-500">
-        Larian kering · sesi {tahunSesi} → {tahunSesi + 1}
+Semakan · sesi {tahunSesi} → {tahunSesi + 1}
       </p>
 
       <div className="mt-2 flex flex-wrap gap-4 text-sm">
@@ -588,5 +696,292 @@ function SemakanNaik({ rancangan, gerak, tahunSesi }: {
         </details>
       )}
     </div>
+  );
+}
+
+
+/**
+ * SEMAK & BETULKAN MURID.
+ *
+ * Nama tersalah eja dan No. KP tersalah taip berlaku pada setiap import,
+ * kerana sumbernya ialah senarai yang ditaip manusia. Tanpa skrin ini,
+ * jalan keluar satu-satunya ialah memadam kelas dan mengimport semula — dan
+ * itu memusnahkan nilai PBD yang guru sudah isi.
+ *
+ * Tindakan duduk di sebalik menu tiga titik, bukan butang berderet: pada
+ * telefon, dua butang di hujung baris memicit nama murid sehingga terpotong.
+ */
+function SemakMurid({ senaraiKelas }: {
+  senaraiKelas: { tahun: number; kelas: string; bil?: number }[];
+}) {
+  const [kelas, setKelas] = useState("");
+  const [murid, setMurid] = useState<MuridRingkas[] | null>(null);
+  const [nota, setNota] = useState<{ ok: boolean; teks: string } | null>(null);
+  const [sibuk, setSibuk] = useState(false);
+  const [menu, setMenu] = useState<string | null>(null);
+  const [sunting, setSunting] = useState<string | null>(null);
+  const [nama, setNama] = useState("");
+  const [noKp, setNoKp] = useState("");
+  const [sahBuang, setSahBuang] = useState<string | null>(null);
+  const [pindah, setPindah] = useState<string | null>(null);
+  const [cari, setCari] = useState("");
+
+  useEffect(() => {
+    if (!menu) return;
+    const tutup = () => setMenu(null);
+    document.addEventListener("pointerdown", tutup);
+    return () => document.removeEventListener("pointerdown", tutup);
+  }, [menu]);
+
+  const pecah = (v: string) => {
+    const [t, ...k] = v.split(" ");
+    return { tahun: Number(t), kelas: k.join(" ") };
+  };
+
+  async function muat(v: string) {
+    setKelas(v);
+    setMurid(null);
+    setNota(null);
+    if (!v) return;
+    setSibuk(true);
+    try {
+      const { tahun, kelas: k } = pecah(v);
+      const r = await muridKelasTindakan(tahun, k);
+      setNota({ ok: r.ok, teks: r.mesej });
+      setMurid(r.murid ?? null);
+    } finally {
+      setSibuk(false);
+    }
+  }
+
+  async function simpan(m: MuridRingkas) {
+    setSibuk(true);
+    try {
+      const r = await suntingMuridTindakan(m.murid_id, nama, noKp);
+      setNota({ ok: r.ok, teks: r.mesej });
+      if (!r.ok) return;
+      setMurid((l) =>
+        (l ?? []).map((x) =>
+          x.murid_id === m.murid_id
+            ? { ...x, nama: nama.trim().toUpperCase(), no_kp: noKp.replace(/\D/g, "") || null }
+            : x,
+        ),
+      );
+      setSunting(null);
+    } finally {
+      setSibuk(false);
+    }
+  }
+
+  async function buang(m: MuridRingkas) {
+    setSibuk(true);
+    try {
+      const r = await buangMuridTindakan(m.pendaftaran_id);
+      setNota({ ok: r.ok, teks: r.mesej });
+      if (r.ok) setMurid((l) => (l ?? []).filter((x) => x.pendaftaran_id !== m.pendaftaran_id));
+      setSahBuang(null);
+    } finally {
+      setSibuk(false);
+    }
+  }
+
+  async function pindahkan(m: MuridRingkas, v: string) {
+    setSibuk(true);
+    try {
+      const { tahun, kelas: k } = pecah(v);
+      const r = await tukarKelasTindakan(m.pendaftaran_id, tahun, k);
+      setNota({ ok: r.ok, teks: r.mesej });
+      if (r.ok) setMurid((l) => (l ?? []).filter((x) => x.pendaftaran_id !== m.pendaftaran_id));
+      setPindah(null);
+    } finally {
+      setSibuk(false);
+    }
+  }
+
+  const papar = (murid ?? []).filter((m) => {
+    const t = cari.trim().toLowerCase();
+    if (!t) return true;
+    return m.nama.toLowerCase().includes(t) || (m.no_kp ?? "").includes(t);
+  });
+
+  if (senaraiKelas.length === 0) return null;
+
+  return (
+    <section className="mt-10">
+      <h2 className="text-base font-bold text-navy-800">Betulkan murid</h2>
+      <p className="mt-1 text-sm leading-relaxed text-slate-500">
+        Nama tersalah eja, No. KP tersalah taip, murid yang masuk kelas yang
+        salah. Betulkan di sini — tidak perlu memadam kelas dan mengimport
+        semula, yang akan memusnahkan nilai PBD yang sudah diisi.
+      </p>
+
+      <div className="mt-3 rounded-xl border border-garis bg-white p-4">
+        <div className="max-w-sm">
+          <PilihCari
+            id="kelas-semak"
+            label="Kelas"
+            pilihan={senaraiKelas.map((k) => ({
+              nilai: `${k.tahun} ${k.kelas}`,
+              label: `${k.tahun} ${k.kelas}`,
+              nota: k.bil ? `${k.bil} murid` : undefined,
+            }))}
+            nilai={kelas}
+            tukar={(v) => void muat(v)}
+            placeholder="Cari kelas…"
+          />
+        </div>
+
+        {nota && <div className="mt-3"><Mesej ok={nota.ok} teks={nota.teks} /></div>}
+
+        {murid && murid.length > 0 && (
+          <>
+            <input
+              value={cari}
+              onChange={(e) => setCari(e.target.value)}
+              placeholder="Cari nama atau No. KP…"
+              aria-label="Cari murid"
+              className="mt-3 w-full max-w-xs rounded-lg border border-garis px-3 py-1.5 text-xs"
+            />
+
+            <ul className="mt-2 divide-y divide-garis border-t border-garis">
+              {papar.map((m, i) => (
+                <li key={m.pendaftaran_id} className="py-2">
+                  <div className="flex items-start gap-2">
+                    <span className="w-6 shrink-0 pt-0.5 text-xs text-slate-400">{i + 1}</span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block text-sm font-medium text-navy-800">{m.nama}</span>
+                      <span className="mt-0.5 block font-mono text-xs text-slate-400">
+                        {m.no_kp ?? "tiada No. KP"}
+                      </span>
+                    </span>
+
+                    <span className="relative shrink-0">
+                      <button
+                        onPointerDown={(e) => e.stopPropagation()}
+                        onClick={() => setMenu((x) => (x === m.pendaftaran_id ? null : m.pendaftaran_id))}
+                        aria-label={`Tindakan untuk ${m.nama}`}
+                        aria-haspopup="menu"
+                        aria-expanded={menu === m.pendaftaran_id}
+                        className="flex h-8 w-8 items-center justify-center rounded-full border border-garis text-slate-500 hover:border-navy-700 hover:text-navy-700"
+                      >
+                        <svg viewBox="0 0 16 16" aria-hidden="true" className="h-4 w-4" fill="currentColor">
+                          <circle cx="8" cy="3" r="1.4" />
+                          <circle cx="8" cy="8" r="1.4" />
+                          <circle cx="8" cy="13" r="1.4" />
+                        </svg>
+                      </button>
+
+                      {menu === m.pendaftaran_id && (
+                        <span
+                          role="menu"
+                          onPointerDown={(e) => e.stopPropagation()}
+                          className="absolute right-0 top-full z-20 mt-1 flex w-44 flex-col overflow-hidden rounded-xl border border-garis bg-white py-1 shadow-lg"
+                        >
+                          <button
+                            role="menuitem"
+                            onClick={() => {
+                              setSunting(m.pendaftaran_id);
+                              setNama(m.nama); setNoKp(m.no_kp ?? "");
+                              setMenu(null);
+                            }}
+                            className="px-3 py-2 text-left text-xs text-navy-800 hover:bg-navy-50"
+                          >
+                            Sunting nama &amp; No. KP
+                          </button>
+                          <button
+                            role="menuitem"
+                            onClick={() => { setPindah(m.pendaftaran_id); setMenu(null); }}
+                            className="px-3 py-2 text-left text-xs text-navy-800 hover:bg-navy-50"
+                          >
+                            Pindah kelas
+                          </button>
+                          <button
+                            role="menuitem"
+                            onClick={() => { setSahBuang(m.pendaftaran_id); setMenu(null); }}
+                            className="px-3 py-2 text-left text-xs text-[#8f2b2b] hover:bg-[#fdf1f1]"
+                          >
+                            Keluarkan dari kelas
+                          </button>
+                        </span>
+                      )}
+                    </span>
+                  </div>
+
+                  {sunting === m.pendaftaran_id && (
+                    <div className="mt-2 rounded-lg border border-navy-700/30 bg-navy-50/40 p-3">
+                      <div className="grid gap-2 sm:grid-cols-[2fr_1fr]">
+                        <input
+                          value={nama} onChange={(e) => setNama(e.target.value)}
+                          aria-label="Nama murid"
+                          className="min-w-0 rounded-lg border border-garis px-3 py-2 text-sm"
+                        />
+                        <input
+                          value={noKp} onChange={(e) => setNoKp(e.target.value)}
+                          inputMode="numeric" aria-label="No. KP"
+                          placeholder="12 digit"
+                          className="min-w-0 rounded-lg border border-garis px-3 py-2 font-mono text-sm"
+                        />
+                      </div>
+                      <div className="mt-2 flex flex-wrap items-center gap-2">
+                        <button
+                          onClick={() => void simpan(m)}
+                          disabled={sibuk || nama.trim().length < 3}
+                          className="rounded-lg bg-navy-700 px-4 py-2 text-xs font-bold text-white disabled:opacity-40"
+                        >
+                          {sibuk ? "…" : "Simpan"}
+                        </button>
+                        <button onClick={() => setSunting(null)} className="text-xs text-slate-500 underline">
+                          Batal
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {pindah === m.pendaftaran_id && (
+                    <div className="mt-2 max-w-xs rounded-lg border border-navy-700/30 bg-navy-50/40 p-3">
+                      <PilihCari
+                        id={`pindah-${m.pendaftaran_id}`}
+                        label={`Pindahkan ${m.nama} ke`}
+                        pilihan={senaraiKelas
+                          .filter((k) => `${k.tahun} ${k.kelas}` !== kelas)
+                          .map((k) => ({ nilai: `${k.tahun} ${k.kelas}`, label: `${k.tahun} ${k.kelas}` }))}
+                        nilai=""
+                        tukar={(v) => void pindahkan(m, v)}
+                        placeholder="Cari kelas…"
+                      />
+                      <button onClick={() => setPindah(null)} className="mt-2 text-xs text-slate-500 underline">
+                        Batal
+                      </button>
+                    </div>
+                  )}
+
+                  {sahBuang === m.pendaftaran_id && (
+                    <p className="mt-2 flex flex-wrap items-center gap-2 rounded-lg bg-[#fdf1f1] p-2.5 text-xs text-[#8f2b2b]">
+                      <span className="min-w-0 flex-1">
+                        Keluarkan <b>{m.nama}</b> dari kelas ini? Rekod muridnya kekal
+                        — hanya pendaftaran kelas ini dibuang.
+                      </span>
+                      <button
+                        onClick={() => void buang(m)}
+                        disabled={sibuk}
+                        className="shrink-0 rounded-lg bg-[#8f2b2b] px-3 py-1.5 font-bold text-white disabled:opacity-50"
+                      >
+                        Ya, keluarkan
+                      </button>
+                      <button onClick={() => setSahBuang(null)} className="shrink-0 underline">
+                        Batal
+                      </button>
+                    </p>
+                  )}
+                </li>
+              ))}
+              {papar.length === 0 && (
+                <li className="py-3 text-sm text-slate-400">Tiada murid sepadan.</li>
+              )}
+            </ul>
+          </>
+        )}
+      </div>
+    </section>
   );
 }

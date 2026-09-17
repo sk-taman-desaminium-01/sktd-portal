@@ -206,6 +206,79 @@ export async function muridKelas(
   return keluar.sort((a, b) => a.nama.localeCompare(b.nama, "ms"));
 }
 
+/**
+ * Betulkan butiran seorang murid.
+ *
+ * Nama tersalah eja dan No. KP tersalah taip berlaku pada setiap import,
+ * kerana sumbernya ialah senarai yang ditaip manusia. Tanpa cara
+ * membetulkannya di skrin, jalan keluar satu-satunya ialah memadam kelas
+ * dan mengimport semula — dan itu memusnahkan nilai PBD yang sudah diisi.
+ */
+export async function suntingMurid(
+  muridId: string, ubah: { nama?: string; no_kp?: string | null; jantina?: string | null },
+): Promise<void> {
+  const db = klienTulis();
+  const badan: Record<string, unknown> = {};
+  if (ubah.nama !== undefined) {
+    const n = ubah.nama.trim();
+    // Peraturan keras #2: medan kosong BUKAN padam. Nama kosong ialah
+    // kesilapan borang, bukan hasrat.
+    if (n.length < 3) throw new Error("Nama terlalu pendek.");
+    badan.nama = n.toUpperCase();
+  }
+  if (ubah.no_kp !== undefined) {
+    const k = (ubah.no_kp ?? "").replace(/\D/g, "");
+    if (k !== "" && k.length !== 12) throw new Error("No. KP mesti 12 digit.");
+    badan.no_kp = k === "" ? null : k;
+  }
+  if (ubah.jantina !== undefined) badan.jantina = ubah.jantina;
+  if (Object.keys(badan).length === 0) return;
+
+  await db.minta(`pbd_murid?id=eq.${encodeURIComponent(muridId)}`, {
+    method: "PATCH",
+    headers: { Prefer: "return=minimal" },
+    body: JSON.stringify(badan),
+  });
+}
+
+/**
+ * Buang seorang murid dari kelas.
+ *
+ * Pendaftaran DIBUANG, rekod murid KEKAL. Murid yang dimasukkan ke kelas
+ * yang salah perlu dikeluarkan dari kelas itu — bukan dihapuskan dari
+ * sekolah. Kalau nilai PBD sudah diisi bagi pendaftaran itu, operasi
+ * berhenti: markah tanpa murid ialah kerosakan yang tiada butang boleh
+ * pulihkan.
+ */
+export async function buangPendaftaran(pendaftaranId: string): Promise<void> {
+  const db = klienTulis();
+  const nilai = (await db.minta(
+    `pbd_nilai?select=id&pendaftaran_id=eq.${encodeURIComponent(pendaftaranId)}&limit=1`,
+  )) as { id: string }[];
+  if (nilai.length > 0) {
+    throw new Error(
+      "Murid ini sudah ada nilai PBD yang diisi guru. Buang nilai itu dahulu, " +
+        "atau tukar kelasnya dan bukan membuangnya.",
+    );
+  }
+  await db.minta(`pbd_pendaftaran?id=eq.${encodeURIComponent(pendaftaranId)}`, {
+    method: "DELETE",
+    headers: { Prefer: "return=minimal" },
+  });
+}
+
+/** Pindahkan murid ke kelas lain tanpa kehilangan nilainya. */
+export async function tukarKelasMurid(
+  pendaftaranId: string, tahun: number, kelas: string,
+): Promise<void> {
+  const db = klienTulis();
+  await db.minta(`pbd_pendaftaran?id=eq.${encodeURIComponent(pendaftaranId)}`, {
+    method: "PATCH",
+    headers: { Prefer: "return=minimal" },
+    body: JSON.stringify({ tahun, kelas }),
+  });
+}
+
 /** Semua kelas yang ada murid dalam sesi ini. */
 export async function kelasBerisi(
   tahunSesi: number,
@@ -471,6 +544,96 @@ export async function naikTahun(
     tamat: rancangan.tamat.length,
     dilangkau: rancangan.sudahAda.length,
   };
+}
+
+/**
+ * PATAH BALIK selepas naik tahun.
+ *
+ * Pengguna menguji naik tahun pada September 2026 dan bertanya perkara yang
+ * betul: "macam mana saya nak patah balik ke belakang selepas ujian?"
+ * Operasi yang tiada jalan pulang bermakna orang takut mengujinya — dan
+ * operasi yang tidak pernah diuji ialah operasi yang gagal pada 1 Januari.
+ *
+ * TIGA PAGAR, kerana ini memadam baris:
+ *
+ *  1. Hanya pendaftaran yang BOLEH dijejak kembali ke sesi sumber dibuang.
+ *     Murid yang didaftarkan terus ke sesi sasaran (masuk pertengahan tahun)
+ *     tidak pernah datang dari naik tahun, dan bukan milik operasi ini.
+ *
+ *  2. Kalau ada NILAI sudah direkod dalam sesi sasaran, ia BERHENTI. Guru
+ *     sudah mula mengisi TP; membuang pendaftaran mereka meninggalkan markah
+ *     tanpa murid, dan itu kerosakan yang tiada butang boleh pulihkan.
+ *
+ *  3. Status `tamat` Tahun 6 dipulihkan kepada `aktif` — tetapi hanya bagi
+ *     murid yang memang Tahun 6 dalam sesi sumber.
+ */
+export async function undoNaikTahun(
+  dariSesi: number, keSesi: number,
+): Promise<{ dibuang: number; dipulih: number }> {
+  const db = klienTulis();
+
+  const asal = await pendaftaranSesi(dariSesi);
+  if (asal.length === 0) {
+    throw new Error(
+      `Sesi ${dariSesi} tiada pendaftaran, jadi tiada apa yang boleh dipatahkan balik.`,
+    );
+  }
+  const dariSini = new Set(asal.map((x) => x.murid_id));
+
+  const sasaran = (await db.minta(
+    `pbd_pendaftaran?select=id,murid_id&tahun_sesi=eq.${keSesi}`,
+  )) as { id: string; murid_id: string }[];
+  const calon = sasaran.filter((x) => dariSini.has(x.murid_id));
+  if (calon.length === 0) return { dibuang: 0, dipulih: 0 };
+
+  // PAGAR 2. Nilai dalam sesi sasaran bermakna kerja sebenar sudah bermula.
+  const ada = (await db.minta(
+    `pbd_nilai?select=id&pendaftaran_id=in.(${calon.slice(0, 500).map((x) => x.id).join(",")})&limit=1`,
+  )) as { id: string }[];
+  if (ada.length > 0) {
+    throw new Error(
+      `Sesi ${keSesi} sudah mengandungi nilai PBD yang diisi guru. ` +
+        "Patah balik dihentikan — membuang pendaftaran akan meninggalkan markah tanpa murid.",
+    );
+  }
+
+  for (let i = 0; i < calon.length; i += 100) {
+    const senarai = calon.slice(i, i + 100).map((x) => x.id).join(",");
+    if (!senarai) continue;
+    await db.minta(`pbd_pendaftaran?id=in.(${senarai})`, {
+      method: "DELETE",
+      headers: { Prefer: "return=minimal" },
+    });
+  }
+
+  // PAGAR 3. Tahun 6 dikembalikan kepada aktif.
+  const tamat = asal.filter((x) => x.tahun === 6).map((x) => x.murid_id);
+  for (let i = 0; i < tamat.length; i += 100) {
+    const senarai = tamat.slice(i, i + 100).join(",");
+    if (!senarai) continue;
+    await db.minta(`pbd_murid?id=in.(${senarai})&status=eq.tamat`, {
+      method: "PATCH",
+      headers: { Prefer: "return=minimal" },
+      body: JSON.stringify({ status: "aktif" }),
+    });
+  }
+
+  return { dibuang: calon.length, dipulih: tamat.length };
+}
+
+/** Buang satu sesi yang kosong — selepas patah balik, sesi itu tiada gunanya. */
+export async function padamSesi(tahunSesi: number): Promise<void> {
+  const db = klienTulis();
+  const ada = await pendaftaranSesi(tahunSesi);
+  if (ada.length > 0) {
+    throw new Error(
+      `Sesi ${tahunSesi} masih ada ${ada.length} pendaftaran. Patah balik dahulu.`,
+    );
+  }
+  await db.minta(`pbd_sesi?tahun_sesi=eq.${tahunSesi}`, {
+    method: "DELETE",
+    headers: { Prefer: "return=minimal" },
+  });
 }
 
 export async function tetapSesi(tahunSesi: number, status: "aktif" | "tutup"): Promise<void> {

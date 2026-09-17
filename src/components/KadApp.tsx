@@ -73,9 +73,16 @@ export default function KadApp({ app }: { app: KadPortal }) {
       {app.akses && <p className="mt-2 text-xs text-slate-500">🔒 {app.akses}</p>}
 
       <div className="mt-auto flex items-end justify-between gap-3 pt-4 text-xs">
-        <span className="min-w-0 truncate text-slate-400">
+        {/* Domain untuk modul yang BELUM hidup ialah cadangan, dan
+            menuliskannya "(cadangan)" dalam kurungan pada setiap kad
+            mengulang perkara yang lencana status sudah katakan. Alamat itu
+            dikelabukan sebaliknya — nampak belum hidup tanpa satu perkataan
+            tambahan. */}
+        <span
+          className={`min-w-0 truncate ${app.domainCadangan ? "text-slate-300" : "text-slate-400"}`}
+          title={app.domainCadangan ? "Alamat cadangan — modul ini belum hidup" : undefined}
+        >
           {app.domain}
-          {app.domainCadangan && <i> (cadangan)</i>}
         </span>
         <span className="shrink-0 font-semibold text-navy-700">
           {app.luaran ? "Buka laman ↗" : app.pautan ? "Buka →" : "Lihat status →"}
