@@ -113,6 +113,26 @@ export async function kosongkan(emel: string): Promise<void> {
  * senarai emel kedua di mana-mana — senarai kedua ialah senarai yang
  * menjadi lapuk.
  */
+/**
+ * Emel SETIAP warga yang dibenarkan masuk portal.
+ *
+ * Untuk pengumuman yang memang ditujukan kepada semua — pos yang
+ * diterbitkan, makluman sekolah. Dibaca berkeping-keping: peraturan keras #1
+ * bukan tentang saiz data hari ini, ia tentang saiz data pada tahun kelima.
+ */
+export async function emelSemuaWarga(): Promise<string[]> {
+  const db = klienTulis();
+  const KEPING = 500;
+  const keluar: string[] = [];
+  for (let mula = 0; ; mula += KEPING) {
+    const keping = (await db.minta(
+      `pbd_guru?select=email&dibenarkan=eq.true&offset=${mula}&limit=${KEPING}`,
+    )) as { email: string | null }[];
+    keluar.push(...keping.map((b) => b.email ?? "").filter((e) => e !== ""));
+    if (keping.length < KEPING) return keluar;
+  }
+}
+
 export async function emelIkutPeranan(peranan: string[]): Promise<string[]> {
   if (peranan.length === 0) return [];
   const db = klienTulis();

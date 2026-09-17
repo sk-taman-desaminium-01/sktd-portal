@@ -92,11 +92,34 @@ export async function permohonanSaya(emel: string, had = 100): Promise<Permohona
 export async function simpanPermohonan(p: {
   barang_id: string; kuantiti: number; tujuan: string;
   perlu_pada: string | null; oleh: string; nama: string;
+  tempahan_id?: string | null;
 }): Promise<void> {
   const db = klienTulis();
   await db.minta("inventori_permohonan", {
     method: "POST", headers: { Prefer: "return=minimal" },
-    body: JSON.stringify({ ...p, status: "baharu" }),
+    body: JSON.stringify({ tempahan_id: null, ...p, status: "baharu" }),
+  });
+}
+
+/**
+ * Banyak permohonan sekali gus, daripada satu tempahan bilik.
+ *
+ * Guru yang menempah dewan dan menanda "perlukan projektor dan pembesar
+ * suara" membuat SATU tindakan, bukan tiga. Menuntut mereka membuka skrin
+ * lain dan mengisi borang untuk setiap barang ialah tepat kerja yang
+ * penggabungan ini hapuskan.
+ */
+export async function simpanPermohonanPukal(
+  senarai: {
+    barang_id: string; kuantiti: number; tujuan: string;
+    perlu_pada: string | null; oleh: string; nama: string; tempahan_id: string | null;
+  }[],
+): Promise<void> {
+  if (senarai.length === 0) return;
+  const db = klienTulis();
+  await db.minta("inventori_permohonan", {
+    method: "POST", headers: { Prefer: "return=minimal" },
+    body: JSON.stringify(senarai.map((p) => ({ ...p, status: "baharu" }))),
   });
 }
 

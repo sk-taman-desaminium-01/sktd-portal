@@ -16,7 +16,11 @@ import { ikutHari, keMinit, keJam, semakTempahan, type Tempahan } from "@/data/b
  * tempahan orang lain untuk menulis tempahannya sendiri. Skrin ini
  * menggantikan papan itu dan tidak cuba melakukan apa-apa lagi.
  */
-export default function PanelBilik({ papan }: { papan: PapanBilik }) {
+export default function PanelBilik({ papan, barangIct }: {
+  papan: PapanBilik;
+  /** Barang ICT yang boleh diminta bersama tempahan. Kosong bila modul belum dipasang. */
+  barangIct: { id: string; nama: string; baki: number }[];
+}) {
   const [tempahan, setTempahan] = useState(papan.tempahan);
   const [nota, setNota] = useState<{ ok: boolean; teks: string } | null>(null);
   const [sibuk, setSibuk] = useState(false);
@@ -26,6 +30,17 @@ export default function PanelBilik({ papan }: { papan: PapanBilik }) {
   const [mula, setMula] = useState("08:00");
   const [tamat, setTamat] = useState("09:00");
   const [tujuan, setTujuan] = useState("");
+
+  /**
+   * Peralatan ICT yang perlu disediakan untuk tempahan ini.
+   *
+   * Tersembunyi sehingga ditanda. Borang tempahan yang memapar dua belas
+   * baris peralatan kepada setiap guru yang hanya mahu bilik ialah borang
+   * yang orang berhenti membaca — pengguna menyebutnya sendiri: "kalau buat
+   * kad baru, ia semak dan serabut je."
+   */
+  const [perluAlat, setPerluAlat] = useState(false);
+  const [alat, setAlat] = useState<Record<string, number>>({});
 
   const namaBilik = useMemo(
     () => new Map(papan.bilik.map((b) => [b.id, b.nama])),
@@ -51,7 +66,13 @@ export default function PanelBilik({ papan }: { papan: PapanBilik }) {
     setSibuk(true);
     setNota(null);
     try {
-      const r = await tempahTindakan({ bilik_id: bilikId, tarikh, mula, tamat, tujuan });
+      const peralatan = Object.entries(alat)
+        .filter(([, n]) => n > 0)
+        .map(([barang_id, kuantiti]) => ({ barang_id, kuantiti }));
+      const r = await tempahTindakan({
+        bilik_id: bilikId, tarikh, mula, tamat, tujuan,
+        peralatan: perluAlat ? peralatan : [],
+      });
       setNota({ ok: r.ok, teks: r.mesej });
       if (r.ok) {
         // Baris sementara supaya papan bergerak serta-merta. Ia digantikan
@@ -65,6 +86,8 @@ export default function PanelBilik({ papan }: { papan: PapanBilik }) {
           },
         ]);
         setTujuan("");
+        setPerluAlat(false);
+        setAlat({});
       }
     } finally {
       setSibuk(false);
@@ -172,6 +195,53 @@ export default function PanelBilik({ papan }: { papan: PapanBilik }) {
               </span>
             </label>
           </div>
+
+          {/* ---- Peralatan ICT ---- */}
+          {barangIct.length > 0 && (
+            <div className="mt-3 rounded-xl border border-garis bg-navy-50/30 p-3">
+              <label className="flex items-start gap-2.5 text-sm">
+                <input
+                  type="checkbox"
+                  checked={perluAlat}
+                  onChange={(e) => setPerluAlat(e.target.checked)}
+                  className="mt-0.5"
+                />
+                <span>
+                  <span className="font-semibold text-navy-800">
+                    Perlukan peralatan ICT untuk tempahan ini
+                  </span>
+                  <span className="mt-0.5 block text-[11px] leading-relaxed text-slate-500">
+                    Unit ICT akan dimaklumkan bersama tempahan ini — tidak perlu
+                    memohon berasingan.
+                  </span>
+                </span>
+              </label>
+
+              {perluAlat && (
+                <ul className="mt-3 space-y-1.5 border-t border-garis pt-3">
+                  {barangIct.map((b) => (
+                    <li key={b.id} className="flex items-center gap-2">
+                      <span className="min-w-0 flex-1">
+                        <span className="block text-xs text-navy-800">{b.nama}</span>
+                        <span className="block text-[11px] text-slate-400">
+                          {b.baki} masih ada
+                        </span>
+                      </span>
+                      <input
+                        type="number" min={0} max={999}
+                        value={alat[b.id] ?? 0}
+                        onChange={(e) =>
+                          setAlat((a) => ({ ...a, [b.id]: Math.max(0, Number(e.target.value) || 0) }))
+                        }
+                        aria-label={`Bilangan ${b.nama}`}
+                        className="w-20 shrink-0 rounded-lg border border-garis px-2 py-1 text-sm"
+                      />
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )}
 
           {bentrok && (
             <p className="mt-3 rounded-lg border border-[#e9d9ae] bg-[#fdf9f0] p-2.5 text-xs leading-relaxed text-[#7a5a12]">

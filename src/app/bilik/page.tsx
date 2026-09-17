@@ -1,11 +1,17 @@
 import Link from "next/link";
 import { papanBilik } from "@/lib/tindakan-bilik";
+import { papanInventori } from "@/lib/tindakan-inventori";
+import { baki } from "@/data/inventori";
 import PanelBilik from "./PanelBilik";
+import PanelInventori from "../inventori/PanelInventori";
 
 export const metadata = { title: "Tempahan Bilik Khas" };
 
 export default async function Bilik() {
-  const papan = await papanBilik();
+  // Tempahan dan inventori dibaca BERSAMA, bukan berturutan — dua
+  // perjalanan berasingan ke pangkalan data untuk satu skrin ialah tepat
+  // corak yang membuatkan kad lain terasa lambat.
+  const [papan, inventori] = await Promise.all([papanBilik(), papanInventori()]);
 
   if (!papan) {
     return (
@@ -42,7 +48,33 @@ export default async function Bilik() {
           </p>
         </div>
       ) : (
-        <PanelBilik papan={papan} />
+        <>
+          <PanelBilik
+            papan={papan}
+            barangIct={
+              inventori && !inventori.belumSedia
+                ? inventori.barang
+                    .filter((b) => b.aktif)
+                    .map((b) => ({ id: b.id, nama: b.nama, baki: baki(b) }))
+                : []
+            }
+          />
+
+          {/* INVENTORI DIGABUNGKAN KE SINI, bukan kad berasingan.
+              Keputusan pengguna: "Inventori ICT letak dalam tempahan bilik
+              khas, sebab ia sekali… kalau buat kad baru, ia semak dan
+              serabut je." Tempahan bilik dan peralatan yang perlu disediakan
+              ialah satu kerja, bukan dua. */}
+          {inventori && !inventori.belumSedia && (
+            <div className="mt-10 border-t border-garis pt-8">
+              <h2 className="text-lg font-bold text-navy-800">Peralatan ICT</h2>
+              <p className="mt-1 text-sm leading-relaxed text-slate-500">
+                Permohonan peralatan, dan rekod barang yang unit ICT selenggara.
+              </p>
+              <PanelInventori papan={inventori} />
+            </div>
+          )}
+        </>
       )}
     </main>
   );

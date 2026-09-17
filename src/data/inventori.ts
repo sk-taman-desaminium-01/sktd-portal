@@ -44,6 +44,8 @@ export interface Permohonan {
   perlu_pada: string | null;
   oleh: string;
   nama: string;
+  /** Tempahan bilik yang mencetuskannya, bila permohonan datang dari sana. */
+  tempahan_id: string | null;
   status: StatusPermohonan;
   catatan: string | null;
   diputuskan_oleh: string | null;
