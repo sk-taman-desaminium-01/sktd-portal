@@ -6,9 +6,10 @@ import { namaSubjek } from "@/data/subjek";
 import {
   kuasaPbd, sesiSemasa, muridKelas, nilaiPendaftaran, simpanNilai,
   simpanUlasan, ulasanKelas, bolehTulisNilai, bolehLihatKelas, labelKelas,
-  tetapGuruSubjek, buangGuruSubjek, naikTahun, tetapSesi, senaraiSesi,
+  tetapGuruSubjek, buangGuruSubjek, naikTahun, naikTahunKering, tetapSesi, senaraiSesi,
   type Nilai,
 } from "./pbd";
+import { gerakKelas, type RancanganNaik } from "@/data/naik-tahun";
 
 /**
  * Tindakan pelayan ePBD.
@@ -286,6 +287,38 @@ export async function buangTugasanGuruSubjek(id: string): Promise<HasilPbd> {
  * selepas slip diedarkan, dan sesi baharu tanpa murid bermakna tiada
  * sesiapa boleh mengisi apa-apa.
  */
+/**
+ * SESI PERCUBAAN — jalankan naik tahun tanpa menulis apa-apa.
+ *
+ * Pengguna meminta percubaan sebelum 1 Januari 2027, dan ini bentuknya:
+ * rancangan penuh atas data sebenar, dipapar untuk dibaca, boleh diulang
+ * seberapa kerap yang dimahukan. Peraturan keras #5 — larian kering dahulu —
+ * dan ini operasi yang paling wajar mematuhinya.
+ */
+export async function cubaNaikTahun(): Promise<
+  HasilPbd & { rancangan?: RancanganNaik; gerak?: { label: string; bil: number }[] }
+> {
+  try {
+    await pastikanBoleh("urus_guru_kelas");
+    const sesi = await sesiSemasa();
+    if (!sesi) return { ok: false, mesej: "Tiada sesi untuk dinaikkan." };
+    const rancangan = await naikTahunKering(sesi.tahun_sesi, sesi.tahun_sesi + 1);
+    return {
+      ok: true,
+      rancangan,
+      gerak: gerakKelas(rancangan),
+      mesej:
+        `Larian kering sahaja — TIADA apa yang ditulis. ` +
+        `${rancangan.naik.length} murid akan naik, ${rancangan.tamat.length} Tahun 6 akan tamat` +
+        (rancangan.sudahAda.length > 0 ? `, ${rancangan.sudahAda.length} dilangkau` : "") +
+        (rancangan.ditolak.length > 0 ? `, ${rancangan.ditolak.length} ditolak` : "") +
+        ".",
+    };
+  } catch (e) {
+    return { ok: false, mesej: ralat(e) };
+  }
+}
+
 export async function naikTahunTindakan(): Promise<HasilPbd> {
   try {
     await pastikanBoleh("urus_guru_kelas");
@@ -300,7 +333,7 @@ export async function naikTahunTindakan(): Promise<HasilPbd> {
 
     await tetapSesi(sesi.tahun_sesi, "tutup");
     await tetapSesi(keSesi, "aktif");
-    const { dinaikkan, tamat } = await naikTahun(sesi.tahun_sesi, keSesi);
+    const { dinaikkan, tamat, dilangkau } = await naikTahun(sesi.tahun_sesi, keSesi);
 
     revalidatePath("/admin/pbd");
     revalidatePath("/pbd");
@@ -308,7 +341,8 @@ export async function naikTahunTindakan(): Promise<HasilPbd> {
       ok: true,
       mesej:
         `Sesi ${sesi.tahun_sesi} ditutup, sesi ${keSesi} dibuka. ` +
-        `${dinaikkan} murid dinaikkan satu tahun; ${tamat} murid Tahun 6 ditandakan tamat. ` +
+        `${dinaikkan} murid dinaikkan satu tahun; ${tamat} murid Tahun 6 ditandakan tamat` +
+        (dilangkau > 0 ? `; ${dilangkau} dilangkau kerana sudah berdaftar` : "") + ". " +
         `Keputusan sesi ${sesi.tahun_sesi} TIDAK disentuh — slipnya kekal boleh dicetak.`,
     };
   } catch (e) {
