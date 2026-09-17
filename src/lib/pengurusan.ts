@@ -1,6 +1,6 @@
 import "server-only";
 import { klienTulis } from "./supabase-pelayan";
-import type { KodSeksyen } from "@/data/seksyen-pengurusan";
+import { VERSI_PENGHURAI, type KodSeksyen } from "@/data/seksyen-pengurusan";
 
 /**
  * Simpanan Buku Pengurusan Tahunan.
@@ -27,6 +27,8 @@ export interface Dokumen {
   jenis_fail: string | null;
   oleh: string | null;
   created_at: string;
+  /** Versi penghurai yang membaca fail ini. Null = sebelum cap diperkenalkan. */
+  versi_penghurai: string | null;
 }
 
 export interface Seksyen {
@@ -149,6 +151,7 @@ export async function simpanDokumen(
       tahun: maklumat.tahun, versi,
       nama_fail: maklumat.namaFail, muka: maklumat.muka,
       jenis_fail: maklumat.jenisFail, oleh: maklumat.oleh,
+      versi_penghurai: VERSI_PENGHURAI,
     }),
   })) as Dokumen[];
 

@@ -12,6 +12,24 @@
  * meneka adalah pilihan yang lebih teruk daripada bertanya.
  */
 
+/**
+ * VERSI PENGHURAI, dinaikkan setiap kali pembacaan berubah dengan ketara.
+ *
+ * KENAPA INI WUJUD: data yang tersimpan dibaca oleh penghurai pada HARI ia
+ * dimuat naik. Pembetulan yang dibuat selepas itu tidak menyentuhnya —
+ * baris lama kekal lama. Pengguna menyemak edisi yang disimpan minggu
+ * lepas, melihat sampah yang sudah dibaiki, dan melaporkannya semula.
+ * Itu berlaku DUA KALI, dan kedua-duanya membazir pusingan penuh.
+ *
+ * Dengan cap ini, skrin boleh berkata terus terang bahawa edisi itu dibaca
+ * oleh versi lama — dan mencadangkan muat naik semula, bukan membiarkan
+ * pengguna menyangka sistem masih rosak.
+ *
+ * Naikkan apabila pembacaan berubah: penapis baharu, bentuk baharu,
+ * pembetulan yang mengubah baris yang dihasilkan.
+ */
+export const VERSI_PENGHURAI = "2026.09.17";
+
 export type KodSeksyen =
   | "guru"          // senarai nama guru
   | "gurukelas"     // guru kelas mengikut kelas
