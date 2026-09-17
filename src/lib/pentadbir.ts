@@ -6,6 +6,8 @@ import { klienTulis } from "./supabase-pelayan";
 import { binaSemulaLamanAwam } from "./bina-semula";
 import { muatNaik } from "./storan";
 import { SEKOLAH } from "@/data/sekolah";
+import { pengguna } from "./akses";
+import { wariskanPentadbir } from "./pindaan";
 import type { Pentadbir } from "@/data/sekolah";
 
 /**
@@ -50,9 +52,17 @@ export async function senaraiPentadbir(): Promise<Pentadbir[]> {
   }
 }
 
-/** Simpan keseluruhan senarai. Urutan diambil dari susunan dalam tatasusunan. */
+/**
+ * Simpan keseluruhan senarai. Urutan diambil dari susunan dalam tatasusunan.
+ *
+ * PERTUKARAN PENTADBIR MENYUSUL SENDIRI KE BUKU PENGURUSAN. Menukar nama
+ * Guru Besar di sini dan melupakan jawatankuasa menghasilkan portal yang
+ * bercakap dua perkara berbeza tentang siapa Guru Besar — dan tiada siapa
+ * akan perasan, kerana kedua-dua skrin kelihatan betul apabila dilihat
+ * berasingan. Lihat `wariskanPentadbir()`.
+ */
 export async function simpanPentadbir(senarai: Pentadbir[]): Promise<HasilPentadbir> {
-  await pastikanBoleh("terbit_kandungan");
+  const saya = await pastikanBoleh("terbit_kandungan");
 
   if (!Array.isArray(senarai) || senarai.length === 0) {
     // Peraturan keras #2: kosong ≠ padam. Senarai kosong hampir pasti
@@ -70,6 +80,17 @@ export async function simpanPentadbir(senarai: Pentadbir[]): Promise<HasilPentad
     nama: o.nama.trim(),
     gambar: o.gambar?.trim() || null,
   }));
+
+  // Dibaca SEBELUM menulis — selepas menulis, nama lama sudah hilang dan
+  // tiada cara mengetahui siapa yang digantikan.
+  let sebelum: Pentadbir[] = [];
+  try {
+    sebelum = await senaraiPentadbir();
+  } catch {
+    // Data lama rosak atau belum wujud: simpanan diteruskan, pewarisan
+    // dilangkau. Menghalang simpanan kerana data LAMA rosak menghukum
+    // pengguna untuk masalah yang mereka sedang cuba betulkan.
+  }
 
   const db = klienTulis();
   try {
@@ -89,14 +110,40 @@ export async function simpanPentadbir(senarai: Pentadbir[]): Promise<HasilPentad
 
   revalidatePath("/admin/pentadbir");
 
+  // Pertukaran menyusul ke Buku Pengurusan sendiri. Kegagalan di sini TIDAK
+  // boleh membatalkan simpanan yang sudah berjaya — nama pentadbir yang
+  // betul di laman awam lebih penting daripada jawatankuasa yang menyusul
+  // lewat, dan simpanan itu sudah ditulis.
+  let waris = "";
+  if (sebelum.length > 0) {
+    try {
+      const w = await wariskanPentadbir(sebelum, bersih, saya.emel ?? null);
+      if (w.pewaris.length > 0) {
+        const senaraiNama = w.pewaris
+          .map((x) => `${x.jawatan}: ${x.lama} → ${x.baharu}`)
+          .join("; ");
+        waris =
+          w.diubah + w.digugur > 0
+            ? ` Buku Pengurusan dikemas kini sendiri — ${w.diubah} baris jawatankuasa ditukar (${senaraiNama}).`
+            : ` Pertukaran direkodkan (${senaraiNama}); tiada baris Buku Pengurusan menamakan mereka.`;
+      }
+    } catch (e) {
+      waris =
+        " Nama disimpan, TETAPI jawatankuasa Buku Pengurusan tidak dapat dikemas kini: " +
+        (e instanceof Error ? e.message : String(e)) +
+        " Buka Buku Pengurusan → Pembetulan kekal untuk membetulkannya.";
+    }
+  }
+
   // Laman awam ialah eksport STATIK — tanpa binaan semula, suntingan ini
   // tersimpan dalam DB tetapi tidak pernah muncul di sktd.edu.my.
   const bina = await binaSemulaLamanAwam();
   return {
     ok: true,
-    mesej: bina.ok
-      ? "Disimpan. Laman awam sedang dibina semula."
-      : `Disimpan, TETAPI binaan semula laman awam gagal: ${bina.sebab}`,
+    mesej:
+      (bina.ok
+        ? "Disimpan. Laman awam sedang dibina semula."
+        : `Disimpan, TETAPI binaan semula laman awam gagal: ${bina.sebab}`) + waris,
   };
 }
 

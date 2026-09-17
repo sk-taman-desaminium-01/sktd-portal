@@ -6,7 +6,7 @@
  * yang disingkatkan dalam satu sumber tetapi penuh dalam sumber lain.
  */
 import { namaBersih, kunciNama, bandingNama, cariPadanan } from "../src/lib/nama.ts";
-import { kenakanPindaan, kenakanPindaanBanyak, type Pindaan } from "../src/data/pindaan.ts";
+import { kenakanPindaan, kenakanPindaanBanyak, kesanPewaris, type Pindaan } from "../src/data/pindaan.ts";
 
 let lulus = 0;
 const gagal: string[] = [];
@@ -154,6 +154,81 @@ const banyak = kenakanPindaanBanyak([
   ["", "AJK", "MARIA BINTI KAMARUDDIN"],
 ], gantiGb);
 sama("kiraan pukal betul", [banyak.baris.length, banyak.diubah, banyak.digugur], [3, 1, 0]);
+
+/* ---------------------------------------------------------- pewarisan */
+
+/**
+ * Pertukaran pentadbir dikenakan sendiri selepas nama ditukar di kad
+ * Pentadbir — tiada butang. Ujian di sini menjaga dua pagar: ejaan yang
+ * dikemaskan bukan pertukaran orang, dan jawatan baharu bukan pertukaran.
+ */
+const BARISAN = [
+  { jawatan: "Guru Besar", nama: "SHABARIAH BINTI ISMAIL" },
+  { jawatan: "Penolong Kanan Pentadbiran", nama: "ROSLE BIN MOHAMAD" },
+  { jawatan: "Penolong Kanan Kokurikulum", nama: "KHIRYANI BINTI HAMDI" },
+];
+
+const tukarGb = kesanPewaris(BARISAN, [
+  { jawatan: "Guru Besar", nama: "SAUDAH BINTI OSMAN" },
+  ...BARISAN.slice(1),
+]);
+sama("satu pertukaran dikesan", tukarGb.length, 1);
+sama("pertukaran Guru Besar",
+  tukarGb[0], { jawatan: "Guru Besar", lama: "SHABARIAH BINTI ISMAIL", baharu: "SAUDAH BINTI OSMAN" });
+
+uji("tiada perubahan menghasilkan tiada pindaan",
+  kesanPewaris(BARISAN, BARISAN).length === 0);
+
+// Ejaan yang dikemaskan ialah orang yang SAMA. kunciNama() menyeragamkan
+// penanda nasab, jadi BT dan BINTI tidak mencipta pertukaran palsu.
+uji("PN. ... BT ... dikemaskan BUKAN pertukaran",
+  kesanPewaris(BARISAN, [
+    { jawatan: "Guru Besar", nama: "PN. SHABARIAH BT ISMAIL" },
+    ...BARISAN.slice(1),
+  ]).length === 0);
+uji("huruf kecil bukan pertukaran",
+  kesanPewaris(BARISAN, [
+    { jawatan: "Guru Besar", nama: "Shabariah binti Ismail" },
+    ...BARISAN.slice(1),
+  ]).length === 0);
+
+uji("jawatan BAHARU bukan pertukaran",
+  kesanPewaris(BARISAN, [
+    ...BARISAN,
+    { jawatan: "Penolong Kanan Petang", nama: "NAZRULLAH BIN MOHD NOOR" },
+  ]).length === 0);
+
+uji("nama kosong tidak mencipta pindaan",
+  kesanPewaris(BARISAN, [
+    { jawatan: "Guru Besar", nama: "" },
+    ...BARISAN.slice(1),
+  ]).length === 0);
+
+sama("dua pertukaran serentak dikesan",
+  kesanPewaris(BARISAN, [
+    { jawatan: "Guru Besar", nama: "SAUDAH BINTI OSMAN" },
+    { jawatan: "Penolong Kanan Pentadbiran", nama: "AMINAH BINTI YUSOF" },
+    BARISAN[2],
+  ]).length, 2);
+
+uji("jawatan dipadan tanpa mengira huruf besar/kecil dan ruang",
+  kesanPewaris(BARISAN, [
+    { jawatan: "  guru besar  ", nama: "SAUDAH BINTI OSMAN" },
+    ...BARISAN.slice(1),
+  ]).length === 1);
+
+// Pertukaran itu, dikenakan pada baris sebenar buku.
+const pewarisan = kenakanPindaanBanyak([
+  ["", "PENGERUSI", "SHABARIAH BINTI ISMAIL"],
+  ["BILIK i-SHABARIAH", "PENYELARAS", "NORA BINTI REMALI"],
+  ["", "AJK", "ROSLE BIN MOHAMAD"],
+], tukarGb.map((w, i) => P({ id: `w${i}`, dari: w.lama, kepada: w.baharu })));
+sama("hanya baris Guru Besar bertukar",
+  pewarisan.baris, [
+    ["", "PENGERUSI", "SAUDAH BINTI OSMAN"],
+    ["BILIK i-SHABARIAH", "PENYELARAS", "NORA BINTI REMALI"],
+    ["", "AJK", "ROSLE BIN MOHAMAD"],
+  ]);
 
 console.log(`\n${lulus} lulus, ${gagal.length} gagal`);
 for (const g of gagal) console.log(`  ✗ ${g}`);

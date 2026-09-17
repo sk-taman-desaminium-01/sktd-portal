@@ -6,7 +6,10 @@
  * merosakkan data, jadi ia mesti berada di tempat yang ujian boleh capai.
  */
 import { klienTulis } from "@/lib/supabase-pelayan";
-import type { JenisPindaan, Pindaan } from "@/data/pindaan";
+import { kunciNama } from "@/lib/nama";
+import { dokumenTerkini, seksyenDokumen, barisSeksyen, suntingBaris, padamBaris } from "@/lib/pengurusan";
+import { kenakanPindaan, kesanPewaris } from "@/data/pindaan";
+import type { JenisPindaan, Pindaan, Pentadbir, Pewaris } from "@/data/pindaan";
 
 export * from "@/data/pindaan";
 
@@ -50,4 +53,90 @@ export async function padamPindaan(id: string): Promise<void> {
     method: "DELETE",
     headers: { Prefer: "return=minimal" },
   });
+}
+
+
+/* --------------------------------------------------- kenakan pada edisi */
+
+/**
+ * Kenakan pindaan aktif pada satu edisi yang SUDAH tersimpan.
+ *
+ * Pindaan biasanya berkuat kuasa pada muat naik berikutnya. Tetapi
+ * pembetulan yang dibuat hari ini — Guru Besar yang bersara — perlu berkuat
+ * kuasa hari ini juga, pada edisi yang sedang digunakan. Tanpa ini seseorang
+ * terpaksa menyunting dua puluh baris dengan tangan untuk satu orang, dalam
+ * dua puluh jawatankuasa.
+ *
+ * Bacaan asal PDF kekal disimpan dalam lajur `asal` setiap baris.
+ */
+export async function kenakanPadaDokumen(
+  dokumenId: string,
+  pindaan: Pindaan[],
+): Promise<{ diubah: number; digugur: number }> {
+  const aktif = pindaan.filter((p) => p.aktif);
+  if (aktif.length === 0) return { diubah: 0, digugur: 0 };
+
+  let diubah = 0;
+  let digugur = 0;
+  for (const s of await seksyenDokumen(dokumenId)) {
+    for (const b of await barisSeksyen(s.id)) {
+      const kesan = kenakanPindaan(b.sel, aktif);
+      if (kesan.gugur) { await padamBaris(b.id); digugur++; continue; }
+      if (kesan.kena.length === 0) continue;
+      await suntingBaris(b.id, kesan.sel);
+      diubah++;
+    }
+  }
+  return { diubah, digugur };
+}
+
+export interface HasilPewarisan {
+  pewaris: Pewaris[];
+  diubah: number;
+  digugur: number;
+  /** Pindaan yang sudah wujud dan tidak dicipta semula. */
+  dilangkau: number;
+}
+
+/**
+ * Simpan pertukaran sebagai pindaan, dan kenakannya serta-merta.
+ *
+ * Dipanggil SELEPAS kad Pentadbir berjaya disimpan, dan kegagalannya tidak
+ * boleh membatalkan simpanan itu — nama pentadbir yang betul di laman awam
+ * lebih penting daripada jawatankuasa yang menyusul lewat.
+ */
+export async function wariskanPentadbir(
+  lama: Pentadbir[],
+  baharu: Pentadbir[],
+  oleh: string | null,
+): Promise<HasilPewarisan> {
+  const pewaris = kesanPewaris(lama, baharu);
+  if (pewaris.length === 0) return { pewaris, diubah: 0, digugur: 0, dilangkau: 0 };
+
+  const sedia = await senaraiPindaan();
+  const sudahAda = new Set(sedia.map((p) => kunciNama(p.dari)));
+
+  let dilangkau = 0;
+  for (const w of pewaris) {
+    if (sudahAda.has(kunciNama(w.lama))) { dilangkau++; continue; }
+    await tambahPindaan({
+      jenis: "ganti_nama",
+      dari: w.lama,
+      kepada: w.baharu,
+      sebab: `${w.jawatan} bertukar — dikemas kini dalam kad Pentadbir`,
+      oleh,
+    });
+    sudahAda.add(kunciNama(w.lama));
+  }
+
+  // Baca semula supaya pindaan yang baru dicipta membawa id sebenarnya.
+  const semua = await senaraiPindaan();
+  const dok = await dokumenTerkini();
+  if (!dok) return { pewaris, diubah: 0, digugur: 0, dilangkau };
+
+  const kunciPewaris = new Set(pewaris.map((w) => kunciNama(w.lama)));
+  const kenakan = semua.filter((p) => p.aktif && kunciPewaris.has(kunciNama(p.dari)));
+  const hasil = await kenakanPadaDokumen(dok.id, kenakan);
+
+  return { pewaris, ...hasil, dilangkau };
 }
