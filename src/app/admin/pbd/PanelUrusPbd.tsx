@@ -6,7 +6,8 @@ import { importFailMurid, type HasilFail } from "@/lib/fail-murid";
 import { failKeMuatan } from "@/data/fail-base64";
 import {
   tugaskanGuruSubjek, buangTugasanGuruSubjek, naikTahunTindakan, cubaNaikTahun,
-  undoNaikTahunTindakan, muridKelasTindakan, suntingMuridTindakan,
+  undoNaikTahunTindakan, senaraiSesiTindakan, jadikanSesiAktif,
+  muridKelasTindakan, suntingMuridTindakan,
   buangMuridTindakan, tukarKelasTindakan, type MuridRingkas,
 } from "@/lib/tindakan-pbd";
 import type { RancanganNaik } from "@/data/naik-tahun";
@@ -76,6 +77,34 @@ export default function PanelUrusPbd({
   }
 
   const [sahUndo, setSahUndo] = useState(false);
+
+  /**
+   * Senarai sesi, untuk berpindah antara tahun tanpa memadam apa-apa.
+   *
+   * Ini jalan pulang yang paling ringan, dan yang paling kerap diperlukan:
+   * pengguna yang menguji naik tahun mahu berdiri semula di tahun yang
+   * betul, bukan semestinya membuang tahun yang baharu.
+   */
+  const [sesi, setSesi] = useState<{ tahun_sesi: number; status: string }[] | null>(null);
+
+  useEffect(() => {
+    void senaraiSesiTindakan().then((r) => setSesi(r.sesi ?? null));
+  }, []);
+
+  async function pindahSesi(tahun: number) {
+    setSibukSesi(true);
+    try {
+      const r = await jadikanSesiAktif(tahun);
+      setMesejSesi({ ok: r.ok, teks: r.mesej });
+      if (r.ok) {
+        setSesi((l) =>
+          (l ?? []).map((s) => ({ ...s, status: s.tahun_sesi === tahun ? "aktif" : "tutup" })),
+        );
+      }
+    } finally {
+      setSibukSesi(false);
+    }
+  }
 
   /**
    * Patah balik selepas ujian.
@@ -278,6 +307,38 @@ export default function PanelUrusPbd({
 
         {mesejSesi && <div className="mt-3"><Mesej ok={mesejSesi.ok} teks={mesejSesi.teks} /></div>}
 
+        {/* TUKAR SESI — jalan pulang yang tidak memadam apa-apa.
+            Dipaparkan sebelum butang naik tahun kerana ia jawapan kepada
+            soalan yang lebih kerap: "saya di tahun yang salah". */}
+        {sesi && sesi.length > 1 && (
+          <div className="mt-4 rounded-xl border border-garis bg-navy-50/40 p-3">
+            <p className="text-xs font-semibold text-slate-500">Sesi persekolahan</p>
+            <p className="mt-0.5 text-[11px] leading-relaxed text-slate-400">
+              Satu sesi aktif pada satu masa. Menukarnya <b>tidak memadam apa-apa</b> —
+              pendaftaran dan nilai setiap sesi kekal seperti sedia ada.
+            </p>
+            <ul className="mt-2 flex flex-wrap gap-1.5">
+              {[...sesi].sort((a, b) => b.tahun_sesi - a.tahun_sesi).map((x) => (
+                <li key={x.tahun_sesi}>
+                  <button
+                    onClick={() => void pindahSesi(x.tahun_sesi)}
+                    disabled={sibukSesi || x.status === "aktif"}
+                    aria-pressed={x.status === "aktif"}
+                    className={`rounded-lg border px-3 py-1.5 text-xs font-semibold transition ${
+                      x.status === "aktif"
+                        ? "border-navy-700 bg-navy-700 text-white"
+                        : "border-garis text-slate-600 hover:border-navy-700 disabled:opacity-50"
+                    }`}
+                  >
+                    {x.tahun_sesi}
+                    {x.status === "aktif" && " · aktif"}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
         {cuba && <SemakanNaik {...cuba} tahunSesi={tahunSesi} />}
 
         <div className="mt-3 flex flex-wrap items-center gap-2">
@@ -295,7 +356,8 @@ export default function PanelUrusPbd({
           {sahUndo ? (
             <span className="flex flex-wrap items-center gap-2 text-sm">
               <span className="text-[#8f2b2b]">
-                Buang sesi {tahunSesi + 1} dan buka semula sesi {tahunSesi}?
+                Buang pendaftaran sesi terbaharu dan buka semula sesi sebelumnya?
+                Nilai PBD yang sudah diisi akan menghentikan operasi ini.
               </span>
               <button
                 onClick={() => void undoNaik()}

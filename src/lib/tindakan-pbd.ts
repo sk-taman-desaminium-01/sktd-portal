@@ -352,14 +352,6 @@ export async function naikTahunTindakan(): Promise<HasilPbd> {
   }
 }
 
-/**
- * PATAH BALIK naik tahun.
- *
- * Sesi sasaran dibuang sepenuhnya dan sesi sumber dibuka semula, jadi
- * keadaannya kembali seperti sebelum butang ditekan. Ia berhenti sendiri
- * kalau guru sudah mula mengisi nilai dalam sesi baharu — lihat
- * `undoNaikTahun()`.
- */
 /* ------------------------------------------------------- betulkan murid */
 
 export interface MuridRingkas {
@@ -461,6 +453,55 @@ export async function undoNaikTahunTindakan(): Promise<HasilPbd> {
         `Dipatahkan balik. ${dibuang} pendaftaran sesi ${terkini} dibuang, ` +
         `${dipulih} murid Tahun 6 dikembalikan kepada aktif. ` +
         `Sesi ${sebelum} dibuka semula — keadaannya seperti sebelum naik tahun ditekan.`,
+    };
+  } catch (e) {
+    return { ok: false, mesej: ralat(e) };
+  }
+}
+
+/**
+ * Senarai sesi, untuk dipapar dan ditukar.
+ *
+ * Ini jalan pulang yang paling RINGAN: menukar sesi aktif tidak memadam
+ * apa-apa. Pengguna yang menguji naik tahun dan mahu kembali ke 2026 tidak
+ * semestinya mahu membuang sesi 2027 — kadang mereka hanya mahu berdiri di
+ * tempat yang betul semula.
+ */
+export async function senaraiSesiTindakan(): Promise<{
+  ok: boolean; mesej: string; sesi?: { tahun_sesi: number; status: string }[];
+}> {
+  try {
+    await pastikanBoleh("urus_guru_kelas");
+    return { ok: true, mesej: "", sesi: await senaraiSesi() };
+  } catch (e) {
+    return { ok: false, mesej: ralat(e) };
+  }
+}
+
+/**
+ * Jadikan satu sesi AKTIF, dan tutup yang lain.
+ *
+ * Satu sesi aktif pada satu masa. Dua sesi terbuka bermakna import dan
+ * pengisian TP boleh mendarat di tahun yang salah tanpa sesiapa perasan —
+ * dan itu kerosakan yang hanya ditemui berbulan kemudian.
+ */
+export async function jadikanSesiAktif(tahunSesi: number): Promise<HasilPbd> {
+  try {
+    await pastikanBoleh("urus_guru_kelas");
+    const semua = await senaraiSesi();
+    if (!semua.some((s) => s.tahun_sesi === tahunSesi)) {
+      return { ok: false, mesej: `Sesi ${tahunSesi} tidak wujud.` };
+    }
+    for (const s of semua) {
+      await tetapSesi(s.tahun_sesi, s.tahun_sesi === tahunSesi ? "aktif" : "tutup");
+    }
+    revalidatePath("/admin/pbd");
+    revalidatePath("/pbd");
+    return {
+      ok: true,
+      mesej:
+        `Sesi ${tahunSesi} kini aktif; sesi lain ditutup. ` +
+        "Tiada data dipadam — pendaftaran dan nilai setiap sesi kekal seperti sedia ada.",
     };
   } catch (e) {
     return { ok: false, mesej: ralat(e) };

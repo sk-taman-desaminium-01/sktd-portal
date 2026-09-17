@@ -1,4 +1,5 @@
 import "server-only";
+import { cache } from "react";
 import { klienTulis } from "./supabase-pelayan";
 import { VERSI_PENGHURAI, type KodSeksyen } from "@/data/seksyen-pengurusan";
 
@@ -58,24 +59,34 @@ export interface Baris {
 
 /* ------------------------------------------------------------------ baca */
 
-export async function senaraiDokumen(): Promise<Dokumen[]> {
+export const senaraiDokumen = cache(async (): Promise<Dokumen[]> => {
   const db = klienTulis();
   return (await db.minta(
     "pengurusan_dokumen?select=*&order=tahun.desc,versi.desc",
   )) as Dokumen[];
-}
+});
 
-export async function dokumenTerkini(): Promise<Dokumen | null> {
+/**
+ * Dokumen TERKINI, dibaca sekali sahaja bagi setiap permintaan.
+ *
+ * Satu halaman boleh memanggil `barisIkutKod()` beberapa kali — kad Takwim
+ * memanggilnya dua kali, untuk program dan untuk mesyuarat — dan setiap
+ * panggilan dahulunya menanyakan dokumen dan seksyennya semula. `cache()`
+ * React menyatukan panggilan yang serupa dalam SATU permintaan; ia tidak
+ * menyimpan apa-apa antara permintaan, jadi data tidak pernah menjadi
+ * lapuk.
+ */
+export const dokumenTerkini = cache(async (): Promise<Dokumen | null> => {
   const semua = await senaraiDokumen();
   return semua[0] ?? null;
-}
+});
 
-export async function seksyenDokumen(dokumenId: string): Promise<Seksyen[]> {
+export const seksyenDokumen = cache(async (dokumenId: string): Promise<Seksyen[]> => {
   const db = klienTulis();
   return (await db.minta(
     `pengurusan_seksyen?select=*&dokumen_id=eq.${encodeURIComponent(dokumenId)}&order=urutan.asc`,
   )) as Seksyen[];
-}
+});
 
 /**
  * Baris satu seksyen.
@@ -99,6 +110,44 @@ export async function barisSeksyen(seksyenId: string): Promise<Baris[]> {
   }
 }
 
+/**
+ * Baris bagi SEMUA seksyen yang dinamakan, dalam SATU pertanyaan.
+ *
+ * KENAPA INI WUJUD. Versi pertama membaca setiap seksyen satu demi satu.
+ * Takwim disimpan sebagai dua belas seksyen bulanan, jadi membuka kad
+ * Takwim bermakna empat belas perjalanan berturutan ke Supabase — dan
+ * setiap perjalanan dari Vercel ke pangkalan data memakan ratusan milisaat
+ * walaupun pertanyaannya pantas. Pengguna mengukurnya sendiri: enam saat
+ * untuk Takwim, tiga untuk Kokurikulum, satu untuk Urus Laman. Perbezaan
+ * itu ialah BILANGAN SEKSYEN, bukan saiz data.
+ *
+ * Satu pertanyaan `seksyen_id=in.(…)` menggantikan kesemuanya.
+ */
+async function barisBanyakSeksyen(seksyenId: string[]): Promise<Map<string, string[][]>> {
+  const peta = new Map<string, string[][]>();
+  if (seksyenId.length === 0) return peta;
+
+  const db = klienTulis();
+  const KEPING = 1000;
+  const senarai = seksyenId.map((x) => `"${x}"`).join(",");
+
+  for (let mula = 0; ; mula += KEPING) {
+    const keping = (await db.minta(
+      `pengurusan_baris?select=seksyen_id,urutan,sel&seksyen_id=in.(${senarai})` +
+        `&order=seksyen_id.asc,urutan.asc&offset=${mula}&limit=${KEPING}`,
+    )) as { seksyen_id: string; sel: string[] }[];
+
+    for (const b of keping) {
+      const a = peta.get(b.seksyen_id) ?? [];
+      a.push(b.sel);
+      peta.set(b.seksyen_id, a);
+    }
+    // Peraturan keras #1: dibaca sehingga habis, bukan sekali dengan harapan
+    // muat. Had lalai Supabase 1,000 pernah memotong 87% data.
+    if (keping.length < KEPING) return peta;
+  }
+}
+
 /** Baris bagi jenis seksyen tertentu dalam dokumen TERKINI yang disahkan. */
 export async function barisIkutKod(kod: KodSeksyen): Promise<{ lajur: string[]; baris: string[][] } | null> {
   const dok = await dokumenTerkini();
@@ -108,8 +157,11 @@ export async function barisIkutKod(kod: KodSeksyen): Promise<{ lajur: string[]; 
   );
   if (seksyen.length === 0) return null;
 
+  const peta = await barisBanyakSeksyen(seksyen.map((s) => s.id));
+  // Urutan seksyen DIKEKALKAN — takwim bulan Januari mesti datang sebelum
+  // Februari, dan urutan itu hidup dalam susunan seksyen, bukan dalam baris.
   const baris: string[][] = [];
-  for (const s of seksyen) baris.push(...(await barisSeksyen(s.id)).map((b) => b.sel));
+  for (const s of seksyen) baris.push(...(peta.get(s.id) ?? []));
   return { lajur: seksyen[0].lajur ?? [], baris };
 }
 
