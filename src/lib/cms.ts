@@ -4,6 +4,7 @@ import { pastikanBoleh } from "./akses";
 import { revalidatePath } from "next/cache";
 import { klienTulis } from "./supabase-pelayan";
 import { binaSemulaLamanAwam } from "./bina-semula";
+import { hantar, emelSemuaWarga } from "./notifikasi";
 
 export type Keutamaan = "segera" | "utama" | "biasa";
 export type Status = "draf" | "terbit";
@@ -121,6 +122,31 @@ export async function simpanPos(data: FormData): Promise<HasilSimpan> {
   }
 
   revalidatePath("/admin");
+
+  // PENGUMUMAN YANG DITERBITKAN SAMPAI KEPADA GURU.
+  //
+  // Sebelum ini pos yang diterbitkan hanya muncul di laman awam, dan guru
+  // mengetahuinya apabila seseorang memberitahu mereka. Notifikasi ialah
+  // sebab modul itu dibina — dan ia tidak sepatutnya terhad kepada tempahan
+  // bilik, seperti yang pengguna sebut: "bukan sekadar untuk bilik khas
+  // sahaja, tetapi ia juga perlu untuk semua yang melibatkan pengumuman
+  // kepada guru."
+  //
+  // Hanya pada penerbitan PERTAMA: menyunting pos yang sudah terbit tidak
+  // sepatutnya membunyikan loceng seluruh sekolah sekali lagi.
+  const kaliPertama = status === "terbit" && !data.get("tarikh_terbit");
+  if (kaliPertama) {
+    void hantar({
+      penerima: await emelSemuaWarga(),
+      jenis: "umum",
+      tajuk,
+      teks:
+        String(data.get("ringkasan") ?? "").trim() ||
+        `${String(data.get("jenis") ?? "pengumuman")} baharu diterbitkan di laman sekolah.`,
+      pautan: "/",
+      oleh: null,
+    });
+  }
 
   // Hanya pos TERBIT mengubah laman awam, jadi hanya itu mencetuskan binaan.
   // Draf tidak membazirkan kuota binaan.

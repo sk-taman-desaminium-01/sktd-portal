@@ -56,7 +56,7 @@ export default function PanelInventori({ papan }: { papan: PapanInventori }) {
           {
             id: `baharu-${Date.now()}`, barang_id: pilih, kuantiti: Number(kuantiti),
             tujuan: tujuan.trim(), perlu_pada: perluPada || null,
-            oleh: papan.sayaEmel, nama: "Anda", status: "baharu",
+            oleh: papan.sayaEmel, nama: "Anda", status: "baharu", tempahan_id: null,
             catatan: null, diputuskan_oleh: null, dicipta: new Date().toISOString(),
           },
           ...l,

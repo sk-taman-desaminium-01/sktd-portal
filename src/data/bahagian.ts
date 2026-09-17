@@ -146,8 +146,8 @@ export const KAD_TAMBAHAN: KadBaharu[] = [
   },
   {
     id: "tempahan", bahagian: "pentadbiran",
-    nama: "Tempahan Bilik Khas", ikon: "BLK", warna: "#2b5f8a",
-    fungsi: "Tempah makmal komputer, bilik mesyuarat, bilik BOSS dan dewan.",
+    nama: "Tempahan & Inventori", ikon: "BLK", warna: "#2b5f8a",
+    fungsi: "Tempah bilik khas, dan minta peralatan ICT untuk tempahan itu.",
     domain: "portal.sktd.edu.my/bilik", pautan: "/bilik", status: "sedia",
     // SKOP DIPENDEKKAN dengan sengaja. Rancangan asal mengandungi
     // "kelulusan pentadbir untuk bilik tertentu" — satu aliran kelulusan
@@ -155,20 +155,11 @@ export const KAD_TAMBAHAN: KadBaharu[] = [
     // modul ini tiada kelulusan langsung; sesiapa yang menulis dahulu,
     // dapat. Modul ini melakukan perkara yang sama, cuma tanpa dua orang
     // menulis pada baris yang sama.
-    catatan: "Siapa tempah dahulu, dia dapat. Tiada aliran kelulusan — "
-      + "pentadbir boleh membatalkan mana-mana tempahan bila perlu.",
-  },
-  {
-    id: "inventori", bahagian: "pentadbiran",
-    nama: "Inventori ICT", ikon: "INV", warna: "#0f766e",
-    fungsi: "Barang yang unit ICT selenggara, dan permohonan barang oleh guru.",
-    domain: "portal.sktd.edu.my/inventori", pautan: "/inventori", status: "sedia",
-    akses: "Semua guru boleh memohon · penyelia unit memutuskan",
-    // SKOP KECIL dengan sengaja. Bukan sistem aset KWAPM dengan nombor siri
-    // dan susut nilai — itu sistem berbeza dengan peraturan perakaunan
-    // berbeza, dan membinanya separuh jalan lebih teruk daripada tidak.
-    catatan: "Unit dimaklumkan setiap kali permohonan masuk. "
-      + "Bukan sistem aset KWAPM — tiada nombor siri atau susut nilai.",
+    // INVENTORI ICT ADA DI DALAM KAD INI, bukan kad sendiri. Keputusan
+    // pengguna: menempah bilik dan meminta peralatan untuk bilik itu ialah
+    // satu kerja, dan dua kad untuk satu kerja "semak dan serabut je".
+    catatan: "Termasuk permohonan peralatan ICT untuk bilik yang ditempah. "
+      + "Siapa tempah dahulu, dia dapat — pentadbir boleh membatalkan bila perlu.",
   },
   {
     id: "borang", bahagian: "pentadbiran",

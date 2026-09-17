@@ -49,13 +49,16 @@ export async function tempahanBilikTarikh(bilikId: string, tarikh: string): Prom
 export async function simpanTempahan(t: {
   bilik_id: string; tarikh: string; mula: string; tamat: string;
   tujuan: string; oleh: string; nama: string;
-}): Promise<void> {
+}): Promise<Tempahan | null> {
   const db = klienTulis();
-  await db.minta("tempahan_bilik", {
+  // Rekod dipulangkan supaya permohonan peralatan boleh dipautkan kepadanya —
+  // itu yang membolehkan unit ICT melihat tempahan mana yang memerlukan apa.
+  const hasil = (await db.minta("tempahan_bilik", {
     method: "POST",
-    headers: { Prefer: "return=minimal" },
+    headers: { Prefer: "return=representation" },
     body: JSON.stringify({ ...t, dibatalkan: false }),
-  });
+  })) as Tempahan[];
+  return hasil[0] ?? null;
 }
 
 /**

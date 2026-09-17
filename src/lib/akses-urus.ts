@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { pastikanBoleh, domainRasmi } from "./akses";
 import { klienTulis } from "./supabase-pelayan";
 import { PERANAN, perananBolehDiberi, sembunyiBaris, type Peranan } from "./peranan";
+import { hantar, emelIkutPeranan } from "./notifikasi";
 
 export interface BarisAkses {
   id: string;
@@ -175,7 +176,7 @@ export async function tarikAkses(id: string, dibenarkan: boolean): Promise<Hasil
       method: "PATCH",
       headers: { Prefer: "return=representation" },
       body: JSON.stringify({ dibenarkan }),
-    })) as { id: string; nama: string }[];
+    })) as { id: string; nama: string; email: string | null }[];
 
     // PostgREST memulangkan senarai KOSONG bila tiada baris sepadan — dan
     // status HTTPnya tetap 200. Tanpa semakan ini, "tiada apa berubah"
@@ -183,6 +184,20 @@ export async function tarikAkses(id: string, dibenarkan: boolean): Promise<Hasil
     // ditekan, mesej hijau muncul, orang itu tidak bergerak ke mana-mana.
     if (!Array.isArray(baris) || baris.length === 0) {
       return { ok: false, mesej: "Rekod itu tidak dijumpai — mungkin ia sudah dibuang. Muat semula halaman." };
+    }
+
+    // Orang yang baru diluluskan diberitahu. Sebelum ini mereka menunggu
+    // tanpa tahu bila ia berlaku, dan bertanya kepada pentadbir — iaitu
+    // kerja yang notifikasi wujud untuk hapuskan.
+    if (dibenarkan && baris[0]?.email) {
+      void hantar({
+        penerima: [baris[0].email],
+        jenis: "akses",
+        tajuk: "Akses portal diluluskan",
+        teks: "Anda kini boleh menggunakan Portal Kakitangan SKTD.",
+        pautan: "/",
+        oleh: null,
+      });
     }
 
     const senarai = await senaraiSelepasUbah();

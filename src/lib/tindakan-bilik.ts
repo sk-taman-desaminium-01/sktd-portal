@@ -9,6 +9,7 @@ import {
 } from "./bilik";
 import { semakTempahan, labelTarikh, type Bilik, type Tempahan } from "@/data/bilik";
 import { hantar, emelIkutPeranan } from "./notifikasi";
+import { simpanPermohonanPukal, penyeliaUnit } from "./inventori";
 
 /**
  * Tempahan Bilik Khas — tindakan pelayan.
@@ -102,6 +103,8 @@ function tambahHari(iso: string, n: number): string {
 
 export async function tempahTindakan(data: {
   bilik_id: string; tarikh: string; mula: string; tamat: string; tujuan: string;
+  /** Peralatan ICT yang perlu disediakan untuk tempahan ini. */
+  peralatan?: { barang_id: string; kuantiti: number }[];
 }): Promise<HasilBilik> {
   const saya = await pengguna();
   if (!saya?.peranan) return { ok: false, mesej: "Tiada kebenaran." };
@@ -117,7 +120,7 @@ export async function tempahTindakan(data: {
     const semak = semakTempahan(data, sedia, hariIniMY());
     if (!semak.ok) return { ok: false, mesej: semak.sebab ?? "Tempahan tidak sah." };
 
-    await simpanTempahan({
+    const rekod = await simpanTempahan({
       bilik_id: data.bilik_id,
       tarikh: data.tarikh,
       mula: data.mula,
@@ -126,6 +129,38 @@ export async function tempahTindakan(data: {
       oleh: saya.emel ?? "",
       nama: saya.nama ?? saya.emel ?? "",
     });
+
+    // PERALATAN ICT DIMOHON SEKALI GUS.
+    //
+    // Guru yang menempah dewan dan memerlukan projektor membuat SATU
+    // tindakan. Menuntut mereka membuka skrin lain dan mengisi borang
+    // berasingan untuk setiap barang ialah tepat kerja yang penggabungan
+    // ini hapuskan — pengguna menyebutnya: "kalau buat kad baru, ia semak
+    // dan serabut je."
+    //
+    // Kegagalannya tidak membatalkan tempahan yang sudah tersimpan.
+    const peralatan = (data.peralatan ?? []).filter((x) => x.barang_id && x.kuantiti > 0);
+    let notaAlat = "";
+    if (peralatan.length > 0) {
+      try {
+        await simpanPermohonanPukal(
+          peralatan.map((x) => ({
+            barang_id: x.barang_id,
+            kuantiti: x.kuantiti,
+            tujuan: `${tujuan} — tempahan bilik ${data.tarikh} ${data.mula}–${data.tamat}`,
+            perlu_pada: data.tarikh,
+            oleh: (saya.emel ?? "").toLowerCase(),
+            nama: saya.nama ?? saya.emel ?? "",
+            tempahan_id: rekod?.id ?? null,
+          })),
+        );
+        notaAlat = ` ${peralatan.length} permohonan peralatan dihantar kepada unit ICT.`;
+      } catch {
+        notaAlat =
+          " Tempahan berjaya, TETAPI permohonan peralatan gagal dihantar — " +
+          "mohon peralatan itu secara berasingan.";
+      }
+    }
     // Pentadbir diberitahu — mereka yang menguruskan bilik, dan mereka yang
     // perlu tahu bila dewan ditempah pada hari majlis. Kegagalan di sini
     // TIDAK membatalkan tempahan yang sudah berjaya.
@@ -142,7 +177,7 @@ export async function tempahTindakan(data: {
     });
 
     revalidatePath("/bilik");
-    return { ok: true, mesej: `Bilik ditempah ${data.mula}–${data.tamat}.` };
+    return { ok: true, mesej: `Bilik ditempah ${data.mula}–${data.tamat}.` + notaAlat };
   } catch (e) {
     return { ok: false, mesej: ralat(e) };
   }
