@@ -2,7 +2,7 @@ import Link from "next/link";
 import { pengguna } from "@/lib/akses";
 import { boleh } from "@/lib/peranan";
 import { senaraiDokumen, seksyenDokumen } from "@/lib/pengurusan";
-import { JENIS_SEKSYEN } from "@/data/seksyen-pengurusan";
+import { JENIS_SEKSYEN, VERSI_PENGHURAI } from "@/data/seksyen-pengurusan";
 import NaikPengurusan from "./NaikPengurusan";
 import SeksyenTersimpan from "./SeksyenTersimpan";
 
@@ -93,6 +93,17 @@ export default async function BukuPengurusan() {
                   {d.oleh ? ` oleh ${d.oleh}` : ""}
                 </p>
               </div>
+              {d.versi_penghurai !== VERSI_PENGHURAI && (
+                <p className="mt-3 rounded-xl border border-[#e9d9ae] bg-[#fdf9f0] p-4 text-sm leading-relaxed text-[#7a5a12]">
+                  <b>Edisi ini dibaca oleh versi penghurai yang lebih lama.</b>{" "}
+                  Baris di bawah ialah hasil bacaan pada hari ia dimuat naik —
+                  pembetulan yang dibuat selepas itu tidak menyentuhnya. Kalau
+                  anda melihat baris yang pelik, <b>muat naik semula fail yang
+                  sama</b>: edisi lama tidak dipadam, jadi anda boleh
+                  membandingkan dan membuang yang lama selepas berpuas hati.
+                </p>
+              )}
+
               <div className="mt-3">
                 <SeksyenTersimpan
                   dokumenId={d.id}
