@@ -330,6 +330,17 @@ function jawatanSah(jawatan: string): boolean {
  * yang menjadikannya selamat: tanpa syarat itu, mana-mana nama yang berakhir
  * dengan tiga huruf besar akan dipotong.
  */
+export function buangNomborMelekat(nama: string): string {
+  // "EN AHMAD RAFLI NOOR BIN26.27." dan "YUSRI BIN KARIM27." — nombor
+  // senarai dari lajur bersebelahan melekat pada hujung nama apabila
+  // jurangnya terlalu kecil untuk dikira sempadan sel.
+  //
+  // Hanya nombor di HUJUNG dibuang, dan hanya bila ada huruf sebelumnya:
+  // nama tidak pernah berakhir dengan digit, tetapi "TAHUN 1" ialah nilai
+  // yang sah di tempat lain.
+  return nama.replace(/(?<=[A-Za-z]{2})[\s.]*\d+(\.\d+)*\.?\s*$/, "").trim();
+}
+
 export function buangAkronimMelekat(nama: string, tajuk: string): string {
   const akronim = [...tajuk.matchAll(/\(([A-Z]{2,6})\)/g)].map((m) => m[1]);
   let t = nama.trim();
@@ -726,7 +737,10 @@ export function kesanSeksyen(muka: MukaDokumen[]): SeksyenDikesan[] {
           : huraiSenarai(m.baris, kumpulan);
         if (hasil.length) kumpulan = hasil[hasil.length - 1][0];
         for (const r of hasil) {
-          baris.push([r[0], r[1], buangAkronimMelekat(r[2], `${s.tajuk} ${r[0]}`)]);
+          baris.push([
+            r[0], r[1],
+            buangNomborMelekat(buangAkronimMelekat(r[2], `${s.tajuk} ${r[0]}`)),
+          ]);
         }
       }
       // MUKA BIDANG TUGAS TIDAK DICAMPUR ke dalam seksyen senarai.

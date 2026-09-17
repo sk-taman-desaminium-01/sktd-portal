@@ -77,10 +77,28 @@ export default async function BukuPengurusan() {
         </p>
       ) : (
         <ul className="mt-4 space-y-4">
-          {dengan.map(({ dokumen: d, seksyen }) => (
-            <li key={d.id} className="rounded-xl border border-garis bg-white p-5">
+          {dengan.map(({ dokumen: d, seksyen }, i) => (
+            <li
+              key={d.id}
+              className={`rounded-xl border bg-white p-5 ${
+                i === 0 ? "border-navy-700 ring-1 ring-navy-700/20" : "border-garis opacity-75"
+              }`}
+            >
               <div className="flex flex-wrap items-baseline justify-between gap-2">
                 <h3 className="font-bold text-navy-800">
+                  {/* Edisi lama TIDAK dipadam, jadi senarai ini memapar
+                      kedua-duanya. Tanpa pembezaan yang jelas, admin
+                      menyemak edisi LAMA dan melaporkan sampah yang sudah
+                      dibaiki dalam edisi baharu. */}
+                  {i === 0 ? (
+                    <span className="mr-2 rounded bg-[#e5f4ec] px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-[#167a4b]">
+                      Terkini
+                    </span>
+                  ) : (
+                    <span className="mr-2 rounded bg-slate-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-slate-500">
+                      Arkib
+                    </span>
+                  )}
                   Edisi {d.tahun}
                   {d.versi > 1 && (
                     <span className="ml-2 rounded bg-navy-50 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-navy-700">
