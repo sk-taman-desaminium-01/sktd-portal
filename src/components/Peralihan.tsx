@@ -95,35 +95,64 @@ export default function Peralihan() {
       style={{ animation: "peralihan-masuk 180ms ease-out" }}
       aria-hidden="true"
     >
-      <div className="relative flex h-28 w-28 items-center justify-center">
-        <svg viewBox="0 0 112 112" className="absolute inset-0 h-full w-full">
-          {/* Cincin latar — memberi bentuk kepada bahagian yang belum
-              dilalui, supaya cincin berputar tidak kelihatan seperti
-              serpihan yang hilang. */}
-          <circle cx="56" cy="56" r="52" fill="none" stroke="#e6efe9" strokeWidth="4" />
-          <circle
-            cx="56" cy="56" r="52" fill="none"
-            stroke="#1f7a4d" strokeWidth="4" strokeLinecap="round"
-            strokeDasharray="82 245"
-            className="peralihan-cincin"
-            style={{ transformOrigin: "56px 56px" }}
+      {/*
+        LOGO BERPUTAR 3D — seperti syiling, bukan seperti jatuh.
+
+        Paksi Y, bukan X. Putaran pada paksi X menjungkirkan logo sekolah
+        ke bawah, dan logo sekolah yang terbalik ialah perkara yang tiada
+        siapa patut lihat — apatah lagi sebagai kesan hiasan.
+
+        DUA SALINAN, bukan satu. Putaran Y biasa memaparkan bayangan cermin
+        logo untuk separuh pusingan: tulisan terbalik, jata songsang. Salinan
+        kedua diputar 180° dari awal dan kedua-duanya menyembunyikan
+        permukaan belakang, jadi mata sentiasa melihat logo yang BETUL —
+        sama seperti syiling yang mempunyai muka pada kedua-dua belah.
+      */}
+      <div className="peralihan-pentas">
+        <div className="peralihan-syiling">
+          <img
+            src="/logo-sktd.png" alt=""
+            width={96} height={96}
+            className="peralihan-muka h-24 w-24 object-contain"
           />
-        </svg>
-        <img
-          src="/logo-sktd.png"
-          alt=""
-          width={72}
-          height={72}
-          className="h-[72px] w-[72px] object-contain"
-        />
+          <img
+            src="/logo-sktd.png" alt=""
+            width={96} height={96}
+            className="peralihan-muka peralihan-belakang h-24 w-24 object-contain"
+          />
+        </div>
       </div>
 
       <style>{`
         @keyframes peralihan-masuk { from { opacity: 0 } to { opacity: 1 } }
-        @keyframes peralihan-putar { to { transform: rotate(360deg) } }
-        .peralihan-cincin { animation: peralihan-putar 900ms linear infinite; }
+        @keyframes peralihan-pusing {
+          from { transform: rotateY(0deg) }
+          to   { transform: rotateY(360deg) }
+        }
+        .peralihan-pentas {
+          /* Perspektif memberi putaran itu kedalaman. Tanpanya ia hanya
+             logo yang dipicit mendatar dan kembali. */
+          perspective: 700px;
+          width: 6rem;
+          height: 6rem;
+        }
+        .peralihan-syiling {
+          position: relative;
+          width: 100%;
+          height: 100%;
+          transform-style: preserve-3d;
+          animation: peralihan-pusing 1600ms cubic-bezier(.45,.05,.55,.95) infinite;
+        }
+        .peralihan-muka {
+          position: absolute;
+          inset: 0;
+          backface-visibility: hidden;
+          -webkit-backface-visibility: hidden;
+        }
+        .peralihan-belakang { transform: rotateY(180deg); }
+
         @media (prefers-reduced-motion: reduce) {
-          .peralihan-cincin { animation: none; }
+          .peralihan-syiling { animation: none; }
         }
       `}</style>
     </div>

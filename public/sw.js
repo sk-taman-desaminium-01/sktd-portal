@@ -17,7 +17,7 @@
  * log keluar — bukan dengan melonggarkan fail ini.
  */
 
-const VERSI = "portal-v2";
+const VERSI = "portal-v3";
 const ASET = `aset-${VERSI}`;
 
 self.addEventListener("install", () => self.skipWaiting());
