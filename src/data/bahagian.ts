@@ -148,13 +148,15 @@ export const KAD_TAMBAHAN: KadBaharu[] = [
     id: "tempahan", bahagian: "pentadbiran",
     nama: "Tempahan Bilik Khas", ikon: "BLK", warna: "#2b5f8a",
     fungsi: "Tempah makmal komputer, bilik mesyuarat, bilik BOSS dan dewan.",
-    domain: "portal.sktd.edu.my/tempahan", domainCadangan: true, status: "reka",
-    rancangan: [
-      "Kalendar setiap bilik khas — makmal, bilik mesyuarat, dewan",
-      "Tempahan tidak boleh bertindih pada slot yang sama",
-      "Kelulusan pentadbir untuk bilik tertentu",
-      "Pembatalan dan rekod penggunaan",
-    ],
+    domain: "portal.sktd.edu.my/bilik", pautan: "/bilik", status: "sedia",
+    // SKOP DIPENDEKKAN dengan sengaja. Rancangan asal mengandungi
+    // "kelulusan pentadbir untuk bilik tertentu" — satu aliran kelulusan
+    // penuh untuk masalah yang belum wujud. Papan kenyataan yang digantikan
+    // modul ini tiada kelulusan langsung; sesiapa yang menulis dahulu,
+    // dapat. Modul ini melakukan perkara yang sama, cuma tanpa dua orang
+    // menulis pada baris yang sama.
+    catatan: "Siapa tempah dahulu, dia dapat. Tiada aliran kelulusan — "
+      + "pentadbir boleh membatalkan mana-mana tempahan bila perlu.",
   },
   {
     id: "borang", bahagian: "pentadbiran",
