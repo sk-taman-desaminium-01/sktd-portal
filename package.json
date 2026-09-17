@@ -13,7 +13,8 @@
     "uji:nama": "node --experimental-strip-types --no-warnings scripts/uji-nama.mts",
     "uji:takwim": "node --experimental-strip-types --no-warnings scripts/uji-takwim.mts",
     "uji:murid": "node --experimental-strip-types --no-warnings scripts/uji-murid.mts",
-    "uji:naik": "node --experimental-strip-types --no-warnings scripts/uji-naik.mts"
+    "uji:naik": "node --experimental-strip-types --no-warnings scripts/uji-naik.mts",
+    "uji:umum": "node --experimental-strip-types --no-warnings scripts/uji-umum.mts"
   },
   "dependencies": {
     "@clerk/localizations": "^4.17.0",
