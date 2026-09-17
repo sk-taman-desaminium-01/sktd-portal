@@ -21,8 +21,42 @@ const LALUAN_AWAM = createRouteMatcher([
   "/daftar(.*)",
 ]);
 
+/**
+ * SATU PINTU MASUK, bukan dua.
+ *
+ * Portal boleh dicapai melalui dua alamat: `portal.sktd.edu.my` terus, dan
+ * `sktd.edu.my/portal` melalui proksi Worker Cloudflare. Proksi itu WUJUD
+ * atas sebab yang sah — iOS membuka asal LAIN dalam pelayar-dalam-app dengan
+ * bar Safari, dan itu memecahkan app yang dipasang.
+ *
+ * Tetapi dua alamat menghasilkan DUA SESI. Worker membuang atribut `Domain=`
+ * daripada setiap kuki (ia terpaksa: kuki `Domain=portal.sktd.edu.my` ditolak
+ * pelayar pada halaman sktd.edu.my), jadi kuki log masuk yang dibuat melalui
+ * proksi menjadi milik sktd.edu.my SAHAJA. Guru yang log masuk di satu
+ * alamat mendapati dirinya belum log masuk di alamat yang satu lagi — dan
+ * jabat tangan Clerk yang berulang itu ialah masa menunggu yang mereka rasa.
+ *
+ * Maka alamat langsung MELENCONG ke alamat proksi. Permintaan yang datang
+ * DARI Worker dikecualikan (ia membawa `X-Forwarded-Host`); tanpa
+ * pengecualian itu, proksi dan lencongan akan berbalas-balas selamanya.
+ *
+ * Diukur pada domain hidup: proksi menambah 50–170ms setiap permintaan.
+ * Itu harga yang dibayar untuk satu sesi dan app iOS yang tidak pecah —
+ * dan ia jauh lebih kecil daripada saat-saat yang hilang kepada log masuk
+ * berulang.
+ */
+const HOS_LANGSUNG = "portal.sktd.edu.my";
+const HOS_UTAMA = "https://sktd.edu.my";
+
 export default clerkMiddleware(
   async (auth, req) => {
+    const hos = req.headers.get("host") ?? "";
+    const dariProksi = req.headers.has("x-forwarded-host");
+    if (hos === HOS_LANGSUNG && !dariProksi) {
+      const url = new URL(req.url);
+      return Response.redirect(`${HOS_UTAMA}${url.pathname}${url.search}`, 308);
+    }
+
     if (!LALUAN_AWAM(req)) {
       await auth.protect();
     }

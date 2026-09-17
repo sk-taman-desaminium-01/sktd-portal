@@ -253,8 +253,8 @@ export async function suntingMurid(
 export async function buangPendaftaran(pendaftaranId: string): Promise<void> {
   const db = klienTulis();
   const nilai = (await db.minta(
-    `pbd_nilai?select=id&pendaftaran_id=eq.${encodeURIComponent(pendaftaranId)}&limit=1`,
-  )) as { id: string }[];
+    `pbd_nilai?select=subjek&pendaftaran_id=eq.${encodeURIComponent(pendaftaranId)}&limit=1`,
+  )) as { subjek: string }[];
   if (nilai.length > 0) {
     throw new Error(
       "Murid ini sudah ada nilai PBD yang diisi guru. Buang nilai itu dahulu, " +
@@ -572,24 +572,33 @@ export async function undoNaikTahun(
 ): Promise<{ dibuang: number; dipulih: number }> {
   const db = klienTulis();
 
+  // DIKERJAKAN DARI SISI SASARAN, bukan sisi sumber.
+  //
+  // Versi pertama menuntut sesi SUMBER mempunyai pendaftaran, dan berhenti
+  // dengan "Sesi 2026 tiada pendaftaran, jadi tiada apa yang boleh
+  // dipatahkan balik" — tepat ketika pengguna paling perlukan jalan pulang.
+  // Itu soalan yang salah: yang perlu dibuang ialah apa yang ada dalam sesi
+  // SASARAN, dan sesi sasaran itu wujud tanpa mengira keadaan sumbernya.
   const asal = await pendaftaranSesi(dariSesi);
-  if (asal.length === 0) {
-    throw new Error(
-      `Sesi ${dariSesi} tiada pendaftaran, jadi tiada apa yang boleh dipatahkan balik.`,
-    );
-  }
   const dariSini = new Set(asal.map((x) => x.murid_id));
 
   const sasaran = (await db.minta(
     `pbd_pendaftaran?select=id,murid_id&tahun_sesi=eq.${keSesi}`,
   )) as { id: string; murid_id: string }[];
-  const calon = sasaran.filter((x) => dariSini.has(x.murid_id));
+
+  // Bila sumber masih ada pendaftarannya, hanya murid yang BOLEH DIJEJAK
+  // kembali ke sana dibuang — murid yang didaftarkan terus ke sesi sasaran
+  // tidak pernah datang dari naik tahun. Bila sumber sudah kosong, tiada
+  // jejak untuk diikuti, dan seluruh sesi sasaran ialah hasil naik tahun.
+  const calon = dariSini.size > 0
+    ? sasaran.filter((x) => dariSini.has(x.murid_id))
+    : sasaran;
   if (calon.length === 0) return { dibuang: 0, dipulih: 0 };
 
   // PAGAR 2. Nilai dalam sesi sasaran bermakna kerja sebenar sudah bermula.
   const ada = (await db.minta(
-    `pbd_nilai?select=id&pendaftaran_id=in.(${calon.slice(0, 500).map((x) => x.id).join(",")})&limit=1`,
-  )) as { id: string }[];
+    `pbd_nilai?select=subjek&pendaftaran_id=in.(${calon.slice(0, 500).map((x) => x.id).join(",")})&limit=1`,
+  )) as { subjek: string }[];
   if (ada.length > 0) {
     throw new Error(
       `Sesi ${keSesi} sudah mengandungi nilai PBD yang diisi guru. ` +
@@ -607,7 +616,15 @@ export async function undoNaikTahun(
   }
 
   // PAGAR 3. Tahun 6 dikembalikan kepada aktif.
-  const tamat = asal.filter((x) => x.tahun === 6).map((x) => x.murid_id);
+  //
+  // Bila sesi sumber sudah kosong, senarai Tahun 6 tidak dapat dibina
+  // daripadanya — maka SEMUA murid bertanda `tamat` dipulihkan. Itu betul
+  // dalam konteks ini: satu-satunya perkara yang menandakan murid `tamat`
+  // ialah naik tahun yang sedang dipatahkan balik.
+  const tamat = asal.length > 0
+    ? asal.filter((x) => x.tahun === 6).map((x) => x.murid_id)
+    : ((await db.minta("pbd_murid?select=id&status=eq.tamat")) as { id: string }[])
+        .map((x) => x.id);
   for (let i = 0; i < tamat.length; i += 100) {
     const senarai = tamat.slice(i, i + 100).join(",");
     if (!senarai) continue;
