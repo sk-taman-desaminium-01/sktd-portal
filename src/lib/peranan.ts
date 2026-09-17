@@ -83,20 +83,24 @@ export type Keupayaan =
   // rasmi sekolah, dan orang yang menyusunnya ialah pentadbir. Mengunci ia
   // kepada admin mutlak bermakna orang yang menulis buku itu tidak boleh
   // memuat naiknya.
-  | "urus_pengurusan";
+  | "urus_pengurusan"
+  // Menempah bilik ialah kerja harian setiap guru, bukan kuasa pentadbiran.
+  // Yang dipagar ialah MENGURUS senarai bilik dan membatalkan tempahan
+  // orang lain.
+  | "urus_bilik";
 
 const KEUPAYAAN: Record<PerananBerkesan, Keupayaan[]> = {
   admin_mutlak: ["urus_akses", "terbit_kandungan", "lihat_data_murid",
                  "lihat_diagnostik", "urus_portal", "urus_admin",
-                 "urus_guru_kelas", "urus_pengurusan"],
+                 "urus_guru_kelas", "urus_pengurusan", "urus_bilik"],
   // Admin TIDAK dapat `urus_admin` — lihat nota "Jawatankuasa admin" di bawah.
   admin:        ["urus_akses", "terbit_kandungan", "lihat_data_murid",
-                 "lihat_diagnostik", "urus_guru_kelas", "urus_pengurusan"],
+                 "lihat_diagnostik", "urus_guru_kelas", "urus_pengurusan", "urus_bilik"],
   // Pentadbir (GB, PK, guru kanan) BOLEH urus akses — keputusan pengguna
   // 16 Sep 2026. Menentukan siapa dapat masuk ialah keputusan pentadbiran
   // sekolah, bukan keputusan teknikal, jadi ia milik mereka.
   pentadbir:    ["urus_akses", "terbit_kandungan", "lihat_data_murid",
-                 "urus_guru_kelas", "urus_pengurusan"],
+                 "urus_guru_kelas", "urus_pengurusan", "urus_bilik"],
   kakitangan:   [],
   guru:         [],
 };
