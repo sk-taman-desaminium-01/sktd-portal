@@ -6,7 +6,7 @@
  * muka jawatankuasa ialah senarai "PERANAN : NAMA" dengan baris sambungan,
  * muka senarai guru ialah jadual berlajur.
  */
-import { tajukMuka, huraiSenarai, huraiSenaraiDariSel, huraiJadual, kesanSeksyen, huraiTugas, kelihatanTugas, buangAkronimMelekat } from "../src/lib/pengurusan-huraian.ts";
+import { tajukMuka, huraiSenarai, huraiSenaraiDariSel, huraiJadual, kesanSeksyen, huraiTugas, kelihatanTugas, buangAkronimMelekat, buangNomborMelekat } from "../src/lib/pengurusan-huraian.ts";
 import { buangKurunganGanda } from "../src/lib/muka-teks.ts";
 import { kesanJenis } from "../src/data/seksyen-pengurusan.ts";
 
@@ -216,6 +216,15 @@ semak("ayat tugasan tidak masuk senarai nama",
   campur[0]?.baris.some((b) => b[2]?.startsWith("Mem")) ?? false, false);
 semak("muka bidang tugas dilaporkan dalam amaran",
   campur[0]?.amaran.some((a) => a.includes("BIDANG TUGAS")) ?? false, true);
+
+/* NOMBOR SENARAI MELEKAT PADA HUJUNG NAMA. Lajur bersebelahan dengan
+   jurang terlalu kecil untuk dikira sempadan sel. */
+semak("nombor melekat dibuang",
+  buangNomborMelekat("EN AHMAD RAFLI NOOR BIN26.27."), "EN AHMAD RAFLI NOOR BIN");
+semak("nombor tunggal di hujung dibuang",
+  buangNomborMelekat("YUSRI BIN KARIM27."), "YUSRI BIN KARIM");
+semak("nama bersih tidak diusik",
+  buangNomborMelekat("NORLIZA BINTI AHMAT ZAWAWI"), "NORLIZA BINTI AHMAT ZAWAWI");
 
 console.log(`\n${lulus} lulus, ${gagal} gagal`);
 process.exit(gagal > 0 ? 1 : 0);
