@@ -159,6 +159,18 @@ export const KAD_TAMBAHAN: KadBaharu[] = [
       + "pentadbir boleh membatalkan mana-mana tempahan bila perlu.",
   },
   {
+    id: "inventori", bahagian: "pentadbiran",
+    nama: "Inventori ICT", ikon: "INV", warna: "#0f766e",
+    fungsi: "Barang yang unit ICT selenggara, dan permohonan barang oleh guru.",
+    domain: "portal.sktd.edu.my/inventori", pautan: "/inventori", status: "sedia",
+    akses: "Semua guru boleh memohon · penyelia unit memutuskan",
+    // SKOP KECIL dengan sengaja. Bukan sistem aset KWAPM dengan nombor siri
+    // dan susut nilai — itu sistem berbeza dengan peraturan perakaunan
+    // berbeza, dan membinanya separuh jalan lebih teruk daripada tidak.
+    catatan: "Unit dimaklumkan setiap kali permohonan masuk. "
+      + "Bukan sistem aset KWAPM — tiada nombor siri atau susut nilai.",
+  },
+  {
     id: "borang", bahagian: "pentadbiran",
     nama: "Borang Sekolah", ikon: "BRG", warna: "#4a4a7a",
     fungsi: "Borang rasmi dalam talian dengan tandatangan digital.",

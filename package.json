@@ -15,7 +15,8 @@
     "uji:murid": "node --experimental-strip-types --no-warnings scripts/uji-murid.mts",
     "uji:naik": "node --experimental-strip-types --no-warnings scripts/uji-naik.mts",
     "uji:umum": "node --experimental-strip-types --no-warnings scripts/uji-umum.mts",
-    "uji:bilik": "node --experimental-strip-types --no-warnings scripts/uji-bilik.mts"
+    "uji:bilik": "node --experimental-strip-types --no-warnings scripts/uji-bilik.mts",
+    "uji:inventori": "node --experimental-strip-types --no-warnings scripts/uji-inventori.mts"
   },
   "dependencies": {
     "@clerk/localizations": "^4.17.0",
