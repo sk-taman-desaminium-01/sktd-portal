@@ -1,7 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { tukarSeksyenTindakan, padamDokumenTindakan, lihatBaris } from "@/lib/tindakan-pengurusan";
+import {
+  tukarSeksyenTindakan, padamDokumenTindakan, lihatBaris,
+  suntingBarisTindakan, padamBarisTindakan,
+} from "@/lib/tindakan-pengurusan";
+import type { JenisPindaan } from "@/lib/pindaan";
 import { JENIS_SEKSYEN, type KodSeksyen } from "@/data/seksyen-pengurusan";
 
 export interface BarisSeksyen {
@@ -52,10 +56,99 @@ export default function SeksyenTersimpan({
    * skrin menggalakkan membacanya dahulu tanpa menghalang sesiapa.
    */
   const [buka, setBuka] = useState<string | null>(null);
-  const [isi, setIsi] = useState<Record<string, { baris: string[][]; mesej: string }>>({});
+  const [isi, setIsi] = useState<Record<string, { baris: BarisIsi[]; mesej: string }>>({});
   const [memuat, setMemuat] = useState<string | null>(null);
   const [dilihat, setDilihat] = useState<Set<string>>(new Set());
   const [cari, setCari] = useState("");
+
+  /**
+   * Baris yang sedang disunting, dan draf selnya.
+   *
+   * Pengguna menyebutnya terus: "edit terus dalam web untuk sesi ini".
+   * Muat naik semula seluruh buku kerana satu jawatan tersalah baca ialah
+   * sepuluh minit untuk membetulkan tiga perkataan.
+   */
+  const [sunting, setSunting] = useState<string | null>(null);
+  const [draf, setDraf] = useState<string[]>([]);
+  const [kekal, setKekal] = useState(false);
+  const [simpan, setSimpan] = useState(false);
+  const [nota, setNota] = useState<string | null>(null);
+
+  function mulaSunting(b: BarisIsi) {
+    setSunting(b.id);
+    setDraf([...b.sel]);
+    setKekal(false);
+    setNota(null);
+  }
+
+  /**
+   * Cari sel mana yang berubah — itu yang menjadi pindaan kekal.
+   *
+   * Hanya SATU sel boleh menjadi pindaan. Kalau dua berubah serentak,
+   * "dari → kepada" tidak lagi bermakna apa-apa yang boleh dikenakan pada
+   * baris lain, jadi kotak kekal itu disembunyikan.
+   */
+  function selBerubah(asal: string[]): { dari: string; kepada: string } | null {
+    const ubah = asal
+      .map((c, i) => ({ dari: c ?? "", kepada: draf[i] ?? "", i }))
+      .filter((x) => x.dari.trim() !== x.kepada.trim());
+    return ubah.length === 1 ? { dari: ubah[0].dari, kepada: ubah[0].kepada } : null;
+  }
+
+  async function simpanSunting(seksyenId: string, asal: BarisIsi) {
+    const beza = selBerubah(asal.sel);
+    setSimpan(true);
+    setNota(null);
+    try {
+      const hasil = await suntingBarisTindakan(
+        asal.id,
+        draf,
+        kekal && beza
+          ? {
+              jenis: jenisPindaanUntuk(beza.kepada),
+              dari: beza.dari,
+              kepada: beza.kepada,
+              sebab: `Dibetulkan dalam ${baris.find((x) => x.id === seksyenId)?.tajuk ?? "seksyen"}`,
+            }
+          : undefined,
+      );
+      if (!hasil.ok) { setNota(hasil.mesej); return; }
+      setIsi((lama) => ({
+        ...lama,
+        [seksyenId]: {
+          ...lama[seksyenId],
+          baris: lama[seksyenId].baris.map((r) =>
+            r.id === asal.id ? { ...r, sel: draf.map((c) => c.trim()), disunting: true } : r,
+          ),
+        },
+      }));
+      setSunting(null);
+      setNota(hasil.mesej);
+    } finally {
+      setSimpan(false);
+    }
+  }
+
+  async function buangBaris(seksyenId: string, id: string) {
+    setSimpan(true);
+    try {
+      const hasil = await padamBarisTindakan(id);
+      if (!hasil.ok) { setNota(hasil.mesej); return; }
+      setIsi((lama) => ({
+        ...lama,
+        [seksyenId]: {
+          ...lama[seksyenId],
+          baris: lama[seksyenId].baris.filter((r) => r.id !== id),
+        },
+      }));
+      setBaris((lama) =>
+        lama.map((b) => (b.id === seksyenId ? { ...b, bilBaris: Math.max(0, b.bilBaris - 1) } : b)),
+      );
+      setSunting(null);
+    } finally {
+      setSimpan(false);
+    }
+  }
 
   async function togol(id: string) {
     if (buka === id) { setBuka(null); return; }
@@ -107,6 +200,12 @@ export default function SeksyenTersimpan({
 
   return (
     <div>
+      {nota && (
+        <p className="mb-3 rounded-lg border border-[#c6e2d1] bg-[#eef8f2] p-3 text-xs text-[#167a4b]">
+          {nota}
+        </p>
+      )}
+
       {ralat && (
         <p className="mb-3 rounded-lg border border-[#e9c4c4] bg-[#fdf1f1] p-3 text-xs text-[#8f2b2b]">
           {ralat}
@@ -185,20 +284,95 @@ export default function SeksyenTersimpan({
                     className="min-w-0 flex-1 rounded-lg border border-garis px-3 py-1.5 text-xs"
                   />
                   <span className="text-xs text-slate-500">{isi[b.id].mesej}</span>
+                  <span className="w-full text-[11px] text-slate-400">
+                    Klik mana-mana baris untuk membetulkannya. Bacaan asal PDF disimpan.
+                  </span>
                 </div>
 
                 <div className="mt-2 max-h-80 overflow-auto rounded-lg border border-garis bg-white">
                   <table className="w-full text-left text-xs">
                     <tbody className="divide-y divide-garis">
-                      {tapisBaris(isi[b.id].baris, cari).map((r, i) => (
-                        <tr key={i}>
-                          {r.map((c, n) => (
-                            <td key={n} className="px-2 py-1.5 align-top text-slate-700">
-                              {c}
+                      {tapisBaris(isi[b.id].baris, cari).map((r) =>
+                        sunting === r.id ? (
+                          <tr key={r.id} className="bg-navy-50/60">
+                            <td colSpan={Math.max(1, r.sel.length)} className="px-2 py-2">
+                              <div className="flex flex-wrap gap-1.5">
+                                {r.sel.map((_, n) => (
+                                  <input
+                                    key={n}
+                                    value={draf[n] ?? ""}
+                                    onChange={(e) =>
+                                      setDraf((d) => d.map((c, j) => (j === n ? e.target.value : c)))
+                                    }
+                                    aria-label={`Lajur ${n + 1}`}
+                                    className="min-w-0 flex-1 rounded border border-garis px-2 py-1 text-xs"
+                                  />
+                                ))}
+                              </div>
+
+                              {selBerubah(r.sel) && (
+                                <label className="mt-2 flex items-start gap-2 text-xs text-slate-600">
+                                  <input
+                                    type="checkbox"
+                                    checked={kekal}
+                                    onChange={(e) => setKekal(e.target.checked)}
+                                    className="mt-0.5"
+                                  />
+                                  <span>
+                                    Guna pembetulan ini untuk <b>muat naik akan datang</b> juga —
+                                    setiap sel yang berbunyi
+                                    {" "}<i>&ldquo;{selBerubah(r.sel)!.dari}&rdquo;</i> akan ditukar
+                                    automatik apabila buku 2027 dimuat naik.
+                                    <span className="mt-0.5 block text-[11px] text-slate-400">
+                                      Padanan ialah seluruh sel, bukan sebahagian perkataan — nama
+                                      khas seperti <i>Bilik i-Shabariah</i> tidak akan tersentuh.
+                                    </span>
+                                  </span>
+                                </label>
+                              )}
+
+                              <div className="mt-2 flex flex-wrap items-center gap-2">
+                                <button
+                                  onClick={() => void simpanSunting(b.id, r)}
+                                  disabled={simpan}
+                                  className="rounded-lg bg-navy-700 px-3 py-1 text-xs font-bold text-white disabled:opacity-50"
+                                >
+                                  {simpan ? "…" : "Simpan"}
+                                </button>
+                                <button
+                                  onClick={() => setSunting(null)}
+                                  className="text-xs text-slate-500 underline"
+                                >
+                                  Batal
+                                </button>
+                                <button
+                                  onClick={() => void buangBaris(b.id, r.id)}
+                                  disabled={simpan}
+                                  className="ml-auto text-xs text-[#8f2b2b] underline disabled:opacity-50"
+                                >
+                                  Padam baris ini
+                                </button>
+                              </div>
                             </td>
-                          ))}
-                        </tr>
-                      ))}
+                          </tr>
+                        ) : (
+                          <tr
+                            key={r.id}
+                            onClick={() => mulaSunting(r)}
+                            title="Klik untuk membetulkan baris ini"
+                            className="cursor-text hover:bg-navy-50/50"
+                          >
+                            {r.sel.map((c, n) => (
+                              <td key={n} className="px-2 py-1.5 align-top text-slate-700">
+                                {c}
+                                {n === r.sel.length - 1 && r.disunting && (
+                                  <span className="ml-1 text-[10px] text-[#167a4b]">· disunting</span>
+                                )}
+                              </td>
+                            ))}
+                          </tr>
+                        ),
+                      )}
                       {tapisBaris(isi[b.id].baris, cari).length === 0 && (
                         <tr>
                           <td className="px-3 py-4 text-center text-slate-500">
@@ -244,11 +418,30 @@ export default function SeksyenTersimpan({
   );
 }
 
+export interface BarisIsi {
+  id: string;
+  sel: string[];
+  disunting: boolean;
+}
+
 /** Tapis baris mengikut carian — semua lajur, huruf besar diabaikan. */
-function tapisBaris(baris: string[][], cari: string): string[][] {
+function tapisBaris(baris: BarisIsi[], cari: string): BarisIsi[] {
   const t = cari.trim().toLowerCase();
   if (!t) return baris;
-  return baris.filter((r) => r.some((c) => (c ?? "").toLowerCase().includes(t)));
+  return baris.filter((r) => r.sel.some((c) => (c ?? "").toLowerCase().includes(t)));
+}
+
+/**
+ * Teka jenis pindaan dari teks gantian.
+ *
+ * Gantian KOSONG bermakna orang itu sudah tiada — baris yang menamakannya
+ * digugurkan pada muat naik akan datang. Teks yang mengandungi penanda
+ * nasab ialah nama orang; selebihnya ialah jawatan atau tajuk, yang
+ * dibetulkan sebagai teks biasa.
+ */
+function jenisPindaanUntuk(kepada: string): JenisPindaan {
+  if (kepada.trim() === "") return "buang_nama";
+  return /\b(BIN|BINTI|BT|A\/L|A\/P)\b/i.test(kepada) ? "ganti_nama" : "ganti_teks";
 }
 
 const NAMA: Record<string, string> = Object.fromEntries(

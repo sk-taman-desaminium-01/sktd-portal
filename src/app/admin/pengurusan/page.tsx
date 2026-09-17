@@ -5,6 +5,7 @@ import { senaraiDokumen, seksyenDokumen } from "@/lib/pengurusan";
 import { JENIS_SEKSYEN, VERSI_PENGHURAI } from "@/data/seksyen-pengurusan";
 import NaikPengurusan from "./NaikPengurusan";
 import SeksyenTersimpan from "./SeksyenTersimpan";
+import PanelPindaan from "./PanelPindaan";
 
 export const metadata = { title: "Buku Pengurusan" };
 
@@ -137,6 +138,8 @@ export default async function BukuPengurusan() {
           ))}
         </ul>
       )}
+
+      <PanelPindaan dokumenId={dokumen[0]?.id ?? null} />
 
       <p className="mt-6 text-xs leading-relaxed text-slate-500">
         Edisi lama <b>tidak dipadam</b> apabila edisi baharu dimuat naik — buku

@@ -28,7 +28,7 @@
  * Naikkan apabila pembacaan berubah: penapis baharu, bentuk baharu,
  * pembetulan yang mengubah baris yang dihasilkan.
  */
-export const VERSI_PENGHURAI = "2026.09.17";
+export const VERSI_PENGHURAI = "2026.09.17b";
 
 export type KodSeksyen =
   | "guru"          // senarai nama guru

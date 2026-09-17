@@ -10,8 +10,13 @@ import { JENIS_SEKSYEN, type KodSeksyen } from "@/data/seksyen-pengurusan";
 import { bacaPenunjukKod } from "@/data/carta";
 import {
   simpanDokumen, tukarSeksyen, padamDokumen, barisSeksyen, seksyenDokumen,
+  suntingBaris, padamBaris,
   type SeksyenUntukSimpan,
 } from "./pengurusan";
+import {
+  senaraiPindaan, tambahPindaan, togolPindaan, padamPindaan,
+  kenakanPindaan, kenakanPindaanBanyak, type Pindaan, type JenisPindaan,
+} from "./pindaan";
 import { amaranDokumen, type MukaBaca } from "./muka-pdf";
 
 /**
@@ -216,9 +221,25 @@ export async function simpanPengurusan(
       return { ok: false, mesej: "Tahun tidak sah." };
     }
 
+    // PINDAAN DIKENAKAN DI SINI, bukan selepas admin menyemak.
+    //
+    // Pembetulan yang dibuat pada edisi 2026 — Guru Besar yang bersara,
+    // jawatan yang tersalah eja dalam cetakan — dikenakan automatik pada
+    // edisi 2027 semasa ia dimuat naik. Itulah seluruh sebab pindaan wujud:
+    // supaya kerja yang sama tidak bermula semula dari kosong setiap tahun.
+    const pindaan = await senaraiPindaan().catch(() => [] as Pindaan[]);
+    let diubah = 0;
+    let digugur = 0;
+    const dipinda = pilih.map((s) => {
+      const r = kenakanPindaanBanyak(s.baris, pindaan);
+      diubah += r.diubah;
+      digugur += r.digugur;
+      return { ...s, baris: r.baris };
+    }).filter((s) => s.baris.length > 0);
+
     const hasil = await simpanDokumen(
       { ...maklumat, tahun, oleh: saya.emel ?? "" },
-      pilih,
+      dipinda,
     );
     revalidatePath("/admin/pengurusan");
     revalidatePath("/admin");
@@ -226,7 +247,10 @@ export async function simpanPengurusan(
       ok: true, id: hasil.id,
       mesej:
         `Disimpan sebagai edisi ${tahun} versi ${hasil.versi} — ` +
-        `${pilih.length} seksyen, ${hasil.bilBaris} baris. Edisi lama TIDAK dipadam.`,
+        `${dipinda.length} seksyen, ${hasil.bilBaris} baris. Edisi lama TIDAK dipadam.` +
+        (diubah + digugur > 0
+          ? ` Pindaan tersimpan dikenakan: ${diubah} baris dibetulkan, ${digugur} digugurkan.`
+          : ""),
     };
   } catch (e) {
     return { ok: false, mesej: ralat(e) };
@@ -263,7 +287,8 @@ export interface HasilBaris {
   ok: boolean;
   mesej: string;
   lajur?: string[];
-  baris?: string[][];
+  /** Id disertakan supaya baris boleh disunting terus dari skrin semakan. */
+  baris?: { id: string; sel: string[]; disunting: boolean }[];
   jumlah?: number;
 }
 
@@ -293,12 +318,186 @@ export async function lihatBaris(seksyenId: string): Promise<HasilBaris> {
     const HAD = 400;
     return {
       ok: true,
-      baris: semua.slice(0, HAD).map((b) => b.sel),
+      baris: semua.slice(0, HAD).map((b) => ({
+        id: b.id, sel: b.sel, disunting: b.sumber !== "pdf",
+      })),
       jumlah: semua.length,
       mesej:
         semua.length > HAD
           ? `${HAD} daripada ${semua.length} baris dipapar.`
           : `${semua.length} baris.`,
+    };
+  } catch (e) {
+    return { ok: false, mesej: ralat(e) };
+  }
+}
+
+/* ------------------------------------------------------- sunting satu baris */
+
+/**
+ * Betulkan satu baris TERUS dalam web.
+ *
+ * Pengguna memilih laluan ini berbanding memuat naik semula: "edit terus
+ * dalam web untuk sesi ini". Bacaan asal PDF disimpan dalam lajur `asal`,
+ * jadi tiada apa yang hilang — dan `kekal` menjadikan pembetulan itu
+ * pindaan yang dikenakan pada edisi akan datang juga.
+ */
+export async function suntingBarisTindakan(
+  id: string,
+  sel: string[],
+  kekal?: { jenis: JenisPindaan; dari: string; kepada: string; sebab: string },
+): Promise<{ ok: boolean; mesej: string }> {
+  let saya;
+  try {
+    saya = await pastikanBoleh("urus_pengurusan");
+  } catch {
+    return { ok: false, mesej: "Tiada kebenaran." };
+  }
+  try {
+    await suntingBaris(id, sel.map((c) => (c ?? "").trim()));
+    let nota = "";
+    if (kekal && kekal.dari.trim() !== "") {
+      await tambahPindaan({
+        jenis: kekal.jenis,
+        dari: kekal.dari,
+        kepada: kekal.kepada,
+        sebab: kekal.sebab,
+        oleh: saya.emel ?? null,
+      });
+      nota = " Pindaan disimpan — ia akan dikenakan pada muat naik akan datang.";
+    }
+    revalidatePath("/admin/pengurusan");
+    return { ok: true, mesej: "Baris dibetulkan." + nota };
+  } catch (e) {
+    return { ok: false, mesej: ralat(e) };
+  }
+}
+
+export async function padamBarisTindakan(id: string): Promise<{ ok: boolean; mesej: string }> {
+  try {
+    await pastikanBoleh("urus_pengurusan");
+  } catch {
+    return { ok: false, mesej: "Tiada kebenaran." };
+  }
+  try {
+    await padamBaris(id);
+    revalidatePath("/admin/pengurusan");
+    return { ok: true, mesej: "Baris dipadam." };
+  } catch (e) {
+    return { ok: false, mesej: ralat(e) };
+  }
+}
+
+/* ------------------------------------------------------------------ pindaan */
+
+export async function senaraiPindaanTindakan(): Promise<{ ok: boolean; mesej: string; pindaan?: Pindaan[] }> {
+  try {
+    await pastikanBoleh("urus_pengurusan");
+  } catch {
+    return { ok: false, mesej: "Tiada kebenaran." };
+  }
+  try {
+    return { ok: true, mesej: "", pindaan: await senaraiPindaan() };
+  } catch (e) {
+    return { ok: false, mesej: ralat(e) };
+  }
+}
+
+export async function tambahPindaanTindakan(
+  p: { jenis: JenisPindaan; dari: string; kepada: string; sebab: string },
+): Promise<{ ok: boolean; mesej: string }> {
+  let saya;
+  try {
+    saya = await pastikanBoleh("urus_pengurusan");
+  } catch {
+    return { ok: false, mesej: "Tiada kebenaran." };
+  }
+  if (p.dari.trim().length < 3) return { ok: false, mesej: "Isi teks asal dahulu." };
+  if (p.jenis !== "buang_nama" && p.kepada.trim().length < 2) {
+    return { ok: false, mesej: "Isi teks gantian dahulu." };
+  }
+  try {
+    await tambahPindaan({ ...p, kepada: p.jenis === "buang_nama" ? null : p.kepada, oleh: saya.emel ?? null });
+    revalidatePath("/admin/pengurusan");
+    return { ok: true, mesej: "Pindaan disimpan." };
+  } catch (e) {
+    return { ok: false, mesej: ralat(e) };
+  }
+}
+
+export async function togolPindaanTindakan(id: string, aktif: boolean): Promise<{ ok: boolean; mesej: string }> {
+  try {
+    await pastikanBoleh("urus_pengurusan");
+  } catch {
+    return { ok: false, mesej: "Tiada kebenaran." };
+  }
+  try {
+    await togolPindaan(id, aktif);
+    return { ok: true, mesej: aktif ? "Pindaan dihidupkan." : "Pindaan dimatikan." };
+  } catch (e) {
+    return { ok: false, mesej: ralat(e) };
+  }
+}
+
+export async function padamPindaanTindakan(id: string): Promise<{ ok: boolean; mesej: string }> {
+  try {
+    await pastikanBoleh("urus_pengurusan");
+  } catch {
+    return { ok: false, mesej: "Tiada kebenaran." };
+  }
+  try {
+    await padamPindaan(id);
+    revalidatePath("/admin/pengurusan");
+    return { ok: true, mesej: "Pindaan dipadam." };
+  } catch (e) {
+    return { ok: false, mesej: ralat(e) };
+  }
+}
+
+/**
+ * Kenakan pindaan pada edisi yang SUDAH tersimpan.
+ *
+ * Pindaan biasanya berkuat kuasa pada muat naik berikutnya. Tetapi
+ * pembetulan yang dibuat hari ini — Guru Besar yang bersara, misalnya —
+ * perlu berkuat kuasa hari ini juga, pada edisi yang sedang digunakan.
+ * Tanpa ini pengguna terpaksa menyunting dua puluh baris dengan tangan
+ * untuk satu orang, dalam dua puluh jawatankuasa.
+ *
+ * Bacaan asal PDF kekal disimpan dalam lajur `asal` pada setiap baris.
+ */
+export async function kenakanPindaanEdisi(
+  dokumenId: string,
+): Promise<{ ok: boolean; mesej: string }> {
+  try {
+    await pastikanBoleh("urus_pengurusan");
+  } catch {
+    return { ok: false, mesej: "Tiada kebenaran." };
+  }
+  try {
+    const pindaan = (await senaraiPindaan()).filter((p) => p.aktif);
+    if (pindaan.length === 0) {
+      return { ok: false, mesej: "Tiada pindaan aktif untuk dikenakan." };
+    }
+    const seksyen = await seksyenDokumen(dokumenId);
+    let diubah = 0;
+    let digugur = 0;
+    for (const s of seksyen) {
+      for (const b of await barisSeksyen(s.id)) {
+        const kesan = kenakanPindaan(b.sel, pindaan);
+        if (kesan.gugur) { await padamBaris(b.id); digugur++; continue; }
+        if (kesan.kena.length === 0) continue;
+        await suntingBaris(b.id, kesan.sel);
+        diubah++;
+      }
+    }
+    revalidatePath("/admin/pengurusan");
+    revalidatePath("/admin/carta");
+    return {
+      ok: true,
+      mesej:
+        diubah + digugur === 0
+          ? "Tiada baris dalam edisi ini yang sepadan dengan pindaan."
+          : `${diubah} baris dibetulkan, ${digugur} digugurkan.`,
     };
   } catch (e) {
     return { ok: false, mesej: ralat(e) };
