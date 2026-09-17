@@ -36,6 +36,19 @@ import { HARI, NAMA_HARI, type Hari } from "@/data/jadual-jenis";
 export interface HasilBilik {
   ok: boolean;
   mesej: string;
+  /**
+   * Rekod yang BARU DICIPTA, dengan id sebenarnya.
+   *
+   * KENAPA INI WAJIB. Skrin menyisipkan baris sementara supaya papan bergerak
+   * serta-merta, dan versi pertama memberi baris itu id rekaan
+   * (`baharu-1789639712473`). Bila pengguna menekan "Batal" pada tempahan
+   * yang baru sahaja dibuat, id rekaan itu dihantar ke pangkalan data dan
+   * Postgres menolaknya: `invalid input syntax for type uuid`. Baris itu
+   * kelihatan wujud tetapi tidak boleh disentuh.
+   *
+   * Pelayan tahu id sebenar; ia hanya perlu memulangkannya.
+   */
+  rekod?: { id: string };
 }
 
 function ralat(e: unknown): string {
@@ -200,7 +213,11 @@ export async function tempahTindakan(data: {
     });
 
     revalidatePath("/bilik");
-    return { ok: true, mesej: `Bilik ditempah ${data.mula}–${data.tamat}.` + notaAlat };
+    return {
+      ok: true,
+      rekod: rekod ? { id: rekod.id } : undefined,
+      mesej: `Bilik ditempah ${data.mula}–${data.tamat}.` + notaAlat,
+    };
   } catch (e) {
     return { ok: false, mesej: ralat(e) };
   }
@@ -372,9 +389,15 @@ export async function simpanBilikTindakan(b: {
     return { ok: false, mesej: "Muatan mesti nombor antara 1 dan 2000." };
   }
   try {
-    await simpanBilik({ id: b.id, nama, muatan, nota: b.nota.trim() || null, aktif: b.aktif });
+    const rekod = await simpanBilik({
+      id: b.id, nama, muatan, nota: b.nota.trim() || null, aktif: b.aktif,
+    });
     revalidatePath("/bilik");
-    return { ok: true, mesej: b.id ? "Bilik dikemas kini." : `Bilik "${nama}" ditambah.` };
+    return {
+      ok: true,
+      rekod: rekod ? { id: rekod.id } : undefined,
+      mesej: b.id ? "Bilik dikemas kini." : `Bilik "${nama}" ditambah.`,
+    };
   } catch (e) {
     return { ok: false, mesej: ralat(e) };
   }

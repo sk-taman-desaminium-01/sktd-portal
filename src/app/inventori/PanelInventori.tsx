@@ -52,9 +52,11 @@ export default function PanelInventori({ papan }: { papan: PapanInventori }) {
       setNota({ ok: r.ok, teks: r.mesej });
       if (r.ok) {
         setTujuan(""); setKuantiti("1"); setPerluPada("");
+      }
+      if (r.ok && r.rekod) {
         setMohon((l) => [
           {
-            id: `baharu-${Date.now()}`, barang_id: pilih, kuantiti: Number(kuantiti),
+            id: r.rekod!.id, barang_id: pilih, kuantiti: Number(kuantiti),
             tujuan: tujuan.trim(), perlu_pada: perluPada || null,
             oleh: papan.sayaEmel, nama: "Anda", status: "baharu", tempahan_id: null,
             catatan: null, diputuskan_oleh: null, dicipta: new Date().toISOString(),
@@ -343,9 +345,30 @@ function SenaraiBarang({ papan, barang, setBarang, setNota }: {
   const [lokasi, setLokasi] = useState("");
   const [notaB, setNotaB] = useState("");
 
+  /**
+   * Tutup menu bila diketuk di luarnya.
+   *
+   * SASARAN DIPERIKSA, BUKAN PENYEBARAN DIHENTIKAN. Versi pertama bergantung
+   * pada `stopPropagation()` dalam menu, dan ia GAGAL sepenuhnya: dalam App
+   * Router, React melekatkan pendengar terwakilnya pada `document` — nod yang
+   * SAMA dengan pendengar penutup ini. `stopPropagation` menghentikan
+   * penyebaran ke nod INDUK; ia tidak menghentikan pendengar lain pada nod
+   * yang sama (itu kerja `stopImmediatePropagation`).
+   *
+   * Akibatnya: `pointerdown` pada "Sunting" menutup menu, React membuang
+   * butang itu daripada DOM, dan `click` yang menyusul tidak pernah sampai
+   * kepada sesiapa. Menu terbuka, ketukan hilang, butang kelihatan mati.
+   *
+   * Memeriksa `closest("[data-menu]")` tidak bergantung pada susunan
+   * pendengar langsung, jadi ia betul tanpa mengira cara React mewakilkan.
+   */
   useEffect(() => {
     if (!menu) return;
-    const tutup = () => setMenu(null);
+    const tutup = (e: PointerEvent) => {
+      const sasaran = e.target as Element | null;
+      if (sasaran?.closest?.("[data-menu]")) return;
+      setMenu(null);
+    };
     document.addEventListener("pointerdown", tutup);
     return () => document.removeEventListener("pointerdown", tutup);
   }, [menu]);
@@ -376,7 +399,9 @@ function SenaraiBarang({ papan, barang, setBarang, setNota }: {
       setBarang((l) =>
         id
           ? l.map((x) => (x.id === id ? { ...x, ...bersih } : x))
-          : [...l, { id: `baharu-${Date.now()}`, unit: "ICT", aktif: true, dipinjam: 0, ...bersih }],
+          : r.rekod
+            ? [...l, { id: r.rekod.id, unit: "ICT", aktif: true, dipinjam: 0, ...bersih }]
+            : l,
       );
       setSunting(null);
     } finally { setSibuk(false); }
@@ -473,10 +498,9 @@ function SenaraiBarang({ papan, barang, setBarang, setNota }: {
                       </span>
 
                       {papan.bolehUrus && (
-                        <span className="relative shrink-0">
+                        <span data-menu className="relative shrink-0">
                           <button
-                            onPointerDown={(e) => e.stopPropagation()}
-                            onClick={() => setMenu((m) => (m === b.id ? null : b.id))}
+                                onClick={() => setMenu((m) => (m === b.id ? null : b.id))}
                             aria-label={`Tindakan untuk ${b.nama}`}
                             aria-haspopup="menu" aria-expanded={menu === b.id}
                             className="flex h-8 w-8 items-center justify-center rounded-full border border-garis text-slate-500 hover:border-navy-700 hover:text-navy-700"
@@ -486,7 +510,7 @@ function SenaraiBarang({ papan, barang, setBarang, setNota }: {
                             </svg>
                           </button>
                           {menu === b.id && (
-                            <span role="menu" onPointerDown={(e) => e.stopPropagation()}
+                            <span role="menu"
                               className="absolute right-0 top-full z-20 mt-1 flex w-40 flex-col overflow-hidden rounded-xl border border-garis bg-white py-1 shadow-lg">
                               <button role="menuitem" onClick={() => mula(b)}
                                 className="px-3 py-2 text-left text-xs text-navy-800 hover:bg-navy-50">Sunting</button>

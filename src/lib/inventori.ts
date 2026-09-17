@@ -29,7 +29,7 @@ export async function senaraiBarang(unit = "ICT", termasukTidakAktif = false): P
 export async function simpanBarang(b: {
   id?: string; unit: string; nama: string; kategori: string | null;
   kuantiti: number; lokasi: string | null; nota: string | null; aktif: boolean;
-}): Promise<void> {
+}): Promise<Barang | null> {
   const db = klienTulis();
   const badan = {
     unit: b.unit, nama: b.nama, kategori: b.kategori,
@@ -39,11 +39,12 @@ export async function simpanBarang(b: {
     await db.minta(`inventori_barang?id=eq.${encodeURIComponent(b.id)}`, {
       method: "PATCH", headers: { Prefer: "return=minimal" }, body: JSON.stringify(badan),
     });
-  } else {
-    await db.minta("inventori_barang", {
-      method: "POST", headers: { Prefer: "return=minimal" }, body: JSON.stringify(badan),
-    });
+    return null;
   }
+  const hasil = (await db.minta("inventori_barang", {
+    method: "POST", headers: { Prefer: "return=representation" }, body: JSON.stringify(badan),
+  })) as Barang[];
+  return hasil[0] ?? null;
 }
 
 /**
@@ -93,12 +94,13 @@ export async function simpanPermohonan(p: {
   barang_id: string; kuantiti: number; tujuan: string;
   perlu_pada: string | null; oleh: string; nama: string;
   tempahan_id?: string | null;
-}): Promise<void> {
+}): Promise<Permohonan | null> {
   const db = klienTulis();
-  await db.minta("inventori_permohonan", {
-    method: "POST", headers: { Prefer: "return=minimal" },
+  const hasil = (await db.minta("inventori_permohonan", {
+    method: "POST", headers: { Prefer: "return=representation" },
     body: JSON.stringify({ tempahan_id: null, ...p, status: "baharu" }),
-  });
+  })) as Permohonan[];
+  return hasil[0] ?? null;
 }
 
 /**
