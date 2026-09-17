@@ -2,6 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { importMuridKelas, type HasilImportKelas } from "@/lib/import-murid";
+import { importFailMurid, type HasilFail } from "@/lib/fail-murid";
+import { failKeMuatan } from "@/data/fail-base64";
 import {
   tugaskanGuruSubjek, buangTugasanGuruSubjek, naikTahunTindakan, cubaNaikTahun,
   undoNaikTahunTindakan, muridKelasTindakan, suntingMuridTindakan,
@@ -108,6 +110,39 @@ export default function PanelUrusPbd({
   const [teks, setTeks] = useState("");
   const [hasil, setHasil] = useState<HasilImportKelas | null>(null);
   const [sibukImport, setSibukImport] = useState(false);
+
+  /* ------------------------------------------------- import dari fail */
+  const [fail, setFail] = useState<File | null>(null);
+  const [hasilFail, setHasilFail] = useState<HasilFail | null>(null);
+  const [sibukFail, setSibukFail] = useState(false);
+
+  /**
+   * Baca fail senarai kelas terus, tanpa menampal.
+   *
+   * Fail iDMe jarang lurus — ia terbalik, berputar, senget. Pelayan membaca
+   * fail yang sama beberapa cara dan memilih yang menghasilkan No. KP sah
+   * paling banyak, kemudian memberitahu cara mana yang menang.
+   */
+  async function jalanFail(simpan: boolean) {
+    if (!fail) return;
+    const [tahunStr, ...sisa] = kelasImport.split(" ");
+    const tahun = Number(tahunStr);
+    if (!tahun || sisa.length === 0) {
+      setHasilFail({ ok: false, kering: true, mesej: "Pilih kelas dahulu." });
+      return;
+    }
+    const k = sisa.join(" ");
+    setSibukFail(true);
+    try {
+      const r = await importFailMurid(tahun, k, await failKeMuatan(fail), simpan);
+      setHasilFail(r);
+      // Teks yang dipilih dimasukkan ke kotak tampal, supaya pentadbir boleh
+      // membetulkan baris yang tersasar sebelum menyimpan.
+      if (r.teks && !simpan) setTeks(r.teks);
+    } finally {
+      setSibukFail(false);
+    }
+  }
 
   async function jalanImport(simpan: boolean) {
     const [tahunStr, ...sisa] = kelasImport.split(" ");
@@ -356,6 +391,58 @@ Tekan <b>Semak dahulu</b> sebelum ini boleh digunakan.
             }
             className="mt-4 w-full rounded-xl border border-garis p-3 font-mono text-xs"
           />
+
+          {/* ---- Muat naik fail ---- */}
+          <div className="mt-4 rounded-xl border border-dashed border-garis bg-navy-50/30 p-3">
+            <p className="text-xs font-semibold text-slate-500">
+              Atau muat naik fail senarai kelas
+            </p>
+            <p className="mt-1 text-[11px] leading-relaxed text-slate-400">
+              PDF dari iDMe, Excel, Word atau CSV. Fail dibaca beberapa cara —
+              baris, lajur menegak, jadual — dan cara yang menghasilkan No. KP
+              sah paling banyak dipilih. Fail yang terbalik atau senget tidak
+              perlu dibetulkan dahulu.
+            </p>
+
+            <div className="mt-2 flex flex-wrap items-center gap-2">
+              <input
+                type="file"
+                accept=".pdf,.xlsx,.xls,.docx,.doc,.csv,.txt"
+                onChange={(e) => { setFail(e.target.files?.[0] ?? null); setHasilFail(null); }}
+                aria-label="Fail senarai kelas"
+                className="max-w-full text-xs file:mr-2 file:rounded-lg file:border file:border-garis file:bg-white file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-navy-700"
+              />
+              {fail && (
+                <button
+                  onClick={() => void jalanFail(false)}
+                  disabled={sibukFail}
+                  className="rounded-lg border border-navy-700 px-4 py-2 text-xs font-semibold text-navy-700 disabled:opacity-50"
+                >
+                  {sibukFail ? "Membaca…" : "Baca fail"}
+                </button>
+              )}
+            </div>
+
+            {hasilFail && (
+              <div className="mt-2">
+                <Mesej ok={hasilFail.ok} teks={hasilFail.mesej} />
+                {hasilFail.calon && hasilFail.calon.length > 1 && (
+                  <p className="mt-1.5 text-[11px] text-slate-400">
+                    Skor setiap cara:{" "}
+                    {hasilFail.calon
+                      .map((c) => `${c.cara} ${c.skor}`)
+                      .join(" · ")}
+                  </p>
+                )}
+                {hasilFail.teks && (
+                  <p className="mt-1.5 text-[11px] text-[#167a4b]">
+                    Teksnya dimasukkan ke kotak di atas — semak dan betulkan
+                    baris yang tersasar sebelum menyimpan.
+                  </p>
+                )}
+              </div>
+            )}
+          </div>
 
           <div className="mt-3 flex flex-wrap gap-2">
             <button
