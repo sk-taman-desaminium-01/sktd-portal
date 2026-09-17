@@ -399,6 +399,18 @@ export async function senaraiPindaanTindakan(): Promise<{ ok: boolean; mesej: st
   try {
     return { ok: true, mesej: "", pindaan: await senaraiPindaan() };
   } catch (e) {
+    // Jadual belum wujud bermakna SQLnya belum dijalankan — bukan pepijat,
+    // dan berkata "Sistem gagal" di sini menghantar admin mencari kesilapan
+    // yang bukan milik mereka.
+    const teks = e instanceof Error ? e.message : String(e);
+    if (/pengurusan_pindaan|42P01|does not exist|Not Found|404/i.test(teks)) {
+      return {
+        ok: false,
+        mesej:
+          "Pembetulan kekal belum dipasang. Admin perlu menjalankan " +
+          "supabase/pindaan-bilik.sql sekali sahaja.",
+      };
+    }
     return { ok: false, mesej: ralat(e) };
   }
 }

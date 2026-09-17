@@ -211,13 +211,21 @@ function leraiSatuMuka(lajur: string[], baris: string[][]): AcaraTakwim[] {
     if (c === iTarikh || c === iHari || c === iMinggu) continue;
 
     const adaTarikhBaris = new Set(barisTarikh.map((t) => t.i));
-    let larian: { mula: number; teks: string[]; lintasTarikh: boolean; bergabung: boolean } | null = null;
+    let larian: {
+      mula: number; teks: string[]; lintasTarikh: boolean; bergabung: boolean;
+      /** Baris grid bagi teks TERAKHIR yang ditambah — untuk peraturan di bawah. */
+      barisAkhir: number;
+      akhirBertarikh: boolean;
+    } | null = null;
     const tutup = () => {
       if (!larian) return;
       const program = larian.teks.join(" ").replace(/\s+/g, " ").trim();
       const tengah = larian.mula + (larian.teks.length - 1) / 2;
       larian = null;
       if (program.length < 3 || KEPALA_TAKWIM.test(program)) return;
+      // Jaring terakhir: nombor bogel bukan nama acara, walau bagaimana ia
+      // sampai ke sini.
+      if (hanyaNombor(program)) return;
       if (adaTarikh(program) || adaHari(program)) return;
       const t = hampir(tengah);
       keluar.push({
@@ -238,14 +246,39 @@ function leraiSatuMuka(lajur: string[], baris: string[][]): AcaraTakwim[] {
         // Menutup larian pada lompang itu memecahkan
         // "FORMATIF 1 (12.1.2026 -" daripada "30.3.2026)" — dan itulah
         // sebabnya 25 serpihan tergantung kekal selepas percubaan pertama.
+        // Lompang satu baris merentasi baris TARIKH: itu bentuk sel yang
+        // membalut kepada dua baris grid, dengan baris tarikh di tengahnya.
+        // Sambungannya dikenali dari BAHASA, bukan hanya tanda baca —
+        // "MESYUARAT PEMULIHAN" lengkap dari segi tanda baca, tetapi
+        // "KHAS BIL 3" yang menyusulinya ialah kata sifat, dan kata sifat
+        // tidak memulakan nama acara.
+        const seterusnya = (baris[i + 1]?.[c] ?? "").replace(/\s+/g, " ").trim();
+        const sambung = seterusnya !== "" && sambunganBelakang(seterusnya);
         const tergantung =
           larian !== null &&
-          (/[-–—,&/(]$/.test(larian.teks[larian.teks.length - 1]) ||
-            kurunganTerbuka(larian.teks.join(" ")));
-        if (!tergantung || kosongBerturut > 1) tutup();
+          (gantungHadapan(larian.teks[larian.teks.length - 1]) ||
+            kurunganTerbuka(larian.teks.join(" ")) ||
+            sambung);
+        // Lompang DUA baris dibenarkan hanya apabila baris seterusnya jelas
+        // sambungan. Buku meletakkan dua baris tarikh kosong antara "PEMERIKSAAN
+        // BUKU TEKS" dan "BERKALA (UNIT SPBT)"; tanpa kelonggaran ini,
+        // "BERKALA (UNIT SPBT)" kekal sebagai acara tanpa makna.
+        if (!tergantung || kosongBerturut > (sambung ? 2 : 1)) tutup();
         continue;
       }
       kosongBerturut = 0;
+
+      // NOMBOR MUKA SURAT, bukan acara.
+      //
+      // Buku mencetak nombor muka di kaki setiap muka, dan ia jatuh ke dalam
+      // grid seperti sel biasa. Ia muncul dalam takwim sebagai "138", "144",
+      // "149" — acara tanpa nama yang tiada siapa boleh tafsir.
+      //
+      // Nombor yang MENYAMBUNG sesuatu dikekalkan: "MESYUARAT KURIKULUM BIL"
+      // diikuti "3" ialah satu acara, dan membuang "3" merosakkannya.
+      if (hanyaNombor(nilai) && (larian === null || !gantungHadapan(larian.teks[larian.teks.length - 1]))) {
+        continue;
+      }
 
       const barisBertarikh = adaTarikhBaris.has(i);
       // SEL BERGABUNG MERENTAS BANYAK TARIKH.
@@ -261,9 +294,9 @@ function leraiSatuMuka(lajur: string[], baris: string[][]): AcaraTakwim[] {
       // Ayat Melayu yang lengkap tidak berakhir begitu.
       const belumSelesai =
         larian !== null &&
-        (/[-–—,&/(]$/.test(larian.teks[larian.teks.length - 1]) ||
+        (gantungHadapan(larian.teks[larian.teks.length - 1]) ||
           kurunganTerbuka(larian.teks.join(" ")) ||
-          /^[)\]]/.test(nilai));
+          sambunganBelakang(nilai));
       // SATU LARIAN MELINTASI SATU TARIKH SAHAJA.
       //
       // Ini peraturan yang menampung KEDUA-DUA bentuk buku tanpa mengetahui
@@ -277,22 +310,149 @@ function leraiSatuMuka(lajur: string[], baris: string[][]): AcaraTakwim[] {
       // menduduki beberapa baris tarikh; memecahkannya di tengah pada tarikh
       // seterusnya menghasilkan separuh ayat — dan separuh yang kedua
       // kelihatan seperti program yang berasingan.
-      if (larian && barisBertarikh && larian.lintasTarikh && !belumSelesai && !larian.bergabung) {
+      // Sel bergabung TIDAK kekal bergabung selama-lamanya.
+      //
+      // Dahulu `bergabung` menutup peraturan "satu larian, satu tarikh" buat
+      // selamanya, jadi "PERJUMPAAN SUKAN & PERMAINAN (5) & LATIHAN SUKAN)"
+      // terus menelan "LATIHAN SUKAN" pada 9 dan 10 April — acara yang sama
+      // diulang tiga kali dalam satu baris. Penjaga `belumSelesai` sudah
+      // melindungi sel bergabung yang teksnya memang belum habis.
+      if (larian && barisBertarikh && larian.lintasTarikh && !belumSelesai) {
+        tutup();
+      }
+
+      // TEKS DI ATAS BARIS TARIKH SUDAH LENGKAP.
+      //
+      // Dalam grid buku ini, blok teks SATU baris duduk TEPAT pada baris
+      // tarikh, manakala blok DUA baris mengapit baris tarikh — satu di
+      // atas, satu di bawah. Maknanya teks yang berada pada baris tarikh
+      // tidak pernah membalut ke baris berikutnya.
+      //
+      // Tanpa peraturan ini, "CUTI SEMPENA HARI MALAYSIA" (pada baris
+      // 16 September) bercantum dengan "MESYUARAT PEMULIHAN" di bawahnya,
+      // menghasilkan satu acara yang mengandungi dua acara — dan acara kedua
+      // kehilangan tarikhnya sendiri.
+      if (larian && !barisBertarikh && !belumSelesai) {
         tutup();
       }
 
       if (larian) {
         if (belumSelesai && barisBertarikh) larian.bergabung = true;
         larian.teks.push(nilai);
+        larian.barisAkhir = i;
+        larian.akhirBertarikh = barisBertarikh;
         if (barisBertarikh) larian.lintasTarikh = true;
       } else {
-        larian = { mula: i, teks: [nilai], lintasTarikh: barisBertarikh, bergabung: false };
+        larian = {
+          mula: i, teks: [nilai], lintasTarikh: barisBertarikh, bergabung: false,
+          barisAkhir: i, akhirBertarikh: barisBertarikh,
+        };
       }
     }
     tutup();
   }
 
   return keluar;
+}
+
+/**
+ * SERPIHAN YANG BERCANTUM SEMULA — dua senarai tertutup, dan sebabnya.
+ *
+ * Buku mencetak takwim dalam grid, dan teks program yang panjang dibalut
+ * kepada dua baris grid. pdf.js memulangkan setiap baris itu secara
+ * berasingan, jadi separuh kedua kelihatan seperti acara yang tersendiri —
+ * dan kerana baris tarikh berada DI ANTARA kedua-duanya, separuh itu
+ * dilekatkan pada hari yang SALAH.
+ *
+ * Itulah punca "KHAS BIL 3" muncul pada hari Khamis 17 September, sedangkan
+ * acaranya ialah "MESYUARAT PEMULIHAN KHAS BIL 3". Dan "BERTEMA BIL 3" pada
+ * 14 September, yang sebenarnya "MESYUARAT PENDEKATAN BERTEMA BIL 3".
+ *
+ * Tanda baca sahaja tidak mencukupi untuk mengesannya: "MESYUARAT PEMULIHAN"
+ * ialah frasa yang lengkap dari segi tanda baca. Yang memberitahu kita ia
+ * belum selesai ialah BAHASA — perkataan seterusnya, "KHAS", ialah kata
+ * sifat, dan kata sifat tidak pernah memulakan nama acara dalam Bahasa
+ * Melayu.
+ *
+ * Kedua-dua senarai di bawah sengaja PENDEK dan TERTUTUP. Senarai yang
+ * panjang akan mula mencantumkan acara yang benar-benar berasingan, dan
+ * kesilapan itu lebih sukar dilihat daripada serpihan yang tergantung.
+ */
+
+/**
+ * Perkataan yang TIDAK PERNAH memulakan nama acara — kata sifat, kata
+ * hubung, kata sendi. Satu serpihan yang bermula begini ialah sambungan
+ * baris sebelumnya.
+ */
+const KATA_SAMBUNG = new Set([
+  // Kata sifat yang mengikut kata nama dalam Bahasa Melayu.
+  "KHAS", "BERTEMA", "BERKALA", "BULANAN", "MINGGUAN", "TAHUNAN", "HARIAN",
+  "DALAMAN", "PERDANA", "BESAR", "KECIL", "AKHIR", "PERTAMA", "KEDUA", "KETIGA",
+  // Kata hubung dan kata sendi.
+  "DAN", "SERTA", "ATAU", "BERSAMA", "SEMPENA", "UNTUK", "BAGI", "KEPADA",
+  "DENGAN", "PADA", "OLEH", "SERTA-MERTA",
+  // Penanda bilangan yang datang selepas nama.
+  "BIL", "BIL.", "SIRI", "KALI", "FASA", "PERINGKAT", "TAHAP", "SESI",
+  // Kata nama yang dalam takwim sekolah SELALU mengikut kata nama lain:
+  // takwim menulis "MESYUARAT PANITIA", tidak pernah "PANITIA" bersendirian.
+  "PANITIA", "PENGURUSAN", "KURIKULUM",
+]);
+
+/**
+ * Perkataan yang TIDAK PERNAH mengakhiri nama acara — ia menuntut sesuatu
+ * selepasnya. "MESYUARAT KURIKULUM BIL" mesti diikuti nombornya.
+ */
+const KATA_GANTUNG = new Set([
+  "BIL", "BIL.", "BILANGAN", "SIRI", "KALI", "NO", "NO.", "FASA",
+  "PERINGKAT", "TAHAP", "SESI", "KE", "KE-",
+  "DAN", "SERTA", "ATAU", "BERSAMA", "SEMPENA", "UNTUK", "BAGI", "KEPADA",
+  "DENGAN", "PADA", "DI", "OLEH",
+]);
+
+/** Perkataan terakhir, tanpa tanda baca hujung. */
+function kataAkhir(teks: string): string {
+  const k = teks.trim().split(/\s+/).pop() ?? "";
+  return k.replace(/[,;:]+$/, "").toUpperCase();
+}
+
+/** Perkataan pertama, tanpa tanda baca hadapan. */
+function kataMula(teks: string): string {
+  const k = teks.trim().split(/\s+/)[0] ?? "";
+  return k.replace(/^[(\[]+/, "").replace(/[,;:]+$/, "").toUpperCase();
+}
+
+/** Sel yang HANYA nombor. Dalam buku ini ia nombor muka surat, bukan acara. */
+function hanyaNombor(teks: string): boolean {
+  return /^\d{1,4}$/.test(teks.trim());
+}
+
+/**
+ * Serpihan ini tidak boleh MEMULAKAN acara — ia sambungan baris sebelumnya.
+ */
+function sambunganBelakang(nilai: string): boolean {
+  const t = nilai.trim();
+  if (t === "") return false;
+  // Kurungan yang ditutup dahulu, atau tanda hubung di hadapan.
+  if (/^[)\]&,;:\-–—/]/.test(t)) return true;
+  // Kurungan TUTUP tanpa kurungan buka: "03.4.2026) & MESYUARAT" ialah
+  // ekor kepada "CUTI PENGGAL 1 (28.3.2026 -" di baris sebelumnya.
+  if ((t.match(/\)/g) ?? []).length > (t.match(/\(/g) ?? []).length) return true;
+  // Seluruhnya dalam kurungan: "(TS25)" ialah catatan pada nama di atasnya.
+  if (/^\([^()]*\)$/.test(t)) return true;
+  // Bermula dengan huruf kecil — nama acara dalam buku ini huruf besar.
+  if (/^\p{Ll}/u.test(t)) return true;
+  // Nombor bogel: "3" selepas "BIL", atau nombor muka surat.
+  if (hanyaNombor(t)) return true;
+  return KATA_SAMBUNG.has(kataMula(t));
+}
+
+/** Serpihan ini tidak boleh MENGAKHIRI acara — ia menuntut sambungan. */
+function gantungHadapan(teks: string): boolean {
+  const t = teks.trim();
+  if (t === "") return false;
+  if (/[-–—,&/(]$/.test(t)) return true;
+  if (kurunganTerbuka(t)) return true;
+  return KATA_GANTUNG.has(kataAkhir(t));
 }
 
 /** Adakah teks ini mempunyai kurungan yang dibuka tetapi belum ditutup? */

@@ -83,6 +83,37 @@ export async function satuTempahan(id: string): Promise<Tempahan | null> {
 
 /* ------------------------------------------------------------ urus bilik */
 
+/**
+ * Padam bilik.
+ *
+ * Bilik yang PERNAH ditempah tidak dipadam — ia dinyahaktifkan. Memadamnya
+ * memusnahkan setiap tempahan yang merujuknya (`on delete cascade`), dan
+ * rekod "siapa guna dewan bulan lepas" hilang tanpa sesiapa memintanya.
+ * Bilik tanpa sebarang tempahan boleh dipadam betul-betul — ia biasanya
+ * tersalah taip semasa ditambah.
+ */
+export async function padamBilik(id: string): Promise<"dipadam" | "dinyahaktif"> {
+  const db = klienTulis();
+  const ada = (await db.minta(
+    `tempahan_bilik?select=id&bilik_id=eq.${encodeURIComponent(id)}&limit=1`,
+  )) as { id: string }[];
+
+  if (ada.length > 0) {
+    await db.minta(`bilik_khas?id=eq.${encodeURIComponent(id)}`, {
+      method: "PATCH",
+      headers: { Prefer: "return=minimal" },
+      body: JSON.stringify({ aktif: false }),
+    });
+    return "dinyahaktif";
+  }
+
+  await db.minta(`bilik_khas?id=eq.${encodeURIComponent(id)}`, {
+    method: "DELETE",
+    headers: { Prefer: "return=minimal" },
+  });
+  return "dipadam";
+}
+
 export async function simpanBilik(b: {
   id?: string; nama: string; muatan: number | null; nota: string | null; aktif: boolean;
 }): Promise<void> {

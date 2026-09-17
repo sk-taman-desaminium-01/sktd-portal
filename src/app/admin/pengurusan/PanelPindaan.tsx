@@ -45,12 +45,15 @@ export default function PanelPindaan({ dokumenId }: { dokumenId: string | null }
   const [kepada, setKepada] = useState("");
   const [sebab, setSebab] = useState("");
   const [sibuk, setSibuk] = useState(false);
-  const [nota, setNota] = useState<string | null>(null);
+  const [nota, setNota] = useState<{ ok: boolean; teks: string } | null>(null);
   const [buka, setBuka] = useState(false);
 
   useEffect(() => {
     if (!buka || senarai) return;
-    void senaraiPindaanTindakan().then((r) => setSenarai(r.pindaan ?? []));
+    void senaraiPindaanTindakan().then((r) => {
+      setSenarai(r.pindaan ?? []);
+      if (!r.ok) setNota({ ok: false, teks: r.mesej });
+    });
   }, [buka, senarai]);
 
   async function tambah() {
@@ -58,7 +61,7 @@ export default function PanelPindaan({ dokumenId }: { dokumenId: string | null }
     setNota(null);
     try {
       const r = await tambahPindaanTindakan({ jenis, dari, kepada, sebab });
-      setNota(r.mesej);
+      setNota({ ok: r.ok, teks: r.mesej });
       if (!r.ok) return;
       setDari(""); setKepada(""); setSebab("");
       setSenarai((await senaraiPindaanTindakan()).pindaan ?? []);
@@ -82,7 +85,8 @@ export default function PanelPindaan({ dokumenId }: { dokumenId: string | null }
     setSibuk(true);
     setNota(null);
     try {
-      setNota((await kenakanPindaanEdisi(dokumenId)).mesej);
+      const r = await kenakanPindaanEdisi(dokumenId);
+      setNota({ ok: r.ok, teks: r.mesej });
     } finally {
       setSibuk(false);
     }
@@ -115,8 +119,14 @@ export default function PanelPindaan({ dokumenId }: { dokumenId: string | null }
       {buka && (
         <div className="mt-4 border-t border-garis pt-4">
           {nota && (
-            <p className="mb-3 rounded-lg border border-[#c6e2d1] bg-[#eef8f2] p-2.5 text-xs text-[#167a4b]">
-              {nota}
+            <p
+              className={`mb-3 rounded-lg border p-2.5 text-xs leading-relaxed ${
+                nota.ok
+                  ? "border-[#c6e2d1] bg-[#eef8f2] text-[#167a4b]"
+                  : "border-[#e9d9ae] bg-[#fdf9f0] text-[#7a5a12]"
+              }`}
+            >
+              {nota.teks}
             </p>
           )}
 

@@ -25,7 +25,25 @@ export default async function Bilik() {
         pentadbir boleh membatalkan mana-mana tempahan.
       </p>
 
-      <PanelBilik papan={papan} />
+      {papan.belumSedia ? (
+        <div className="mt-5 rounded-xl border border-[#e9d9ae] bg-[#fdf9f0] p-5 text-sm leading-relaxed text-[#7a5a12]">
+          <p className="font-semibold">Modul ini belum dipasang.</p>
+          <p className="mt-1.5">
+            Jadual pangkalan datanya belum dicipta. Admin perlu menjalankan{" "}
+            <code className="rounded bg-white/70 px-1 py-0.5 text-xs">
+              supabase/pindaan-bilik.sql
+            </code>{" "}
+            sekali sahaja; selepas itu skrin ini terus berfungsi dan lapan bilik
+            permulaan sudah ada di dalamnya.
+          </p>
+          <p className="mt-1.5 text-xs">
+            Tiada apa yang rosak — tiada data hilang, dan tiada tempahan
+            terjejas.
+          </p>
+        </div>
+      ) : (
+        <PanelBilik papan={papan} />
+      )}
     </main>
   );
 }
