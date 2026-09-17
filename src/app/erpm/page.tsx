@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { PANITIA } from "@/data/panitia";
 import { pengguna } from "@/lib/akses";
+import { kuasaPbd } from "@/lib/pbd";
 
 export const metadata = { title: "eRPM — Panitia" };
 
@@ -24,7 +25,26 @@ export default async function Erpm() {
   const saya = await pengguna();
   if (!saya?.peranan) return null; // proxy.ts sudah menghalang; ini jaring kedua
 
-  const hidup = PANITIA.filter((p) => p.pautan);
+  // PANITIA SAYA SAHAJA, bagi guru biasa.
+  //
+  // Keputusan pengguna (17 Sep 2026): guru melihat eRPM panitia MEREKA,
+  // ikut subjek yang mereka ajar. Memapar 16 ruang kepada guru yang
+  // mengajar dua bermakna mereka mengimbas empat belas yang bukan kerja
+  // mereka, setiap kali.
+  //
+  // Subjek yang diajar datang dari tugasan ePBD — sumber yang sama yang
+  // menentukan siapa boleh mengisi TP. Satu tempat, satu kebenaran.
+  const kuasa = await kuasaPbd();
+  const penuh = kuasa?.penuh ?? false;
+  const subjekSaya = new Set((kuasa?.tugas ?? []).map((t) => t.subjek));
+
+  const semua = PANITIA.filter((p) => p.pautan);
+  const milikSaya = semua.filter((p) => subjekSaya.has(p.kod));
+  // Pentadbir melihat semuanya. Guru yang belum ditugaskan mana-mana subjek
+  // juga melihat semuanya — menyembunyikan segalanya daripada mereka
+  // bermakna skrin kosong tanpa sebab yang jelas.
+  const tapisAktif = !penuh && milikSaya.length > 0;
+  const hidup = tapisAktif ? milikSaya : semua;
   const belum = PANITIA.filter((p) => !p.pautan);
 
   return (
@@ -39,14 +59,15 @@ export default async function Erpm() {
         </h1>
         <div className="my-4 h-0.5 w-36 bg-gradient-to-r from-transparent via-emas to-transparent" />
         <p className="text-sm leading-relaxed text-white/75">
-          Setiap panitia mempunyai ruang eRPM sendiri. Ruang itu milik panitia
-          masing-masing — portal ini hanya mengumpulkan pautannya.
+          {tapisAktif
+            ? "Ruang eRPM bagi subjek yang anda ajar. Ruang itu milik panitia masing-masing — portal ini hanya mengumpulkan pautannya."
+            : "Setiap panitia mempunyai ruang eRPM sendiri. Ruang itu milik panitia masing-masing — portal ini hanya mengumpulkan pautannya."}
         </p>
 
         {/* --- Yang sudah hidup --- */}
         <section className="mt-9">
           <h2 className="text-[11px] font-bold uppercase tracking-widest text-emas">
-            Sudah tersedia · {hidup.length} panitia
+            {tapisAktif ? "Panitia saya" : "Semua panitia"} · {hidup.length}
           </h2>
           <ul className="mt-3 space-y-3">
             {hidup.map((p) => (
@@ -81,6 +102,32 @@ export default async function Erpm() {
             ))}
           </ul>
         </section>
+
+        {/* Guru yang ditapis tetap boleh melihat senarai penuh — kadang
+            mereka perlu merujuk panitia lain. Ia cuma tidak lagi bersaing
+            dengan kerja mereka sendiri untuk perhatian. */}
+        {tapisAktif && (
+          <details className="mt-8">
+            <summary className="cursor-pointer text-sm text-white/55 hover:text-white">
+              Lihat semua {semua.length} panitia
+            </summary>
+            <ul className="mt-3 divide-y divide-white/10 overflow-hidden rounded-xl bg-white/5 ring-1 ring-white/10">
+              {semua.filter((p) => !subjekSaya.has(p.kod)).map((p) => (
+                <li key={p.kod} className="flex items-baseline gap-3 px-4 py-2.5">
+                  <span className="w-14 shrink-0 font-mono text-xs text-white/40">{p.kod}</span>
+                  <a
+                    href={p.pautan!}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-sm text-white/80 underline-offset-2 hover:underline"
+                  >
+                    {p.nama} ↗
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </details>
+        )}
 
         {/* --- Yang belum. Tersembunyi bila kosong: tajuk "0 panitia" ialah
              bunyi, bukan maklumat. --- */}
