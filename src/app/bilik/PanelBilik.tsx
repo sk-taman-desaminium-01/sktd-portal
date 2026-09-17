@@ -4,8 +4,12 @@ import { useEffect, useMemo, useState } from "react";
 import PilihCari from "@/components/PilihCari";
 import {
   tempahTindakan, batalTindakan, simpanBilikTindakan, padamBilikTindakan,
-  type PapanBilik,
+  tambahTetapTindakan, padamTetapTindakan, petakanSubjekTindakan,
+  janaSemulaTindakan, type PapanBilik,
 } from "@/lib/tindakan-bilik";
+import { tetapBerlanggar, sebabTetap } from "@/data/bilik-tetap";
+import { HARI, NAMA_HARI } from "@/data/jadual-jenis";
+import { SUBJEK } from "@/data/subjek";
 import { ikutHari, keMinit, keJam, semakTempahan, type Tempahan } from "@/data/bilik";
 
 /**
@@ -59,8 +63,14 @@ export default function PanelBilik({ papan, barangIct }: {
     if (!bilikId) return null;
     const sama = tempahan.filter((t) => t.bilik_id === bilikId && t.tarikh === tarikh);
     const s = semakTempahan({ tarikh, mula, tamat }, sama, papan.hariIni);
-    return s.ok ? null : s;
-  }, [bilikId, tarikh, mula, tamat, tempahan, papan.hariIni]);
+    if (!s.ok) return s;
+    // Waktu yang sudah "dimiliki" — kelas mengikut jadual waktu, atau waktu
+    // yang ditutup pentadbir. Sebabnya dipapar, bukan sekadar penolakan:
+    // guru yang tahu Makmal 2 dipakai kelas Moral akan memilih waktu lain
+    // sendiri, dan tidak pergi bertanya kepada sesiapa.
+    const t = tetapBerlanggar({ bilik_id: bilikId, tarikh, mula, tamat }, papan.tetap);
+    return t ? { ok: false, sebab: sebabTetap(t) } : null;
+  }, [bilikId, tarikh, mula, tamat, tempahan, papan.hariIni, papan.tetap]);
 
   async function tempah() {
     setSibuk(true);
@@ -320,6 +330,8 @@ export default function PanelBilik({ papan, barangIct }: {
           </section>
         ))
       )}
+
+      {papan.bolehUrus && <WaktuTetap papan={papan} setNota={setNota} />}
 
       {papan.bolehUrus && <UrusBilik bilik={papan.bilik} />}
     </>
@@ -597,6 +609,266 @@ function UrusBilik({ bilik }: { bilik: PapanBilik["bilik"] }) {
                 </li>
               ))}
             </ul>
+          )}
+        </div>
+      )}
+    </section>
+  );
+}
+
+
+/**
+ * WAKTU TETAP — sekatan pukal, dan pemetaan subjek ke bilik.
+ *
+ * Dua kerja pentadbir yang berkongsi satu bentuk: waktu yang sudah
+ * "dimiliki" sebelum sesiapa menempah. Satu ditulis dengan tangan, satu
+ * dijana dari jadual waktu sekolah.
+ */
+function WaktuTetap({ papan, setNota }: {
+  papan: PapanBilik;
+  setNota: (n: { ok: boolean; teks: string }) => void;
+}) {
+  const [buka, setBuka] = useState(false);
+  const [sibuk, setSibuk] = useState(false);
+  const [tetap, setTetap] = useState(papan.tetap);
+  const [peta, setPeta] = useState(papan.petaSubjek);
+
+  const [bilikId, setBilikId] = useState(papan.bilik[0]?.id ?? "");
+  const [hari, setHari] = useState<Set<string>>(new Set());
+  const [mula, setMula] = useState("08:00");
+  const [tamat, setTamat] = useState("10:00");
+  const [sebab, setSebab] = useState("");
+  const [dari, setDari] = useState("");
+  const [hingga, setHingga] = useState("");
+
+  const nama = useMemo(() => new Map(papan.bilik.map((b) => [b.id, b.nama])), [papan.bilik]);
+
+  async function tambah() {
+    setSibuk(true);
+    try {
+      const r = await tambahTetapTindakan({
+        bilik_id: bilikId, hari: [...hari], mula, tamat, sebab,
+        dari_tarikh: dari, hingga_tarikh: hingga,
+      });
+      setNota({ ok: r.ok, teks: r.mesej });
+      if (r.ok) { setSebab(""); setHari(new Set()); }
+    } finally { setSibuk(false); }
+  }
+
+  async function buang(id: string) {
+    setSibuk(true);
+    try {
+      const r = await padamTetapTindakan(id);
+      setNota({ ok: r.ok, teks: r.mesej });
+      if (r.ok) setTetap((l) => l.filter((x) => x.id !== id));
+    } finally { setSibuk(false); }
+  }
+
+  async function petakan(subjek: string, bilik: string) {
+    setSibuk(true);
+    try {
+      const r = await petakanSubjekTindakan(subjek, bilik || null);
+      setNota({ ok: r.ok, teks: r.mesej });
+      if (r.ok) {
+        setPeta((p) => {
+          const b = { ...p };
+          if (bilik) b[subjek] = bilik; else delete b[subjek];
+          return b;
+        });
+      }
+    } finally { setSibuk(false); }
+  }
+
+  async function janaSemula() {
+    setSibuk(true);
+    try {
+      const r = await janaSemulaTindakan();
+      setNota({ ok: r.ok, teks: r.mesej });
+    } finally { setSibuk(false); }
+  }
+
+  const dariJadual = tetap.filter((t) => t.sumber === "jadual");
+  const manual = tetap.filter((t) => t.sumber !== "jadual");
+
+  return (
+    <section className="mt-8 rounded-2xl border border-garis bg-white p-4 sm:p-5">
+      <button onClick={() => setBuka((b) => !b)}
+        className="flex w-full items-center justify-between gap-3 text-left">
+        <span>
+          <span className="block text-sm font-bold text-navy-800">
+            Waktu tetap ({tetap.length})
+          </span>
+          <span className="mt-0.5 block text-xs leading-relaxed text-slate-500">
+            Waktu yang sudah dimiliki sebelum sesiapa menempah — kelas mengikut
+            jadual waktu, dan waktu yang anda tutup sendiri.
+          </span>
+        </span>
+        <span className="shrink-0 text-xs text-slate-400">{buka ? "▴" : "▾"}</span>
+      </button>
+
+      {buka && (
+        <div className="mt-3 space-y-6 border-t border-garis pt-4">
+          {/* ---- Pemetaan subjek ---- */}
+          <div>
+            <h3 className="text-[11px] font-bold uppercase tracking-widest text-emas">
+              Subjek yang menggunakan bilik tetap
+            </h3>
+            <p className="mt-1 text-xs leading-relaxed text-slate-500">
+              Contoh: Pendidikan Moral belajar di Makmal 2. Sistem membaca jadual
+              waktu sekolah dan menutup waktu itu sendiri — dan mengemas kininya
+              setiap kali jadual dimuat naik semula. Tukar biliknya bila-bila masa;
+              waktu lama dibuka, waktu baharu ditutup.
+            </p>
+
+            <ul className="mt-2 space-y-2">
+              {SUBJEK.filter((x) => x.panitia).map((x) => (
+                <li key={x.kod} className="flex flex-wrap items-center gap-2">
+                  <span className="min-w-0 flex-1 text-sm text-navy-800">{x.nama}</span>
+                  <select
+                    value={peta[x.kod] ?? ""}
+                    onChange={(e) => void petakan(x.kod, e.target.value)}
+                    disabled={sibuk}
+                    aria-label={`Bilik untuk ${x.nama}`}
+                    className="shrink-0 rounded-lg border border-garis px-2 py-1.5 text-xs"
+                  >
+                    <option value="">— tiada bilik tetap —</option>
+                    {papan.bilik.map((b) => (
+                      <option key={b.id} value={b.id}>{b.nama}</option>
+                    ))}
+                  </select>
+                </li>
+              ))}
+            </ul>
+
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              <button onClick={() => void janaSemula()} disabled={sibuk}
+                className="rounded-lg border border-garis px-3 py-1.5 text-xs font-semibold text-navy-700 hover:border-navy-700 disabled:opacity-50">
+                Segarkan dari jadual waktu
+              </button>
+              <span className="text-[11px] text-slate-400">
+                {dariJadual.length} waktu ditutup mengikut jadual.
+              </span>
+            </div>
+          </div>
+
+          {/* ---- Tutup waktu secara pukal ---- */}
+          <div className="border-t border-garis pt-4">
+            <h3 className="text-[11px] font-bold uppercase tracking-widest text-emas">
+              Tutup waktu secara pukal
+            </h3>
+            <div className="mt-2 grid gap-2 sm:grid-cols-2">
+              <PilihCari
+                id="bilik-tetap" label="Bilik"
+                pilihan={papan.bilik.map((b) => ({ nilai: b.id, label: b.nama }))}
+                nilai={bilikId} tukar={setBilikId} placeholder="Cari bilik…"
+              />
+              <label>
+                <span className="block text-xs font-semibold text-slate-500">Sebab</span>
+                <input value={sebab} onChange={(e) => setSebab(e.target.value)}
+                  placeholder="Penyelenggaraan komputer"
+                  className="mt-1 w-full rounded-lg border border-garis px-3 py-2 text-sm" />
+              </label>
+              <label>
+                <span className="block text-xs font-semibold text-slate-500">Mula</span>
+                <input type="time" value={mula} step={300} onChange={(e) => setMula(e.target.value)}
+                  className="mt-1 w-full rounded-lg border border-garis bg-white px-3 py-2 text-sm text-navy-800" />
+              </label>
+              <label>
+                <span className="block text-xs font-semibold text-slate-500">Tamat</span>
+                <input type="time" value={tamat} step={300} onChange={(e) => setTamat(e.target.value)}
+                  className="mt-1 w-full rounded-lg border border-garis bg-white px-3 py-2 text-sm text-navy-800" />
+              </label>
+              <label>
+                <span className="block text-xs font-semibold text-slate-500">
+                  Dari tarikh <span className="font-normal text-slate-400">(pilihan)</span>
+                </span>
+                <input type="date" value={dari} onChange={(e) => setDari(e.target.value)}
+                  className="mt-1 w-full rounded-lg border border-garis bg-white px-3 py-2 text-sm text-navy-800" />
+              </label>
+              <label>
+                <span className="block text-xs font-semibold text-slate-500">
+                  Hingga tarikh <span className="font-normal text-slate-400">(pilihan)</span>
+                </span>
+                <input type="date" value={hingga} onChange={(e) => setHingga(e.target.value)}
+                  className="mt-1 w-full rounded-lg border border-garis bg-white px-3 py-2 text-sm text-navy-800" />
+              </label>
+            </div>
+
+            <div className="mt-3">
+              <span className="text-xs font-semibold text-slate-500">Hari</span>
+              <ul className="mt-1.5 flex flex-wrap gap-1.5">
+                {HARI.map((h) => (
+                  <li key={h}>
+                    <button type="button"
+                      onClick={() => setHari((x) => {
+                        const b = new Set(x);
+                        if (b.has(h)) b.delete(h); else b.add(h);
+                        return b;
+                      })}
+                      aria-pressed={hari.has(h)}
+                      className={`rounded-lg border px-3 py-1 text-xs transition ${
+                        hari.has(h)
+                          ? "border-navy-700 bg-navy-700 text-white"
+                          : "border-garis text-slate-600 hover:border-navy-700"
+                      }`}>
+                      {NAMA_HARI[h]}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+              <p className="mt-1.5 text-[11px] text-slate-400">
+                Tarikh kosong bermakna sepanjang tahun.
+              </p>
+            </div>
+
+            <button onClick={() => void tambah()}
+              disabled={sibuk || hari.size === 0 || sebab.trim().length < 3}
+              className="mt-3 rounded-lg bg-navy-700 px-4 py-2 text-xs font-bold text-white disabled:opacity-40">
+              {sibuk ? "…" : `Tutup ${hari.size || ""} hari`}
+            </button>
+
+            {manual.length > 0 && (
+              <ul className="mt-3 divide-y divide-garis border-t border-garis text-sm">
+                {manual.map((t) => (
+                  <li key={t.id} className="flex flex-wrap items-baseline gap-2 py-2">
+                    <span className="min-w-0 flex-1">
+                      <span className="block text-navy-800">
+                        {nama.get(t.bilik_id) ?? "Bilik"} · {NAMA_HARI[t.hari]} {t.mula}–{t.tamat}
+                      </span>
+                      <span className="mt-0.5 block text-xs text-slate-400">
+                        {t.sebab}
+                        {(t.dari_tarikh || t.hingga_tarikh) &&
+                          ` · ${t.dari_tarikh ?? "mula"} → ${t.hingga_tarikh ?? "akhir"}`}
+                      </span>
+                    </span>
+                    <button onClick={() => void buang(t.id)} disabled={sibuk}
+                      className="shrink-0 text-xs text-[#8f2b2b] underline disabled:opacity-50">
+                      Buka semula
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+
+          {dariJadual.length > 0 && (
+            <div className="border-t border-garis pt-4">
+              <h3 className="text-[11px] font-bold uppercase tracking-widest text-emas">
+                Dari jadual waktu ({dariJadual.length})
+              </h3>
+              <p className="mt-1 text-[11px] text-slate-400">
+                Dijana semula setiap kali jadual waktu dimuat naik. Untuk
+                mengubahnya, tukar pemetaan subjek di atas.
+              </p>
+              <ul className="mt-2 max-h-64 space-y-0.5 overflow-auto text-xs text-slate-600">
+                {dariJadual.map((t) => (
+                  <li key={t.id}>
+                    {nama.get(t.bilik_id) ?? "Bilik"} · {NAMA_HARI[t.hari]} {t.mula}–{t.tamat}
+                    <span className="text-slate-400"> · {t.sebab}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
           )}
         </div>
       )}

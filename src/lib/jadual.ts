@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { janaSemulaDariJadual } from "./bilik-tetap";
 import { pastikanBoleh, pengguna } from "./akses";
 import { kelasBolehSunting } from "./guru-kelas";
 import { klienTulis } from "./supabase-pelayan";
@@ -203,13 +204,35 @@ async function tulis(bersih: Jadual, mesejOk: string): Promise<HasilJadual> {
 
   revalidatePath("/admin/jadual");
 
+  // SEKATAN BILIK MENYUSUL SENDIRI.
+  //
+  // Jadual waktu ialah sumber kebenaran tentang bilik mana digunakan bila.
+  // Kalau ia berubah dan sekatan tidak, maka bilik yang kini kosong kekal
+  // tertutup — dan bilik yang kini digunakan boleh ditempah orang lain.
+  // Keduanya ditemui hanya apabila dua kumpulan tiba di pintu yang sama.
+  //
+  // Kegagalannya tidak membatalkan jadual yang sudah tersimpan.
+  let notaBilik = "";
+  try {
+    const hasil = await janaSemulaDariJadual();
+    if (hasil.peta > 0) {
+      notaBilik = ` ${hasil.dijana} waktu bilik dikemas kini mengikut jadual baharu.`;
+    }
+  } catch {
+    notaBilik =
+      " Jadual tersimpan, TETAPI sekatan bilik tidak dapat dikemas kini — " +
+      "semak di skrin Tempahan.";
+  }
+  revalidatePath("/bilik");
+
   // Laman awam ialah eksport statik: tanpa binaan semula, jadual tersimpan
   // dalam DB tetapi ibu bapa tidak pernah melihatnya.
   const bina = await binaSemulaLamanAwam();
   return {
     ok: true,
-    mesej: bina.ok
-      ? `${mesejOk} Laman untuk ibu bapa sedang dibina semula.`
-      : `${mesejOk} TETAPI binaan semula laman awam gagal: ${bina.sebab}`,
+    mesej:
+      (bina.ok
+        ? `${mesejOk} Laman untuk ibu bapa sedang dibina semula.`
+        : `${mesejOk} TETAPI binaan semula laman awam gagal: ${bina.sebab}`) + notaBilik,
   };
 }
