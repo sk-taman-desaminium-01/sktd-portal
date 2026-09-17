@@ -75,5 +75,85 @@ semak("teks penuh disambung", bergabung[0].program,
   "FORMATIF 1 (12.1.2026 - 30.3.2026) & MESYUARAT PANITIA BIL 1");
 semak("acara berasingan tidak tercantum", bergabung[1].program, "GOTONG-ROYONG");
 
+
+console.log("\n— serpihan yang bercantum semula —");
+
+/* Bentuk SEBENAR dari buku 2026, muka September. Blok teks DUA baris
+   mengapit baris tarikh: satu di atas, satu di bawah. Blok SATU baris duduk
+   tepat pada baris tarikh. Mengelirukan kedua-duanya ialah puncanya
+   "KHAS BIL 3" muncul pada hari Khamis sebagai acara tanpa makna. */
+const sep = leraiTakwim([], [
+  ["", "", "", "MESYUARAT PENDEKATAN"],
+  ["", "14-Sep-26", "ISNIN", ""],
+  ["", "", "", "BERTEMA BIL 3"],
+  ["", "15-Sep-26", "SELASA", ""],
+  ["3", "16-Sep-26", "RABU", "CUTI SEMPENA HARI MALAYSIA"],
+  ["", "", "", "MESYUARAT PEMULIHAN"],
+  ["", "17-Sep-26", "KHAMIS", ""],
+  ["", "", "", "KHAS BIL 3"],
+]);
+
+semak("dua baris yang mengapit tarikh menjadi satu acara",
+  sep.find((a) => a.tarikh === "2026-09-14")?.program,
+  "MESYUARAT PENDEKATAN BERTEMA BIL 3");
+semak("teks pada baris tarikh berdiri sendiri",
+  sep.find((a) => a.tarikh === "2026-09-16")?.program,
+  "CUTI SEMPENA HARI MALAYSIA");
+semak("serpihan tidak terlepas ke hari yang salah",
+  sep.find((a) => a.tarikh === "2026-09-17")?.program,
+  "MESYUARAT PEMULIHAN KHAS BIL 3");
+semak("tiga acara, bukan empat", sep.length, 3);
+semak("tiada acara bermula dengan KHAS",
+  sep.some((a) => /^KHAS\b/.test(a.program)), false);
+
+/* Nombor muka surat. Buku mencetaknya di kaki setiap muka dan grid
+   menangkapnya seperti sel biasa — pengguna melihat "144" dan "149" sebagai
+   acara, dan bertanya dengan betul "benda apa ni". */
+const noMuka = leraiTakwim([], [
+  ["", "10-Apr-26", "JUMAAT", "LATIHAN SUKAN"],
+  ["", "", "", "143"],
+  ["", "13-Apr-26", "ISNIN", "PERHIMPUNAN"],
+  ["", "14-Apr-26", "SELASA", "GOTONG-ROYONG"],
+  ["", "15-Apr-26", "RABU", ""],
+]);
+semak("nombor muka surat tidak menjadi acara", noMuka.length, 3);
+semak("tiada acara bernama nombor sahaja",
+  noMuka.some((a) => /^\d+$/.test(a.program)), false);
+
+/* Nombor yang MENYAMBUNG sesuatu dikekalkan — "BIL" menuntut nombornya. */
+const bilNombor = leraiTakwim([], [
+  ["", "", "", "MESYUARAT KURIKULUM BIL"],
+  ["", "5-Mei-26", "SELASA", ""],
+  ["", "", "", "2"],
+  ["", "6-Mei-26", "RABU", ""],
+  ["", "7-Mei-26", "KHAMIS", ""],
+]);
+semak("nombor selepas BIL dikekalkan",
+  bilNombor[0]?.program, "MESYUARAT KURIKULUM BIL 2");
+
+/* Kurungan tutup tanpa pembuka ialah ekor baris sebelumnya. */
+const kurung = leraiTakwim([], [
+  ["", "", "", "CUTI PENGGAL 1 (28.3.2026 -"],
+  ["", "29-Mac-26", "AHAD", ""],
+  ["", "", "", "03.4.2026)"],
+  ["", "30-Mac-26", "ISNIN", ""],
+  ["", "31-Mac-26", "SELASA", ""],
+]);
+semak("ekor berkurungan disambung semula",
+  kurung[0]?.program, "CUTI PENGGAL 1 (28.3.2026 - 03.4.2026)");
+
+/* Sel bergabung TIDAK kekal bergabung selama-lamanya: acara yang berulang
+   pada hari berturut-turut mesti kekal berasingan. */
+const ulang = leraiTakwim([], [
+  ["", "", "", "PERJUMPAAN SUKAN &"],
+  ["", "8-Apr-26", "RABU", "PERMAINAN (5) & LATIHAN"],
+  ["", "", "", "SUKAN)"],
+  ["", "9-Apr-26", "KHAMIS", "LATIHAN SUKAN"],
+  ["", "10-Apr-26", "JUMAAT", "LATIHAN SUKAN"],
+]);
+semak("acara berulang tidak ditelan sel bergabung", ulang.length, 3);
+semak("9 April kekal sendiri",
+  ulang.find((a) => a.tarikh === "2026-04-09")?.program, "LATIHAN SUKAN");
+
 console.log(`\n${lulus} lulus, ${gagal.length} gagal`);
 process.exit(gagal.length === 0 ? 0 : 1);

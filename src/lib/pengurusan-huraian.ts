@@ -771,7 +771,21 @@ export function kesanSeksyen(muka: MukaDokumen[]): SeksyenDikesan[] {
         s.muka.map((m) => tajukMuka(m.baris).trim().toUpperCase()).filter((t) => t !== ""),
       );
       for (const g of grid) {
-        for (const b of g) {
+        // NOMBOR MUKA SURAT DI KAKI (atau kepala) MUKA.
+        //
+        // Buku mencetak nombor muka pada setiap muka, dan grid menangkapnya
+        // seperti sel biasa. Ia muncul sebagai baris tanpa makna — "138",
+        // "144", "149" — yang pengguna dengan betul tanya "benda apa ni".
+        //
+        // Ujiannya mudah kerana jawapannya mudah: baris yang isinya HANYA
+        // satu nombor bogel tidak membawa apa-apa makna dalam mana-mana
+        // seksyen buku ini. Kalau ia nombor muka, ia bukan data. Kalau ia
+        // lajur "Bil" yang kehilangan namanya, ia tetap tiada gunanya —
+        // "47" tanpa nama tidak memberitahu sesiapa apa-apa.
+        for (let iB = 0; iB < g.length; iB++) {
+          const b = g[iB];
+          const isi = b.filter((c) => c.trim() !== "");
+          if (isi.length === 1 && /^\d{1,4}$/.test(isi[0].trim())) continue;
           // Kepala dicetak semula pada setiap muka — simpan sekali, bukan
           // sekali bagi setiap muka.
           if (kunciKepala && b.map((c) => c.trim().toUpperCase()).join("\u0001") === kunciKepala) continue;

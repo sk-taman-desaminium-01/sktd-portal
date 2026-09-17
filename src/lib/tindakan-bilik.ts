@@ -5,7 +5,7 @@ import { pengguna, pastikanBoleh } from "./akses";
 import { boleh } from "./peranan";
 import {
   senaraiBilik, tempahanJulat, tempahanBilikTarikh, simpanTempahan,
-  batalTempahan, satuTempahan, simpanBilik, hariIniMY,
+  batalTempahan, satuTempahan, simpanBilik, padamBilik, hariIniMY,
 } from "./bilik";
 import { semakTempahan, type Bilik, type Tempahan } from "@/data/bilik";
 
@@ -40,6 +40,15 @@ function ralat(e: unknown): string {
 }
 
 export interface PapanBilik {
+  /**
+   * Jadual pangkalan data belum wujud — SQL belum dijalankan.
+   *
+   * Tanpa medan ini, skrin ini memaparkan "A server error occurred" kepada
+   * guru yang membuka kad Tempahan Bilik Khas sebelum admin menjalankan
+   * SQLnya. Skrin yang gagal tanpa memberitahu apa-apa menghantar orang
+   * mencari kesilapan yang bukan milik mereka.
+   */
+  belumSedia: boolean;
   bilik: Bilik[];
   tempahan: Tempahan[];
   hariIni: string;
@@ -58,16 +67,30 @@ export async function papanBilik(dari?: string, hari = 14): Promise<PapanBilik |
   const mula = dari && /^\d{4}-\d{2}-\d{2}$/.test(dari) ? dari : hariIni;
   const akhir = tambahHari(mula, hari);
 
-  const [bilik, tempahan] = await Promise.all([
-    senaraiBilik(),
-    tempahanJulat(mula, akhir),
-  ]);
-
-  return {
-    bilik, tempahan, hariIni, dari: mula, hingga: akhir,
+  const asas = {
+    hariIni, dari: mula, hingga: akhir,
     sayaEmel: saya.emel ?? "",
     bolehUrus: boleh(saya.peranan, "urus_bilik"),
   };
+
+  try {
+    const [bilik, tempahan] = await Promise.all([
+      // Pentadbir melihat bilik yang dinyahaktifkan juga — kalau tidak,
+      // bilik yang tersalah nyahaktif hilang dan tiada cara memulihkannya.
+      senaraiBilik(asas.bolehUrus),
+      tempahanJulat(mula, akhir),
+    ]);
+    return { ...asas, belumSedia: false, bilik, tempahan };
+  } catch (e) {
+    // PostgREST memulangkan 404/42P01 bila jadual tiada. Itu bukan pepijat —
+    // ia bermakna satu langkah pemasangan belum dibuat, dan skrin patut
+    // mengatakannya dan bukan menghempas.
+    const teks = e instanceof Error ? e.message : String(e);
+    if (/bilik_khas|tempahan_bilik|42P01|does not exist|Not Found|404/i.test(teks)) {
+      return { ...asas, belumSedia: true, bilik: [], tempahan: [] };
+    }
+    throw e;
+  }
 }
 
 function tambahHari(iso: string, n: number): string {
@@ -129,6 +152,28 @@ export async function batalTindakan(id: string): Promise<HasilBilik> {
     await batalTempahan(id);
     revalidatePath("/bilik");
     return { ok: true, mesej: "Tempahan dibatalkan." };
+  } catch (e) {
+    return { ok: false, mesej: ralat(e) };
+  }
+}
+
+export async function padamBilikTindakan(id: string): Promise<HasilBilik> {
+  try {
+    await pastikanBoleh("urus_bilik");
+  } catch {
+    return { ok: false, mesej: "Tiada kebenaran." };
+  }
+  try {
+    const hasil = await padamBilik(id);
+    revalidatePath("/bilik");
+    return {
+      ok: true,
+      mesej:
+        hasil === "dipadam"
+          ? "Bilik dipadam."
+          : "Bilik ini pernah ditempah, jadi ia DISEMBUNYIKAN dan bukan dipadam — " +
+            "rekod tempahan lamanya kekal utuh.",
+    };
   } catch (e) {
     return { ok: false, mesej: ralat(e) };
   }

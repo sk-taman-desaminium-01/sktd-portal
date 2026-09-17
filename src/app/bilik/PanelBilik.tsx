@@ -1,8 +1,11 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import PilihCari from "@/components/PilihCari";
-import { tempahTindakan, batalTindakan, simpanBilikTindakan, type PapanBilik } from "@/lib/tindakan-bilik";
+import {
+  tempahTindakan, batalTindakan, simpanBilikTindakan, padamBilikTindakan,
+  type PapanBilik,
+} from "@/lib/tindakan-bilik";
 import { ikutHari, keMinit, keJam, semakTempahan, type Tempahan } from "@/data/bilik";
 
 /**
@@ -110,7 +113,7 @@ export default function PanelBilik({ papan }: { papan: PapanBilik }) {
             <PilihCari
               id="bilik"
               label="Bilik"
-              pilihan={papan.bilik.map((b) => ({
+              pilihan={papan.bilik.filter((b) => b.aktif).map((b) => ({
                 nilai: b.id,
                 label: b.nama,
                 nota: [b.muatan ? `${b.muatan} orang` : "", b.nota ?? ""]
@@ -253,25 +256,150 @@ export default function PanelBilik({ papan }: { papan: PapanBilik }) {
   );
 }
 
-/** Senarai bilik — hanya pentadbir. */
+/**
+ * Senarai bilik — hanya pentadbir.
+ *
+ * Setiap bilik boleh disunting dan dibuang. Tindakan itu duduk di sebalik
+ * menu tiga titik dan bukan sebagai butang berderet: satu baris bilik pada
+ * telefon hanya selebar ibu jari, dan dua butang di hujungnya memicit nama
+ * bilik sehingga terpotong. Menu membuka ke bawah dan boleh ditutup di
+ * mana-mana.
+ */
 function UrusBilik({ bilik }: { bilik: PapanBilik["bilik"] }) {
+  const [mesej, setMesej] = useState<{ ok: boolean; teks: string } | null>(null);
+  const [sibuk, setSibuk] = useState(false);
+  const [buka, setBuka] = useState(bilik.length === 0);
+  const [senarai, setSenarai] = useState(bilik);
+
+  /** Bilik yang sedang disunting; "baharu" bermakna borang tambah. */
+  const [sunting, setSunting] = useState<string | null>(null);
   const [nama, setNama] = useState("");
   const [muatan, setMuatan] = useState("");
   const [nota, setNota] = useState("");
-  const [mesej, setMesej] = useState<string | null>(null);
-  const [sibuk, setSibuk] = useState(false);
-  const [buka, setBuka] = useState(bilik.length === 0);
+  const [menu, setMenu] = useState<string | null>(null);
+  const [sahPadam, setSahPadam] = useState<string | null>(null);
 
-  async function tambah() {
+  useEffect(() => setSenarai(bilik), [bilik]);
+
+  useEffect(() => {
+    if (!menu) return;
+    const tutup = () => setMenu(null);
+    document.addEventListener("pointerdown", tutup);
+    return () => document.removeEventListener("pointerdown", tutup);
+  }, [menu]);
+
+  function mulaTambah() {
+    setSunting("baharu");
+    setNama(""); setMuatan(""); setNota("");
+    setMesej(null);
+  }
+
+  function mulaSunting(b: PapanBilik["bilik"][number]) {
+    setSunting(b.id);
+    setNama(b.nama);
+    setMuatan(b.muatan === null ? "" : String(b.muatan));
+    setNota(b.nota ?? "");
+    setMenu(null);
+    setMesej(null);
+  }
+
+  async function simpan() {
     setSibuk(true);
     try {
-      const r = await simpanBilikTindakan({ nama, muatan, nota, aktif: true });
-      setMesej(r.mesej);
-      if (r.ok) { setNama(""); setMuatan(""); setNota(""); }
+      const id = sunting === "baharu" ? undefined : sunting ?? undefined;
+      const asal = senarai.find((x) => x.id === id);
+      const r = await simpanBilikTindakan({
+        id, nama, muatan, nota, aktif: asal?.aktif ?? true,
+      });
+      setMesej({ ok: r.ok, teks: r.mesej });
+      if (!r.ok) return;
+      const bersih = {
+        nama: nama.trim(),
+        muatan: muatan.trim() === "" ? null : Number(muatan),
+        nota: nota.trim() || null,
+      };
+      setSenarai((l) =>
+        id
+          ? l.map((x) => (x.id === id ? { ...x, ...bersih } : x))
+          : [...l, { id: `baharu-${Date.now()}`, aktif: true, ...bersih }],
+      );
+      setSunting(null);
     } finally {
       setSibuk(false);
     }
   }
+
+  async function padam(id: string) {
+    setSibuk(true);
+    try {
+      const r = await padamBilikTindakan(id);
+      setMesej({ ok: r.ok, teks: r.mesej });
+      if (r.ok) {
+        // "Dinyahaktif" bermakna baris itu masih ada — ia cuma tidak boleh
+        // ditempah lagi. Memadamnya dari skrin akan berbohong.
+        setSenarai((l) =>
+          r.mesej.includes("DISEMBUNYIKAN")
+            ? l.map((x) => (x.id === id ? { ...x, aktif: false } : x))
+            : l.filter((x) => x.id !== id),
+        );
+      }
+      setSahPadam(null);
+      setMenu(null);
+    } finally {
+      setSibuk(false);
+    }
+  }
+
+  async function togolAktif(b: PapanBilik["bilik"][number]) {
+    setSibuk(true);
+    setMenu(null);
+    try {
+      const r = await simpanBilikTindakan({
+        id: b.id, nama: b.nama,
+        muatan: b.muatan === null ? "" : String(b.muatan),
+        nota: b.nota ?? "", aktif: !b.aktif,
+      });
+      setMesej({ ok: r.ok, teks: r.ok ? (b.aktif ? "Bilik disembunyikan." : "Bilik boleh ditempah semula.") : r.mesej });
+      if (r.ok) setSenarai((l) => l.map((x) => (x.id === b.id ? { ...x, aktif: !b.aktif } : x)));
+    } finally {
+      setSibuk(false);
+    }
+  }
+
+  const borang = (
+    <div className="mt-3 rounded-lg border border-navy-700/30 bg-navy-50/40 p-3">
+      <div className="grid gap-2 sm:grid-cols-[2fr_1fr]">
+        <input
+          value={nama} onChange={(e) => setNama(e.target.value)}
+          placeholder="Nama bilik — contoh: Bilik i-Shabariah"
+          aria-label="Nama bilik"
+          className="min-w-0 rounded-lg border border-garis px-3 py-2 text-sm"
+        />
+        <input
+          value={muatan} onChange={(e) => setMuatan(e.target.value)}
+          placeholder="Muatan" inputMode="numeric" aria-label="Muatan"
+          className="min-w-0 rounded-lg border border-garis px-3 py-2 text-sm"
+        />
+        <input
+          value={nota} onChange={(e) => setNota(e.target.value)}
+          placeholder="Nota — contoh: ada projektor" aria-label="Nota"
+          className="min-w-0 rounded-lg border border-garis px-3 py-2 text-sm sm:col-span-2"
+        />
+      </div>
+      <div className="mt-2 flex flex-wrap items-center gap-2">
+        <button
+          onClick={() => void simpan()}
+          disabled={sibuk || nama.trim().length < 2}
+          className="rounded-lg bg-navy-700 px-4 py-2 text-xs font-bold text-white disabled:opacity-40"
+        >
+          {sibuk ? "…" : sunting === "baharu" ? "Tambah bilik" : "Simpan"}
+        </button>
+        <button onClick={() => setSunting(null)} className="text-xs text-slate-500 underline">
+          Batal
+        </button>
+      </div>
+    </div>
+  );
 
   return (
     <section className="mt-8 rounded-2xl border border-garis bg-white p-4 sm:p-5">
@@ -280,50 +408,122 @@ function UrusBilik({ bilik }: { bilik: PapanBilik["bilik"] }) {
         className="flex w-full items-center justify-between gap-3 text-left"
       >
         <span className="text-sm font-bold text-navy-800">
-          Senarai bilik ({bilik.length})
+          Senarai bilik ({senarai.length})
         </span>
         <span className="text-xs text-slate-400">{buka ? "▴" : "▾"}</span>
       </button>
 
       {buka && (
         <div className="mt-3 border-t border-garis pt-3">
-          {mesej && <p className="mb-2 text-xs text-[#167a4b]">{mesej}</p>}
+          {mesej && (
+            <p
+              className={`mb-2 rounded-lg border p-2.5 text-xs leading-relaxed ${
+                mesej.ok
+                  ? "border-[#c6e2d1] bg-[#eef8f2] text-[#167a4b]"
+                  : "border-[#e9c4c4] bg-[#fdf1f1] text-[#8f2b2b]"
+              }`}
+            >
+              {mesej.teks}
+            </p>
+          )}
 
-          <div className="grid gap-2 sm:grid-cols-[2fr_1fr]">
-            <input
-              value={nama} onChange={(e) => setNama(e.target.value)}
-              placeholder="Nama bilik — contoh: Bilik i-Shabariah"
-              aria-label="Nama bilik"
-              className="rounded-lg border border-garis px-3 py-2 text-sm"
-            />
-            <input
-              value={muatan} onChange={(e) => setMuatan(e.target.value)}
-              placeholder="Muatan" inputMode="numeric" aria-label="Muatan"
-              className="rounded-lg border border-garis px-3 py-2 text-sm"
-            />
-            <input
-              value={nota} onChange={(e) => setNota(e.target.value)}
-              placeholder="Nota — contoh: ada projektor" aria-label="Nota"
-              className="rounded-lg border border-garis px-3 py-2 text-sm sm:col-span-2"
-            />
-          </div>
+          {sunting === "baharu" ? borang : (
+            <button
+              onClick={mulaTambah}
+              className="rounded-lg border border-navy-700 px-4 py-2 text-xs font-semibold text-navy-700"
+            >
+              + Tambah bilik
+            </button>
+          )}
 
-          <button
-            onClick={() => void tambah()}
-            disabled={sibuk || nama.trim().length < 2}
-            className="mt-2 rounded-lg bg-navy-700 px-4 py-2 text-xs font-bold text-white disabled:opacity-40"
-          >
-            {sibuk ? "…" : "Tambah bilik"}
-          </button>
+          {senarai.length > 0 && (
+            <ul className="mt-3 divide-y divide-garis border-t border-garis">
+              {senarai.map((b) => (
+                <li key={b.id} className="py-2">
+                  <div className="flex items-start gap-2">
+                    <span className="min-w-0 flex-1">
+                      <span className={`block text-sm ${b.aktif ? "text-navy-800" : "text-slate-400 line-through"}`}>
+                        {b.nama}
+                      </span>
+                      <span className="mt-0.5 block text-xs text-slate-400">
+                        {[
+                          b.muatan ? `${b.muatan} orang` : "",
+                          b.nota ?? "",
+                          b.aktif ? "" : "tidak boleh ditempah",
+                        ].filter(Boolean).join(" · ")}
+                      </span>
+                    </span>
 
-          {bilik.length > 0 && (
-            <ul className="mt-3 divide-y divide-garis border-t border-garis text-sm">
-              {bilik.map((b) => (
-                <li key={b.id} className="flex items-baseline gap-3 py-2">
-                  <span className="flex-1 text-navy-800">{b.nama}</span>
-                  <span className="text-xs text-slate-400">
-                    {[b.muatan ? `${b.muatan} orang` : "", b.nota ?? ""].filter(Boolean).join(" · ")}
-                  </span>
+                    {/* Menu tiga titik. `shrink-0` supaya ia tidak pernah
+                        dipicit keluar dari kad pada skrin sempit. */}
+                    <span className="relative shrink-0">
+                      <button
+                        onPointerDown={(e) => e.stopPropagation()}
+                        onClick={() => setMenu((m) => (m === b.id ? null : b.id))}
+                        aria-label={`Tindakan untuk ${b.nama}`}
+                        aria-haspopup="menu"
+                        aria-expanded={menu === b.id}
+                        className="flex h-8 w-8 items-center justify-center rounded-full border border-garis text-slate-500 hover:border-navy-700 hover:text-navy-700"
+                      >
+                        <svg viewBox="0 0 16 16" aria-hidden="true" className="h-4 w-4" fill="currentColor">
+                          <circle cx="8" cy="3" r="1.4" />
+                          <circle cx="8" cy="8" r="1.4" />
+                          <circle cx="8" cy="13" r="1.4" />
+                        </svg>
+                      </button>
+
+                      {menu === b.id && (
+                        <span
+                          role="menu"
+                          onPointerDown={(e) => e.stopPropagation()}
+                          className="absolute right-0 top-full z-20 mt-1 flex w-44 flex-col overflow-hidden rounded-xl border border-garis bg-white py-1 shadow-lg"
+                        >
+                          <button
+                            role="menuitem"
+                            onClick={() => mulaSunting(b)}
+                            className="px-3 py-2 text-left text-xs text-navy-800 hover:bg-navy-50"
+                          >
+                            Sunting
+                          </button>
+                          <button
+                            role="menuitem"
+                            onClick={() => void togolAktif(b)}
+                            className="px-3 py-2 text-left text-xs text-navy-800 hover:bg-navy-50"
+                          >
+                            {b.aktif ? "Sembunyikan" : "Benarkan tempahan"}
+                          </button>
+                          <button
+                            role="menuitem"
+                            onClick={() => { setSahPadam(b.id); setMenu(null); }}
+                            className="px-3 py-2 text-left text-xs text-[#8f2b2b] hover:bg-[#fdf1f1]"
+                          >
+                            Padam
+                          </button>
+                        </span>
+                      )}
+                    </span>
+                  </div>
+
+                  {sahPadam === b.id && (
+                    <p className="mt-2 flex flex-wrap items-center gap-2 rounded-lg bg-[#fdf1f1] p-2.5 text-xs text-[#8f2b2b]">
+                      <span className="min-w-0 flex-1">
+                        Padam <b>{b.nama}</b>? Kalau ia pernah ditempah, ia akan
+                        disembunyikan dan bukan dipadam — rekod tempahan lamanya kekal.
+                      </span>
+                      <button
+                        onClick={() => void padam(b.id)}
+                        disabled={sibuk}
+                        className="shrink-0 rounded-lg bg-[#8f2b2b] px-3 py-1.5 font-bold text-white disabled:opacity-50"
+                      >
+                        Ya, padam
+                      </button>
+                      <button onClick={() => setSahPadam(null)} className="shrink-0 underline">
+                        Batal
+                      </button>
+                    </p>
+                  )}
+
+                  {sunting === b.id && borang}
                 </li>
               ))}
             </ul>
