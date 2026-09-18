@@ -2,7 +2,7 @@ import Link from "next/link";
 import { ambilJadual } from "@/lib/jadual";
 import { kelasBolehSunting } from "@/lib/guru-kelas";
 import { bolehBuat } from "@/lib/akses";
-import { semuaKelas } from "@/data/kelas";
+import { semuaKelas, semuaKelasPPKI } from "@/data/kelas";
 import PanelJadual from "./PanelJadual";
 
 export const metadata = { title: "Jadual Waktu" };
@@ -15,7 +15,9 @@ export default async function JadualAdmin() {
   ]);
 
   // `null` = semua kelas (pentadbir & admin). Senarai = guru kelas.
-  const kelas = dibenar === null ? semuaKelas() : dibenar;
+  // PPKI (Pendidikan Khas) disertakan bersama kelas perdana (permintaan
+  // pengguna I, 18 Sep 2026) — sebelum ini jadual PPKI tidak pernah dijana.
+  const kelas = dibenar === null ? [...semuaKelas(), ...semuaKelasPPKI()] : dibenar;
   const diisi = kelas.filter((k) => {
     const h = jadual.kelas[k]?.hari;
     return h && Object.values(h).some((w) => w && Object.keys(w).length > 0);

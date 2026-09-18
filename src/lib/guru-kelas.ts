@@ -33,7 +33,18 @@ export interface TugasanKelas {
 
 export type HasilTugasan = { ok: boolean; mesej: string };
 
+/** Label paparan bagi (tahun, kelas). PPKI (tahun 0) sudah membawa nama
+ *  penuhnya dalam `kelas`, jadi tiada awalan "0 " yang tidak bermakna. */
+function labelKelas(tahun: number, kelas: string): string {
+  return tahun === 0 ? kelas : `${tahun} ${kelas}`;
+}
+
 function pecahLabel(label: string): { tahun: number; kelas: string } | null {
+  // PPKI: label "PPKI SUNFLOWER" → tahun 0 (sentinel bukan-kelas-perdana),
+  // kelas "PPKI SUNFLOWER" penuh. Lihat `semuaKelasPPKI()` dalam data/kelas.ts.
+  if (/^PPKI\s+/i.test(label.trim())) {
+    return { tahun: 0, kelas: label.trim().toUpperCase() };
+  }
   const m = /^([1-6])\s+(.+)$/.exec(label.trim());
   if (!m) return null;
   return { tahun: Number(m[1]), kelas: m[2].trim().toUpperCase() };
@@ -56,9 +67,47 @@ export async function senaraiGuruKelas(): Promise<TugasanKelas[]> {
     emel: b.pbd_guru?.email ?? null,
     tahun: b.tahun,
     kelas: b.kelas,
-    label: `${b.tahun} ${b.kelas}`,
+    label: labelKelas(b.tahun, b.kelas),
   }));
 }
+
+/**
+ * Emel guru kelas bagi SATU label kelas (contoh "4 NILAM" atau "PPKI
+ * SUNFLOWER") — TANPA sekatan `terbit_kandungan`.
+ *
+ * KENAPA BERASINGAN daripada `senaraiGuruKelas()`: fungsi ini dipanggil
+ * dari dalam tindakan sistem (contoh: rekod Kebenaran Gambar oleh mana-mana
+ * guru) untuk memberitahu guru kelas — ia bukan skrin pentadbiran, jadi
+ * pemanggil tidak semestinya punya keupayaan `terbit_kandungan`.
+ */
+export async function emelGuruKelas(label: string): Promise<string[]> {
+  const pecah = pecahLabel(label);
+  if (!pecah) return [];
+  const db = klienTulis();
+  const baris = (await db.minta(
+    `pbd_guru_kelas?select=pbd_guru(email)&tahun_sesi=eq.${SESI}&peranan=eq.guru_kelas` +
+      `&tahun=eq.${pecah.tahun}&kelas=eq.${encodeURIComponent(pecah.kelas)}`,
+  )) as { pbd_guru: { email: string | null } | null }[];
+  return baris.map((b) => b.pbd_guru?.email ?? "").filter((e) => e !== "");
+}
+
+/**
+ * Nama guru kelas bagi SETIAP kelas — TANPA sekatan `terbit_kandungan`.
+ *
+ * Digunakan untuk paparan maklumat sahaja (contoh: Rekod Kawalan Kelas
+ * memaparkan "guru kelas semasa" sebagai rujukan, permintaan G.2) —
+ * bukan skrin urus tugasan, jadi tiada sebab menuntut keupayaan admin.
+ */
+export async function namaGuruKelasSemua(): Promise<Record<string, string>> {
+  const db = klienTulis();
+  const baris = (await db.minta(
+    `pbd_guru_kelas?select=tahun,kelas,pbd_guru(nama)&tahun_sesi=eq.${SESI}&peranan=eq.guru_kelas`,
+  )) as { tahun: number; kelas: string; pbd_guru: { nama: string } | null }[];
+  const peta: Record<string, string> = {};
+  for (const b of baris) peta[labelKelas(b.tahun, b.kelas)] = b.pbd_guru?.nama ?? "";
+  return peta;
+}
+
 
 /**
  * Kelas yang pengguna semasa boleh SUNTING jadualnya.
@@ -81,7 +130,7 @@ export async function kelasBolehSunting(): Promise<string[] | null> {
     `pbd_guru_kelas?select=tahun,kelas&tahun_sesi=eq.${SESI}` +
       `&peranan=eq.guru_kelas&guru_id=eq.${saya.id}`,
   )) as { tahun: number; kelas: string }[];
-  return baris.map((b) => `${b.tahun} ${b.kelas}`);
+  return baris.map((b) => labelKelas(b.tahun, b.kelas));
 }
 
 export async function tetapGuruKelas(guruId: string, label: string): Promise<HasilTugasan> {
