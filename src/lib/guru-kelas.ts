@@ -92,6 +92,24 @@ export async function emelGuruKelas(label: string): Promise<string[]> {
 }
 
 /**
+ * Nama guru kelas bagi SETIAP kelas — TANPA sekatan `terbit_kandungan`.
+ *
+ * Digunakan untuk paparan maklumat sahaja (contoh: Rekod Kawalan Kelas
+ * memaparkan "guru kelas semasa" sebagai rujukan, permintaan G.2) —
+ * bukan skrin urus tugasan, jadi tiada sebab menuntut keupayaan admin.
+ */
+export async function namaGuruKelasSemua(): Promise<Record<string, string>> {
+  const db = klienTulis();
+  const baris = (await db.minta(
+    `pbd_guru_kelas?select=tahun,kelas,pbd_guru(nama)&tahun_sesi=eq.${SESI}&peranan=eq.guru_kelas`,
+  )) as { tahun: number; kelas: string; pbd_guru: { nama: string } | null }[];
+  const peta: Record<string, string> = {};
+  for (const b of baris) peta[labelKelas(b.tahun, b.kelas)] = b.pbd_guru?.nama ?? "";
+  return peta;
+}
+
+
+/**
  * Kelas yang pengguna semasa boleh SUNTING jadualnya.
  *
  * `null` bermakna SEMUA kelas — pentadbir dan admin. Senarai bermakna guru
