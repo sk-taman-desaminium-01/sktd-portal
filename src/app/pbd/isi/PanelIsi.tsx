@@ -84,6 +84,11 @@ export default function PanelIsi({
           yang ditugaskan boleh mengisi TP di sini.
         </p>
       )}
+      {bolehTulis && !sesiTutup && (
+        <p className="mt-4 text-xs leading-relaxed text-slate-500">
+          TP di sini mesti ikut TP yang telah anda catat di IDme.
+        </p>
+      )}
 
       {mesej && (
         <p
