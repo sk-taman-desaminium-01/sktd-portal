@@ -179,7 +179,11 @@ const mutlak = kadUntuk("admin_mutlak");
 
 // Inilah yang pengguna minta: guru biasa TIDAK nampak kad pentadbiran.
 semak("guru TIDAK nampak Urus Laman Web", guru.includes("urusweb"), false);
-semak("guru TIDAK nampak Disiplin", guru.includes("disiplin"), false);
+// Disiplin & Sahsiah kini nampak untuk SEMUA guru (permintaan F.3, 18 Sep
+// 2026): guru biasa boleh MEREKOD salah laku, cuma tidak boleh MEMBACA
+// rekod murid lain — sekatan itu dikuatkuasakan DALAM halaman, bukan pada
+// penglihatan kad.
+semak("guru NAMPAK Disiplin (untuk rekod sahaja)", guru.includes("disiplin"), true);
 semak("pentadbir NAMPAK Urus Laman Web", pentadbir.includes("urusweb"), true);
 semak("pentadbir NAMPAK Disiplin", pentadbir.includes("disiplin"), true);
 semak("admin mutlak nampak semua pentadbir punya",
