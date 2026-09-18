@@ -52,6 +52,28 @@ export async function senaraiPos(): Promise<PosCms[]> {
   )) as PosCms[];
 }
 
+/**
+ * Satu pos untuk disunting. Termasuk `kandungan` (tiada dalam senarai) sebab
+ * borang sunting perlukan teks penuh, bukan sekadar ringkasan.
+ */
+export async function ambilPos(id: string): Promise<(PosCms & { kandungan: string | null }) | null> {
+  await pastikanMasuk();
+  if (!id.trim()) return null;
+  const db = klienTulis();
+  const baris = (await db.minta(
+    `web_pos?select=${LAJUR},kandungan&id=eq.${id.trim()}&limit=1`,
+  )) as (PosCms & { kandungan: string | null })[];
+  return baris[0] ?? null;
+}
+
+/** Ringkasan automatik daripada kandungan — potong pada 200 aksara (permintaan L). */
+function auto200(kandungan: string | null): string | null {
+  if (!kandungan) return null;
+  const rata = kandungan.replace(/\s+/g, " ").trim();
+  if (rata.length <= 200) return rata || null;
+  return `${rata.slice(0, 199).trimEnd()}…`;
+}
+
 function jadikanSlug(t: string) {
   return t
     .toLowerCase()
@@ -78,6 +100,15 @@ export async function simpanPos(data: FormData): Promise<HasilSimpan> {
 
   if (!tajuk) return { ok: false, mesej: "Tajuk tidak boleh kosong." };
 
+  const kandungan = String(data.get("kandungan") ?? "").trim() || null;
+
+  // Ringkasan TIDAK ditaip oleh admin (permintaan L) — ia diarang automatik
+  // daripada kandungan, dipotong pada 200 aksara. Admin masih boleh
+  // menimpanya dengan menghantar `ringkasan` secara jelas (cth. sunting
+  // draf takwim yang sudah punya ayat sendiri).
+  const ringkasanDihantar = String(data.get("ringkasan") ?? "").trim();
+  const ringkasan = ringkasanDihantar || auto200(kandungan);
+
   // Peraturan keras #2: MEDAN KOSONG ≠ PADAM. Medan kosong disimpan sebagai
   // null (tiada nilai), dan kita TIDAK pernah memadam baris kerana borang
   // dihantar dengan medan kosong.
@@ -86,8 +117,8 @@ export async function simpanPos(data: FormData): Promise<HasilSimpan> {
     tajuk,
     slug: String(data.get("slug") ?? "").trim() || jadikanSlug(tajuk),
     kategori: String(data.get("kategori") ?? "").trim() || null,
-    ringkasan: String(data.get("ringkasan") ?? "").trim() || null,
-    kandungan: String(data.get("kandungan") ?? "").trim() || null,
+    ringkasan,
+    kandungan,
     // MEDAN KOSONG BUKAN PADAM (peraturan keras #2) — kecuali apabila
     // pengguna benar-benar menekan "Buang gambar", yang menghantar nilai
     // khas ini. Tanpa pembezaan itu, menyimpan pos tanpa menyentuh gambar

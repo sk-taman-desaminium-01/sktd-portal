@@ -29,6 +29,25 @@ export type HasilPentadbir = { ok: boolean; mesej: string };
 
 export async function senaraiPentadbir(): Promise<Pentadbir[]> {
   await pastikanBoleh("terbit_kandungan");
+  return bacaPentadbir();
+}
+
+/**
+ * Sama seperti `senaraiPentadbir()`, TETAPI untuk sesiapa yang sudah log
+ * masuk portal — bukan hanya penyunting kandungan.
+ *
+ * KENAPA WUJUD: Borang Sekolah (permintaan A.2) perlu senarai nama & jawatan
+ * pentadbir untuk dropdown "wakil Guru Besar", dan setiap guru yang mengisi
+ * surat rasmi memerlukannya — bukan hanya admin. Nama & jawatan pentadbir
+ * BUKAN data sulit; ia sudah terbit di halaman awam "Tentang Sekolah".
+ */
+export async function senaraiPentadbirUntukSemua(): Promise<Pentadbir[]> {
+  const saya = await pengguna();
+  if (!saya?.peranan) throw new Error("Tidak dibenarkan.");
+  return bacaPentadbir();
+}
+
+async function bacaPentadbir(): Promise<Pentadbir[]> {
   const db = klienTulis();
   const baris = (await db.minta(
     `web_halaman?slug=eq.${SLUG}&select=kandungan`,

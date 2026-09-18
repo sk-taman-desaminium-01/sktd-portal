@@ -1,8 +1,10 @@
 import Link from "next/link";
 import { senaraiGuruKelas } from "@/lib/guru-kelas";
 import { senaraiAkses } from "@/lib/akses-urus";
-import { semuaKelas } from "@/data/kelas";
+import { senaraiTugasan } from "@/lib/tugasan";
+import { semuaKelas, semuaKelasPPKI } from "@/data/kelas";
 import PanelGuruKelas from "./PanelGuruKelas";
+import PanelTugasanLain from "./PanelTugasanLain";
 
 export const metadata = { title: "Guru Kelas" };
 
@@ -12,9 +14,16 @@ export const metadata = { title: "Guru Kelas" };
  * Skrin ini ialah PASANGAN kepada Jadual Waktu: guru kelas hanya boleh
  * menyunting jadual kelas yang ditugaskan kepadanya DI SINI. Tanpa skrin ini,
  * keupayaan itu wujud dalam kod tetapi tiada sesiapa boleh menggunakannya.
+ *
+ * Tugasan lain (guru RMT, guru disiplin, pengurus pasukan) dikongsi skrin
+ * ini — bentuknya sama (nama orang + skop), jadi tiga skrin berasingan
+ * ialah kerja berulang yang tidak perlu (permintaan pengguna D/E/3.1).
  */
 export default async function GuruKelas() {
-  const [tugasan, orang] = await Promise.all([senaraiGuruKelas(), senaraiAkses()]);
+  const [tugasan, orang, guruRmt, guruDisiplin, pengurusPasukan] = await Promise.all([
+    senaraiGuruKelas(), senaraiAkses(),
+    senaraiTugasan("guru_rmt"), senaraiTugasan("guru_disiplin"), senaraiTugasan("pengurus_pasukan"),
+  ]);
 
   // Hanya orang yang SUDAH dibenarkan masuk portal boleh ditugaskan — kalau
   // tidak, mereka dilantik guru kelas tetapi tidak boleh log masuk untuk
@@ -23,7 +32,9 @@ export default async function GuruKelas() {
     .filter((o) => o.dibenarkan)
     .map((o) => ({ id: o.id, nama: o.nama, emel: o.email }));
 
-  const kelas = semuaKelas();
+  // PPKI disertakan (permintaan pengguna I) — kelas Pendidikan Khas juga
+  // perlu guru kelas yang dilantik, bukan sekadar kelas perdana.
+  const kelas = [...semuaKelas(), ...semuaKelasPPKI()];
   const petaan = Object.fromEntries(tugasan.map((t) => [t.label, t]));
 
   return (
@@ -53,8 +64,27 @@ export default async function GuruKelas() {
           dahulu.
         </p>
       ) : (
-        <PanelGuruKelas kelas={kelas} awal={petaan} orang={boleh} />
+        <>
+          <PanelGuruKelas kelas={kelas} awal={petaan} orang={boleh} />
+
+          <PanelTugasanLain
+            jenis="guru_rmt" tajuk="Guru RMT" skopTunggal
+            ringkas="Guru yang dilantik menguruskan Rancangan Makanan Tambahan — muat naik senarai murid dan rekod kehadiran RMT."
+            placeholderSkop="" awal={guruRmt} orang={boleh}
+          />
+          <PanelTugasanLain
+            jenis="guru_disiplin" tajuk="Guru Disiplin" skopTunggal
+            ringkas="Satu-satunya (selain pentadbir & admin) yang boleh membaca rekod disiplin murid lain, bukan sekadar merekod sendiri."
+            placeholderSkop="" awal={guruDisiplin} orang={boleh}
+          />
+          <PanelTugasanLain
+            jenis="pengurus_pasukan" tajuk="Pengurus Pasukan"
+            ringkas="Urus Surat Kebenaran Waris & Perakuan Kesihatan bagi aktiviti/pertandingan pasukan masing-masing."
+            placeholderSkop="Nama pasukan (contoh: Bola Sepak)" awal={pengurusPasukan} orang={boleh}
+          />
+        </>
       )}
     </main>
   );
 }
+

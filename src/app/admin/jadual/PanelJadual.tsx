@@ -29,7 +29,10 @@ import {
 const PILIHAN = SUBJEK;
 
 const NAMA_SUBJEK = new Map(PILIHAN.map((p) => [p.kod, p.nama]));
-const TAHUN = [1, 2, 3, 4, 5, 6];
+// 0 = Pendidikan Khas (PPKI) — sentinel dari `tahunKelas()`, bukan tahun
+// sebenar. Diletak terakhir supaya susunan Tahun 1–6 kekal seperti biasa.
+const TAHUN = [1, 2, 3, 4, 5, 6, 0];
+const LABEL_TAHUN = (t: number) => (t === 0 ? "PPKI" : `Tahun ${t}`);
 
 export default function PanelJadual({
   awal, kelas, bolehWaktu,
@@ -198,7 +201,7 @@ export default function PanelJadual({
           <b>{set ? set.nama : "(tiada set waktu)"}</b>
           <span className="mt-0.5 block text-xs text-slate-500">
             Ditentukan oleh tahun kelas ini
-            {tahunKelas(pilih) !== null && ` (Tahun ${tahunKelas(pilih)})`}.
+            {tahunKelas(pilih) !== null && ` (${LABEL_TAHUN(tahunKelas(pilih) as number)})`}.
           </span>
         </p>
 
@@ -404,7 +407,7 @@ export default function PanelJadual({
               <ul className="mt-2 grid gap-2 sm:grid-cols-2">
                 {TAHUN.map((t) => (
                   <li key={t} className="flex items-center gap-2">
-                    <span className="w-20 shrink-0 text-sm text-slate-600">Tahun {t}</span>
+                    <span className="w-20 shrink-0 text-sm text-slate-600">{LABEL_TAHUN(t)}</span>
                     <select
                       value={jadual.tahunSet?.[t] ?? ""}
                       onChange={(e) => ubahTahunSet(t, e.target.value)}

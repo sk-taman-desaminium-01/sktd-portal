@@ -24,10 +24,20 @@
  * dan menyukarkan keputusan mudah. Kerja teknikal dilakukan oleh admin.
  * Setiap peranan baharu mesti membawa perbezaan kuasa yang NYATA, bukan
  * sekadar nama jawatan yang berbeza.
+ *
+ * `kerani` dan `unit_ict` ditambah (18 Sep 2026) atas permintaan pengguna,
+ * dan KEDUA-DUANYA lulus ujian di atas:
+ *   · `kerani` — satu-satunya peranan yang memproses peti masuk Urusan
+ *     Pejabat (nombor rujukan surat rasmi) sebelum ia diberikan juga
+ *     kepada pentadbir/admin (permintaan B.4 — bukan menggantikan kerani).
+ *   · `unit_ict` — urus tempahan bilik khas, kuasa yang sebelum ini terkunci
+ *     kepada pentadbir ke atas sahaja.
  */
 export const PERANAN = [
   "admin",
   "pentadbir",
+  "kerani",
+  "unit_ict",
   "kakitangan",
   "guru",
 ] as const;
@@ -41,6 +51,8 @@ export const NAMA_PERANAN: Record<PerananBerkesan, string> = {
   admin_mutlak: "Admin Mutlak",
   admin: "Admin",
   pentadbir: "Pentadbir",
+  kerani: "Kerani",
+  unit_ict: "Unit ICT",
   kakitangan: "Kakitangan",
   guru: "Guru",
 };
@@ -52,6 +64,8 @@ export const HURAIAN_PERANAN: Record<PerananBerkesan, string> = {
     "Urus kandungan laman, urus senarai akses, dan semua fungsi pentadbir.",
   pentadbir:
     "Urus kandungan laman web dan lihat laporan. Tidak boleh ubah senarai akses.",
+  kerani: "Proses surat rasmi di Urusan Pejabat — beri nombor rujukan kami.",
+  unit_ict: "Urus tempahan bilik khas dan permintaan peralatan ICT.",
   kakitangan: "Guna aplikasi kakitangan. Tiada akses pentadbiran.",
   guru: "Guna aplikasi guru. Tiada akses pentadbiran.",
 };
@@ -87,20 +101,37 @@ export type Keupayaan =
   // Menempah bilik ialah kerja harian setiap guru, bukan kuasa pentadbiran.
   // Yang dipagar ialah MENGURUS senarai bilik dan membatalkan tempahan
   // orang lain.
-  | "urus_bilik";
+  | "urus_bilik"
+  // Beri nombor rujukan kami & proses surat rasmi Urusan Pejabat.
+  // Kerani, DAN pentadbir/admin (permintaan pengguna B.4: "apa yang diberi
+  // kuasa kepada kerani, ia juga diberi kuasa kepada pentadbir dan admin" —
+  // supaya urusan pejabat tidak tersekat bila kerani tiada).
+  | "urus_pejabat"
+  // Rekod & baca salah laku murid. BUKAN sama dengan `lihat_data_murid`:
+  // guru biasa boleh MEREKOD (semua guru), tetapi hanya guru disiplin,
+  // pentadbir dan admin boleh MEMBACA rekod orang lain (permintaan F.3).
+  | "urus_disiplin";
 
 const KEUPAYAAN: Record<PerananBerkesan, Keupayaan[]> = {
   admin_mutlak: ["urus_akses", "terbit_kandungan", "lihat_data_murid",
                  "lihat_diagnostik", "urus_portal", "urus_admin",
-                 "urus_guru_kelas", "urus_pengurusan", "urus_bilik"],
+                 "urus_guru_kelas", "urus_pengurusan", "urus_bilik",
+                 "urus_pejabat", "urus_disiplin"],
   // Admin TIDAK dapat `urus_admin` — lihat nota "Jawatankuasa admin" di bawah.
   admin:        ["urus_akses", "terbit_kandungan", "lihat_data_murid",
-                 "lihat_diagnostik", "urus_guru_kelas", "urus_pengurusan", "urus_bilik"],
+                 "lihat_diagnostik", "urus_guru_kelas", "urus_pengurusan", "urus_bilik",
+                 "urus_pejabat", "urus_disiplin"],
   // Pentadbir (GB, PK, guru kanan) BOLEH urus akses — keputusan pengguna
   // 16 Sep 2026. Menentukan siapa dapat masuk ialah keputusan pentadbiran
   // sekolah, bukan keputusan teknikal, jadi ia milik mereka.
   pentadbir:    ["urus_akses", "terbit_kandungan", "lihat_data_murid",
-                 "urus_guru_kelas", "urus_pengurusan", "urus_bilik"],
+                 "urus_guru_kelas", "urus_pengurusan", "urus_bilik",
+                 "urus_pejabat", "urus_disiplin"],
+  // Kerani: HANYA `urus_pejabat`. Tiada akses data murid, tiada urus akses.
+  kerani:       ["urus_pejabat"],
+  // Unit ICT: urus bilik khas & peralatan — kuasa yang sebelum ini terkunci
+  // kepada pentadbir ke atas sahaja.
+  unit_ict:     ["urus_bilik"],
   kakitangan:   [],
   guru:         [],
 };
