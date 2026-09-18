@@ -26,7 +26,7 @@ const SESI = 2026;
 export type JenisTugasan = "guru_rmt" | "guru_disiplin" | "pengurus_pasukan";
 
 /** Nama skop lalai bagi tugasan yang tidak terikat kelas/pasukan. */
-export const SKOP_SEKOLAH = "SEKOLAH";
+const SKOP_SEKOLAH = "SEKOLAH";
 
 export interface BarisTugasan {
   guru_id: string;

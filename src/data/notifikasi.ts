@@ -19,6 +19,8 @@ export type JenisNotifikasi =
   | "inventori"    // permohonan barang ICT
   | "akses"        // akaun baharu menunggu kelulusan
   | "pbd"          // hal ePBD
+  | "surat"        // surat rasmi baharu untuk Urusan Pejabat
+  | "borang"       // borang ibu bapa dihantar (kebenaran gambar / waris)
   | "umum";
 
 export interface Notifikasi {
@@ -41,6 +43,8 @@ export const IKON_JENIS: Record<JenisNotifikasi, string> = {
   inventori: "📦",
   akses: "🔑",
   pbd: "📘",
+  surat: "✉️",
+  borang: "📝",
   umum: "🔔",
 };
 
@@ -49,6 +53,8 @@ export const NAMA_JENIS: Record<JenisNotifikasi, string> = {
   inventori: "Inventori ICT",
   akses: "Akses portal",
   pbd: "ePBD",
+  surat: "Surat rasmi",
+  borang: "Borang ibu bapa",
   umum: "Umum",
 };
 

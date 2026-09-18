@@ -72,6 +72,26 @@ export async function senaraiGuruKelas(): Promise<TugasanKelas[]> {
 }
 
 /**
+ * Emel guru kelas bagi SATU label kelas (contoh "4 NILAM" atau "PPKI
+ * SUNFLOWER") — TANPA sekatan `terbit_kandungan`.
+ *
+ * KENAPA BERASINGAN daripada `senaraiGuruKelas()`: fungsi ini dipanggil
+ * dari dalam tindakan sistem (contoh: rekod Kebenaran Gambar oleh mana-mana
+ * guru) untuk memberitahu guru kelas — ia bukan skrin pentadbiran, jadi
+ * pemanggil tidak semestinya punya keupayaan `terbit_kandungan`.
+ */
+export async function emelGuruKelas(label: string): Promise<string[]> {
+  const pecah = pecahLabel(label);
+  if (!pecah) return [];
+  const db = klienTulis();
+  const baris = (await db.minta(
+    `pbd_guru_kelas?select=pbd_guru(email)&tahun_sesi=eq.${SESI}&peranan=eq.guru_kelas` +
+      `&tahun=eq.${pecah.tahun}&kelas=eq.${encodeURIComponent(pecah.kelas)}`,
+  )) as { pbd_guru: { email: string | null } | null }[];
+  return baris.map((b) => b.pbd_guru?.email ?? "").filter((e) => e !== "");
+}
+
+/**
  * Kelas yang pengguna semasa boleh SUNTING jadualnya.
  *
  * `null` bermakna SEMUA kelas — pentadbir dan admin. Senarai bermakna guru
