@@ -247,9 +247,16 @@ export const SEKOLAH = {
     // ikon guna #0077B3 (versi lebih gelap) supaya teks putih cukup kontras.
     {
       id: "bkgk", nama: "BKGK i-Connect", ikon: "BKGK", warna: "#0077b3",
-      fungsi: "Kebajikan Guru & Kakitangan — yuran, jualan, kebajikan, aduan dan pautan dalaman.",
-      domain: "bkgk.sktd.edu.my", domainCadangan: true, status: "reka",
-      catatan: "Mockup Figma siap: 3 skrin, 8 fungsi · diserahkan Aiman kepada kita",
+      fungsi: "Kebajikan Guru & Kakitangan — yuran, jualan, kebajikan dan pautan dalaman.",
+      // Skop dikemaskan (18 Sep 2026, permintaan pengguna D): laman aduan
+      // guru/staf dan senarai guru kelas DIBUANG dari rancangan — Disiplin &
+      // Sahsiah kini merekod aduan/salah laku, dan "Guru Kelas" sudah pun
+      // jadi kad sendiri di Pengurusan & Pentadbiran. Diteruskan DALAM
+      // portal ini sahaja (bukan subdomain berasingan) supaya satu log
+      // masuk Clerk sedia ada terus terpakai.
+      domain: "portal.sktd.edu.my/bkgk", status: "reka",
+      catatan: "Mockup Figma asal ada 3 skrin, 8 fungsi; direka semula lebih ringkas "
+        + "sebelum dibina — diteruskan dalam portal, bukan subdomain berasingan.",
     },
     {
       id: "payibg", nama: "PayIBG", ikon: "RM", warna: "#5c2f6b",

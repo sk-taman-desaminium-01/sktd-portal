@@ -46,7 +46,8 @@ Satu Clerk instance pada domain akar → log masuk sekali, guna semua subdomain.
 4. **`CLERK_SECRET_KEY` dan `CLOUDFLARE_DEPLOY_HOOK` ialah RAHSIA.** Hanya dalam
    env Vercel dan `.env.local` (diabaikan git). Jangan sekali-kali dalam kod.
 5. Istilah **"pentadbir"**, bukan "PKP". Peranan: `guru` | `kakitangan` |
-   `pentadbir` | `admin`.
+   `kerani` | `unit_ict` | `pentadbir` | `admin`. Lihat `src/lib/peranan.ts`
+   — setiap peranan baharu MESTI membawa kuasa (`Keupayaan`) yang nyata.
 
 ## Vercel (akaun SEKOLAH)
 

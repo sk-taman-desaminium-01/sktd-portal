@@ -20,10 +20,14 @@
  * meletakkan HEM sebelum Kokurikulum; urutan pengguna diutamakan kerana
  * ia boleh disunting oleh admin mutlak (lihat `src/lib/kad-portal.ts`).
  *
- * DUA BAHAGIAN TAMBAHAN yang BUKAN unit dalam Buku Pengurusan, dan sengaja
- * diasingkan supaya tidak bercampur dengan unit rasmi:
- *   · `kakitangan` — urusan pengkeranian / pejabat (AKP)
- *   · `badan`      — BKGK dan PIBG: badan berasingan, bukan unit sekolah
+ * SATU BAHAGIAN TAMBAHAN yang BUKAN unit dalam Buku Pengurusan:
+ *   · `badan` — BKGK dan PIBG: badan berasingan, bukan unit sekolah
+ *
+ * `kakitangan` ("Kakitangan & Pengkeranian") DIBUANG (18 Sep 2026, permintaan
+ * pengguna B.2): kad "Urusan Pejabat" (dahulu "Urusan Pengkeranian")
+ * dipindah ke `pentadbiran`, terus selepas "Urus Laman" — urusan pejabat
+ * ialah sebahagian pentadbiran sekolah, bukan bahagian berasingan yang
+ * hanya membawa satu kad.
  */
 
 // Import relatif dengan sambungan .ts supaya fail ini boleh dijalankan terus
@@ -36,7 +40,6 @@ export const KOD_BAHAGIAN = [
   "kurikulum",
   "kokurikulum",
   "hem",
-  "kakitangan",
   "badan",
 ] as const;
 
@@ -75,12 +78,6 @@ export const BAHAGIAN: Bahagian[] = [
     nama: "Hal Ehwal Murid",
     ringkas: "Kehadiran, disiplin, kebajikan, bantuan dan kesihatan murid.",
     muka: "89–106",
-  },
-  {
-    kod: "kakitangan",
-    nama: "Kakitangan & Pengkeranian",
-    ringkas: "Urusan pejabat: fail, perkhidmatan, cuti dan rekod kakitangan.",
-    muka: null,
   },
   {
     kod: "badan",
@@ -131,6 +128,29 @@ export const KAD_TAMBAHAN: KadBaharu[] = [
   // dalam Urus Laman. Dua kad ke satu tempat bermakna guru membaca
   // kedua-duanya sebelum sedar ia benda yang sama.
   {
+    // Dahulu "Urusan Pengkeranian" dalam bahagian `kakitangan` berasingan.
+    // Dinamakan semula & dipindah (18 Sep 2026, permintaan pengguna B.1/B.2):
+    // "Urusan Pejabat" lebih profesional, dan ia kini kad KEDUA dalam
+    // Pengurusan & Pentadbiran — terus selepas Urus Laman.
+    id: "pejabat", bahagian: "pentadbiran",
+    nama: "Urusan Pejabat", ikon: "PEJ", warna: "#5a5a5a",
+    fungsi: "Peti masuk surat rasmi — beri nombor rujukan kami, dan rekod kakitangan.",
+    domain: "portal.sktd.edu.my/pejabat", pautan: "/pejabat", status: "bina",
+    // Kad ini HANYA untuk kerani, pentadbir & admin (permintaan B.4: kuasa
+    // kerani turut diberi kepada pentadbir & admin). Guru biasa menghantar
+    // surat rasmi melalui kad "Borang Sekolah" — mereka tidak perlu tahu
+    // skrin pemprosesan ini wujud.
+    perlu: "urus_pejabat",
+    akses: "Kerani, pentadbir & admin",
+    catatan: "Setiap surat rasmi yang dihantar dari Borang Sekolah tiba di sini "
+      + "untuk diberi nombor rujukan kami.",
+    rancangan: [
+      "Rekod fail perkhidmatan kakitangan",
+      "Permohonan dan baki cuti",
+      "Senarai semak dokumen untuk guru baharu lapor diri",
+    ],
+  },
+  {
     id: "takwim", bahagian: "pentadbiran",
     nama: "Takwim", ikon: "TKW", warna: "#123561",
     fungsi: "Takwim sekolah sepanjang tahun — minggu, tarikh, hari dan program.",
@@ -158,21 +178,42 @@ export const KAD_TAMBAHAN: KadBaharu[] = [
     // INVENTORI ICT ADA DI DALAM KAD INI, bukan kad sendiri. Keputusan
     // pengguna: menempah bilik dan meminta peralatan untuk bilik itu ialah
     // satu kerja, dan dua kad untuk satu kerja "semak dan serabut je".
+    // Unit ICT (peranan baharu, 18 Sep 2026 — permintaan M) turut menguruskan
+    // tempahan bilik khas, sama seperti pentadbir/admin.
     catatan: "Termasuk permohonan peralatan ICT untuk bilik yang ditempah. "
-      + "Siapa tempah dahulu, dia dapat — pentadbir boleh membatalkan bila perlu.",
+      + "Siapa tempah dahulu, dia dapat — pentadbir & Unit ICT boleh membatalkan bila perlu.",
   },
   {
     id: "borang", bahagian: "pentadbiran",
     nama: "Borang Sekolah", ikon: "BRG", warna: "#4a4a7a",
     fungsi: "Borang rasmi dalam talian dengan tandatangan digital.",
-    domain: "portal.sktd.edu.my/borang", domainCadangan: true, status: "reka",
-    catatan: "Header, margin dan susun atur mesti sebijik sama dengan borang kertas asal.",
+    domain: "portal.sktd.edu.my/borang", pautan: "/borang", status: "bina",
+    catatan: "Surat rasmi ringkas (Alamat/Tarikh/Tajuk/Isi) dengan nama & jawatan Guru "
+      + "Besar diisi automatik — boleh ditukar kepada wakil pentadbir semasa. "
+      + "Borang Kebenaran Gambar & Surat Akuan Kebenaran/Kesihatan Penyertaan turut di sini.",
     rancangan: [
-      "Borang rasmi sekolah dalam talian — header dan margin sebijik sama dengan borang kertas asal",
-      "Dua cara tandatangan: tulis terus pada papan digital, ATAU muat naik gambar tandatangan",
-      "Tandatangan yang dimuat naik dipotong automatik dan latarnya dibuang",
-      "Cetak semula PDF bila-bila masa",
+      "Surat Akuan Kebenaran & Kesihatan Penyertaan Aktiviti/Pertandingan — pengisian pukal ibu bapa",
     ],
+  },
+  {
+    // Kad hab BAHARU (permintaan pengguna K, 18 Sep 2026): guru kelas
+    // sebelum ini tiada satu tempat untuk kerja pukal yang melibatkan
+    // kelasnya. Tulisan sengaja PENDEK — arahan panjang menyerabutkan.
+    id: "guru-kelas-portal", bahagian: "pentadbiran",
+    nama: "Guru Kelas", ikon: "GK", warna: "#1f6f8a",
+    fungsi: "Satu tempat untuk semua kerja kelas anda — pukal, bukan satu-satu.",
+    domain: "portal.sktd.edu.my/guru-kelas", pautan: "/guru-kelas", status: "bina",
+    akses: "Guru kelas, pentadbir & admin",
+  },
+  {
+    // Kad BAHARU (permintaan pengguna G, 18 Sep 2026). Laporan & amaran PK
+    // HEM SENGAJA TIDAK dibina — ia sudah ada di DELIMa (kerja berulang).
+    id: "kawalan-kelas", bahagian: "pentadbiran",
+    nama: "Rekod Kawalan Kelas & Kehadiran", ikon: "RKK", warna: "#3a6f4a",
+    fungsi: "Guru yang masuk kelas, subjek, relief, dan carta kehadiran harian.",
+    domain: "portal.sktd.edu.my/kawalan-kelas", pautan: "/kawalan-kelas", status: "bina",
+    catatan: "Direkod setiap kali guru masuk kelas — nama guru, subjek, relief (jika "
+      + "ada), masalah disiplin dalam kelas, dan kehadiran murid hari itu.",
   },
 
   /* --- Kurikulum --- */
@@ -221,48 +262,32 @@ export const KAD_TAMBAHAN: KadBaharu[] = [
 
   /* --- Hal Ehwal Murid --- */
   {
-    id: "kehadiran", bahagian: "hem",
-    nama: "Kehadiran & RMT", ikon: "HDR", warna: "#8a4b12",
-    fungsi: "Kehadiran harian murid dan senarai Rancangan Makanan Tambahan.",
-    domain: "portal.sktd.edu.my/kehadiran", domainCadangan: true, status: "reka",
-    rancangan: [
-      "Kehadiran harian mengikut kelas",
-      "Senarai murid RMT dan kutipan harian",
-      "Amaran murid kerap tidak hadir kepada guru kelas",
-      "Laporan bulanan untuk HEM",
-    ],
+    // Dahulu "Kehadiran & RMT" — dipecah (18 Sep 2026, permintaan pengguna
+    // E): kehadiran harian umum kini di kad "Rekod Kawalan Kelas &
+    // Kehadiran" (Pengurusan & Pentadbiran); kad ini fokus RMT sahaja.
+    id: "rmt", bahagian: "hem",
+    nama: "RMT", ikon: "RMT", warna: "#8a4b12",
+    fungsi: "Senarai murid Rancangan Makanan Tambahan dan rekod kehadiran RMT.",
+    domain: "portal.sktd.edu.my/rmt", pautan: "/rmt", status: "bina",
+    akses: "Guru RMT, guru bertugas mingguan, pentadbir & admin",
+    catatan: "Guru RMT muat naik senarai murid ikut kelas & tahun. Guru bertugas "
+      + "mingguan merekod hadir/tidak hadir — tiada kad berasingan untuk itu.",
   },
   {
     id: "disiplin", bahagian: "hem",
     nama: "Disiplin & Sahsiah", ikon: "DSP", warna: "#9a3b3b",
     fungsi: "Rekod salah laku, tindakan dan pemantauan sahsiah murid.",
-    domain: "portal.sktd.edu.my/disiplin", domainCadangan: true, status: "akan",
-    catatan: "Buku Pengurusan m.89 — penyelaras disiplin sudah dilantik.",
-    // Rekod salah laku murid. Bukan untuk semua kakitangan.
-    perlu: "lihat_data_murid",
-    rancangan: [
-      "Rekod salah laku dengan tarikh, saksi dan tindakan",
-      "Akses terhad — bukan semua guru boleh membaca semua rekod",
-      "Pemantauan kes berulang",
-      "Laporan untuk Lembaga Disiplin",
-    ],
+    domain: "portal.sktd.edu.my/disiplin", pautan: "/disiplin", status: "bina",
+    catatan: "Semua guru boleh merekod. Hanya guru disiplin, pentadbir & admin "
+      + "boleh membaca rekod murid lain (permintaan F.3).",
+    // SENGAJA TIADA `perlu` di sini — semua guru mesti nampak kad ini untuk
+    // merekod salah laku (permintaan F.3). Sekatan BACA rekod orang lain
+    // dikuatkuasakan DALAM halaman (urus_disiplin ATAU tugasan guru_disiplin),
+    // bukan pada penglihatan kad.
   },
 
-  /* --- Kakitangan & Pengkeranian --- */
-  {
-    id: "pengkeranian", bahagian: "kakitangan",
-    nama: "Urusan Pengkeranian", ikon: "AKP", warna: "#5a5a5a",
-    fungsi: "Fail perkhidmatan, cuti, perakuan dan rekod kakitangan.",
-    domain: "portal.sktd.edu.my/pengkeranian", domainCadangan: true, status: "akan",
-    akses: "Pembantu Tadbir & pentadbir",
-    rancangan: [
-      "Rekod fail perkhidmatan kakitangan",
-      "Permohonan dan baki cuti",
-      "Surat perakuan dan pengesahan jawatan",
-      "Senarai semak dokumen untuk guru baharu lapor diri",
-    ],
-  },
 ];
+
 
 /**
  * Pindaan kepada kad sedia ada dalam `sekolah.ts`.

@@ -153,6 +153,9 @@ export const TAHUN_SET_LALAI: Record<number, string> = {
   4: "pagi-r4",
   5: "pagi-r5",
   6: "pagi-r6",
+  // 0 = Pendidikan Khas (PPKI). Tetapan permulaan sahaja — sahkan dengan
+  // penyelaras PPKI, sama seperti tahun lain.
+  0: "petang",
 };
 
 export const JADUAL_KOSONG: Jadual = {
@@ -161,8 +164,12 @@ export const JADUAL_KOSONG: Jadual = {
   kelas: {},
 };
 
-/** Tahun daripada label kelas "4 NILAM" → 4. Null jika bentuknya tidak dikenali. */
+/** Tahun daripada label kelas "4 NILAM" → 4. Null jika bentuknya tidak dikenali.
+ *  Kelas Pendidikan Khas ("PPKI SUNFLOWER") memulangkan 0 — bukan `null` —
+ *  supaya ia tetap mendapat satu set waktu (lihat `TAHUN_SET_LALAI[0]`)
+ *  dan bukan digugurkan senyap daripada Jadual Waktu. */
 export function tahunKelas(label: string): number | null {
+  if (/^PPKI\s+/i.test(label.trim())) return 0;
   const m = /^([1-6])\s+/.exec(label.trim());
   return m ? Number(m[1]) : null;
 }

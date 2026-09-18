@@ -33,7 +33,18 @@ export interface TugasanKelas {
 
 export type HasilTugasan = { ok: boolean; mesej: string };
 
+/** Label paparan bagi (tahun, kelas). PPKI (tahun 0) sudah membawa nama
+ *  penuhnya dalam `kelas`, jadi tiada awalan "0 " yang tidak bermakna. */
+function labelKelas(tahun: number, kelas: string): string {
+  return tahun === 0 ? kelas : `${tahun} ${kelas}`;
+}
+
 function pecahLabel(label: string): { tahun: number; kelas: string } | null {
+  // PPKI: label "PPKI SUNFLOWER" → tahun 0 (sentinel bukan-kelas-perdana),
+  // kelas "PPKI SUNFLOWER" penuh. Lihat `semuaKelasPPKI()` dalam data/kelas.ts.
+  if (/^PPKI\s+/i.test(label.trim())) {
+    return { tahun: 0, kelas: label.trim().toUpperCase() };
+  }
   const m = /^([1-6])\s+(.+)$/.exec(label.trim());
   if (!m) return null;
   return { tahun: Number(m[1]), kelas: m[2].trim().toUpperCase() };
@@ -56,7 +67,7 @@ export async function senaraiGuruKelas(): Promise<TugasanKelas[]> {
     emel: b.pbd_guru?.email ?? null,
     tahun: b.tahun,
     kelas: b.kelas,
-    label: `${b.tahun} ${b.kelas}`,
+    label: labelKelas(b.tahun, b.kelas),
   }));
 }
 
@@ -81,7 +92,7 @@ export async function kelasBolehSunting(): Promise<string[] | null> {
     `pbd_guru_kelas?select=tahun,kelas&tahun_sesi=eq.${SESI}` +
       `&peranan=eq.guru_kelas&guru_id=eq.${saya.id}`,
   )) as { tahun: number; kelas: string }[];
-  return baris.map((b) => `${b.tahun} ${b.kelas}`);
+  return baris.map((b) => labelKelas(b.tahun, b.kelas));
 }
 
 export async function tetapGuruKelas(guruId: string, label: string): Promise<HasilTugasan> {
