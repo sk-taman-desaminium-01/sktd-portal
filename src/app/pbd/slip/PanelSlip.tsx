@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import MuatTurun, { barisCsv, turunkanTeks } from "@/components/MuatTurun";
+import { mulaCetak } from "@/components/cetak-mudah-alih";
 import { simpanUlasanMurid, type BarisSlip } from "@/lib/tindakan-pbd";
 import { namaSubjek } from "@/data/subjek";
 import { TAHAP, huraianTahap } from "@/data/tahap";
@@ -52,7 +53,7 @@ export default function PanelSlip({
     {
       label: "PDF (cetak)",
       nota: "Satu slip satu halaman, sedia dipotong dan diedar.",
-      jalan: () => window.print(),
+      jalan: () => mulaCetak("slip-cetak", `Slip PBD ${label}`),
     },
     {
       label: "CSV",

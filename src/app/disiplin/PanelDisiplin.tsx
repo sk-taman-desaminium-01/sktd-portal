@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { flushSync } from "react-dom";
+import { mulaCetak } from "@/components/cetak-mudah-alih";
 import {
   hantarDisiplin, tandaLaporanLembaga, type BarisDisiplin,
 } from "@/lib/disiplin";
@@ -112,7 +113,7 @@ function SenaraiPenuh({ senarai, berulang }: { senarai: BarisDisiplin[]; berulan
     // Pastikan laporan sudah dirender dan kekalkan gerak isyarat klik untuk
     // Safari/telefon membuka dialog cetak atau Simpan sebagai PDF.
     flushSync(() => setCetak(true));
-    window.print();
+    mulaCetak("disiplin-cetak", "Laporan Lembaga Disiplin");
   }
 
   const untukLembaga = useMemo(() => data.filter((d) => d.laporan_lembaga), [data]);
@@ -222,7 +223,7 @@ function CetakLembaga({ senarai }: { senarai: BarisDisiplin[] }) {
 
 function Medan({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <label className="block text-sm">
+    <label className="block min-w-0 text-sm">
       <span className="mb-1 block font-semibold text-navy-800">{label}</span>
       {children}
     </label>

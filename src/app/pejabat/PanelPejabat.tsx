@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { flushSync } from "react-dom";
+import { mulaCetak } from "@/components/cetak-mudah-alih";
 import { tetapkanRujukan, type BarisSurat, type DataSuratRasmi } from "@/lib/surat";
 import CetakSurat, { type KepalaSurat } from "@/components/CetakSurat";
 
@@ -18,7 +19,7 @@ export default function PanelPejabat({ senarai, kepala }: { senarai: BarisSurat[
   function bukaCetak(baris: BarisSurat) {
     // Safari hanya membenarkan dialog cetak yang datang terus daripada klik.
     flushSync(() => setCetak(baris));
-    window.print();
+    mulaCetak("surat-cetak", baris.tajuk);
   }
 
   async function simpan(id: string) {

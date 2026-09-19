@@ -39,6 +39,7 @@ export default async function GuruKelasHub() {
   const kelasDipilih = nampakSemua
     ? isiKelas.map((k) => `${k.tahun} ${k.kelas}`)
     : kelasSendiri ?? [];
+  const bolehRmt = guruRmt || kelasSendiri === null || (kelasSendiri?.length ?? 0) > 0;
 
   const bilMurid = (label: string) => {
     const cari = isiKelas.find((k) => `${k.tahun} ${k.kelas}` === label);
@@ -73,7 +74,7 @@ export default async function GuruKelasHub() {
         <Kad href="/kawalan-kelas" nama="Kawalan Kelas & Kehadiran" nota="Rekod harian." />
         <Kad href="/borang" nama="Borang Sekolah" nota="Kebenaran Gambar & surat rasmi." />
         <Kad href="/disiplin" nama="Disiplin & Sahsiah" nota="Rekod salah laku." />
-        {guruRmt && <Kad href="/rmt" nama="RMT" nota="Anda Guru RMT — urus senarai & kehadiran." />}
+        {bolehRmt && <Kad href="/rmt" nama="RMT" nota={guruRmt ? "Anda Guru RMT — urus semua senarai & kehadiran." : "Muat naik murid RMT untuk kelas sendiri."} />}
         {guruDisiplin && <Kad href="/disiplin" nama="Disiplin (Guru Disiplin)" nota="Anda boleh baca semua rekod." />}
         {pengurusPasukan && <Kad href="/borang" nama="Pengurus Pasukan" nota="Surat Akuan Waris & Kesihatan." />}
       </div>

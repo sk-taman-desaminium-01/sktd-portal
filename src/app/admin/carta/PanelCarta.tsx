@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import MuatTurun, { barisCsv, turunkanTeks } from "@/components/MuatTurun";
+import { mulaCetak } from "@/components/cetak-mudah-alih";
 import { suntingNod, padamNod, ambilCarta } from "@/lib/tindakan-carta";
 import type { NodCarta } from "@/data/carta";
 
@@ -88,7 +89,7 @@ export default function PanelCarta({ punca, tahun, namaSekolah, semuaDisahkan }:
     {
       label: "PDF (cetak)",
       nota: "Buka dialog cetak — pilih “Simpan sebagai PDF”.",
-      jalan: () => window.print(),
+      jalan: () => mulaCetak("carta-cetak", `Carta Organisasi ${tahun}`),
     },
     {
       label: "CSV",

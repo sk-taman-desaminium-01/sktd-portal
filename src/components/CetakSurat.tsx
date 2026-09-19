@@ -3,6 +3,13 @@ import type { BarisSurat, DataSuratRasmi } from "@/lib/surat";
 
 export type KepalaSurat = { nama: string; kod: string; alamat: string; telefon: string; faks: string; emel: string };
 
+function isiSatuMukaSurat(isi: string) {
+  const bersih = isi.trim();
+  if (bersih.length <= 1_500) return { isi: bersih, dipendekkan: false };
+  const potong = bersih.slice(0, 1_500);
+  return { isi: `${potong.slice(0, potong.lastIndexOf(" ") || potong.length)}…`, dipendekkan: true };
+}
+
 /**
  * Susun atur cetak surat rasmi — dikongsi antara `/borang` (pemohon
  * mencetak salinannya) dan `/pejabat` (kerani mencetak selepas rujukan
@@ -16,6 +23,7 @@ export default function CetakSurat({
   kepala: KepalaSurat;
   sayaNama?: string;
 }) {
+  const isi = isiSatuMukaSurat(data.isi);
   return (
     <div id="surat-cetak" className="hidden print:block">
       <style>{`
@@ -23,7 +31,8 @@ export default function CetakSurat({
           body * { visibility: hidden; }
           #surat-cetak, #surat-cetak * { visibility: visible; }
           #surat-cetak { position: absolute; inset: 0; width: 100%; }
-          @page { size: A4 portrait; margin: 20mm; }
+          @page { size: A4 portrait; margin: 14mm 16mm; }
+          #surat-cetak { font-size: 10pt; line-height: 1.35; }
         }
       `}</style>
       <header className="flex items-center gap-4 border-b-2 border-black pb-3 text-[10pt]">
@@ -35,28 +44,29 @@ export default function CetakSurat({
         <p className="whitespace-pre-line">{kepala.alamat}</p><p>Tel: {kepala.telefon} · {kepala.emel}</p></div>
       </header>
 
-      <div className="mt-4 flex justify-between text-[11pt]">
+      <div className="mt-3 flex justify-between text-[10pt]">
         <span>{surat.rujukan_kami ? `Rujukan Kami: ${surat.rujukan_kami}` : ""}</span>
         <span>{new Date(data.tarikh).toLocaleDateString("ms-MY", { day: "numeric", month: "long", year: "numeric" })}</span>
       </div>
 
-      <p className="mt-4 whitespace-pre-line text-[11pt]">{data.alamat}</p>
+      <p className="mt-3 whitespace-pre-line text-[10pt]">{data.alamat}</p>
 
-      <p className="mt-4 text-[11pt]">Tuan/Puan,</p>
-      <p className="mt-4 text-[11pt]"><b>{surat.tajuk.toUpperCase()}</b></p>
+      <p className="mt-3 text-[10pt]">Tuan/Puan,</p>
+      <p className="mt-3 text-[10pt]"><b>{surat.tajuk.toUpperCase()}</b></p>
 
-      <p className="mt-3 whitespace-pre-line text-justify text-[11pt] leading-relaxed">{data.isi}</p>
+      <p className="mt-2 whitespace-pre-line text-justify text-[10pt] leading-[1.4]">{isi.isi}</p>
+      {isi.dipendekkan && <p className="mt-1 text-[8pt] italic">Isi asal melebihi had surat satu halaman dan telah dipendekkan untuk cetakan ini.</p>}
 
-      <p className="mt-6 text-[11pt]">Sekian, terima kasih.</p>
-      <p className="text-[11pt]">&quot;MALAYSIA MADANI&quot;</p>
-      <p className="text-[11pt]">&quot;BERKHIDMAT UNTUK NEGARA&quot;</p>
+      <p className="mt-4 text-[10pt]">Sekian, terima kasih.</p>
+      <p className="text-[10pt]">&quot;MALAYSIA MADANI&quot;</p>
+      <p className="text-[10pt]">&quot;BERKHIDMAT UNTUK NEGARA&quot;</p>
 
-      <div className="mt-10 text-[11pt]">
+      <div className="mt-6 text-[10pt]">
         <p>Saya yang menjalankan amanah,</p>
         {surat.tandatangan_url ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={surat.tandatangan_url} alt="" className="mt-2 h-16 object-contain" />
-        ) : <div className="mt-10" />}
+          <img src={surat.tandatangan_url} alt="" className="mt-1 h-12 object-contain" />
+        ) : <div className="mt-7" />}
         <p className="mt-1 font-bold">({data.wakilGbNama})</p>
         <p>{data.wakilGbJawatan}</p>
         <p>{kepala.nama}</p>
