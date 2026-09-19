@@ -45,6 +45,20 @@ async function bolehBaca(): Promise<boolean> {
   return (await bolehBuat("urus_disiplin")) || (await sayaBertugas("guru_disiplin"));
 }
 
+/**
+ * Skema awal yang disalin ke Supabase pernah mencipta `pbd_disiplin` tanpa
+ * `murid_id`, sedangkan modul ini menggunakannya untuk mengira kes berulang
+ * dengan tepat. PostgREST membalas PGRST204 (atau 42703 pada versi tertentu),
+ * bukannya 404; oleh itu ia perlu dikesan berasingan daripada jadual tiada.
+ */
+function skemaDisiplinBelumLengkap(e: unknown): boolean {
+  if (belumDipasang(e, "pbd_disiplin")) return true;
+  const teks = e instanceof Error ? e.message : String(e);
+  return /(?:PGRST204|42703).*(?:murid_id|pbd_disiplin)|(?:murid_id).*pbd_disiplin/i.test(teks);
+}
+
+const MESEJ_SKEMA = "Modul Disiplin belum lengkap — admin perlu jalankan patch SQL Disiplin (murid_id dan tugasan) di hujung laporan ini.";
+
 export async function hantarDisiplin(input: {
   tahun_sesi: number; tarikh: string; murid_nama: string; kelas: string;
   kesalahan: string; tindakan: string; saksi?: string;
@@ -79,8 +93,8 @@ export async function hantarDisiplin(input: {
       }),
     });
   } catch (e) {
-    if (belumDipasang(e, "pbd_disiplin")) {
-      return { ok: false, mesej: "Ciri ini belum dipasang — admin perlu jalankan SQL Disiplin dahulu." };
+    if (skemaDisiplinBelumLengkap(e)) {
+      return { ok: false, mesej: MESEJ_SKEMA };
     }
     return { ok: false, mesej: e instanceof Error ? e.message : "Gagal merekod." };
   }
@@ -110,7 +124,7 @@ export async function senaraiDisiplin(
 
     return { belumSedia: false, boleh: true, senarai, berulang };
   } catch (e) {
-    if (belumDipasang(e, "pbd_disiplin")) return { belumSedia: true, boleh: true, senarai: [], berulang: [] };
+    if (skemaDisiplinBelumLengkap(e)) return { belumSedia: true, boleh: true, senarai: [], berulang: [] };
     throw e;
   }
 }
@@ -136,6 +150,7 @@ export async function tandaLaporanLembaga(
       body: JSON.stringify(badan),
     });
   } catch (e) {
+    if (skemaDisiplinBelumLengkap(e)) return { ok: false, mesej: MESEJ_SKEMA };
     return { ok: false, mesej: e instanceof Error ? e.message : "Gagal menyimpan." };
   }
   revalidatePath("/disiplin");
