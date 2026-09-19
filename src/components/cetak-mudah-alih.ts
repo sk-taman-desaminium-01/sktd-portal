@@ -1,19 +1,5 @@
 "use client";
 
-/**
- * Cetakan pada iPhone/iPad dan sebahagian Android PWA tidak semestinya
- * membuka dialog apabila `window.print()` dipanggil daripada halaman aplikasi.
- * Untuk peranti itu, buka pratonton berdikari dalam tab baharu yang memegang
- * dokumen sahaja. Pengguna boleh melihat borang dahulu dan menekan butang
- * Cetak / Simpan PDF di situ; pada laptop dialog cetak kekal dibuka terus.
- */
-function mudahAlih() {
-  // Sesetengah pelayar privasi menyamarkan user-agent sebagai desktop.
-  // Lebar skrin menjadi sandaran supaya telefon tetap mendapat tab
-  // pratonton dengan butang Kembali dan Cetak / Simpan PDF.
-  return /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) || window.innerWidth <= 720;
-}
-
 function selamat(teks: string) {
   return teks.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 }
@@ -42,26 +28,30 @@ function gayaKertas(kertas: Kertas, margin: string) {
       html, body { margin: 0 !important; padding: 0 !important; background: #fff !important; }
       .sktd-cetak-bar { display: none !important; }
       .sktd-cetak-viewport, .sktd-cetak-kertas {
-        margin: 0 !important; padding: 0 !important; max-width: none !important;
-        min-width: 0 !important; box-shadow: none !important; background: #fff !important;
+        display: block !important; visibility: visible !important; position: static !important;
+        width: auto !important; min-height: 0 !important; margin: 0 !important;
+        padding: 0 !important; max-width: none !important; min-width: 0 !important;
+        overflow: visible !important; box-shadow: none !important; background: #fff !important;
       }
+      .sktd-cetak-kertas > [id] {
+        display: block !important; visibility: visible !important; position: static !important;
+        inset: auto !important; width: 100% !important; margin: 0 !important;
+      }
+      .sktd-cetak-kertas > [id], .sktd-cetak-kertas > [id] * { visibility: visible !important; }
     }
   `;
 }
 
-/** Letak gaya terakhir dalam dokumen supaya ia mengatasi `@page` lama. */
-function tetapkanGayaCetak(asal: HTMLElement) {
-  const { kertas, margin } = tetapanKertas(asal);
-  let gaya = document.getElementById("sktd-gaya-cetak-tetap") as HTMLStyleElement | null;
-  if (!gaya) {
-    gaya = document.createElement("style");
-    gaya.id = "sktd-gaya-cetak-tetap";
-  }
-  gaya.textContent = gayaKertas(kertas, margin);
-  // Append (atau pindahkan) ke HUJUNG body, selepas gaya di dalam komponen.
-  // Urutan ini memastikan satu margin digunakan pada laptop dan telefon.
-  document.body.append(gaya);
-  return { kertas, margin };
+/** Salin CSS sahaja. Menyalin seluruh <head> turut menyalin skrip Next dan
+ * boleh menghidupkan semula keseluruhan portal di dalam tab cetakan. */
+function gayaAsal() {
+  return [...document.head.querySelectorAll<HTMLStyleElement | HTMLLinkElement>("style,link[rel='stylesheet']")]
+    .map((unsur) => {
+      const salinan = unsur.cloneNode(true) as HTMLStyleElement | HTMLLinkElement;
+      if (salinan instanceof HTMLLinkElement) salinan.href = new URL(salinan.href, document.baseURI).href;
+      return salinan.outerHTML;
+    })
+    .join("\n");
 }
 
 function hidupkanKandunganCetak(dokumen: HTMLElement) {
@@ -79,14 +69,7 @@ function hidupkanKandunganCetak(dokumen: HTMLElement) {
 export function mulaCetak(id: string, tajuk: string): boolean {
   const asal = document.getElementById(id);
   if (!asal) return false;
-  const { kertas, margin } = tetapkanGayaCetak(asal);
-
-  if (!mudahAlih()) {
-    // Paksa pelayar mengira semula gaya `@page` sebelum dialog dibuka.
-    void document.body.offsetHeight;
-    window.print();
-    return true;
-  }
+  const { kertas, margin } = tetapanKertas(asal);
 
   const tetingkap = window.open("", "_blank");
   const dokumen = asal.cloneNode(true) as HTMLElement;
@@ -96,16 +79,8 @@ export function mulaCetak(id: string, tajuk: string): boolean {
     const sumber = imej.getAttribute("src");
     if (sumber) imej.src = new URL(sumber, document.baseURI).href;
   }
-  const kepala = document.head.cloneNode(true) as HTMLHeadElement;
-  for (const pautan of kepala.querySelectorAll<HTMLElement>("[href], [src]")) {
-    const atribut = pautan.hasAttribute("href") ? "href" : "src";
-    const nilai = pautan.getAttribute(atribut);
-    if (nilai && !/^(?:data:|https?:)/i.test(nilai)) {
-      pautan.setAttribute(atribut, new URL(nilai, document.baseURI).href);
-    }
-  }
 
-  const html = `<!doctype html><html lang="ms"><head>${kepala.innerHTML}
+  const html = `<!doctype html><html lang="ms"><head>${gayaAsal()}
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>${selamat(tajuk)}</title>
     <style>
@@ -115,11 +90,11 @@ export function mulaCetak(id: string, tajuk: string): boolean {
       .sktd-cetak-bar button { min-height: 40px; border: 0; border-radius: 8px; padding: 8px 12px; background: #fff; color: #123561; font: inherit; white-space: nowrap; }
       .sktd-cetak-bar .sktd-kembali { background: transparent; box-shadow: inset 0 0 0 1px #ffffff88; color: #fff; }
       .sktd-cetak-viewport { overflow: auto; padding: 16px; }
-      .sktd-cetak-kertas { width: min(210mm, 100%); margin: 0 auto; background: #fff; box-shadow: 0 2px 12px #0002; }
-      .sktd-cetak-kertas.sktd-cetak-landscape { width: 277mm; max-width: none; }
+      .sktd-cetak-kertas { box-sizing: border-box; width: 210mm; min-height: 297mm; margin: 0 auto; padding: 18mm 19mm 17mm; background: #fff; box-shadow: 0 2px 12px #0002; }
+      .sktd-cetak-kertas.sktd-cetak-landscape { width: 297mm; min-height: 210mm; padding: 9mm 10mm; max-width: none; }
       .sktd-cetak-landscape #akuan-cetak { display: grid !important; grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
-      #${id} { display: block !important; position: static !important; width: auto !important; }
-      @media (max-width: 720px) { .sktd-cetak-viewport { padding: 10px; } .sktd-cetak-kertas.sktd-cetak-landscape { width: 277mm; } }
+      #${id} { display: block !important; position: static !important; inset: auto !important; width: 100% !important; }
+      @media (max-width: 720px) { .sktd-cetak-viewport { padding: 10px; } }
     </style></head><body>
     <div class="sktd-cetak-bar"><button type="button" class="sktd-kembali" id="sktd-kembali" aria-label="Kembali ke portal">← Kembali</button><span>Pratonton cetakan</span><button type="button" id="sktd-cetak">Cetak / Simpan PDF</button></div>
     <div class="sktd-cetak-viewport"><main class="sktd-cetak-kertas sktd-cetak-${kertas}">${dokumen.outerHTML}</main></div>
@@ -128,7 +103,17 @@ export function mulaCetak(id: string, tajuk: string): boolean {
       (function () {
         var kembali = document.getElementById("sktd-kembali");
         var cetak = document.getElementById("sktd-cetak");
-        if (cetak) cetak.addEventListener("click", function () { window.print(); });
+        async function cetakBilaSedia() {
+          if (document.fonts && document.fonts.ready) await document.fonts.ready;
+          await Promise.all(Array.from(document.images).map(function (img) {
+            return img.complete ? Promise.resolve() : new Promise(function (selesai) {
+              img.addEventListener("load", selesai, { once: true });
+              img.addEventListener("error", selesai, { once: true });
+            });
+          }));
+          requestAnimationFrame(function () { requestAnimationFrame(function () { window.print(); }); });
+        }
+        if (cetak) cetak.addEventListener("click", cetakBilaSedia);
         if (kembali) kembali.addEventListener("click", function () {
           if (window.opener && !window.opener.closed) { window.close(); return; }
           if (window.history.length > 1) { window.history.back(); return; }
