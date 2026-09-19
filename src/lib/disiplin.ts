@@ -109,7 +109,6 @@ export async function senaraiDisiplin(
 ): Promise<{ belumSedia: boolean; boleh: boolean; senarai: BarisDisiplin[]; berulang: string[] }> {
   if (!(await bolehBaca())) return { belumSedia: false, boleh: false, senarai: [], berulang: [] };
 
-  const db = klienTulis();
   try {
     const senarai = (await bacaSemua<BarisDisiplin>(
       `pbd_disiplin?select=id,murid_id,tahun_sesi,tarikh,murid_nama,kelas,kesalahan,tindakan,saksi,guru_nama,` +
@@ -155,4 +154,53 @@ export async function tandaLaporanLembaga(
   }
   revalidatePath("/disiplin");
   return { ok: true, mesej: "Dikemas kini." };
+}
+
+/** Guru Disiplin/pentadbir/admin boleh membetulkan rekod yang tersalah isi. */
+export async function suntingDisiplin(id: string, input: {
+  tahun_sesi: number; tarikh: string; murid_nama: string; kelas: string;
+  kesalahan: string; tindakan: string; saksi?: string;
+}): Promise<HasilDisiplin> {
+  if (!(await bolehBaca()) || !/^[0-9a-f-]{36}$/i.test(id)) return { ok: false, mesej: "Rekod ini tidak boleh disunting." };
+  const murid_nama = input.murid_nama.trim();
+  const kelas = input.kelas.trim();
+  const kesalahan = input.kesalahan.trim();
+  const tindakan = input.tindakan.trim();
+  if (!murid_nama || !kelas || !kesalahan || !/^\d{4}-\d{2}-\d{2}$/.test(input.tarikh)) {
+    return { ok: false, mesej: "Lengkapkan tarikh, nama murid, kelas dan butiran salah laku." };
+  }
+  if (input.tahun_sesi !== await tahunSesiAktif()) return { ok: false, mesej: "Pilih sesi aktif." };
+
+  try {
+    const padan = (await senaraiMuridCadangan(input.tahun_sesi))
+      .filter((m) => m.nama.toUpperCase() === murid_nama.toUpperCase() && m.kelas === kelas);
+    if (padan.length > 1) return { ok: false, mesej: "Nama sama dalam kelas ini. Semak identiti murid dahulu." };
+    await klienTulis().minta(`pbd_disiplin?id=eq.${encodeURIComponent(id)}`, {
+      method: "PATCH", headers: { Prefer: "return=minimal" },
+      body: JSON.stringify({
+        tarikh: input.tarikh, murid_id: padan[0]?.id ?? null, murid_nama, kelas,
+        kesalahan, tindakan, saksi: input.saksi?.trim() || null,
+      }),
+    });
+  } catch (e) {
+    if (skemaDisiplinBelumLengkap(e)) return { ok: false, mesej: MESEJ_SKEMA };
+    return { ok: false, mesej: e instanceof Error ? e.message : "Gagal menyunting." };
+  }
+  revalidatePath("/disiplin");
+  return { ok: true, mesej: "Rekod disiplin dikemas kini." };
+}
+
+/** Pemadaman kekal dihadkan kepada pihak yang boleh membaca keseluruhan rekod. */
+export async function padamDisiplin(id: string): Promise<HasilDisiplin> {
+  if (!(await bolehBaca()) || !/^[0-9a-f-]{36}$/i.test(id)) return { ok: false, mesej: "Rekod ini tidak boleh dipadam." };
+  try {
+    await klienTulis().minta(`pbd_disiplin?id=eq.${encodeURIComponent(id)}`, {
+      method: "DELETE", headers: { Prefer: "return=minimal" },
+    });
+  } catch (e) {
+    if (skemaDisiplinBelumLengkap(e)) return { ok: false, mesej: MESEJ_SKEMA };
+    return { ok: false, mesej: e instanceof Error ? e.message : "Gagal memadam." };
+  }
+  revalidatePath("/disiplin");
+  return { ok: true, mesej: "Rekod disiplin dipadam." };
 }

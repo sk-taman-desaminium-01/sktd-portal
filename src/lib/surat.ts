@@ -35,6 +35,10 @@ export interface DataSuratRasmi {
   isi: string;
   wakilGbNama: string;
   wakilGbJawatan: string;
+  keputusanPejabat?: "diluluskan" | "ditolak";
+  komenPejabat?: string;
+  diprosesOleh?: string;
+  diprosesPada?: string;
 }
 
 export interface DataSuratGambar {
@@ -66,10 +70,8 @@ const PERANAN_PEJABAT = ["kerani", "pentadbir", "admin", "admin_mutlak"];
 
 export async function hantarSuratRasmi(input: {
   tajuk: string; alamat: string; tarikh: string; isi: string;
-  wakilGbNama: string; wakilGbJawatan: string; tandatangan_url: string | null;
+  wakilGbNama: string; wakilGbJawatan: string;
 }): Promise<HasilSurat> {
-  if (input.tandatangan_url && (!/^data:image\/png;base64,[A-Za-z0-9+/]+=*$/.test(input.tandatangan_url) || input.tandatangan_url.length > 350000))
-    return { ok: false, mesej: "Tandatangan tidak sah. Lukis atau muat naik semula." };
   const saya = await pengguna();
   if (!saya?.peranan) return { ok: false, mesej: "Tiada kebenaran." };
 
@@ -102,7 +104,9 @@ export async function hantarSuratRasmi(input: {
         pemohon_id: saya.id,
         pemohon_nama: saya.nama ?? saya.emel,
         pemohon_emel: saya.emel,
-        tandatangan_url: input.tandatangan_url,
+        // Surat akan ditandatangani secara hidup oleh Guru Besar/wakil.
+        // Tandatangan pemohon tidak boleh sekali-kali muncul di ruang ini.
+        tandatangan_url: null,
         data: {
           alamat, tarikh: input.tarikh, isi,
           wakilGbNama: input.wakilGbNama.trim(),
@@ -123,6 +127,54 @@ export async function hantarSuratRasmi(input: {
   revalidatePath("/borang/urus");
   revalidatePath("/pejabat");
   return { ok: true, mesej: "Surat dihantar ke Urusan Pejabat.", id };
+}
+
+/** Pemohon boleh membetulkan surat sendiri; Urusan Pejabat boleh membetulkan semua. */
+export async function suntingSuratRasmi(id: string, input: {
+  tajuk: string; alamat: string; tarikh: string; isi: string;
+  wakilGbNama: string; wakilGbJawatan: string;
+}): Promise<HasilSurat> {
+  const saya = await pengguna();
+  if (!saya?.peranan || !/^[0-9a-f-]{36}$/i.test(id)) return { ok: false, mesej: "Rekod tidak sah." };
+  const tajuk = input.tajuk.trim();
+  const alamat = input.alamat.trim();
+  const isi = input.isi.trim();
+  if (!tajuk || !alamat || !isi || !/^\d{4}-\d{2}-\d{2}$/.test(input.tarikh)) {
+    return { ok: false, mesej: "Lengkapkan tajuk, alamat, tarikh dan isi surat." };
+  }
+  if (tajuk.length > 180 || alamat.length > 360 || isi.length > 1_200) {
+    return { ok: false, mesej: "Surat rasmi mesti muat satu halaman: tajuk 180, alamat 360 dan isi 1,200 aksara maksimum." };
+  }
+  const pentadbir = await senaraiPentadbirUntukSemua();
+  const wakil = pentadbir.find((p) => p.nama === input.wakilGbNama && p.jawatan === input.wakilGbJawatan);
+  if (!wakil) return { ok: false, mesej: "Senarai pentadbir berubah. Muat semula dan pilih penandatangan." };
+
+  const db = klienTulis();
+  try {
+    const sedia = (await db.minta(
+      `pbd_surat?select=pemohon_emel&id=eq.${encodeURIComponent(id)}&jenis=eq.rasmi&limit=1`,
+    )) as { pemohon_emel: string }[];
+    const milikSaya = sedia[0]?.pemohon_emel?.toLowerCase() === saya.emel.toLowerCase();
+    if (!sedia[0] || (!milikSaya && !(await bolehBuat("urus_pejabat")))) {
+      return { ok: false, mesej: "Surat itu tidak dijumpai atau tidak boleh disunting." };
+    }
+    await db.minta(`pbd_surat?id=eq.${encodeURIComponent(id)}`, {
+      method: "PATCH", headers: { Prefer: "return=minimal" },
+      body: JSON.stringify({
+        tajuk, status: "baharu", rujukan_kami: null, tandatangan_url: null,
+        data: {
+          alamat, tarikh: input.tarikh, isi,
+          wakilGbNama: input.wakilGbNama.trim(), wakilGbJawatan: input.wakilGbJawatan.trim(),
+        } satisfies DataSuratRasmi,
+      }),
+    });
+  } catch (e) {
+    return { ok: false, mesej: e instanceof Error ? e.message : "Gagal menyunting surat." };
+  }
+  await beritahuPejabat(tajuk, saya.nama ?? saya.emel, saya.emel);
+  revalidatePath("/borang/urus");
+  revalidatePath("/pejabat");
+  return { ok: true, mesej: "Surat dikemas kini dan dihantar semula ke Urusan Pejabat." };
 }
 
 async function beritahuPejabat(tajuk: string, oleh: string, olehEmel: string) {
@@ -232,23 +284,71 @@ export async function senaraiSuratPejabat(): Promise<{ belumSedia: boolean; sena
 }
 
 export async function tetapkanRujukan(id: string, rujukan_kami: string): Promise<HasilSurat> {
-  await pastikanBoleh("urus_pejabat");
+  const saya = await pastikanBoleh("urus_pejabat");
   const bersih = rujukan_kami.trim();
   if (!bersih) return { ok: false, mesej: "Nombor rujukan kosong tidak disimpan." };
 
   const db = klienTulis();
   try {
+    const sedia = (await db.minta(
+      `pbd_surat?select=data,pemohon_emel,tajuk&id=eq.${encodeURIComponent(id)}&jenis=eq.rasmi&limit=1`,
+    )) as { data: DataSuratRasmi; pemohon_emel: string; tajuk: string }[];
+    if (!sedia[0]) return { ok: false, mesej: "Surat tidak dijumpai." };
+    const data: DataSuratRasmi = {
+      ...sedia[0].data, keputusanPejabat: "diluluskan", komenPejabat: undefined,
+      diprosesOleh: saya.nama ?? saya.emel, diprosesPada: new Date().toISOString(),
+    };
     await db.minta(`pbd_surat?id=eq.${encodeURIComponent(id)}`, {
       method: "PATCH",
       headers: { Prefer: "return=minimal" },
-      body: JSON.stringify({ rujukan_kami: bersih, status: "selesai" }),
+      body: JSON.stringify({ rujukan_kami: bersih, status: "selesai", data }),
     });
+    await hantar({
+      penerima: [sedia[0].pemohon_emel], jenis: "surat", tajuk: "Surat rasmi diluluskan",
+      teks: `Surat “${sedia[0].tajuk}” diluluskan. Rujukan kami: ${bersih}.`,
+      pautan: "/borang/urus", oleh: saya.emel,
+    }).catch(() => {});
   } catch (e) {
     return { ok: false, mesej: e instanceof Error ? e.message : "Gagal menyimpan." };
   }
   revalidatePath("/pejabat");
   revalidatePath("/borang/urus");
   return { ok: true, mesej: "Rujukan kami disimpan." };
+}
+
+/** Kerani/pentadbir menolak surat dan wajib memberi sebab kepada pemohon. */
+export async function tolakSuratRasmi(id: string, komen: string): Promise<HasilSurat> {
+  const saya = await pastikanBoleh("urus_pejabat");
+  const sebab = komen.trim();
+  if (!/^[0-9a-f-]{36}$/i.test(id)) return { ok: false, mesej: "Rekod tidak sah." };
+  if (!sebab) return { ok: false, mesej: "Nyatakan sebab surat ditolak." };
+  if (sebab.length > 500) return { ok: false, mesej: "Komen mestilah 500 aksara atau kurang." };
+
+  const db = klienTulis();
+  try {
+    const sedia = (await db.minta(
+      `pbd_surat?select=data,pemohon_emel,tajuk&id=eq.${encodeURIComponent(id)}&jenis=eq.rasmi&limit=1`,
+    )) as { data: DataSuratRasmi; pemohon_emel: string; tajuk: string }[];
+    if (!sedia[0]) return { ok: false, mesej: "Surat tidak dijumpai." };
+    const data: DataSuratRasmi = {
+      ...sedia[0].data, keputusanPejabat: "ditolak", komenPejabat: sebab,
+      diprosesOleh: saya.nama ?? saya.emel, diprosesPada: new Date().toISOString(),
+    };
+    await db.minta(`pbd_surat?id=eq.${encodeURIComponent(id)}`, {
+      method: "PATCH", headers: { Prefer: "return=minimal" },
+      body: JSON.stringify({ rujukan_kami: null, status: "selesai", data }),
+    });
+    await hantar({
+      penerima: [sedia[0].pemohon_emel], jenis: "surat", tajuk: "Surat rasmi perlu dibetulkan",
+      teks: `Surat “${sedia[0].tajuk}” ditolak. Komen: ${sebab}`,
+      pautan: "/borang/urus", oleh: saya.emel,
+    }).catch(() => {});
+  } catch (e) {
+    return { ok: false, mesej: e instanceof Error ? e.message : "Gagal menolak surat." };
+  }
+  revalidatePath("/pejabat");
+  revalidatePath("/borang/urus");
+  return { ok: true, mesej: "Surat ditolak dan komen dihantar kepada pemohon." };
 }
 
 /** Padam hantaran sendiri; Urusan Pejabat boleh membuang hantaran yang salah. */

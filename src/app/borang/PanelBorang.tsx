@@ -7,7 +7,7 @@ import CetakMedia from "@/components/CetakMedia";
 import TandaTangan from "@/components/TandaTangan";
 import CetakSurat, { type KepalaSurat } from "@/components/CetakSurat";
 import {
-  hantarSuratRasmi, hantarSuratGambar, tetapkanRujukan, padamSurat,
+  hantarSuratRasmi, hantarSuratGambar, suntingSuratRasmi, tetapkanRujukan, padamSurat,
   type BarisSurat, type DataSuratRasmi, type DataSuratGambar,
 } from "@/lib/surat";
 
@@ -60,7 +60,7 @@ export default function PanelBorang({
         {(["rasmi", "gambar", "senarai"] as const).map((t) => (
           <button
             key={t} type="button" onClick={() => setTab(t)}
-            className={`rounded-full px-4 py-2 ${tab === t ? "bg-navy-800 text-white" : "bg-navy-50 text-navy-700"}`}
+            className={`min-h-11 touch-manipulation rounded-full px-4 py-2 ${tab === t ? "bg-navy-800 text-white" : "bg-navy-50 text-navy-700"}`}
           >
             {t === "rasmi" ? "Surat Rasmi" : t === "gambar" ? "Kebenaran Gambar" : `Senarai Saya (${senaraiData.length})`}
           </button>
@@ -78,7 +78,7 @@ export default function PanelBorang({
       )}
       {tab === "senarai" && (
         <SenaraiSaya
-          senarai={senaraiData} bolehPejabat={bolehPejabat}
+          senarai={senaraiData} bolehPejabat={bolehPejabat} pentadbir={pentadbir}
           bukaCetak={bukaCetak}
           buang={buangSurat}
           kemaskini={(id, patch) => setSenaraiData((s) => s.map((b) => (b.id === id ? { ...b, ...patch } : b)))}
@@ -105,7 +105,6 @@ function FormRasmi({
   const [tarikh, setTarikh] = useState(new Date().toISOString().slice(0, 10));
   const [isi, setIsi] = useState("");
   const [wakil, setWakil] = useState(guruBesarLalai ? `${guruBesarLalai.nama}|${guruBesarLalai.jawatan}` : "");
-  const [tandatangan, setTandatangan] = useState<string | null>(null);
   const [sibuk, setSibuk] = useState(false);
   const [mesej, setMesej] = useState<{ ok: boolean; teks: string } | null>(null);
 
@@ -113,15 +112,15 @@ function FormRasmi({
     setSibuk(true);
     setMesej(null);
     const [wakilGbNama, wakilGbJawatan] = wakil.split("|");
-    const r = await hantarSuratRasmi({ tajuk, alamat, tarikh, isi, wakilGbNama, wakilGbJawatan, tandatangan_url: tandatangan });
+    const r = await hantarSuratRasmi({ tajuk, alamat, tarikh, isi, wakilGbNama, wakilGbJawatan });
     setMesej({ ok: r.ok, teks: r.mesej });
     if (r.ok && r.id) {
       selesai({
         id: r.id, jenis: "rasmi", status: "baharu", tajuk, rujukan_kami: null,
-        pemohon_nama: "", pemohon_emel: "", tandatangan_url: tandatangan,
+        pemohon_nama: "", pemohon_emel: "", tandatangan_url: null,
         data: { alamat, tarikh, isi, wakilGbNama, wakilGbJawatan }, dicipta: new Date().toISOString(),
       });
-      setTajuk(""); setAlamat(""); setIsi(""); setTandatangan(null);
+      setTajuk(""); setAlamat(""); setIsi("");
     }
     setSibuk(false);
   }
@@ -130,12 +129,12 @@ function FormRasmi({
     <div className="mt-5 space-y-4 rounded-xl border border-garis bg-white p-5">
       <Medan label="Tajuk surat">
         <input value={tajuk} onChange={(e) => setTajuk(e.target.value)} placeholder="Contoh: Permohonan Kebenaran Menggunakan Padang"
-          maxLength={180} className="w-full rounded-lg border border-garis px-3 py-2 text-sm" />
+          maxLength={180} className="block w-full min-w-0 max-w-full rounded-lg border border-garis px-3 py-2 text-sm" />
       </Medan>
       <Medan label="Alamat (kepada)">
         <textarea value={alamat} onChange={(e) => setAlamat(e.target.value)} rows={3}
           placeholder={"Contoh:\nPengurus,\nDewan Serbaguna Seri Kembangan"}
-          maxLength={360} className="w-full rounded-lg border border-garis px-3 py-2 text-sm" />
+          maxLength={360} className="block w-full min-w-0 max-w-full rounded-lg border border-garis px-3 py-2 text-sm" />
       </Medan>
       <Medan label="Tarikh">
         <input type="date" value={tarikh} onChange={(e) => setTarikh(e.target.value)}
@@ -144,12 +143,12 @@ function FormRasmi({
       <Medan label="Isi surat">
         <textarea value={isi} onChange={(e) => setIsi(e.target.value)} rows={8} maxLength={1200}
           placeholder="Tulis isi surat di sini…"
-          className="w-full rounded-lg border border-garis px-3 py-2 text-sm" />
+          className="block w-full min-w-0 max-w-full rounded-lg border border-garis px-3 py-2 text-sm" />
         <p className="mt-1 text-xs text-slate-500">{isi.length}/1,200 aksara · cetakan dikunci kepada satu halaman A4.</p>
       </Medan>
       <Medan label="Ditandatangani bagi pihak Guru Besar oleh">
         <select value={wakil} onChange={(e) => setWakil(e.target.value)}
-          className="w-full rounded-lg border border-garis px-3 py-2 text-sm">
+          className="block w-full min-w-0 max-w-full rounded-lg border border-garis px-3 py-2 text-sm">
           {pentadbir.map((p) => (
             <option key={p.nama} value={`${p.nama}|${p.jawatan}`}>{p.nama} — {p.jawatan}</option>
           ))}
@@ -158,13 +157,13 @@ function FormRasmi({
           Lalai Guru Besar semasa. Tukar jika Guru Besar tiada di sekolah.
         </p>
       </Medan>
-      <Medan label="Tandatangan anda (pemohon)">
-        <TandaTangan nilai={tandatangan} tetap={setTandatangan} />
-      </Medan>
+      <p className="rounded-lg bg-navy-50 px-3 py-2 text-xs leading-relaxed text-navy-800">
+        Ruang tandatangan pada surat dibiarkan kosong untuk tandatangan hidup Guru Besar atau wakil yang dipilih.
+      </p>
 
       {mesej && <Mesej mesej={mesej} />}
       <button type="button" disabled={sibuk} onClick={hantar}
-        className="rounded-lg bg-navy-800 px-5 py-2.5 text-sm font-semibold text-white disabled:opacity-50">
+        className="min-h-11 touch-manipulation rounded-lg bg-navy-800 px-5 py-2.5 text-sm font-semibold text-white disabled:opacity-50">
         {sibuk ? "Menghantar…" : "Hantar ke Urusan Pejabat"}
       </button>
     </div>
@@ -212,15 +211,15 @@ function FormGambar({ kelas, selesai }: { kelas: string[]; selesai: (b: BarisSur
         ["alamat", "Alamat penjaga"], ["telefon", "No. telefon"], ["muridKp", "No. MyKid/KP murid"],
       ] as const).map(([k, label]) => <Medan key={k} label={label}>
         <input value={penjaga[k]} onChange={(e) => setPenjaga((p) => ({ ...p, [k]: e.target.value }))}
-          className="w-full rounded-lg border border-garis px-3 py-2 text-sm" />
+          className="block w-full min-w-0 max-w-full rounded-lg border border-garis px-3 py-2 text-sm" />
       </Medan>)}
       <Medan label="Nama murid">
         <input value={muridNama} onChange={(e) => setMuridNama(e.target.value)}
-          className="w-full rounded-lg border border-garis px-3 py-2 text-sm" />
+          className="block w-full min-w-0 max-w-full rounded-lg border border-garis px-3 py-2 text-sm" />
       </Medan>
       <Medan label="Kelas">
         <select value={muridKelas} onChange={(e) => setMuridKelas(e.target.value)}
-          className="w-full rounded-lg border border-garis px-3 py-2 text-sm">
+          className="block w-full min-w-0 max-w-full rounded-lg border border-garis px-3 py-2 text-sm">
           {kelas.map((k) => <option key={k} value={k}>{k}</option>)}
         </select>
       </Medan>
@@ -239,7 +238,7 @@ function FormGambar({ kelas, selesai }: { kelas: string[]; selesai: (b: BarisSur
       </fieldset>
       <Medan label="Catatan (jika perlu)">
         <input value={catatan} onChange={(e) => setCatatan(e.target.value)}
-          className="w-full rounded-lg border border-garis px-3 py-2 text-sm" />
+          className="block w-full min-w-0 max-w-full rounded-lg border border-garis px-3 py-2 text-sm" />
       </Medan>
       <Medan label="Tandatangan ibu bapa/penjaga">
         <TandaTangan nilai={tandatangan} tetap={setTandatangan} />
@@ -247,7 +246,7 @@ function FormGambar({ kelas, selesai }: { kelas: string[]; selesai: (b: BarisSur
 
       {mesej && <Mesej mesej={mesej} />}
       <button type="button" disabled={sibuk} onClick={hantar}
-        className="rounded-lg bg-navy-800 px-5 py-2.5 text-sm font-semibold text-white disabled:opacity-50">
+        className="min-h-11 touch-manipulation rounded-lg bg-navy-800 px-5 py-2.5 text-sm font-semibold text-white disabled:opacity-50">
         {sibuk ? "Menyimpan…" : "Rekod keputusan"}
       </button>
     </div>
@@ -255,10 +254,11 @@ function FormGambar({ kelas, selesai }: { kelas: string[]; selesai: (b: BarisSur
 }
 
 function SenaraiSaya({
-  senarai, bolehPejabat, bukaCetak, buang, kemaskini,
+  senarai, bolehPejabat, pentadbir, bukaCetak, buang, kemaskini,
 }: {
   senarai: BarisSurat[];
   bolehPejabat: boolean;
+  pentadbir: { nama: string; jawatan: string }[];
   bukaCetak: (b: BarisSurat) => void;
   buang: (id: string) => Promise<{ ok: boolean; mesej: string }>;
   kemaskini: (id: string, patch: Partial<BarisSurat>) => void;
@@ -266,12 +266,17 @@ function SenaraiSaya({
   const [rujukan, setRujukan] = useState<Record<string, string>>({});
   const [sibuk, setSibuk] = useState<string | null>(null);
   const [menuId, setMenuId] = useState<string | null>(null);
+  const [sunting, setSunting] = useState<{
+    id: string; tajuk: string; alamat: string; tarikh: string; isi: string; wakil: string;
+  } | null>(null);
+  const [maklum, setMaklum] = useState<{ ok: boolean; teks: string } | null>(null);
 
   async function simpanRujukan(id: string) {
     const nilai = rujukan[id]?.trim();
     if (!nilai) return;
     setSibuk(id);
     const r = await tetapkanRujukan(id, nilai);
+    setMaklum({ ok: r.ok, teks: r.mesej });
     if (r.ok) kemaskini(id, { rujukan_kami: nilai, status: "selesai" });
     setSibuk(null);
   }
@@ -279,8 +284,35 @@ function SenaraiSaya({
   async function padam(id: string, tajuk: string) {
     if (!window.confirm(`Padam "${tajuk}"? Tindakan ini tidak boleh diundur.`)) return;
     setSibuk(id);
-    await buang(id);
+    const r = await buang(id);
+    setMaklum({ ok: r.ok, teks: r.mesej });
     setMenuId(null);
+    setSibuk(null);
+  }
+
+  function mulaSunting(b: BarisSurat) {
+    if (b.jenis !== "rasmi") return;
+    const d = b.data as DataSuratRasmi;
+    setSunting({ id: b.id, tajuk: b.tajuk, alamat: d.alamat, tarikh: d.tarikh, isi: d.isi, wakil: `${d.wakilGbNama}|${d.wakilGbJawatan}` });
+    setMenuId(null);
+  }
+
+  async function simpanSunting() {
+    if (!sunting) return;
+    const [wakilGbNama, wakilGbJawatan] = sunting.wakil.split("|");
+    setSibuk(sunting.id);
+    const r = await suntingSuratRasmi(sunting.id, {
+      tajuk: sunting.tajuk, alamat: sunting.alamat, tarikh: sunting.tarikh,
+      isi: sunting.isi, wakilGbNama, wakilGbJawatan,
+    });
+    setMaklum({ ok: r.ok, teks: r.mesej });
+    if (r.ok) {
+      kemaskini(sunting.id, {
+        tajuk: sunting.tajuk, status: "baharu", rujukan_kami: null, tandatangan_url: null,
+        data: { alamat: sunting.alamat, tarikh: sunting.tarikh, isi: sunting.isi, wakilGbNama, wakilGbJawatan },
+      });
+      setSunting(null);
+    }
     setSibuk(null);
   }
 
@@ -290,8 +322,12 @@ function SenaraiSaya({
 
   return (
     <ul className="mt-5 space-y-3">
-      {senarai.map((b) => (
-        <li key={b.id} className="rounded-xl border border-garis bg-white p-4">
+      {maklum && <li role="status" className={`rounded-lg px-3 py-2 text-sm ${maklum.ok ? "bg-[#eef8f2] text-[#167a4b]" : "bg-[#fdecec] text-red-700"}`}>{maklum.teks}</li>}
+      {senarai.map((b) => {
+        const rasmi = b.jenis === "rasmi" ? b.data as DataSuratRasmi : null;
+        const ditolak = rasmi?.keputusanPejabat === "ditolak";
+        const labelStatus = ditolak ? "ditolak" : rasmi?.keputusanPejabat === "diluluskan" ? "diluluskan" : b.status;
+        return <li key={b.id} className="rounded-xl border border-garis bg-white p-4">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div>
               <p className="font-semibold text-navy-800">{b.tajuk}</p>
@@ -302,12 +338,12 @@ function SenaraiSaya({
             </div>
             <div className="flex shrink-0 items-center gap-2">
               <span className={`rounded px-2 py-0.5 text-[10px] font-bold uppercase ${
-                b.status === "selesai" ? "bg-[#e5f4ec] text-[#167a4b]" : "bg-[#fdf3dc] text-[#9a6b06]"
+                ditolak ? "bg-[#fdecec] text-[#9a2e2e]" : b.status === "selesai" ? "bg-[#e5f4ec] text-[#167a4b]" : "bg-[#fdf3dc] text-[#9a6b06]"
               }`}>
-                {b.status}
+                {labelStatus}
               </span>
               {(b.jenis === "rasmi" || b.jenis === "gambar") && (
-                <button type="button" onClick={() => bukaCetak(b)} className="text-xs font-semibold text-navy-700 underline">
+                <button type="button" onClick={() => bukaCetak(b)} className="min-h-11 touch-manipulation px-1 text-xs font-semibold text-navy-700 underline">
                   Cetak PDF
                 </button>
               )}
@@ -315,33 +351,61 @@ function SenaraiSaya({
                 <button
                   type="button" aria-label={`Tindakan untuk ${b.tajuk}`} aria-expanded={menuId === b.id}
                   disabled={sibuk === b.id} onClick={() => setMenuId((m) => m === b.id ? null : b.id)}
-                  className="rounded-lg border border-garis px-2 py-1 text-sm leading-none text-slate-600 disabled:opacity-50"
+                  className="min-h-11 min-w-11 touch-manipulation rounded-lg border border-garis px-2 py-1 text-sm leading-none text-slate-600 disabled:opacity-50"
                 >
                   ⋮
                 </button>
                 {menuId === b.id && <>
                   <span className="fixed inset-0 z-40" aria-hidden="true" onClick={() => setMenuId(null)} />
                   <span className="absolute right-0 z-50 mt-1 block w-40 overflow-hidden rounded-xl border border-garis bg-white shadow-lg">
+                    {b.jenis === "rasmi" && <button type="button" onClick={() => mulaSunting(b)} className="block w-full px-4 py-3 text-left text-sm font-semibold text-navy-700 hover:bg-navy-50">Sunting surat</button>}
                     <button type="button" onClick={() => void padam(b.id, b.tajuk)} className="block w-full px-4 py-3 text-left text-sm font-semibold text-[#8f2424] hover:bg-[#fbeaea]">Padam borang</button>
                   </span>
                 </>}
               </span>
             </div>
           </div>
+          {ditolak && rasmi?.komenPejabat && (
+            <p className="mt-3 rounded-lg bg-[#fdecec] px-3 py-2 text-xs leading-relaxed text-[#8f2424]">
+              <b>Komen Urusan Pejabat:</b> {rasmi.komenPejabat}
+            </p>
+          )}
+          {sunting?.id === b.id && (
+            <div className="mt-3 grid min-w-0 gap-3 rounded-xl border border-garis bg-slate-50 p-3 sm:grid-cols-2">
+              <input aria-label="Tajuk surat" value={sunting.tajuk} maxLength={180} onChange={(e) => setSunting({ ...sunting, tajuk: e.target.value })}
+                className="block w-full min-w-0 max-w-full rounded-lg border border-garis bg-white px-3 py-2 text-sm sm:col-span-2" />
+              <textarea aria-label="Alamat penerima" value={sunting.alamat} maxLength={360} rows={3} onChange={(e) => setSunting({ ...sunting, alamat: e.target.value })}
+                className="block w-full min-w-0 max-w-full rounded-lg border border-garis bg-white px-3 py-2 text-sm" />
+              <div className="min-w-0 space-y-3">
+                <input aria-label="Tarikh surat" type="date" value={sunting.tarikh} onChange={(e) => setSunting({ ...sunting, tarikh: e.target.value })}
+                  className="block w-full min-w-0 max-w-full rounded-lg border border-garis bg-white px-3 py-2 text-sm" />
+                <select aria-label="Penandatangan" value={sunting.wakil} onChange={(e) => setSunting({ ...sunting, wakil: e.target.value })}
+                  className="block w-full min-w-0 max-w-full rounded-lg border border-garis bg-white px-3 py-2 text-sm">
+                  {pentadbir.map((p) => <option key={`${p.nama}-${p.jawatan}`} value={`${p.nama}|${p.jawatan}`}>{p.nama} — {p.jawatan}</option>)}
+                </select>
+              </div>
+              <textarea aria-label="Isi surat" value={sunting.isi} maxLength={1200} rows={7} onChange={(e) => setSunting({ ...sunting, isi: e.target.value })}
+                className="block w-full min-w-0 max-w-full rounded-lg border border-garis bg-white px-3 py-2 text-sm sm:col-span-2" />
+              <div className="flex flex-wrap gap-2 sm:col-span-2">
+                <button type="button" disabled={sibuk === b.id} onClick={() => void simpanSunting()} className="min-h-11 touch-manipulation rounded-lg bg-navy-800 px-3 py-2 text-xs font-semibold text-white disabled:opacity-50">Simpan dan hantar semula</button>
+                <button type="button" onClick={() => setSunting(null)} className="min-h-11 touch-manipulation rounded-lg border border-garis px-3 py-2 text-xs font-semibold text-navy-700">Batal</button>
+              </div>
+            </div>
+          )}
           {bolehPejabat && b.jenis === "rasmi" && !b.rujukan_kami && (
             <div className="mt-3 flex gap-2">
               <input
                 value={rujukan[b.id] ?? ""} onChange={(e) => setRujukan((r) => ({ ...r, [b.id]: e.target.value }))}
-                placeholder="Nombor rujukan kami" className="flex-1 rounded-lg border border-garis px-3 py-1.5 text-xs"
+                placeholder="Nombor rujukan kami" className="min-w-0 flex-1 rounded-lg border border-garis px-3 py-1.5 text-xs"
               />
               <button type="button" disabled={sibuk === b.id} onClick={() => simpanRujukan(b.id)}
-                className="rounded-lg bg-navy-800 px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-50">
+                className="min-h-11 touch-manipulation rounded-lg bg-navy-800 px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-50">
                 Simpan
               </button>
             </div>
           )}
-        </li>
-      ))}
+        </li>;
+      })}
     </ul>
   );
 }

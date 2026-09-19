@@ -202,7 +202,7 @@ export const KAD_TAMBAHAN: KadBaharu[] = [
     id: "guru-kelas-portal", bahagian: "pentadbiran",
     nama: "Guru Kelas", ikon: "GK", warna: "#1f6f8a",
     fungsi: "Satu tempat untuk semua kerja kelas anda — pukal, bukan satu-satu.",
-    domain: "portal.sktd.edu.my/guru-kelas", pautan: "/guru-kelas", status: "bina",
+    domain: "portal.sktd.edu.my/guru-kelas", pautan: "/guru-kelas", status: "sedia",
     akses: "Guru kelas, pentadbir & admin",
   },
   {
@@ -211,7 +211,7 @@ export const KAD_TAMBAHAN: KadBaharu[] = [
     id: "kawalan-kelas", bahagian: "pentadbiran",
     nama: "Rekod Kawalan Kelas & Kehadiran", ikon: "RKK", warna: "#3a6f4a",
     fungsi: "Guru yang masuk kelas, subjek, relief, dan carta kehadiran harian.",
-    domain: "portal.sktd.edu.my/kawalan-kelas", pautan: "/kawalan-kelas", status: "bina",
+    domain: "portal.sktd.edu.my/kawalan-kelas", pautan: "/kawalan-kelas", status: "sedia",
     catatan: "Direkod setiap kali guru masuk kelas — nama guru, subjek, relief (jika "
       + "ada), masalah disiplin dalam kelas, dan kehadiran murid hari itu.",
   },
@@ -268,8 +268,8 @@ export const KAD_TAMBAHAN: KadBaharu[] = [
     id: "rmt", bahagian: "hem",
     nama: "RMT", ikon: "RMT", warna: "#8a4b12",
     fungsi: "Senarai murid Rancangan Makanan Tambahan dan rekod kehadiran RMT.",
-    domain: "portal.sktd.edu.my/rmt", pautan: "/rmt", status: "bina",
-    akses: "Guru RMT, guru bertugas mingguan, pentadbir & admin",
+    domain: "portal.sktd.edu.my/rmt", pautan: "/rmt", status: "sedia",
+    akses: "Guru RMT, guru kelas, guru bertugas mingguan, pentadbir & admin",
     catatan: "Guru RMT muat naik senarai murid ikut kelas & tahun. Guru bertugas "
       + "mingguan merekod hadir/tidak hadir — tiada kad berasingan untuk itu.",
   },
@@ -277,7 +277,7 @@ export const KAD_TAMBAHAN: KadBaharu[] = [
     id: "disiplin", bahagian: "hem",
     nama: "Disiplin & Sahsiah", ikon: "DSP", warna: "#9a3b3b",
     fungsi: "Rekod salah laku, tindakan dan pemantauan sahsiah murid.",
-    domain: "portal.sktd.edu.my/disiplin", pautan: "/disiplin", status: "bina",
+    domain: "portal.sktd.edu.my/disiplin", pautan: "/disiplin", status: "sedia",
     catatan: "Semua guru boleh merekod. Hanya guru disiplin, pentadbir & admin "
       + "boleh membaca rekod murid lain (permintaan F.3).",
     // SENGAJA TIADA `perlu` di sini — semua guru mesti nampak kad ini untuk

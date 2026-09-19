@@ -37,8 +37,9 @@ function tarikhBahasaMelayu(tarikh: string) {
 
 /**
  * Surat rasmi sekolah mengikut struktur Surat Kebenaran Padang Hoki:
- * kepala surat lapang, rujukan di kanan, isi berindent, dan tandatangan
- * pada bahagian bawah. Ia dikongsi oleh Borang Sekolah dan Urusan Pejabat.
+ * kepala surat lapang, rujukan di kanan, isi berindent, dan ruang kosong
+ * untuk tandatangan hidup Guru Besar. Ia dikongsi oleh Borang Sekolah dan
+ * Urusan Pejabat.
  */
 export default function CetakSurat({
   surat, data, kepala,
@@ -49,16 +50,20 @@ export default function CetakSurat({
   sayaNama?: string;
 }) {
   const isi = isiSatuMukaSurat(data.isi);
+  const padat = data.isi.replace(/\s+/g, " ").trim().length > 700 || isi.perenggan.length > 5;
   return (
     <div id="surat-cetak" data-cetak-kertas="portrait" className="hidden text-black print:block">
       <style>{`
         #surat-cetak .surat-dokumen { background: #fff; color: #000; font-family: "Times New Roman", Times, serif; font-size: 10.5pt; line-height: 1.32; }
-        #surat-cetak .surat-kepala { display: grid; grid-template-columns: 27mm minmax(0, 1fr) 28mm; column-gap: 4mm; align-items: start; border-bottom: 1.5px solid #000; padding: 0 0 3.5mm; font-family: Arial, Helvetica, sans-serif; }
-        #surat-cetak .surat-logo-kpm { width: 25mm; height: 25mm; object-fit: contain; object-position: left top; }
-        #surat-cetak .surat-logo-sktd { width: 23mm; height: 25mm; object-fit: contain; object-position: right top; }
-        #surat-cetak .surat-kepala-nama { margin: 1mm 0 0; font-size: 13pt; font-weight: 700; line-height: 1.12; }
-        #surat-cetak .surat-kepala-alamat { margin: 1mm 0 0; white-space: pre-line; font-size: 10.5pt; line-height: 1.18; }
-        #surat-cetak .surat-hubungi { margin: 1.5mm 0 0; text-align: right; font-size: 9.5pt; line-height: 1.2; }
+        #surat-cetak .surat-kepala { display: grid; grid-template-columns: 30mm minmax(0, 1fr) 43mm; column-gap: 3.5mm; align-items: start; border-bottom: 1px solid #000; padding: 0 0 3.5mm; font-family: Arial, Helvetica, sans-serif; }
+        #surat-cetak .surat-logo-jata { width: 29mm; height: 23mm; object-fit: contain; object-position: left top; }
+        #surat-cetak .surat-logo-kumpulan { display: flex; justify-content: flex-end; align-items: flex-start; gap: 1.5mm; min-height: 20mm; }
+        #surat-cetak .surat-logo-sktd { width: 16mm; height: 19mm; object-fit: contain; object-position: center top; }
+        #surat-cetak .surat-logo-ts25 { width: 22mm; height: 19mm; object-fit: contain; object-position: center top; }
+        #surat-cetak .surat-kepala-kpm { margin: 0; font-size: 10.5pt; font-weight: 700; line-height: 1.1; }
+        #surat-cetak .surat-kepala-nama { margin: 0.6mm 0 0; font-size: 10.5pt; font-weight: 700; line-height: 1.1; }
+        #surat-cetak .surat-kepala-alamat { margin: 0.6mm 0 0; white-space: pre-line; font-size: 9.5pt; line-height: 1.14; }
+        #surat-cetak .surat-hubungi { margin: 1mm 0 0; text-align: left; font-size: 7.8pt; line-height: 1.2; white-space: nowrap; }
         #surat-cetak .surat-rujukan { display: flex; justify-content: flex-end; margin: 4mm 10mm 0; font-size: 11pt; line-height: 1.25; }
         #surat-cetak .surat-rujukan p { min-width: 57mm; margin: 0; }
         #surat-cetak .surat-kandungan { padding: 0 11mm; }
@@ -70,9 +75,18 @@ export default function CetakSurat({
         #surat-cetak .surat-penutup { margin: 7mm 0 0; }
         #surat-cetak .surat-cogan { margin: 12mm 0 0; font-weight: 700; line-height: 1.75; }
         #surat-cetak .surat-tandatangan { margin: 5mm 0 0; }
-        #surat-cetak .surat-tandatangan img { display: block; width: 35mm; height: 16mm; margin: 1mm 0 -1mm; object-fit: contain; object-position: left bottom; }
-        #surat-cetak .surat-ruang-tandatangan { height: 17mm; }
+        #surat-cetak .surat-ruang-tandatangan { height: 19mm; }
         #surat-cetak .surat-penandatangan { margin: 0; line-height: 1.32; }
+        #surat-cetak .surat-dokumen.surat-padat { font-size: 9.5pt; line-height: 1.22; }
+        #surat-cetak .surat-padat .surat-alamat { margin-top: 8mm; }
+        #surat-cetak .surat-padat .surat-sapaan { margin-top: 7mm; }
+        #surat-cetak .surat-padat .surat-tajuk { margin-top: 5mm; }
+        #surat-cetak .surat-padat .surat-isi { margin-top: 3.5mm; }
+        #surat-cetak .surat-padat .surat-isi p { margin-bottom: 2.2mm; }
+        #surat-cetak .surat-padat .surat-penutup { margin-top: 4mm; }
+        #surat-cetak .surat-padat .surat-cogan { margin-top: 7mm; line-height: 1.5; }
+        #surat-cetak .surat-padat .surat-tandatangan { margin-top: 3mm; }
+        #surat-cetak .surat-padat .surat-ruang-tandatangan { height: 15mm; }
         @media print {
           html, body { background: #fff !important; }
           body * { visibility: hidden; }
@@ -82,18 +96,22 @@ export default function CetakSurat({
         }
       `}</style>
 
-      <article className="surat-dokumen">
+      <article className={`surat-dokumen${padat ? " surat-padat" : ""}`}>
         <header className="surat-kepala">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={aset("/logo-kpm.png")} alt="Kementerian Pendidikan Malaysia" className="surat-logo-kpm" />
+          <img src={aset("/logo-jata-negara.png")} alt="Jata Negara Malaysia" className="surat-logo-jata" />
           <div>
-            <p className="m-0 text-[11pt] font-bold">KEMENTERIAN PENDIDIKAN MALAYSIA</p>
+            <p className="surat-kepala-kpm">KEMENTERIAN PENDIDIKAN MALAYSIA</p>
             <h1 className="surat-kepala-nama">{kepala.nama.toUpperCase()}</h1>
             <p className="surat-kepala-alamat">{kepala.alamat}</p>
           </div>
           <div>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={aset("/logo-sktd.png")} alt="Lencana SK Taman Desaminium" className="surat-logo-sktd" />
+            <div className="surat-logo-kumpulan">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={aset("/logo-sktd.png")} alt="Lencana SK Taman Desaminium" className="surat-logo-sktd" />
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={aset("/logo-ts25.png")} alt="Program Transformasi Sekolah 2025" className="surat-logo-ts25" />
+            </div>
             <p className="surat-hubungi">Tel : {kepala.telefon}<br />E-mel : {kepala.emel}</p>
           </div>
         </header>
@@ -116,10 +134,7 @@ export default function CetakSurat({
           <p className="surat-cogan">“MALAYSIA MADANI”<br />“BERKHIDMAT UNTUK NEGARA”</p>
           <div className="surat-tandatangan">
             <p className="m-0">Saya yang menjalankan amanah</p>
-            {surat.tandatangan_url ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={surat.tandatangan_url} alt="Tandatangan" />
-            ) : <div className="surat-ruang-tandatangan" />}
+            <div className="surat-ruang-tandatangan" aria-label="Ruang tandatangan hidup Guru Besar" />
             <p className="surat-penandatangan"><b>({data.wakilGbNama.toUpperCase()})</b><br />{data.wakilGbJawatan}<br />{kepala.nama}</p>
           </div>
         </div>

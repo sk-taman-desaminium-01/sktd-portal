@@ -76,32 +76,38 @@ function PanelKehadiran({ tahunSesi, roster, tarikhAwal, hadirAwal }: {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h2 className="text-lg font-bold text-navy-800">Kehadiran Hari Ini</h2>
         <input type="date" value={tarikh} disabled={sibuk} onChange={(e) => void tukarTarikh(e.target.value)}
-          className="rounded-lg border border-garis px-3 py-1.5 text-sm" />
+          className="block w-full min-w-0 max-w-full rounded-lg border border-garis px-3 py-1.5 text-sm sm:w-auto" />
       </div>
       <p className="mt-1 text-xs text-slate-500">Sesiapa guru boleh isi — tanda murid yang HADIR sahaja.</p>
 
-      <div className="mt-4 space-y-5">
-        {kumpulan.map(([label, murid]) => (
-          <div key={label}>
-            <p className="text-xs font-semibold uppercase text-slate-500">{label}</p>
-            <ul className="mt-1.5 grid gap-1.5 sm:grid-cols-2">
+      <div className="mt-4 space-y-3">
+        {kumpulan.map(([label, murid], indeks) => (
+          <details key={label} open={indeks === 0} className="group rounded-xl border border-garis bg-slate-50">
+            <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-sm font-semibold text-navy-800">
+              <span>{label}</span>
+              <span className="flex items-center gap-2 text-xs font-normal text-slate-500">
+                {murid.filter((m) => hadir[m.id]).length}/{murid.length} hadir
+                <span aria-hidden="true" className="transition group-open:rotate-180">⌄</span>
+              </span>
+            </summary>
+            <ul className="grid gap-1.5 border-t border-garis bg-white p-4 sm:grid-cols-2">
               {murid.map((m) => (
                 <li key={m.id}>
-                  <label className="flex items-center gap-2 text-sm">
+                  <label className="flex min-w-0 items-start gap-2 text-sm">
                     <input type="checkbox" disabled={sibuk} checked={hadir[m.id] ?? false}
-                      onChange={(e) => setHadir((h) => ({ ...h, [m.id]: e.target.checked }))} />
-                    {m.nama}
+                      onChange={(e) => setHadir((h) => ({ ...h, [m.id]: e.target.checked }))} className="mt-0.5 shrink-0" />
+                    <span className="min-w-0"><span className="block break-words">{m.nama}</span>{m.no_kp && <span className="block text-[11px] text-slate-400">{m.no_kp}</span>}</span>
                   </label>
                 </li>
               ))}
             </ul>
-          </div>
+          </details>
         ))}
       </div>
 
       {nota && <p className={`mt-3 text-sm ${nota.ok ? "text-[#167a4b]" : "text-red-600"}`}>{nota.teks}</p>}
       <button type="button" disabled={sibuk} onClick={simpan}
-        className="mt-4 rounded-lg bg-navy-800 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">
+        className="mt-4 min-h-11 touch-manipulation rounded-lg bg-navy-800 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">
         Simpan Kehadiran
       </button>
     </section>
@@ -118,6 +124,15 @@ function PanelRoster({ tahunSesi, kelas, roster }: {
   const [nota, setNota] = useState<{ ok: boolean; teks: string } | null>(null);
   const router = useRouter();
 
+  const kumpulan = useMemo(() => {
+    const peta = new Map<string, MuridRmt[]>();
+    for (const m of roster) {
+      const label = `${m.tahun ? m.tahun : "PPKI"} ${m.kelas}`.trim();
+      peta.set(label, [...(peta.get(label) ?? []), m]);
+    }
+    return [...peta.entries()].sort((a, b) => a[0].localeCompare(b[0], "ms"));
+  }, [roster]);
+
   async function naik(simpan = false) {
     const m = /^(\d+|PPKI)\s+(.+)$/.exec(kelasPilih);
     const tahun = m && m[1] !== "PPKI" ? Number(m[1]) : 0;
@@ -133,8 +148,13 @@ function PanelRoster({ tahunSesi, kelas, roster }: {
   }
 
   async function buang(id: string) {
+    const murid = roster.find((m) => m.id === id);
+    if (!murid || !window.confirm(`Buang ${murid.nama} daripada senarai RMT?`)) return;
+    setSibuk(true); setNota(null);
     const r = await buangRosterRmt(id);
+    setNota({ ok: r.ok, teks: r.mesej });
     if (r.ok) router.refresh();
+    setSibuk(false);
   }
 
   return (
@@ -143,33 +163,43 @@ function PanelRoster({ tahunSesi, kelas, roster }: {
       <p className="mt-1 text-sm leading-relaxed text-slate-500">
         Tampal senarai (nama + No. KP, apa cara pun) satu kelas pada satu masa — sistem akan bacanya sendiri.
       </p>
-      <div className="mt-4 flex flex-wrap gap-3">
+      <div className="mt-4 flex min-w-0 flex-wrap gap-3">
         <select value={kelasPilih} disabled={sibuk} onChange={(e) => { setKelasPilih(e.target.value); setSemakan(null); }}
-          className="rounded-lg border border-garis px-3 py-2 text-sm">
+          className="block w-full min-w-0 max-w-full rounded-lg border border-garis px-3 py-2 text-sm sm:w-auto">
           {kelas.map((k) => <option key={k} value={k}>{k}</option>)}
         </select>
       </div>
       <textarea value={teks} disabled={sibuk} onChange={(e) => { setTeks(e.target.value); setSemakan(null); }} rows={6}
         placeholder={"Ahmad Bin Ali 060101101234\nNur Aisyah Binti Omar, 070202-10-5678"}
-        className="mt-3 w-full rounded-lg border border-garis px-3 py-2 font-mono text-xs" />
+        className="mt-3 block w-full min-w-0 max-w-full rounded-lg border border-garis px-3 py-2 font-mono text-xs" />
       {nota && <p className={`mt-2 text-sm ${nota.ok ? "text-[#167a4b]" : "text-red-600"}`}>{nota.teks}</p>}
       <button type="button" disabled={sibuk || !teks.trim()} onClick={() => void naik(false)}
-        className="mt-3 rounded-lg bg-navy-800 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">
+        className="mt-3 min-h-11 touch-manipulation rounded-lg bg-navy-800 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">
         Semak Senarai RMT
       </button>
 
       {semakan && <div className="mt-4">
         <ol className="max-h-64 overflow-auto text-sm">{semakan.map((m, i) => <li key={i}>{i + 1}. {m.nama} · {m.no_kp}</li>)}</ol>
-        <button type="button" disabled={sibuk} onClick={() => void naik(true)} className="mt-3 rounded bg-navy-800 px-4 py-2 text-white">Sahkan dan simpan</button>
+        <button type="button" disabled={sibuk} onClick={() => void naik(true)} className="mt-3 min-h-11 touch-manipulation rounded bg-navy-800 px-4 py-2 text-white">Sahkan dan simpan</button>
       </div>}
-      <ul className="mt-6 divide-y divide-garis">
-        {roster.map((m) => (
-          <li key={m.id} className="flex items-center justify-between py-2 text-sm">
-            <span>{m.nama} — {m.tahun ? m.tahun : "PPKI"} {m.kelas}</span>
-            <button type="button" onClick={() => buang(m.id)} className="text-xs text-red-600 underline">Buang</button>
-          </li>
+      <div className="mt-6 space-y-3">
+        {kumpulan.map(([label, murid]) => (
+          <details key={label} className="group rounded-xl border border-garis bg-white">
+            <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-sm font-semibold text-navy-800">
+              <span>{label}</span>
+              <span className="flex items-center gap-2 text-xs font-normal text-slate-500">{murid.length} murid <span aria-hidden="true" className="transition group-open:rotate-180">⌄</span></span>
+            </summary>
+            <ul className="divide-y divide-garis border-t border-garis">
+              {murid.map((m) => (
+                <li key={m.id} className="flex min-w-0 items-start justify-between gap-3 px-4 py-3 text-sm">
+                  <span className="min-w-0"><span className="block break-words">{m.nama}</span><span className="block text-xs text-slate-400">No. KP: {m.no_kp ?? "—"}</span></span>
+                  <button type="button" disabled={sibuk} onClick={() => void buang(m.id)} className="min-h-11 shrink-0 touch-manipulation px-1 text-xs font-semibold text-red-600 underline disabled:opacity-50">Buang</button>
+                </li>
+              ))}
+            </ul>
+          </details>
         ))}
-      </ul>
+      </div>
     </section>
   );
 }
