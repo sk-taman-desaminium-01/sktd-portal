@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
+import { flushSync } from "react-dom";
 import {
   hantarDisiplin, tandaLaporanLembaga, type BarisDisiplin,
 } from "@/lib/disiplin";
@@ -107,12 +108,12 @@ function SenaraiPenuh({ senarai, berulang }: { senarai: BarisDisiplin[]; berulan
   const [rujukan, setRujukan] = useState<Record<string, string>>({});
   const [cetak, setCetak] = useState(false);
 
-  useEffect(() => {
-    if (cetak) {
-      const t = setTimeout(() => window.print(), 50);
-      return () => clearTimeout(t);
-    }
-  }, [cetak]);
+  function cetakLaporan() {
+    // Pastikan laporan sudah dirender dan kekalkan gerak isyarat klik untuk
+    // Safari/telefon membuka dialog cetak atau Simpan sebagai PDF.
+    flushSync(() => setCetak(true));
+    window.print();
+  }
 
   const untukLembaga = useMemo(() => data.filter((d) => d.laporan_lembaga), [data]);
 
@@ -126,7 +127,7 @@ function SenaraiPenuh({ senarai, berulang }: { senarai: BarisDisiplin[]; berulan
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h2 className="text-lg font-bold text-navy-800">Senarai Rekod ({data.length})</h2>
         {untukLembaga.length > 0 && (
-          <button type="button" onClick={() => setCetak(true)}
+          <button type="button" onClick={cetakLaporan}
             className="text-xs font-semibold text-navy-700 underline">
             Cetak Laporan Lembaga ({untukLembaga.length})
           </button>

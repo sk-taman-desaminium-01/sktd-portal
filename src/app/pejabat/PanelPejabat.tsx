@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import { flushSync } from "react-dom";
 import { tetapkanRujukan, type BarisSurat, type DataSuratRasmi } from "@/lib/surat";
 import CetakSurat, { type KepalaSurat } from "@/components/CetakSurat";
 
@@ -14,12 +15,11 @@ export default function PanelPejabat({ senarai, kepala }: { senarai: BarisSurat[
   const [sibuk, setSibuk] = useState<string | null>(null);
   const [cetak, setCetak] = useState<BarisSurat | null>(null);
 
-  useEffect(() => {
-    if (cetak) {
-      const t = setTimeout(() => window.print(), 50);
-      return () => clearTimeout(t);
-    }
-  }, [cetak]);
+  function bukaCetak(baris: BarisSurat) {
+    // Safari hanya membenarkan dialog cetak yang datang terus daripada klik.
+    flushSync(() => setCetak(baris));
+    window.print();
+  }
 
   async function simpan(id: string) {
     const nilai = rujukan[id]?.trim();
@@ -78,7 +78,7 @@ export default function PanelPejabat({ senarai, kepala }: { senarai: BarisSurat[
                     </button>
                   </>
                 )}
-                <button type="button" onClick={() => setCetak(b)} className="text-xs font-semibold text-navy-700 underline">
+                <button type="button" onClick={() => bukaCetak(b)} className="text-xs font-semibold text-navy-700 underline">
                   Cetak PDF
                 </button>
               </div>

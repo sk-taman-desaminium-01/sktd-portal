@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
+import { flushSync } from "react-dom";
 import CetakMedia from "@/components/CetakMedia";
 import TandaTangan from "@/components/TandaTangan";
 import CetakSurat, { type KepalaSurat } from "@/components/CetakSurat";
@@ -36,15 +37,15 @@ export default function PanelBorang({
     [pentadbir],
   );
 
-  // Cetak dipicu SELEPAS bahagian #surat-cetak dirender dengan data yang
-  // betul — memanggil window.print() serta-merta dengan setCetak() akan
-  // mencetak render LAMA (React belum sempat mengemas kini DOM).
-  useEffect(() => {
-    if (cetak) {
-      const t = setTimeout(() => window.print(), 50);
-      return () => clearTimeout(t);
-    }
-  }, [cetak]);
+  /**
+   * Dialog cetak mesti dipanggil dalam klik pengguna, khususnya pada Safari
+   * mudah alih. `flushSync` memastikan surat baharu sudah berada dalam DOM
+   * sebelum dialog dibuka tanpa menangguhkan panggilan melalui setTimeout.
+   */
+  function bukaCetak(baris: BarisSurat) {
+    flushSync(() => setCetak(baris));
+    window.print();
+  }
 
   return (
     <>
@@ -71,7 +72,7 @@ export default function PanelBorang({
       {tab === "senarai" && (
         <SenaraiSaya
           senarai={senaraiData} bolehPejabat={bolehPejabat}
-          bukaCetak={setCetak}
+          bukaCetak={bukaCetak}
           kemaskini={(id, patch) => setSenaraiData((s) => s.map((b) => (b.id === id ? { ...b, ...patch } : b)))}
         />
       )}
@@ -194,7 +195,7 @@ function FormGambar({ kelas, selesai }: { kelas: string[]; selesai: (b: BarisSur
   return (
     <div className="mt-5 space-y-4 rounded-xl border border-garis bg-white p-5">
       <p className="rounded-lg bg-navy-50 p-3 text-xs leading-relaxed text-navy-800">
-        Borang Kebenaran Mengambil Gambar — keputusan ibu bapa direkod di sini
+        Borang Kebenaran Mengambil Gambar — keputusan kebenaran ibu bapa direkod di sini
         oleh guru, dan guru kelas murid diberitahu secara automatik.
       </p>
       {([
@@ -214,18 +215,19 @@ function FormGambar({ kelas, selesai }: { kelas: string[]; selesai: (b: BarisSur
           {kelas.map((k) => <option key={k} value={k}>{k}</option>)}
         </select>
       </Medan>
-      <Medan label="Keputusan ibu bapa">
-        <div className="flex gap-4 text-sm">
+      <fieldset>
+        <legend className="mb-1 block text-sm font-semibold text-navy-800">Keputusan kebenaran ibu bapa</legend>
+        <div className="flex flex-wrap gap-4 text-sm">
           <label className="flex items-center gap-2">
-            <input type="radio" checked={bersetuju === true} onChange={() => setBersetuju(true)} />
-            <b>Bersetuju</b> membenarkan
+            <input type="radio" name="keputusan-kebenaran" checked={bersetuju === true} onChange={() => setBersetuju(true)} />
+            Bersetuju
           </label>
           <label className="flex items-center gap-2">
-            <input type="radio" checked={bersetuju === false} onChange={() => setBersetuju(false)} />
-            <b>Tidak bersetuju</b> membenarkan
+            <input type="radio" name="keputusan-kebenaran" checked={bersetuju === false} onChange={() => setBersetuju(false)} />
+            Tidak bersetuju
           </label>
         </div>
-      </Medan>
+      </fieldset>
       <Medan label="Catatan (jika perlu)">
         <input value={catatan} onChange={(e) => setCatatan(e.target.value)}
           className="w-full rounded-lg border border-garis px-3 py-2 text-sm" />
