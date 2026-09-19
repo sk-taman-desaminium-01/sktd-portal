@@ -78,8 +78,8 @@ export async function hantarSuratRasmi(input: {
   if (!alamat) return { ok: false, mesej: "Alamat penerima diperlukan." };
   // Surat rasmi ialah satu halaman. Had dibuat di pelayan supaya telefon,
   // laptop dan panggilan tindakan terus menerima peraturan yang sama.
-  if (tajuk.length > 180 || alamat.length > 360 || isi.length > 1_500) {
-    return { ok: false, mesej: "Surat rasmi mesti muat satu halaman: tajuk 180, alamat 360 dan isi 1,500 aksara maksimum." };
+  if (tajuk.length > 180 || alamat.length > 360 || isi.length > 1_200) {
+    return { ok: false, mesej: "Surat rasmi mesti muat satu halaman: tajuk 180, alamat 360 dan isi 1,200 aksara maksimum." };
   }
   if (!/^\d{4}-\d{2}-\d{2}$/.test(input.tarikh)) return { ok: false, mesej: "Tarikh tidak sah." };
   if (!input.wakilGbNama.trim()) return { ok: false, mesej: "Pilih Guru Besar / wakil." };

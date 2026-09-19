@@ -165,7 +165,7 @@ export default function PanelSlip({
       </div>
 
       {/* ---------- Cetak: satu slip satu halaman ---------- */}
-      <div id="slip-cetak" className="hidden print:block">
+      <div id="slip-cetak" data-cetak-kertas="portrait" className="hidden print:block">
         {data.map((b) => (
           <section key={b.pendaftaran_id} className="satu-slip">
             <header className="border-b-2 border-black pb-2 text-center">

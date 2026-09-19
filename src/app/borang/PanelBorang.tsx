@@ -142,10 +142,10 @@ function FormRasmi({
           className="rounded-lg border border-garis px-3 py-2 text-sm" />
       </Medan>
       <Medan label="Isi surat">
-        <textarea value={isi} onChange={(e) => setIsi(e.target.value)} rows={8} maxLength={1500}
+        <textarea value={isi} onChange={(e) => setIsi(e.target.value)} rows={8} maxLength={1200}
           placeholder="Tulis isi surat di sini…"
           className="w-full rounded-lg border border-garis px-3 py-2 text-sm" />
-        <p className="mt-1 text-xs text-slate-500">{isi.length}/1,500 aksara · cetakan dihadkan kepada satu halaman A4.</p>
+        <p className="mt-1 text-xs text-slate-500">{isi.length}/1,200 aksara · cetakan dikunci kepada satu halaman A4.</p>
       </Medan>
       <Medan label="Ditandatangani bagi pihak Guru Besar oleh">
         <select value={wakil} onChange={(e) => setWakil(e.target.value)}

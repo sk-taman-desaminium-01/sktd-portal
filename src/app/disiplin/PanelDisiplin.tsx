@@ -176,7 +176,7 @@ function SenaraiPenuh({ senarai, berulang }: { senarai: BarisDisiplin[]; berulan
 
 function CetakLembaga({ senarai }: { senarai: BarisDisiplin[] }) {
   return (
-    <div id="disiplin-cetak" className="hidden print:block">
+    <div id="disiplin-cetak" data-cetak-kertas="portrait" className="hidden print:block">
       <style>{`
         @media print {
           body * { visibility: hidden; }
