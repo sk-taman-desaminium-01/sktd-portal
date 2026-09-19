@@ -12,6 +12,8 @@
  * hanya memindahkan pergaduhan dari papan kenyataan ke skrin.
  */
 
+export type StatusTempahan = "lulus" | "menunggu" | "tolak";
+
 export interface Tempahan {
   id: string;
   bilik_id: string;
@@ -23,6 +25,17 @@ export interface Tempahan {
   nama: string;
   dibatalkan: boolean;
   dicipta: string;
+  /**
+   * Hari sekolah biasa: `lulus` serta-merta — siapa dapat dahulu, dia
+   * menang. Hari cuti dan hujung minggu: `menunggu` sampai pentadbir
+   * memutuskan, kerana membuka sekolah pada hari cuti bermakna seseorang
+   * perlu membuka pintu.
+   *
+   * BOLEH KOSONG dengan sengaja: lajur ini ditambah kemudian, dan skrin
+   * mesti berfungsi pada pangkalan data yang SQLnya belum dijalankan.
+   * Tiada nilai = `lulus`, iaitu kelakuan sebelum lajur itu ada.
+   */
+  status?: StatusTempahan;
 }
 
 export interface Bilik {
@@ -110,7 +123,15 @@ export function semakTempahan(
     return { ok: false, sebab: "Tarikh itu sudah berlalu." };
   }
 
-  const langgar = sediaAda.find((x) => !x.dibatalkan && bertindih(minta, x));
+  // TEMPAHAN MENUNGGU TIDAK MENGUNCI SLOT.
+  //
+  // Dua guru boleh memohon hari cuti yang sama; pentadbir yang memilih. Kalau
+  // permohonan pertama mengunci slot itu, "perlu kelulusan" bertukar menjadi
+  // "siapa mohon dahulu" secara senyap — tepat peraturan yang ia sepatutnya
+  // GANTIKAN untuk hari cuti.
+  const langgar = sediaAda.find(
+    (x) => !x.dibatalkan && (x.status ?? "lulus") === "lulus" && bertindih(minta, x),
+  );
   if (langgar) {
     return {
       ok: false,

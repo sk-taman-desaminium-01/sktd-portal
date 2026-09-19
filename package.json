@@ -16,7 +16,9 @@
     "uji:naik": "node --experimental-strip-types --no-warnings scripts/uji-naik.mts",
     "uji:umum": "node --experimental-strip-types --no-warnings scripts/uji-umum.mts",
     "uji:bilik": "node --experimental-strip-types --no-warnings scripts/uji-bilik.mts",
-    "uji:inventori": "node --experimental-strip-types --no-warnings scripts/uji-inventori.mts"
+    "uji:carta": "node --experimental-strip-types --no-warnings scripts/uji-carta.mts",
+    "uji:inventori": "node --experimental-strip-types --no-warnings scripts/uji-inventori.mts",
+    "uji:pindaan-zip": "node --experimental-strip-types --no-warnings scripts/uji-pindaan-zip.mts"
   },
   "dependencies": {
     "@clerk/localizations": "^4.17.0",

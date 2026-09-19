@@ -70,46 +70,57 @@ export default function SeksyenTersimpan({
    */
   const [sunting, setSunting] = useState<string | null>(null);
   const [draf, setDraf] = useState<string[]>([]);
-  const [kekal, setKekal] = useState(false);
+  /**
+   * Jadikan pembetulan ini KEKAL. Lalai: hidup.
+   *
+   * Dahulu lalainya mati, dan akibatnya senyap: admin membetulkan baris,
+   * melihat ia betul, dan buku tahun depan membawa kesilapan yang sama
+   * semula. Pembetulan yang tidak berulang ialah yang dikehendaki hampir
+   * setiap kali; yang sekali sahaja ialah kes luar biasa, jadi itu yang
+   * perlu ditanda, bukan sebaliknya.
+   */
+  const [kekal, setKekal] = useState(true);
   const [simpan, setSimpan] = useState(false);
   const [nota, setNota] = useState<string | null>(null);
 
   function mulaSunting(b: BarisIsi) {
     setSunting(b.id);
     setDraf([...b.sel]);
-    setKekal(false);
+    setKekal(true);
     setNota(null);
   }
 
   /**
-   * Cari sel mana yang berubah — itu yang menjadi pindaan kekal.
+   * SETIAP sel yang berubah menjadi pindaannya sendiri.
    *
-   * Hanya SATU sel boleh menjadi pindaan. Kalau dua berubah serentak,
-   * "dari → kepada" tidak lagi bermakna apa-apa yang boleh dikenakan pada
-   * baris lain, jadi kotak kekal itu disembunyikan.
+   * Versi pertama hanya menerima satu sel, dan menyembunyikan pilihan
+   * "kekal" apabila dua sel disunting serentak — jadi pembetulan yang
+   * menyentuh jawatan DAN nama tetap perlu diulang tahun depan. Padanan
+   * setiap pindaan masih SELURUH SEL, jadi memecahkannya kepada beberapa
+   * pindaan tidak melemahkan pagar itu.
    */
-  function selBerubah(asal: string[]): { dari: string; kepada: string } | null {
-    const ubah = asal
-      .map((c, i) => ({ dari: c ?? "", kepada: draf[i] ?? "", i }))
-      .filter((x) => x.dari.trim() !== x.kepada.trim());
-    return ubah.length === 1 ? { dari: ubah[0].dari, kepada: ubah[0].kepada } : null;
+  function senaraiBerubah(asal: string[]): { dari: string; kepada: string }[] {
+    return asal
+      .map((c, i) => ({ dari: c ?? "", kepada: draf[i] ?? "" }))
+      .filter((x) => x.dari.trim() !== x.kepada.trim() && x.dari.trim() !== "");
   }
 
   async function simpanSunting(seksyenId: string, asal: BarisIsi) {
-    const beza = selBerubah(asal.sel);
+    const beza = senaraiBerubah(asal.sel);
+    const tajukSeksyen = baris.find((x) => x.id === seksyenId)?.tajuk ?? "seksyen";
     setSimpan(true);
     setNota(null);
     try {
       const hasil = await suntingBarisTindakan(
         asal.id,
         draf,
-        kekal && beza
-          ? {
-              jenis: jenisPindaanUntuk(beza.kepada),
-              dari: beza.dari,
-              kepada: beza.kepada,
-              sebab: `Dibetulkan dalam ${baris.find((x) => x.id === seksyenId)?.tajuk ?? "seksyen"}`,
-            }
+        kekal && beza.length > 0
+          ? beza.map((x) => ({
+              jenis: jenisPindaanUntuk(x.kepada),
+              dari: x.dari,
+              kepada: x.kepada,
+              sebab: `Dibetulkan dalam ${tajukSeksyen}`,
+            }))
           : undefined,
       );
       if (!hasil.ok) { setNota(hasil.mesej); return; }
@@ -129,10 +140,26 @@ export default function SeksyenTersimpan({
     }
   }
 
-  async function buangBaris(seksyenId: string, id: string) {
+  /**
+   * Padam satu baris — dan, bila `kekal`, ingat bahawa ia dipadam.
+   *
+   * Baris sampah (ayat pelan strategik yang terbaca sebagai orang, kepala
+   * jadual yang menyelit) dicetak SEMULA dalam edisi tahun depan. Tanpa
+   * pindaan `buang_baris`, kerja memadamnya bermula dari kosong setiap
+   * tahun.
+   */
+  async function buangBaris(seksyenId: string, id: string, sel: string[]) {
     setSimpan(true);
     try {
-      const hasil = await padamBarisTindakan(id);
+      const hasil = await padamBarisTindakan(
+        id,
+        kekal
+          ? {
+              sel,
+              sebab: `Dipadam dari ${baris.find((x) => x.id === seksyenId)?.tajuk ?? "seksyen"}`,
+            }
+          : undefined,
+      );
       if (!hasil.ok) { setNota(hasil.mesej); return; }
       setIsi((lama) => ({
         ...lama,
@@ -145,6 +172,7 @@ export default function SeksyenTersimpan({
         lama.map((b) => (b.id === seksyenId ? { ...b, bilBaris: Math.max(0, b.bilBaris - 1) } : b)),
       );
       setSunting(null);
+      setNota(hasil.mesej);
     } finally {
       setSimpan(false);
     }
@@ -310,26 +338,34 @@ export default function SeksyenTersimpan({
                                 ))}
                               </div>
 
-                              {selBerubah(r.sel) && (
-                                <label className="mt-2 flex items-start gap-2 text-xs text-slate-600">
-                                  <input
-                                    type="checkbox"
-                                    checked={kekal}
-                                    onChange={(e) => setKekal(e.target.checked)}
-                                    className="mt-0.5"
-                                  />
-                                  <span>
-                                    Guna pembetulan ini untuk <b>muat naik akan datang</b> juga —
-                                    setiap sel yang berbunyi
-                                    {" "}<i>&ldquo;{selBerubah(r.sel)!.dari}&rdquo;</i> akan ditukar
-                                    automatik apabila buku 2027 dimuat naik.
-                                    <span className="mt-0.5 block text-[11px] text-slate-400">
-                                      Padanan ialah seluruh sel, bukan sebahagian perkataan — nama
-                                      khas seperti <i>Bilik i-Shabariah</i> tidak akan tersentuh.
+                              {/* Pilihan KEKAL sentiasa kelihatan, dan lalainya
+                                  hidup — termasuk sebelum apa-apa disunting,
+                                  kerana ia juga mengawal butang Padam di bawah. */}
+                              <label className="mt-2 flex items-start gap-2 text-xs text-slate-600">
+                                <input
+                                  type="checkbox"
+                                  checked={kekal}
+                                  onChange={(e) => setKekal(e.target.checked)}
+                                  className="mt-0.5"
+                                />
+                                <span>
+                                  Jangan ulang tahun depan — kenakan pembetulan ini pada{" "}
+                                  <b>muat naik akan datang</b> juga.
+                                  {senaraiBerubah(r.sel).length > 0 && (
+                                    <span className="mt-0.5 block text-[11px] text-slate-500">
+                                      {senaraiBerubah(r.sel)
+                                        .map((x) => `“${x.dari}” → “${x.kepada || "(dibuang)"}”`)
+                                        .join(" · ")}
                                     </span>
+                                  )}
+                                  <span className="mt-0.5 block text-[11px] text-slate-400">
+                                    Padanan ialah seluruh sel, bukan sebahagian perkataan — nama
+                                    khas seperti <i>Bilik i-Shabariah</i> tidak akan tersentuh.
+                                    Menekan <i>Padam baris ini</i> dengan kotak ini bertanda
+                                    menggugurkan baris yang sama pada setiap edisi seterusnya.
                                   </span>
-                                </label>
-                              )}
+                                </span>
+                              </label>
 
                               <div className="mt-2 flex flex-wrap items-center gap-2">
                                 <button
@@ -346,7 +382,7 @@ export default function SeksyenTersimpan({
                                   Batal
                                 </button>
                                 <button
-                                  onClick={() => void buangBaris(b.id, r.id)}
+                                  onClick={() => void buangBaris(b.id, r.id, r.sel)}
                                   disabled={simpan}
                                   className="ml-auto text-xs text-[#8f2b2b] underline disabled:opacity-50"
                                 >

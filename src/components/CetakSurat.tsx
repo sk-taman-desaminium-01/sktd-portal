@@ -1,3 +1,4 @@
+import { aset } from "@/lib/laluan";
 import type { BarisSurat, DataSuratRasmi } from "@/lib/surat";
 
 export type KepalaSurat = { nama: string; kod: string; alamat: string; telefon: string; faks: string; emel: string };
@@ -8,7 +9,7 @@ export type KepalaSurat = { nama: string; kod: string; alamat: string; telefon: 
  * kami diisi). SATU susun atur, bukan disalin dua kali.
  */
 export default function CetakSurat({
-  surat, data, kepala, sayaNama,
+  surat, data, kepala,
 }: {
   surat: BarisSurat;
   data: DataSuratRasmi;
@@ -25,10 +26,11 @@ export default function CetakSurat({
           @page { size: A4 portrait; margin: 20mm; }
         }
       `}</style>
-      <header className="border-b-2 border-black pb-2 text-center text-[11pt]">
-        <h1 className="font-bold uppercase">{kepala.nama}</h1>
-        <p>{kepala.alamat.split("\n").join(", ")}</p>
-        <p>Tel: {kepala.telefon} · Faks: {kepala.faks} · {kepala.emel} · Kod Sekolah: {kepala.kod}</p>
+      <header className="flex items-center gap-5 border-b-2 border-black pb-3 text-[10pt]">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={aset("/logo-kpm.png")} alt="Kementerian Pendidikan Malaysia" className="h-20 w-28 object-contain" />
+        <div><p className="font-bold">KEMENTERIAN PENDIDIKAN MALAYSIA</p><h1 className="font-bold uppercase">{kepala.nama}</h1>
+        <p className="whitespace-pre-line">{kepala.alamat}</p><p>Tel: {kepala.telefon} · {kepala.emel}</p></div>
       </header>
 
       <div className="mt-4 flex justify-between text-[11pt]">
@@ -38,15 +40,17 @@ export default function CetakSurat({
 
       <p className="mt-4 whitespace-pre-line text-[11pt]">{data.alamat}</p>
 
+      <p className="mt-4 text-[11pt]">Tuan/Puan,</p>
       <p className="mt-4 text-[11pt]"><b>{surat.tajuk.toUpperCase()}</b></p>
 
       <p className="mt-3 whitespace-pre-line text-justify text-[11pt] leading-relaxed">{data.isi}</p>
 
       <p className="mt-6 text-[11pt]">Sekian, terima kasih.</p>
+      <p className="text-[11pt]">&quot;MALAYSIA MADANI&quot;</p>
       <p className="text-[11pt]">&quot;BERKHIDMAT UNTUK NEGARA&quot;</p>
 
       <div className="mt-10 text-[11pt]">
-        <p>Yang menjalankan tugas,</p>
+        <p>Saya yang menjalankan amanah,</p>
         {surat.tandatangan_url ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={surat.tandatangan_url} alt="" className="mt-2 h-16 object-contain" />
@@ -56,7 +60,7 @@ export default function CetakSurat({
         <p>{kepala.nama}</p>
       </div>
 
-      {sayaNama && <p className="mt-8 text-[9pt] text-slate-500">Dihantar oleh: {sayaNama}</p>}
+
     </div>
   );
 }

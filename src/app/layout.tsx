@@ -1,3 +1,4 @@
+import { headers } from "next/headers";
 import type { Metadata } from "next";
 import { ClerkProvider } from "@clerk/nextjs";
 import { msMY } from "@clerk/localizations";
@@ -21,6 +22,10 @@ export const metadata: Metadata = {
 };
 
 export default async function RootLayout({ children }: LayoutProps<"/">) {
+  // Borang ibu bapa tidak memerlukan SDK log masuk atau navigasi kakitangan.
+  if ((await headers()).get("x-sktd-borang-awam") === "1") {
+    return <html lang="ms"><body className="bg-slate-50 text-slate-800">{children}</body></html>;
+  }
   // Keputusan "boleh nampak tab Urus" dibuat di PELAYAN. Menghantar peranan
   // ke pelayar dan memutuskan di sana bermakna peranan itu berada dalam
   // payload RSC — dan sesiapa boleh mengubahnya dalam DevTools.

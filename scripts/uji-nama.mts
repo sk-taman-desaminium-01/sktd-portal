@@ -230,6 +230,72 @@ sama("hanya baris Guru Besar bertukar",
     ["", "AJK", "ROSLE BIN MOHAMAD"],
   ]);
 
+
+/* ============================== PADANAN EJAAN BUKU ====================== */
+/*
+ * Buku Pengurusan menulis orang yang SAMA dengan ejaan berbeza antara
+ * senarai nama guru dan senarai jawatankuasa. Empat kes di bawah bukan
+ * andaian — ia dibaca dari edisi 2026 sekolah ini, dan keempat-empatnya
+ * menyebabkan guru yang ADA tugas jatuh ke dalam "Guru & Kakitangan Lain".
+ */
+sama("koma atas dibuang, bukan ditukar ruang",
+  kunciNama("NOOR MASLIZA BINTI MAT SO'OD"), "NOOR MASLIZA BINTI MAT SOOD");
+sama("koma atas lengkung juga",
+  kunciNama("NOOR MASLIZA BINTI MAT SO\u2019OD"), "NOOR MASLIZA BINTI MAT SOOD");
+uji("SO'OD padan dengan SOOD",
+  bandingNama("NOOR MASLIZA BINTI MAT SO'OD", "NOOR MASLIZA BINTI MAT SOOD").skor === 100);
+uji("HJ di tengah nama tidak menghalang padanan",
+  bandingNama("NOOR RUWAIDA BINTI HJ MOHD ARIFIN", "NOOR RUWAIDA BINTI MOHD ARIFIN").cadang);
+uji("satu perkataan tersalah eja masih dicadangkan",
+  bandingNama("SHARIFAH NUR-AIN BINTI AID ALI", "SHARIFAH NUR-AIN BINTI SAID ALI").cadang);
+uji("nama pendek dalam nama panjang dicadangkan",
+  bandingNama("NOR HASFARADZI BIN HASHIM", "NOR HASFARADZI BIN HASHIM AMER HAMZAH").cadang);
+// PAGARNYA MESTI KEKAL. Dua nama berbeza yang berkongsi "MOHD" sahaja tidak
+// boleh menjadi orang yang sama.
+uji("nama berbeza tidak dicadangkan",
+  !bandingNama("MOHD ALI BIN OSMAN", "MOHD ZAKI BIN IBRAHIM").cadang);
+uji("seri ditolak sebagai tidak pasti",
+  cariPadanan("AHMAD BIN ALI", [{ n: "AHMAD BIN ALI" }, { n: "AHMAD BIN ALI" }], (x) => x.n) === null);
+
+/* ============================== BUANG BARIS ============================= */
+/*
+ * Baris sampah (ayat pelan strategik yang terbaca sebagai orang, kepala
+ * jadual yang menyelit) DICETAK SEMULA dalam edisi tahun depan. Memadamnya
+ * di web membetulkan edisi ini sahaja; pindaan `buang_baris` menjadikannya
+ * tidak berulang.
+ */
+const buangBaris = [P({
+  jenis: "buang_baris",
+  dari: "MATLAMAT STRATEGIK PELAN TINDAKAN KPI",
+  kepada: null,
+})];
+uji("baris yang sepadan digugurkan",
+  kenakanPindaan(["MATLAMAT STRATEGIK", "PELAN TINDAKAN", "KPI"], buangBaris).gugur);
+// PEMECAHAN SEL BOLEH BERBEZA antara edisi; yang dibandingkan ialah baris
+// yang digabung dan dinormalkan, bukan sel demi sel.
+uji("pemecahan sel berbeza tetap dikenali",
+  kenakanPindaan(["MATLAMAT STRATEGIK PELAN TINDAKAN", "KPI"], buangBaris).gugur);
+// BARIS LAIN TIDAK BOLEH TERSENTUH. Padanan ialah SELURUH baris — bukan
+// subrentetan, bukan satu sel.
+uji("baris lain yang berkongsi satu sel kekal",
+  !kenakanPindaan(["MATLAMAT STRATEGIK", "PENGERUSI", "AHMAD BIN ALI"], buangBaris).gugur);
+uji("baris kosong tidak digugurkan",
+  !kenakanPindaan(["", "", ""], buangBaris).gugur);
+sama("kiraan digugur dilaporkan",
+  kenakanPindaanBanyak(
+    [["MATLAMAT STRATEGIK", "PELAN TINDAKAN", "KPI"], ["AJK", "AHMAD BIN ALI"]],
+    buangBaris,
+  ).digugur,
+  1);
+// GANTIAN DIKENAKAN DAHULU, kemudian buangan: baris yang dibuang kerana ia
+// sampah tidak boleh terselamat hanya kerana satu nama di dalamnya bertukar.
+const gantiDanBuang = [
+  P({ id: "g", jenis: "ganti_nama", dari: "SHABARIAH BINTI ISMAIL", kepada: "AZIZAH BINTI OTHMAN" }),
+  P({ id: "b", jenis: "buang_baris", dari: "PENGERUSI AZIZAH BINTI OTHMAN", kepada: null }),
+];
+uji("buangan dinilai selepas gantian",
+  kenakanPindaan(["PENGERUSI", "SHABARIAH BINTI ISMAIL"], gantiDanBuang).gugur);
+
 console.log(`\n${lulus} lulus, ${gagal.length} gagal`);
 for (const g of gagal) console.log(`  ✗ ${g}`);
 process.exit(gagal.length === 0 ? 0 : 1);

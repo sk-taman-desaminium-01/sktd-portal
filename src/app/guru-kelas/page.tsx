@@ -35,9 +35,11 @@ export default async function GuruKelasHub() {
     sayaBertugas("guru_disiplin"),
   ]);
 
-  const kelasSaya = kelasSendiri === null
+  const nampakSemua = kelasSendiri === null || saya?.peranan === "admin_mutlak";
+  const kelasDipilih = nampakSemua
     ? isiKelas.map((k) => `${k.tahun} ${k.kelas}`)
-    : kelasSendiri;
+    : kelasSendiri ?? [];
+
   const bilMurid = (label: string) => {
     const cari = isiKelas.find((k) => `${k.tahun} ${k.kelas}` === label);
     return cari?.bil ?? 0;
@@ -47,15 +49,17 @@ export default async function GuruKelasHub() {
     <main className="mx-auto max-w-3xl px-5 py-10">
       <Link href="/" className="text-sm text-slate-500 hover:text-navy-700">← Portal</Link>
       <h1 className="mt-3 text-2xl font-bold text-navy-800">Guru Kelas</h1>
-      <p className="mt-1 text-sm text-slate-500">Satu tempat untuk semua kerja kelas anda.</p>
+      <p className="mt-1 text-sm text-slate-500">
+        {nampakSemua ? "Anda pentadbir: memilih daripada semua kelas." : "Satu tempat untuk semua kerja kelas anda."}
+      </p>
 
-      {kelasSaya.length === 0 ? (
+      {kelasDipilih.length === 0 ? (
         <p className="mt-6 rounded-xl border border-garis bg-white p-5 text-sm text-slate-500">
           Anda belum ditugaskan sebagai guru kelas.
         </p>
       ) : (
         <ul className="mt-6 space-y-2">
-          {kelasSaya.map((label) => (
+          {kelasDipilih.map((label) => (
             <li key={label} className="rounded-xl border border-garis bg-white p-4">
               <p className="font-semibold text-navy-800">{label}</p>
               <p className="text-xs text-slate-500">{bilMurid(label)} murid berdaftar</p>

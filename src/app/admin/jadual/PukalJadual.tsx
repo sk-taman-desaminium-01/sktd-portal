@@ -5,6 +5,8 @@ import { bacaJadualPukal, type HasilPukal } from "@/lib/baca-jadual";
 import { simpanJadualBanyak } from "@/lib/jadual";
 import { failKeMuatan } from "@/data/fail-base64";
 import { semakSaiz } from "@/data/had-fail";
+import { HARI, NAMA_HARI, type KelasJadual, type Waktu } from "@/data/jadual-jenis";
+import { namaSubjek } from "@/data/subjek";
 
 /**
  * Muat naik jadual SEMUA kelas sekaligus. Pentadbir dan admin sahaja.
@@ -26,10 +28,21 @@ import { semakSaiz } from "@/data/had-fail";
 
 interface Baris extends HasilPukal {
   pilih: boolean;
+  /** Kunci stabil — satu zip boleh mengandungi nama fail yang berulang. */
+  kunci: string;
 }
 
 export default function PukalJadual() {
   const [baris, setBaris] = useState<Baris[]>([]);
+  /**
+   * Kad mana yang terbuka.
+   *
+   * Keputusan pengguna: satu lajur kad, tetingkapnya buka-tutup, dan
+   * jadual kelas itu dipapar DI DALAMNYA sebelum disahkan. 57 grid yang
+   * terbuka serentak ialah 3,000 sel — pentadbir menatal melepasi kelas
+   * yang mereka cari dan tidak menemuinya lagi.
+   */
+  const [buka, setBuka] = useState<Set<string>>(new Set());
   const [kemajuan, setKemajuan] = useState<{ kini: number; jumlah: number } | null>(null);
   const [hasil, setHasil] = useState<{ ok: boolean; mesej: string } | null>(null);
   const [sibuk, setSibuk] = useState(false);
@@ -42,8 +55,8 @@ export default function PukalJadual() {
         keluar.push({ nama: f.name, bait: new Uint8Array(await f.arrayBuffer()) });
         continue;
       }
-      const { unzipSync } = await import("fflate");
-      const isi = unzipSync(new Uint8Array(await f.arrayBuffer()));
+      const { bukaZip } = await import("@/data/buka-zip");
+      const isi = bukaZip(new Uint8Array(await f.arrayBuffer()));
       for (const [nama, bait] of Object.entries(isi)) {
         // Folder dan fail sistem macOS (__MACOSX) dilangkau.
         if (nama.endsWith("/") || nama.includes("__MACOSX") || nama.startsWith(".")) continue;
@@ -82,16 +95,18 @@ export default function PukalJadual() {
         const fail = new File([bait.slice().buffer as ArrayBuffer], nama);
         const terlalu = semakSaiz(fail);
         if (terlalu) {
-          keputusan.push({ nama, kelas: null, ok: false, mesej: terlalu, pilih: false });
+          keputusan.push({
+            nama, kelas: null, ok: false, mesej: terlalu, pilih: false, kunci: `${nama}-${i}`,
+          });
           setBaris([...keputusan]);
           continue;
         }
         try {
           const r = await bacaJadualPukal(await failKeMuatan(fail));
-          keputusan.push({ ...r, pilih: r.ok });
+          keputusan.push({ ...r, pilih: r.ok, kunci: `${nama}-${i}` });
         } catch (e) {
           keputusan.push({
-            nama, kelas: null, ok: false, pilih: false,
+            nama, kelas: null, ok: false, pilih: false, kunci: `${nama}-${i}`,
             mesej: e instanceof Error ? e.message : "Gagal dibaca.",
           });
         }
@@ -194,31 +209,73 @@ export default function PukalJadual() {
             <b>{berjaya} daripada {baris.length}</b> fail berjaya dibaca.
           </p>
 
-          <ul className="mt-2 divide-y divide-garis rounded-xl border border-garis">
+          {/* SATU LAJUR KAD. Setiap kad satu kelas; tekan untuk melihat
+              jadualnya sebelum ia disahkan. */}
+          <ul className="mt-2 space-y-2">
             {baris.map((b, i) => (
-              <li key={`${b.nama}-${i}`} className="flex flex-wrap items-center gap-3 p-3">
-                <input
-                  type="checkbox"
-                  checked={b.pilih}
-                  disabled={!b.ok}
-                  onChange={(e) =>
-                    setBaris((s) => s.map((x, j) => (j === i ? { ...x, pilih: e.target.checked } : x)))
-                  }
-                  aria-label={`Simpan ${b.kelas ?? b.nama}`}
-                />
-                <span className="w-24 shrink-0 font-semibold text-navy-800">
-                  {b.kelas ?? "—"}
-                </span>
-                <span className="min-w-0 flex-1">
-                  <span className="block truncate text-xs text-slate-500">{b.nama}</span>
-                  <span className={`block text-sm ${b.ok ? "text-slate-600" : "text-[#8f2424]"}`}>
-                    {b.mesej}
-                  </span>
-                </span>
-                {b.keyakinan && (
-                  <span className="shrink-0 text-xs text-slate-500">
-                    {b.keyakinan.dikenal}/{b.keyakinan.jumlah}
-                  </span>
+              <li
+                key={b.kunci}
+                className={`rounded-xl border ${
+                  b.ok ? "border-garis bg-white" : "border-[#e9c4c4] bg-[#fdf7f7]"
+                }`}
+              >
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-2 p-3">
+                  <input
+                    type="checkbox"
+                    checked={b.pilih}
+                    disabled={!b.ok}
+                    onChange={(e) =>
+                      setBaris((s) =>
+                        s.map((x, j) => (j === i ? { ...x, pilih: e.target.checked } : x)),
+                      )
+                    }
+                    aria-label={`Simpan ${b.kelas ?? b.nama}`}
+                  />
+
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setBuka((s) => {
+                        const n = new Set(s);
+                        if (n.has(b.kunci)) n.delete(b.kunci);
+                        else n.add(b.kunci);
+                        return n;
+                      })
+                    }
+                    disabled={!b.draf || !b.waktu?.length}
+                    aria-expanded={buka.has(b.kunci)}
+                    className="flex min-w-0 flex-1 items-center gap-2 text-left disabled:cursor-default"
+                  >
+                    <span className="w-5 shrink-0 text-xs text-slate-400">
+                      {b.draf && b.waktu?.length ? (buka.has(b.kunci) ? "▾" : "▸") : ""}
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block text-sm font-bold text-navy-800">
+                        {b.kelas ?? "Kelas tidak dikesan"}
+                        {b.keyakinan && (
+                          <span className="ml-2 font-semibold text-slate-500">
+                            {b.keyakinan.dikenal}/{b.keyakinan.jumlah} slot
+                          </span>
+                        )}
+                      </span>
+                      <span className="mt-0.5 block truncate text-[11px] text-slate-400">
+                        {b.nama}
+                      </span>
+                      <span
+                        className={`mt-0.5 block text-xs ${
+                          b.ok ? "text-slate-600" : "text-[#8f2424]"
+                        }`}
+                      >
+                        {b.mesej}
+                      </span>
+                    </span>
+                  </button>
+                </div>
+
+                {buka.has(b.kunci) && b.draf && b.waktu && (
+                  <div className="border-t border-garis px-3 pb-3 pt-2">
+                    <GridDraf draf={b.draf} waktu={b.waktu} />
+                  </div>
                 )}
               </li>
             ))}
@@ -250,5 +307,61 @@ export default function PukalJadual() {
         </p>
       )}
     </section>
+  );
+}
+
+/**
+ * Pratonton draf satu kelas: waktu menegak, hari melintang.
+ *
+ * Bentuknya sama seperti jadual harian yang guru sudah biasa membaca —
+ * bukan senarai slot. Slot yang tersasar kelihatan serta-merta dalam grid
+ * (satu subjek pada hari yang salah menonjol), dan tidak pernah kelihatan
+ * dalam ayat "44 slot dibaca".
+ *
+ * Waktu REHAT dikelabukan supaya bilangan baris sepadan dengan jadual
+ * bercetak; membuangnya bermakna waktu ke-6 di skrin bukan waktu ke-6 di
+ * dinding bilik guru.
+ */
+function GridDraf({ draf, waktu }: { draf: KelasJadual; waktu: Waktu[] }) {
+  return (
+    <div className="max-h-96 overflow-auto rounded-lg border border-garis bg-white">
+      <table className="w-full min-w-[30rem] border-collapse text-left text-[11px]">
+        <thead className="sticky top-0 bg-navy-50">
+          <tr>
+            <th className="px-2 py-1.5 font-semibold text-slate-500">Waktu</th>
+            {HARI.map((h) => (
+              <th key={h} className="px-2 py-1.5 font-semibold text-navy-800">
+                {NAMA_HARI[h]}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-garis">
+          {waktu.map((w) => (
+            <tr key={w.id} className={w.rehat ? "bg-slate-50" : undefined}>
+              <td className="whitespace-nowrap px-2 py-1 font-mono text-slate-500">
+                {w.mula}–{w.tamat}
+              </td>
+              {HARI.map((h) => {
+                const slot = draf.hari[h]?.[w.id];
+                return (
+                  <td key={h} className="px-2 py-1">
+                    {w.rehat ? (
+                      <span className="text-slate-400">{w.label ?? "Rehat"}</span>
+                    ) : slot?.subjek ? (
+                      <span className="font-semibold text-navy-800">
+                        {namaSubjek(slot.subjek)}
+                      </span>
+                    ) : (
+                      <span className="text-slate-300">—</span>
+                    )}
+                  </td>
+                );
+              })}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
   );
 }

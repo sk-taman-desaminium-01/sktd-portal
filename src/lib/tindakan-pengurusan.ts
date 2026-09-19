@@ -14,7 +14,7 @@ import {
   type SeksyenUntukSimpan,
 } from "./pengurusan";
 import {
-  senaraiPindaan, tambahPindaan, togolPindaan, padamPindaan,
+  pindaBarisKekal, senaraiPindaan, tambahPindaan, togolPindaan, padamPindaan,
   kenakanPindaan, kenakanPindaanBanyak, type Pindaan, type JenisPindaan,
 } from "./pindaan";
 import { amaranDokumen, type MukaBaca } from "./muka-pdf";
@@ -227,7 +227,7 @@ export async function simpanPengurusan(
     // jawatan yang tersalah eja dalam cetakan — dikenakan automatik pada
     // edisi 2027 semasa ia dimuat naik. Itulah seluruh sebab pindaan wujud:
     // supaya kerja yang sama tidak bermula semula dari kosong setiap tahun.
-    const pindaan = await senaraiPindaan().catch(() => [] as Pindaan[]);
+    const pindaan = await senaraiPindaan();
     let diubah = 0;
     let digugur = 0;
     const dipinda = pilih.map((s) => {
@@ -345,7 +345,16 @@ export async function lihatBaris(seksyenId: string): Promise<HasilBaris> {
 export async function suntingBarisTindakan(
   id: string,
   sel: string[],
-  kekal?: { jenis: JenisPindaan; dari: string; kepada: string; sebab: string },
+  /**
+   * Pembetulan yang mesti KEKAL merentas edisi.
+   *
+   * Senarai, bukan satu. Versi pertama hanya menerima SATU sel yang berubah,
+   * dan menyembunyikan pilihan "kekal" apabila dua sel disunting serentak —
+   * jadi pembetulan yang menyentuh jawatan DAN nama dalam baris yang sama
+   * tetap perlu diulang tahun depan. Setiap sel yang berubah kini menjadi
+   * pindaannya sendiri, dan padanan setiap satu masih SELURUH SEL.
+   */
+  kekal?: { jenis: JenisPindaan; dari: string; kepada: string; sebab: string }[],
 ): Promise<{ ok: boolean; mesej: string }> {
   let saya;
   try {
@@ -354,18 +363,10 @@ export async function suntingBarisTindakan(
     return { ok: false, mesej: "Tiada kebenaran." };
   }
   try {
-    await suntingBaris(id, sel.map((c) => (c ?? "").trim()));
-    let nota = "";
-    if (kekal && kekal.dari.trim() !== "") {
-      await tambahPindaan({
-        jenis: kekal.jenis,
-        dari: kekal.dari,
-        kepada: kekal.kepada,
-        sebab: kekal.sebab,
-        oleh: saya.emel ?? null,
-      });
-      nota = " Pindaan disimpan — ia akan dikenakan pada muat naik akan datang.";
-    }
+    const bersih = sel.map((c) => (c ?? "").trim());
+    if (kekal?.length) await pindaBarisKekal(id, bersih, saya.emel ?? null);
+    else await suntingBaris(id, bersih);
+    const nota = kekal?.length ? " Pindaan baris disimpan untuk muat naik akan datang." : "";
     revalidatePath("/admin/pengurusan");
     return { ok: true, mesej: "Baris dibetulkan." + nota };
   } catch (e) {
@@ -373,16 +374,30 @@ export async function suntingBarisTindakan(
   }
 }
 
-export async function padamBarisTindakan(id: string): Promise<{ ok: boolean; mesej: string }> {
+/**
+ * Padam satu baris — dan ingat bahawa ia dipadam.
+ *
+ * Tanpa `kekal`, memadam baris sampah membetulkan edisi ini sahaja: buku
+ * tahun depan mencetak baris yang sama, dan kerja yang sama bermula semula.
+ * Dengan `kekal`, baris itu digugurkan automatik pada setiap muat naik
+ * seterusnya. Padanannya SELURUH BARIS, jadi baris lain tidak terjejas.
+ */
+export async function padamBarisTindakan(
+  id: string,
+  kekal?: { sel: string[]; sebab: string },
+): Promise<{ ok: boolean; mesej: string }> {
+  let saya;
   try {
-    await pastikanBoleh("urus_pengurusan");
+    saya = await pastikanBoleh("urus_pengurusan");
   } catch {
     return { ok: false, mesej: "Tiada kebenaran." };
   }
   try {
-    await padamBaris(id);
+    if (kekal) await pindaBarisKekal(id, null, saya.emel ?? null);
+    else await padamBaris(id);
+    const nota = kekal ? " Pindaan kekal turut disimpan." : "";
     revalidatePath("/admin/pengurusan");
-    return { ok: true, mesej: "Baris dipadam." };
+    return { ok: true, mesej: "Baris dipadam." + nota };
   } catch (e) {
     return { ok: false, mesej: ralat(e) };
   }
@@ -425,11 +440,12 @@ export async function tambahPindaanTindakan(
     return { ok: false, mesej: "Tiada kebenaran." };
   }
   if (p.dari.trim().length < 3) return { ok: false, mesej: "Isi teks asal dahulu." };
-  if (p.jenis !== "buang_nama" && p.kepada.trim().length < 2) {
+  const tanpaGantian = p.jenis === "buang_nama" || p.jenis === "buang_baris";
+  if (!tanpaGantian && p.kepada.trim().length < 2) {
     return { ok: false, mesej: "Isi teks gantian dahulu." };
   }
   try {
-    await tambahPindaan({ ...p, kepada: p.jenis === "buang_nama" ? null : p.kepada, oleh: saya.emel ?? null });
+    await tambahPindaan({ ...p, kepada: tanpaGantian ? null : p.kepada, oleh: saya.emel ?? null });
     revalidatePath("/admin/pengurusan");
     return { ok: true, mesej: "Pindaan disimpan." };
   } catch (e) {

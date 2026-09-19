@@ -6,8 +6,17 @@ import { boleh } from "./peranan";
 import {
   senaraiBilik, tempahanJulat, tempahanBilikTarikh, simpanTempahan,
   batalTempahan, satuTempahan, simpanBilik, padamBilik, hariIniMY,
+  putuskanTempahan,
 } from "./bilik";
-import { semakTempahan, labelTarikh, type Bilik, type Tempahan } from "@/data/bilik";
+import {
+  semakTempahan, labelTarikh, type Bilik, type StatusTempahan, type Tempahan,
+} from "@/data/bilik";
+import { ambilJadual } from "./jadual";
+import { barisIkutKod } from "./pengurusan";
+import { leraiTakwim } from "./takwim";
+import {
+  sesiGrid, tarikhCuti, perluKelulusan, gabungJulat, type SesiGrid,
+} from "@/data/grid-bilik";
 import { hantar, emelIkutPeranan } from "./notifikasi";
 import { simpanPermohonanPukal, penyeliaUnit } from "./inventori";
 import {
@@ -83,6 +92,18 @@ export interface PapanBilik {
   hingga: string;
   sayaEmel: string;
   bolehUrus: boolean;
+  bolehLulus: boolean;
+  /**
+   * Blok waktu grid, dari SET WAKTU jadual sekolah — bukan senarai yang
+   * ditulis dalam kod. Bila sekolah menukar waktu rehat, grid tempahan
+   * menyusul sendiri.
+   */
+  sesi: SesiGrid[];
+  /**
+   * Tarikh cuti dalam takwim. Tempahan pada tarikh ini perlu kelulusan
+   * pentadbir; hari sekolah biasa pula siapa dapat dahulu, dia menang.
+   */
+  cuti: string[];
 }
 
 /** Baca papan tempahan untuk julat tarikh. Lalai: 14 hari dari hari ini. */
@@ -98,25 +119,34 @@ export async function papanBilik(dari?: string, hari = 14): Promise<PapanBilik |
     hariIni, dari: mula, hingga: akhir,
     sayaEmel: saya.emel ?? "",
     bolehUrus: boleh(saya.peranan, "urus_bilik"),
+    bolehLulus: ["admin_mutlak", "admin", "pentadbir"].includes(saya.peranan),
   };
 
   try {
-    const [bilik, tempahan, tetap, petaSubjek] = await Promise.all([
+    // SATU SKRIN, SATU PERJALANAN (peraturan keras #31). Enam bacaan
+    // berturutan mengambil enam kali lebih lama daripada enam bacaan
+    // serentak, dan perbezaannya kelihatan pada telefon.
+    const [bilik, tempahan, tetap, petaSubjek, sesi, cuti] = await Promise.all([
       // Pentadbir melihat bilik yang dinyahaktifkan juga — kalau tidak,
       // bilik yang tersalah nyahaktif hilang dan tiada cara memulihkannya.
       senaraiBilik(asas.bolehUrus),
       tempahanJulat(mula, akhir),
-      senaraiTetap().catch(() => [] as Tetap[]),
+      senaraiTetap(),
       petaSubjekBilik().catch(() => ({} as Record<string, string>)),
+      ambilJadual().then(sesiGrid).catch(() => [] as SesiGrid[]),
+      tarikhCutiTakwim(),
     ]);
-    return { ...asas, belumSedia: false, bilik, tempahan, tetap, petaSubjek };
+    return { ...asas, belumSedia: false, bilik, tempahan, tetap, petaSubjek, sesi, cuti };
   } catch (e) {
     // PostgREST memulangkan 404/42P01 bila jadual tiada. Itu bukan pepijat —
     // ia bermakna satu langkah pemasangan belum dibuat, dan skrin patut
     // mengatakannya dan bukan menghempas.
     const teks = e instanceof Error ? e.message : String(e);
     if (/bilik_khas|tempahan_bilik|42P01|does not exist|Not Found|404/i.test(teks)) {
-      return { ...asas, belumSedia: true, bilik: [], tempahan: [], tetap: [], petaSubjek: {} };
+      return {
+        ...asas, belumSedia: true, bilik: [], tempahan: [], tetap: [],
+        petaSubjek: {}, sesi: [], cuti: [],
+      };
     }
     throw e;
   }
@@ -128,11 +158,53 @@ function tambahHari(iso: string, n: number): string {
   return d.toISOString().slice(0, 10);
 }
 
+/** Bacaan takwim mesti berjaya sebelum status kelulusan ditentukan. */
+async function tarikhCutiTakwim(): Promise<string[]> {
+  const program = await barisIkutKod("takwim");
+  if (!program) throw new Error("Takwim belum disahkan. Semakan hari cuti diperlukan sebelum tempahan.");
+  return tarikhCuti(leraiTakwim(program.lajur, program.baris));
+}
+
 export async function tempahTindakan(data: {
   bilik_id: string; tarikh: string; mula: string; tamat: string; tujuan: string;
   /** Peralatan ICT yang perlu disediakan untuk tempahan ini. */
   peralatan?: { barang_id: string; kuantiti: number }[];
 }): Promise<HasilBilik> {
+  return tempahBanyakTindakan({
+    bilik_ids: [data.bilik_id], tarikh: data.tarikh,
+    blok: [{ mula: data.mula, tamat: data.tamat }],
+    tujuan: data.tujuan, peralatan: data.peralatan,
+  });
+}
+
+/**
+ * TEMPAH BANYAK BILIK, BANYAK WAKTU, SATU TEKAN.
+ *
+ * Keputusan pengguna: "boleh tempah banyak bilik dan boleh tempah ikut
+ * banyak waktu, mungkin ada guru tempah 3 waktu misalnya." Borang lama
+ * memerlukan satu penghantaran untuk setiap gabungan — tiga waktu × dua
+ * bilik ialah enam borang, dan menjelang borang keempat seseorang akan
+ * tersilap taip jam.
+ *
+ * TIGA PERATURAN YANG MENJADIKANNYA SELAMAT:
+ *
+ *  1. Blok BERTURUTAN digabung menjadi satu tempahan (`gabungJulat`). Tiga
+ *     waktu berturut ialah satu majlis sejam setengah, bukan tiga tempahan
+ *     bersebelahan yang perlu dibatalkan tiga kali.
+ *  2. Setiap gabungan disemak SENDIRI, dan kegagalan satu tidak
+ *     menjatuhkan yang lain — pentadbir yang menempah lima bilik dan
+ *     mendapati satu sudah diambil tetap mendapat empat.
+ *  3. Hari cuti dan hujung minggu masuk sebagai `menunggu`, bukan `lulus`.
+ *     Ia tidak mengunci slot sampai pentadbir memutuskan.
+ */
+export async function tempahBanyakTindakan(data: {
+  bilik_ids: string[];
+  /** Satu tarikh setiap kali: pemilihan merentas hari menjadi satu panggilan per hari. */
+  tarikh: string;
+  blok: { mula: string; tamat: string }[];
+  tujuan: string;
+  peralatan?: { barang_id: string; kuantiti: number }[];
+}): Promise<HasilBilik & { berjaya?: number; gagal?: string[]; menunggu?: number }> {
   const saya = await pengguna();
   if (!saya?.peranan) return { ok: false, mesej: "Tiada kebenaran." };
 
@@ -140,41 +212,74 @@ export async function tempahTindakan(data: {
   if (tujuan.length < 3) {
     return { ok: false, mesej: "Tulis tujuan tempahan — itu yang guru lain baca sebelum bertanya." };
   }
-  if (!data.bilik_id) return { ok: false, mesej: "Pilih bilik." };
+  const bilikIds = [...new Set(data.bilik_ids.filter(Boolean))];
+  if (bilikIds.length === 0) return { ok: false, mesej: "Pilih sekurang-kurangnya satu bilik." };
+
+  const julat = gabungJulat(
+    data.blok.map((b) => ({ id: `${b.mula}-${b.tamat}`, mula: b.mula, tamat: b.tamat })),
+  );
+  if (julat.length === 0) return { ok: false, mesej: "Pilih sekurang-kurangnya satu waktu." };
 
   try {
-    const sedia = await tempahanBilikTarikh(data.bilik_id, data.tarikh);
-    const semak = semakTempahan(data, sedia, hariIniMY());
-    if (!semak.ok) return { ok: false, mesej: semak.sebab ?? "Tempahan tidak sah." };
+    const cuti = await tarikhCutiTakwim();
+    const menunggu = perluKelulusan(data.tarikh, cuti);
+    const status: StatusTempahan = menunggu ? "menunggu" : "lulus";
+    const tetap = await senaraiTetap();
+    const namaBilik = new Map((await senaraiBilik()).map((b) => [b.id, b.nama]));
 
-    // WAKTU YANG SUDAH DIMILIKI. Jadual waktu sekolah mengatakan kelas
-    // Pendidikan Moral berada di Makmal 2 pada Selasa pagi; tiada siapa
-    // patut boleh menempahnya. Disemak di PELAYAN, bukan hanya di pelayar —
-    // pelayar menjawab lebih awal, pelayan yang memutuskan.
-    const langgar = tetapBerlanggar(data, await senaraiTetap().catch(() => []));
-    if (langgar) {
-      return { ok: false, mesej: sebabTetap(langgar) };
+    const gagal: string[] = [];
+    const dicipta: { id: string; bilik_id: string; mula: string; tamat: string }[] = [];
+
+    for (const bilik_id of bilikIds) {
+      // Tempahan sedia ada dibaca SEKALI setiap bilik, bukan sekali setiap
+      // julat — satu bilik dengan empat julat ialah satu bacaan, bukan empat.
+      if (!namaBilik.has(bilik_id)) { gagal.push("Bilik tidak aktif atau tidak ditemui."); continue; }
+      const sedia = await tempahanBilikTarikh(bilik_id, data.tarikh);
+      const label = namaBilik.get(bilik_id) ?? "Bilik";
+
+      for (const j of julat) {
+        const minta = { tarikh: data.tarikh, mula: j.mula, tamat: j.tamat };
+        const semak = semakTempahan(minta, sedia, hariIniMY());
+        if (!semak.ok) {
+          gagal.push(`${label} ${j.mula}–${j.tamat}: ${semak.sebab}`);
+          continue;
+        }
+        const langgar = tetapBerlanggar({ bilik_id, ...minta }, tetap);
+        if (langgar) {
+          gagal.push(`${label} ${j.mula}–${j.tamat}: ${sebabTetap(langgar)}`);
+          continue;
+        }
+        try {
+          const rekod = await simpanTempahan({
+            bilik_id, ...minta, tujuan,
+            oleh: saya.emel ?? "",
+            nama: saya.nama ?? saya.emel ?? "",
+            status,
+          });
+          if (rekod) {
+            dicipta.push({ id: rekod.id, bilik_id, mula: j.mula, tamat: j.tamat });
+            // Slot itu kini diambil untuk julat seterusnya dalam bilik yang
+            // sama — tanpa ini, dua julat yang bertindih dalam SATU
+            // penghantaran akan lulus semakan dan ditolak pangkalan data.
+            if (!menunggu) sedia.push(rekod);
+          }
+        } catch (e) {
+          gagal.push(`${label} ${j.mula}–${j.tamat}: ${ralat(e)}`);
+        }
+      }
     }
 
-    const rekod = await simpanTempahan({
-      bilik_id: data.bilik_id,
-      tarikh: data.tarikh,
-      mula: data.mula,
-      tamat: data.tamat,
-      tujuan,
-      oleh: saya.emel ?? "",
-      nama: saya.nama ?? saya.emel ?? "",
-    });
+    if (dicipta.length === 0) {
+      return {
+        ok: false,
+        gagal,
+        mesej: gagal[0] ?? "Tiada tempahan berjaya.",
+      };
+    }
 
-    // PERALATAN ICT DIMOHON SEKALI GUS.
-    //
-    // Guru yang menempah dewan dan memerlukan projektor membuat SATU
-    // tindakan. Menuntut mereka membuka skrin lain dan mengisi borang
-    // berasingan untuk setiap barang ialah tepat kerja yang penggabungan
-    // ini hapuskan — pengguna menyebutnya: "kalau buat kad baru, ia semak
-    // dan serabut je."
-    //
-    // Kegagalannya tidak membatalkan tempahan yang sudah tersimpan.
+    // Peralatan dimohon SEKALI untuk keseluruhan tempahan, bukan sekali
+    // setiap bilik: guru yang menempah dua bilik untuk satu majlis
+    // memerlukan satu projektor, bukan dua.
     const peralatan = (data.peralatan ?? []).filter((x) => x.barang_id && x.kuantiti > 0);
     let notaAlat = "";
     if (peralatan.length > 0) {
@@ -183,11 +288,11 @@ export async function tempahTindakan(data: {
           peralatan.map((x) => ({
             barang_id: x.barang_id,
             kuantiti: x.kuantiti,
-            tujuan: `${tujuan} — tempahan bilik ${data.tarikh} ${data.mula}–${data.tamat}`,
+            tujuan: `${tujuan} — tempahan bilik ${data.tarikh}`,
             perlu_pada: data.tarikh,
             oleh: (saya.emel ?? "").toLowerCase(),
             nama: saya.nama ?? saya.emel ?? "",
-            tempahan_id: rekod?.id ?? null,
+            tempahan_id: dicipta[0]?.id ?? null,
           })),
         );
         notaAlat = ` ${peralatan.length} permohonan peralatan dihantar kepada unit ICT.`;
@@ -197,17 +302,15 @@ export async function tempahTindakan(data: {
           "mohon peralatan itu secara berasingan.";
       }
     }
-    // Pentadbir diberitahu — mereka yang menguruskan bilik, dan mereka yang
-    // perlu tahu bila dewan ditempah pada hari majlis. Kegagalan di sini
-    // TIDAK membatalkan tempahan yang sudah berjaya.
-    const namaBilik = (await senaraiBilik()).find((b) => b.id === data.bilik_id)?.nama ?? "Bilik";
+
     void hantar({
       penerima: await emelIkutPeranan(["admin", "pentadbir"]),
       jenis: "tempahan",
-      tajuk: `${namaBilik} ditempah`,
+      tajuk: menunggu ? "Tempahan hari cuti MENUNGGU kelulusan" : "Bilik ditempah",
       teks:
-        `${saya.nama ?? saya.emel} menempah ${namaBilik} pada ` +
-        `${labelTarikh(data.tarikh)}, ${data.mula}–${data.tamat}. Tujuan: ${tujuan}.`,
+        `${saya.nama ?? saya.emel} menempah ${dicipta.length} slot pada ` +
+        `${labelTarikh(data.tarikh)}. Tujuan: ${tujuan}.` +
+        (menunggu ? " Hari cuti — ia menunggu keputusan anda." : ""),
       pautan: "/bilik",
       oleh: saya.emel ?? null,
     });
@@ -215,8 +318,75 @@ export async function tempahTindakan(data: {
     revalidatePath("/bilik");
     return {
       ok: true,
-      rekod: rekod ? { id: rekod.id } : undefined,
-      mesej: `Bilik ditempah ${data.mula}–${data.tamat}.` + notaAlat,
+      berjaya: dicipta.length,
+      menunggu: menunggu ? dicipta.length : 0,
+      gagal,
+      rekod: dicipta[0] ? { id: dicipta[0].id } : undefined,
+      mesej:
+        (menunggu
+          ? `${dicipta.length} tempahan dihantar untuk KELULUSAN pentadbir — ` +
+            `${labelTarikh(data.tarikh)} hari cuti atau hujung minggu. ` +
+            "Ia belum mengunci bilik itu."
+          : `${dicipta.length} slot ditempah pada ${labelTarikh(data.tarikh)}.`) +
+        notaAlat +
+        (gagal.length > 0 ? ` ${gagal.length} tidak berjaya — lihat senarai di bawah.` : ""),
+    };
+  } catch (e) {
+    return { ok: false, mesej: ralat(e) };
+  }
+}
+
+/**
+ * Luluskan atau tolak tempahan hari cuti.
+ *
+ * Hanya `urus_bilik`. Meluluskan ialah saat pertama tempahan itu MENGUNCI
+ * slot — sampai itu, dua permohonan yang bertindih boleh hidup bersama, dan
+ * pentadbir yang memilih. Kalau kedua-duanya diluluskan, kekangan
+ * pangkalan data menolak yang kedua, dan mesejnya mengatakan begitu.
+ */
+export async function putuskanTempahanTindakan(
+  id: string, status: "lulus" | "tolak",
+): Promise<HasilBilik> {
+  const saya = await pengguna();
+  if (!saya?.peranan) return { ok: false, mesej: "Tiada kebenaran." };
+  if (!["admin_mutlak", "admin", "pentadbir"].includes(saya.peranan)) {
+    return { ok: false, mesej: "Hanya pentadbir boleh meluluskan tempahan hari cuti." };
+  }
+  try {
+    const t = await satuTempahan(id);
+    if (!t || t.dibatalkan || t.status !== "menunggu") return { ok: false, mesej: "Permohonan ini tidak lagi menunggu." };
+    if (status !== "lulus" && status !== "tolak") return { ok: false, mesej: "Keputusan tidak sah." };
+
+    if (status === "lulus") {
+      // Semakan pertindihan DIBUAT SEMULA pada saat kelulusan, bukan
+      // dipercayai dari saat permohonan: sesuatu yang lain mungkin sudah
+      // mengambil slot itu dalam minggu sejak permohonan dibuat.
+      const sedia = (await tempahanBilikTarikh(t.bilik_id, t.tarikh)).filter((x) => x.id !== id);
+      const semak = semakTempahan(t, sedia, hariIniMY());
+      const aktif = (await senaraiBilik()).some((b) => b.id === t.bilik_id);
+      if (!aktif) return { ok: false, mesej: "Bilik tidak lagi aktif." };
+      const langgar = tetapBerlanggar(t, await senaraiTetap());
+      if (langgar) return { ok: false, mesej: sebabTetap(langgar) };
+      if (!semak.ok) return { ok: false, mesej: semak.sebab ?? "Slot itu sudah diambil." };
+    }
+
+    await putuskanTempahan(id, status);
+
+    void hantar({
+      penerima: [t.oleh],
+      jenis: "tempahan",
+      tajuk: status === "lulus" ? "Tempahan hari cuti DILULUSKAN" : "Tempahan hari cuti DITOLAK",
+      teks:
+        `Tempahan anda pada ${labelTarikh(t.tarikh)}, ${t.mula}–${t.tamat} ` +
+        `${status === "lulus" ? "diluluskan" : "ditolak"} oleh ${saya.nama ?? saya.emel}.`,
+      pautan: "/bilik",
+      oleh: saya.emel ?? null,
+    });
+
+    revalidatePath("/bilik");
+    return {
+      ok: true,
+      mesej: status === "lulus" ? "Tempahan diluluskan." : "Tempahan ditolak.",
     };
   } catch (e) {
     return { ok: false, mesej: ralat(e) };

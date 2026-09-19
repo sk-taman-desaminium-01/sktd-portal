@@ -174,78 +174,20 @@ export async function importMuridKelas(
     for (const kp of berulang) ralat.push(`No. KP ${kp} muncul lebih sekali dalam tampalan ini.`);
     for (const m of murid) for (const a of m.amaran) ralat.push(`${m.nama}: ${a}`);
 
-    const db = klienTulis();
-    const kpAda = murid.map((m) => m.no_kp).filter((k): k is string => !!k);
-    const sedia = new Map<string, string>();
-    for (let i = 0; i < kpAda.length; i += 100) {
-      const senarai = kpAda.slice(i, i + 100).map((k) => `"${k}"`).join(",");
-      const jumpa = (await db.minta(
-        `pbd_murid?select=id,no_kp&no_kp=in.(${senarai})`,
-      )) as { id: string; no_kp: string }[];
-      for (const x of jumpa) sedia.set(x.no_kp, x.id);
-    }
-
-    const tanpaKp = murid.filter((m) => !m.no_kp).length;
-    const baharu = murid.filter((m) => !m.no_kp || !sedia.has(m.no_kp)).length;
-    const lelaki = murid.filter((m) => m.jantina === "L").length;
-    const perempuan = murid.filter((m) => m.jantina === "P").length;
-
-    const ringkas =
-      `${murid.length} murid · ${baharu} baharu · ${murid.length - baharu} sudah ada · ` +
-      `${lelaki} lelaki, ${perempuan} perempuan` +
-      (tanpaKp > 0 ? ` · ${tanpaKp} TIADA No. KP` : "");
-
-    if (!simpan) {
-      return {
-        ok: true, kering: true,
-        mesej: `Larian kering — TIADA apa ditulis. ${ringkas}. Semak senarai di bawah sebelum menyimpan.`,
-        jumlah: murid.length, baharu, sedia: murid.length - baharu, tanpaKp,
-        ralat, murid,
-      };
-    }
-
-    let ditulis = 0;
-    for (const m of murid) {
-      let muridId = m.no_kp ? sedia.get(m.no_kp) : undefined;
-      if (!muridId) {
-        const [cipta] = (await db.minta("pbd_murid", {
-          method: "POST",
-          body: JSON.stringify({ no_kp: m.no_kp, nama: m.nama, jantina: m.jantina }),
-        })) as { id: string }[];
-        muridId = cipta.id;
-        if (m.no_kp) sedia.set(m.no_kp, muridId);
-      } else if (m.jantina) {
-        // Jantina dikemas kini kalau ia belum pernah diisi — murid yang
-        // diimport sebelum pengesanan No. KP wujud tiada nilai itu.
-        await db.minta(`pbd_murid?id=eq.${muridId}&jantina=is.null`, {
-          method: "PATCH",
-          headers: { Prefer: "return=minimal" },
-          body: JSON.stringify({ jantina: m.jantina }),
-        });
-      }
-
-      await db.minta("pbd_pendaftaran?on_conflict=murid_id,tahun_sesi", {
-        method: "POST",
-        headers: { Prefer: "resolution=merge-duplicates,return=minimal" },
-        body: JSON.stringify({
-          murid_id: muridId, tahun_sesi: sesi.tahun_sesi,
-          tahun, kelas: kelas.trim().toUpperCase(), status: "aktif",
-        }),
-      });
-      ditulis++;
-    }
-
-    revalidatePath("/admin/pbd");
-    revalidatePath("/pbd");
-    return {
-      ok: true, kering: false,
-      mesej: `${ditulis} murid disimpan ke ${tahun} ${kelas} sesi ${sesi.tahun_sesi}. ${ringkas}`,
-      jumlah: murid.length, baharu, sedia: murid.length - baharu, tanpaKp, ralat,
+    if (berulang.length) return { ok: false, kering: true, mesej: "No. KP berulang. Betulkan senarai sebelum import.", ralat, murid };
+    const hasil = await klienTulis().minta("rpc/import_murid_kelas", {
+      method: "POST", body: JSON.stringify({ p_sesi: sesi.tahun_sesi, p_tahun: tahun,
+        p_kelas: kelas.trim().toUpperCase(), p_murid: murid.map((m) => ({ nama: m.nama, no_kp: m.no_kp, jantina: m.jantina })), p_simpan: simpan }),
+    }) as { baharu: number; sedia: number };
+    if (simpan) { revalidatePath("/admin/pbd"); revalidatePath("/pbd"); }
+    return { ok: true, kering: !simpan, murid, ralat, jumlah: murid.length,
+      baharu: hasil.baharu, sedia: hasil.sedia, tanpaKp: murid.filter((m) => !m.no_kp).length,
+      mesej: `${simpan ? "Disimpan" : "Semakan tanpa menyimpan"}: ${murid.length} murid, ${hasil.baharu} baharu, ${hasil.sedia} sedia ada.`,
     };
   } catch (e) {
-    return {
-      ok: false, kering: true,
-      mesej: "Import gagal: " + (e instanceof Error ? `${e.name}: ${e.message}` : String(e)),
+    return { ok: false, kering: !simpan,
+      mesej: "Import tidak disahkan: " + (e instanceof Error ? e.message : String(e)) +
+        (simpan ? " Muat semula untuk semak; penghantaran semula dipadankan dengan rekod sedia ada." : ""),
     };
   }
 }

@@ -38,6 +38,7 @@ export default async function Borang() {
         tandatangan Guru Besar diisi automatik.
       </p>
 
+      <Link href="/borang/aktiviti" className="mt-5 block rounded-xl border border-garis bg-white p-4 font-semibold text-navy-800">Surat Akuan Kebenaran dan Kesihatan Penyertaan Aktiviti dan Pertandingan →</Link>
       {belumSedia ? (
         <div className="mt-6 rounded-xl border border-[#e9d9ae] bg-[#fdf9f0] p-5 text-sm leading-relaxed text-[#7a5a12]">
           <p className="font-semibold">Modul ini belum dipasang.</p>

@@ -57,6 +57,17 @@ export const ARA_JAWATAN: AraJawatan[] = [
   { kod: "GAG",   nama: "Guru Pendidikan Islam", aras: 4 },
   { kod: "GAB",   nama: "Guru Akademik Biasa", aras: 4 },
   { kod: "AKP",   nama: "Anggota Kumpulan Pelaksana", aras: 5 },
+  // ── Anggota Kumpulan Pelaksana, seperti tercetak dalam buku ini ──────
+  //
+  // Senarai AKP menulis kodnya MELEKAT pada nama, dengan jawatan dalam
+  // kurungan: "BAIDURIAH BINTI BAHROM KPT (KETUA PEMBANTU TADBIR)". Kod
+  // itu tiada dalam penunjuk kod buku (penunjuk hanya menyenaraikan kod
+  // guru), jadi tanpa kemasukan di bawah ia tidak dikenali — dan akibatnya
+  // seluruh sel menjadi "jawatan" mereka dalam carta, nama dan semuanya.
+  { kod: "KPT",   nama: "Ketua Pembantu Tadbir", aras: 5 },
+  { kod: "PT",    nama: "Pembantu Tadbir", aras: 5 },
+  { kod: "PPM",   nama: "Pembantu Pengurusan Murid", aras: 5 },
+  { kod: "PKA",   nama: "Pembantu Khidmat Am", aras: 5, sahkan: true },
 ];
 
 /**
@@ -142,6 +153,7 @@ export function kekananan(jawatan: string): number {
 
 /** Nod dalam carta. */
 export interface NodCarta {
+  selAsal?: string[];
   id: string;
   /** Nama orang, atau nama unit bila `jenis === "unit"`. */
   label: string;
@@ -153,6 +165,22 @@ export interface NodCarta {
   anak: NodCarta[];
   /** Baris asal dalam pangkalan data — supaya suntingan tahu apa nak ubah. */
   barisId?: string;
+  /**
+   * Seksyen mana baris itu datang.
+   *
+   * Penting kerana BENTUK barisnya berbeza: baris jawatankuasa ialah
+   * [kumpulan, jawatan, nama], manakala baris senarai nama guru ialah
+   * [bil, nama, kod, opsyen]. Menulis bentuk yang salah ke baris yang salah
+   * memusnahkan data — dan nod "Guru & Kakitangan Lain" datang dari senarai
+   * guru, bukan dari jawatankuasa.
+   */
+  sumber?: "guru" | "jawatankuasa";
+  /**
+   * Ejaan seperti tercetak dalam buku, bila ia BERBEZA dari senarai nama
+   * guru. Dipapar sebagai nota kecil supaya admin boleh menyemak padanan
+   * longgar itu, bukan mempercayainya buta.
+   */
+  ejaanBuku?: string;
   /** Rujukan bukan-orang: "SEMUA KETUA PANITIA", "PENGERUSI BKGK". */
   rujukan?: boolean;
 }

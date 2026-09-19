@@ -18,6 +18,7 @@ import { klienTulis } from "./supabase-pelayan";
  * menuntut ibu bapa menaip sendiri, demi privasi murid lain).
  */
 export interface CadanganMurid {
+  id: string;
   nama: string;
   kelas: string;
 }
@@ -31,12 +32,12 @@ export async function senaraiMuridCadangan(tahun_sesi: number): Promise<Cadangan
   const keluar: CadanganMurid[] = [];
   for (let mula = 0; ; mula += KEPING) {
     const keping = (await db.minta(
-      `pbd_pendaftaran?select=tahun,kelas,pbd_murid(nama)&tahun_sesi=eq.${tahun_sesi}` +
-        `&status=in.(aktif,pindah_masuk,ulang)&offset=${mula}&limit=${KEPING}`,
-    )) as { tahun: number; kelas: string; pbd_murid: { nama: string } | null }[];
+      `pbd_pendaftaran?select=murid_id,tahun,kelas,pbd_murid(nama)&tahun_sesi=eq.${tahun_sesi}` +
+        `&status=in.(aktif,pindah_masuk,ulang)&order=id.asc&offset=${mula}&limit=${KEPING}`,
+    )) as { murid_id: string; tahun: number; kelas: string; pbd_murid: { nama: string } | null }[];
 
     for (const b of keping) {
-      if (b.pbd_murid?.nama) keluar.push({ nama: b.pbd_murid.nama, kelas: `${b.tahun} ${b.kelas}` });
+      if (b.pbd_murid?.nama) keluar.push({ id: b.murid_id, nama: b.pbd_murid.nama, kelas: b.tahun === 0 ? b.kelas : `${b.tahun} ${b.kelas}` });
     }
     if (keping.length < KEPING) break;
   }

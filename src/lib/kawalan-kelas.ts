@@ -1,5 +1,7 @@
 "use server";
 
+import { bacaSemua } from "./baca-semua";
+import { tahunSesiAktif } from "./sesi-aktif";
 import { revalidatePath } from "next/cache";
 import { pengguna } from "./akses";
 import { klienTulis } from "./supabase-pelayan";
@@ -54,6 +56,11 @@ export type HasilKawalanKelas = { ok: boolean; mesej: string };export async func
 
   const db = klienTulis();
   try {
+    if (input.tahun_sesi !== await tahunSesiAktif()) return { ok: false, mesej: "Pilih sesi aktif." };
+    if (input.bil_hadir != null && (!Number.isInteger(input.bil_hadir) || input.bil_hadir < 0 || input.bil_murid == null || input.bil_hadir > input.bil_murid))
+      return { ok: false, mesej: "Bilangan hadir mesti antara sifar dan jumlah murid." };
+    if (input.bil_murid != null && (!Number.isInteger(input.bil_murid) || input.bil_murid < 1 || input.bil_murid > 200))
+      return { ok: false, mesej: "Jumlah murid tidak sah." };
     await db.minta("pbd_kawalan_kelas", {
       method: "POST",
       headers: { Prefer: "return=minimal" },
@@ -91,10 +98,10 @@ export async function senaraiKawalanKelas(
 
   const db = klienTulis();
   try {
-    const senarai = (await db.minta(
+    const senarai = (await bacaSemua<BarisKawalanKelas>(
       `pbd_kawalan_kelas?select=id,tahun_sesi,tarikh,kelas,guru_nama,subjek,masa_masuk,relief,` +
         `guru_relief_untuk,masalah_disiplin,bil_hadir,bil_murid,dicipta` +
-        `&tahun_sesi=eq.${tahun_sesi}&tarikh=gte.${sejakIso}&order=tarikh.desc,dicipta.desc&limit=500`,
+        `&tahun_sesi=eq.${tahun_sesi}&tarikh=gte.${sejakIso}&order=tarikh.desc,dicipta.desc,id.asc`,
     )) as BarisKawalanKelas[];
     return { belumSedia: false, senarai };
   } catch (e) {

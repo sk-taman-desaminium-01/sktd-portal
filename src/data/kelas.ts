@@ -1,4 +1,4 @@
-import { SEKOLAH } from "./sekolah";
+import { SEKOLAH } from "./sekolah.ts";
 
 /**
  * Senarai kelas penuh: Tahun 1–6 × nama kelas.

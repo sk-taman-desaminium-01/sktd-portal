@@ -5,9 +5,12 @@ import { pastikanBoleh } from "./akses";
 import { SEKOLAH } from "@/data/sekolah";
 import {
   dokumenTerkini, seksyenDokumen, barisSeksyen,
-  suntingBaris, tambahBaris, padamBaris,
+  tambahBaris, padamBaris,
 } from "./pengurusan";
-import { binaCarta, kiraOrang, kiraPenempatan, type SeksyenCarta } from "./carta";
+import { pindaBarisKekal } from "./pindaan";
+import {
+  binaCarta, kiraOrang, kiraPenempatan, type SeksyenCarta,
+} from "./carta";
 import { senaraiPentadbir } from "./pentadbir";
 import type { NodCarta } from "@/data/carta";
 
@@ -80,6 +83,12 @@ export async function ambilCarta(): Promise<HasilCarta> {
     }
 
     const { punca, tidakDitempatkan } = binaCarta(untuk, SEKOLAH.namaPenuh, penunjuk, terkini);
+    const barisAsal = new Map(untuk.flatMap((s) => s.baris.map((b) => [b.id, b.sel] as const)));
+    function isiSel(n: NodCarta) {
+      if (n.barisId) n.selAsal = barisAsal.get(n.barisId);
+      n.anak.forEach(isiSel);
+    }
+    isiSel(punca);
     return {
       ok: true,
       punca,
@@ -110,27 +119,25 @@ export async function suntingNod(
     if (bersih.every((c) => c === "")) {
       return { ok: false, mesej: "Baris kosong. Guna Padam kalau mahu membuangnya." };
     }
-    await suntingBaris(barisId, bersih);
+    const saya = await pastikanBoleh("urus_pengurusan");
+    await pindaBarisKekal(barisId, bersih, saya.emel ?? null);
     revalidatePath("/admin/carta");
-    return { ok: true, mesej: "Disimpan." };
+    return { ok: true, mesej: "Disimpan bersama pindaan untuk muat naik akan datang." };
   } catch (e) {
     return { ok: false, mesej: ralat(e) };
   }
 }
 
-export async function padamNod(barisId: string): Promise<{ ok: boolean; mesej: string }> {
+/** Pemadaman dan pindaan kekal mesti berjaya serentak. */
+export async function padamNod(barisId: string, kekal = true): Promise<{ ok: boolean; mesej: string }> {
   try {
-    await pastikanBoleh("urus_pengurusan");
-  } catch {
-    return { ok: false, mesej: "Tiada kebenaran." };
-  }
-  try {
-    await padamBaris(barisId);
+    const saya = await pastikanBoleh("urus_pengurusan");
+    if (kekal) await pindaBarisKekal(barisId, null, saya.emel ?? null);
+    else await padamBaris(barisId);
     revalidatePath("/admin/carta");
-    return { ok: true, mesej: "Baris itu dibuang." };
-  } catch (e) {
-    return { ok: false, mesej: ralat(e) };
-  }
+    revalidatePath("/admin/pengurusan");
+    return { ok: true, mesej: "Baris dibuang dan pindaan disimpan." };
+  } catch (e) { return { ok: false, mesej: ralat(e) }; }
 }
 
 export async function tambahNod(

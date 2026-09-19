@@ -70,6 +70,15 @@ export function kunciNama(mentah: string): string {
   return namaBersih(mentah)
     .replace(/\([^)]*\)/g, " ")
     .toUpperCase()
+    // TANDA KOMA ATAS DIBUANG, BUKAN DITUKAR JADI RUANG.
+    //
+    // Buku yang sama menulis "MAT SO'OD" dalam senarai jawatankuasa dan
+    // "MAT SOOD" dalam senarai nama guru — orang yang SAMA. Menukar koma
+    // atas menjadi ruang memecahkannya menjadi "SO OD": dua perkataan yang
+    // tidak sepadan dengan apa-apa, dan guru itu berakhir dalam "Guru &
+    // Kakitangan Lain" walaupun dia Ketua Panitia. Aksara koma atas ada
+    // tiga bentuk dalam PDF (' ’ `) dan ketiga-tiganya dibuang di sini.
+    .replace(/['\u2018\u2019\u02BC`]+/g, "")
     .replace(/[^A-Z0-9\/ ]+/g, " ")
     .replace(/\s+/g, " ")
     .trim()
@@ -78,11 +87,22 @@ export function kunciNama(mentah: string): string {
     .join(" ");
 }
 
-/** Perkataan bermakna dalam satu nama — gelaran dan huruf tunggal dibuang. */
+/**
+ * Perkataan bermakna dalam satu nama — gelaran dan huruf tunggal dibuang.
+ *
+ * HJ/HJH/HAJI/HAJJAH dibuang di sini walaupun ia dikekalkan untuk paparan.
+ * Sebabnya khusus dan nyata: senarai nama guru menulis "NOOR RUWAIDA BINTI
+ * HJ MOHD ARIFIN" sedangkan setiap jawatankuasa menulisnya tanpa "HJ".
+ * Gelaran itu bukan penanda identiti — dua ejaan itu orang yang sama, dan
+ * mengiranya sebagai perkataan bermakna menjatuhkan skor padanan di bawah
+ * ambang.
+ */
 function kata(nama: string): string[] {
   return kunciNama(nama)
     .split(" ")
-    .filter((w) => w.length > 1 && !/^(BIN|BINTI|BT|AL|A\/L|A\/P)$/.test(w));
+    .filter(
+      (w) => w.length > 1 && !/^(BIN|BINTI|BT|AL|A\/L|A\/P|HJ|HJH|HAJI|HAJJAH)$/.test(w),
+    );
 }
 
 export interface Padanan {

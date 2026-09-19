@@ -1,5 +1,6 @@
 "use server";
 
+import { tahunSesiAktif } from "./sesi-aktif";
 import { revalidatePath } from "next/cache";
 import { pastikanBoleh, pengguna } from "./akses";
 import { klienTulis } from "./supabase-pelayan";
@@ -21,12 +22,15 @@ import { klienTulis } from "./supabase-pelayan";
  * — menambah jadual untuk kes ini membazir kuota, bukan menjimatkannya.
  */
 
-const SESI = 2026;
+
 
 export type JenisTugasan = "guru_rmt" | "guru_disiplin" | "pengurus_pasukan";
 
 /** Nama skop lalai bagi tugasan yang tidak terikat kelas/pasukan. */
 const SKOP_SEKOLAH = "SEKOLAH";
+function sahJenis(jenis: string) {
+  if (!["guru_rmt", "guru_disiplin", "pengurus_pasukan"].includes(jenis)) throw new Error("Jenis tugasan tidak sah.");
+}
 
 export interface BarisTugasan {
   guru_id: string;
@@ -40,6 +44,8 @@ export type HasilTugasan = { ok: boolean; mesej: string };
 
 export async function senaraiTugasan(jenis: JenisTugasan): Promise<BarisTugasan[]> {
   await pastikanBoleh("urus_guru_kelas");
+  sahJenis(jenis);
+  const SESI = await tahunSesiAktif();
   const db = klienTulis();
   const baris = (await db.minta(
     `pbd_guru_kelas?select=guru_id,kelas,pbd_guru(nama,email)` +
@@ -57,7 +63,9 @@ export async function senaraiTugasan(jenis: JenisTugasan): Promise<BarisTugasan[
 /** Adakah pengguna SEMASA memegang tugasan ini (mana-mana skop)? */
 export async function sayaBertugas(jenis: JenisTugasan): Promise<boolean> {
   const saya = await pengguna();
-  if (!saya?.id) return false;
+  if (!saya?.id || !saya.peranan) return false;
+  sahJenis(jenis);
+  const SESI = await tahunSesiAktif();
   const db = klienTulis();
   const baris = (await db.minta(
     `pbd_guru_kelas?select=guru_id&tahun_sesi=eq.${SESI}` +
@@ -70,22 +78,15 @@ export async function tetapTugasan(
   jenis: JenisTugasan, guruId: string, skop: string,
 ): Promise<HasilTugasan> {
   await pastikanBoleh("urus_guru_kelas");
+  sahJenis(jenis);
   const namaSkop = skop.trim() || SKOP_SEKOLAH;
 
   try {
-    const db = klienTulis();
-    await db.minta(
-      `pbd_guru_kelas?tahun_sesi=eq.${SESI}&peranan=eq.${jenis}` +
-        `&tahun=eq.0&kelas=eq.${encodeURIComponent(namaSkop)}`,
-      { method: "DELETE" },
-    );
-    await db.minta("pbd_guru_kelas", {
-      method: "POST",
-      headers: { Prefer: "return=minimal" },
-      body: JSON.stringify({
-        guru_id: guruId, tahun_sesi: SESI, tahun: 0, kelas: namaSkop,
-        subjek: "", peranan: jenis,
-      }),
+    const SESI = await tahunSesiAktif();
+  const db = klienTulis();
+    await db.minta("rpc/tetap_tugasan_sekolah", {
+      method: "POST", body: JSON.stringify({ p_guru: guruId, p_sesi: SESI,
+        p_tahun: 0, p_kelas: namaSkop, p_peranan: jenis }),
     });
   } catch (e) {
     return { ok: false, mesej: e instanceof Error ? e.message : "Gagal menetapkan tugasan." };
@@ -97,8 +98,10 @@ export async function tetapTugasan(
 
 export async function buangTugasan(jenis: JenisTugasan, skop: string): Promise<HasilTugasan> {
   await pastikanBoleh("urus_guru_kelas");
+  sahJenis(jenis);
   try {
-    const db = klienTulis();
+    const SESI = await tahunSesiAktif();
+  const db = klienTulis();
     await db.minta(
       `pbd_guru_kelas?tahun_sesi=eq.${SESI}&peranan=eq.${jenis}` +
         `&tahun=eq.0&kelas=eq.${encodeURIComponent(skop.trim() || SKOP_SEKOLAH)}`,

@@ -1,5 +1,7 @@
 "use server";
 
+import { bacaSemua } from "./baca-semua";
+import { tahunSesiAktif } from "./sesi-aktif";
 import { revalidatePath } from "next/cache";
 import { pengguna, bolehBuat } from "./akses";
 import { klienTulis } from "./supabase-pelayan";
@@ -31,7 +33,7 @@ export interface MuridRmt {
   aktif: boolean;
 }
 
-export type HasilRmt = { ok: boolean; mesej: string; diproses?: number; ditolak?: string[] };
+export type HasilRmt = { ok: boolean; mesej: string; diproses?: number; ditolak?: string[]; semakan?: { nama: string; no_kp: string | null }[] };
 
 async function bolehUrusRoster(): Promise<boolean> {
   return (await sayaBertugas("guru_rmt")) || (await bolehBuat("urus_guru_kelas"));
@@ -42,7 +44,7 @@ async function bolehUrusRoster(): Promise<boolean> {
  * memadam senarai sedia ada (guru RMT muat naik kelas demi kelas).
  */
 export async function naikRosterRmt(
-  tahun_sesi: number, tahun: number, kelas: string, teks: string,
+  tahun_sesi: number, tahun: number, kelas: string, teks: string, simpan = false,
 ): Promise<HasilRmt> {
   if (!(await bolehUrusRoster())) return { ok: false, mesej: "Tiada kebenaran." };
   const { murid, ditolak } = bacaSenaraiMurid(teks);
@@ -59,18 +61,16 @@ export async function naikRosterRmt(
       for (const b of baris) sepadan.set(b.no_kp, b.id);
     }
 
-    for (const m of murid) {
-      await db.minta("pbd_rmt_murid", {
-        method: "POST",
-        headers: { Prefer: "return=minimal" },
-        body: JSON.stringify({
-          tahun_sesi, tahun, kelas,
-          nama: m.nama, no_kp: m.no_kp,
-          murid_id: m.no_kp ? sepadan.get(m.no_kp) ?? null : null,
-          aktif: true,
-        }),
-      });
-    }
+    if (tahun_sesi !== await tahunSesiAktif()) return { ok: false, mesej: "Pilih sesi aktif." };
+    if (!Number.isInteger(tahun) || tahun < 0 || tahun > 6 || !kelas.trim()) return { ok: false, mesej: "Kelas tidak sah." };
+    const hilang = murid.filter((m) => !m.no_kp || !sepadan.has(m.no_kp));
+    if (hilang.length) return { ok: false, mesej: `${hilang.length} murid belum dipadankan dengan daftar ePBD. Lengkapkan No. KP dan daftar murid dahulu.`, semakan: murid };
+    if (!simpan) return { ok: true, mesej: `${murid.length} murid dipadankan. Semak sebelum simpan; tiada data ditulis.`, semakan: murid };
+    await db.minta("pbd_rmt_murid?on_conflict=tahun_sesi,murid_id", {
+      method: "POST", headers: { Prefer: "resolution=merge-duplicates,return=minimal" },
+      body: JSON.stringify(murid.map((m) => ({ tahun_sesi, tahun, kelas,
+        nama: m.nama, no_kp: m.no_kp, murid_id: sepadan.get(m.no_kp!), aktif: true }))),
+    });
   } catch (e) {
     if (belumDipasang(e, "pbd_rmt_murid")) {
       return { ok: false, mesej: "Ciri ini belum dipasang — admin perlu jalankan SQL RMT dahulu." };
@@ -90,9 +90,9 @@ export async function senaraiRosterRmt(
 
   const db = klienTulis();
   try {
-    const senarai = (await db.minta(
+    const senarai = (await bacaSemua<MuridRmt>(
       `pbd_rmt_murid?select=id,tahun,kelas,nama,no_kp,aktif&tahun_sesi=eq.${tahun_sesi}` +
-        `&aktif=eq.true&order=tahun.asc,kelas.asc,nama.asc&limit=2000`,
+        `&aktif=eq.true&order=tahun.asc,kelas.asc,nama.asc,id.asc`,
     )) as MuridRmt[];
     return { belumSedia: false, boleh: true, senarai };
   } catch (e) {
@@ -121,10 +121,15 @@ export async function buangRosterRmt(id: string): Promise<HasilRmt> {
 export async function hadirRmtTarikh(
   tahun_sesi: number, tarikh: string,
 ): Promise<{ belumSedia: boolean; hadir: Record<string, boolean> }> {
+  const saya = await pengguna();
+  if (!saya?.peranan) throw new Error("Tiada kebenaran.");
+  if (!Number.isInteger(tahun_sesi) || !/^\d{4}-\d{2}-\d{2}$/.test(tarikh)) {
+    throw new Error("Tarikh atau sesi tidak sah.");
+  }
   const db = klienTulis();
   try {
-    const baris = (await db.minta(
-      `pbd_rmt_kehadiran?select=rmt_murid_id,hadir&tahun_sesi=eq.${tahun_sesi}&tarikh=eq.${tarikh}`,
+    const baris = (await bacaSemua<{ rmt_murid_id: string; hadir: boolean }>(
+      `pbd_rmt_kehadiran?select=rmt_murid_id,hadir&tahun_sesi=eq.${tahun_sesi}&tarikh=eq.${tarikh}&order=rmt_murid_id.asc`,
     )) as { rmt_murid_id: string; hadir: boolean }[];
     const hadir: Record<string, boolean> = {};
     for (const b of baris) hadir[b.rmt_murid_id] = b.hadir;
@@ -148,15 +153,16 @@ export async function simpanHadirRmt(
 
   const db = klienTulis();
   try {
-    for (const [rmt_murid_id, ada] of Object.entries(hadir)) {
-      await db.minta("pbd_rmt_kehadiran?on_conflict=tarikh,rmt_murid_id", {
-        method: "POST",
-        headers: { Prefer: "resolution=merge-duplicates,return=minimal" },
-        body: JSON.stringify({
-          tahun_sesi, tarikh, rmt_murid_id, hadir: ada, guru_id: saya.id,
-        }),
-      });
-    }
+    if (tahun_sesi !== await tahunSesiAktif()) return { ok: false, mesej: "Pilih sesi aktif." };
+    const items = Object.entries(hadir);
+    if (!items.length || items.length > 3000 || items.some(([id, ada]) => !/^[0-9a-f-]{36}$/i.test(id) || typeof ada !== "boolean"))
+      return { ok: false, mesej: "Senarai kehadiran tidak sah." };
+    const roster = new Set((await senaraiRosterRmt(tahun_sesi)).senarai.map((m) => m.id));
+    if (items.some(([id]) => !roster.has(id))) return { ok: false, mesej: "Senarai murid berubah. Muat semula sebelum menyimpan." };
+    await db.minta("pbd_rmt_kehadiran?on_conflict=tarikh,rmt_murid_id", {
+      method: "POST", headers: { Prefer: "resolution=merge-duplicates,return=minimal" },
+      body: JSON.stringify(items.map(([rmt_murid_id, ada]) => ({ tahun_sesi, tarikh, rmt_murid_id, hadir: ada, guru_id: saya.id }))),
+    });
   } catch (e) {
     if (belumDipasang(e, "pbd_rmt_kehadiran")) {
       return { ok: false, mesej: "Ciri ini belum dipasang — admin perlu jalankan SQL RMT dahulu." };

@@ -1,8 +1,8 @@
 import "server-only";
 import { klienTulis } from "./supabase-pelayan";
-import { susunTempahan, type Bilik, type Tempahan } from "@/data/bilik";
+import { susunTempahan, type Bilik, type StatusTempahan, type Tempahan } from "@/data/bilik";
 
-export type { Bilik, Tempahan };
+export type { Bilik, StatusTempahan, Tempahan };
 
 /** Tarikh hari ini di Malaysia. Pelayan Vercel berjalan pada UTC. */
 export function hariIniMY(): string {
@@ -49,16 +49,41 @@ export async function tempahanBilikTarikh(bilikId: string, tarikh: string): Prom
 export async function simpanTempahan(t: {
   bilik_id: string; tarikh: string; mula: string; tamat: string;
   tujuan: string; oleh: string; nama: string;
+  status?: StatusTempahan;
 }): Promise<Tempahan | null> {
   const db = klienTulis();
   // Rekod dipulangkan supaya permohonan peralatan boleh dipautkan kepadanya —
   // itu yang membolehkan unit ICT melihat tempahan mana yang memerlukan apa.
-  const hasil = (await db.minta("tempahan_bilik", {
-    method: "POST",
-    headers: { Prefer: "return=representation" },
-    body: JSON.stringify({ ...t, dibatalkan: false }),
-  })) as Tempahan[];
+  const hantar = async (badan: Record<string, unknown>) =>
+    (await db.minta("tempahan_bilik", {
+      method: "POST",
+      headers: { Prefer: "return=representation" },
+      body: JSON.stringify(badan),
+    })) as Tempahan[];
+
+  // Fail closed: tanpa skema kelulusan, jangan tukar permohonan menjadi tempahan lulus.
+  const hasil = await hantar({ ...t, dibatalkan: false });
   return hasil[0] ?? null;
+}
+
+/**
+ * Putuskan tempahan hari cuti: lulus atau tolak.
+ *
+ * Tempahan yang DILULUSKAN melalui kekangan `EXCLUDE` pangkalan data untuk
+ * kali pertama — sampai saat itu ia tidak mengunci slot. Kalau dua
+ * permohonan bertindih dan pentadbir meluluskan kedua-duanya, yang kedua
+ * ditolak Postgres, dan itu betul: hanya satu boleh menang.
+ */
+export async function putuskanTempahan(
+  id: string, status: StatusTempahan,
+): Promise<void> {
+  const db = klienTulis();
+  const rows = await db.minta(`tempahan_bilik?id=eq.${encodeURIComponent(id)}&status=eq.menunggu&dibatalkan=eq.false`, {
+    method: "PATCH",
+    headers: { Prefer: "return=representation" },
+    body: JSON.stringify({ status }),
+  }) as Tempahan[];
+  if (!rows.length) throw new Error("Permohonan sudah diputuskan atau dibatalkan. Muat semula.");
 }
 
 /**

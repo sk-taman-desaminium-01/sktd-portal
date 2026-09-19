@@ -164,15 +164,19 @@ function Push() {
   const [sibuk, setSibuk] = useState(false);
 
   useEffect(() => {
-    if (typeof window === "undefined" || !("Notification" in window) || !("serviceWorker" in navigator)) {
-      setKeadaan("tiada");
-      return;
-    }
-    if (Notification.permission === "denied") { setKeadaan("ditolak"); return; }
-    void navigator.serviceWorker.ready
-      .then((r) => r.pushManager.getSubscription())
-      .then((s) => setKeadaan(s ? "hidup" : "boleh"))
-      .catch(() => setKeadaan("boleh"));
+    let hidup = true;
+    void (async () => {
+      await Promise.resolve();
+      if (!hidup) return;
+      if (!("Notification" in window) || !("serviceWorker" in navigator)) { setKeadaan("tiada"); return; }
+      if (Notification.permission === "denied") { setKeadaan("ditolak"); return; }
+      try {
+        const r = await navigator.serviceWorker.ready;
+        const langganan = await r.pushManager.getSubscription();
+        if (hidup) setKeadaan(langganan ? "hidup" : "boleh");
+      } catch { if (hidup) setKeadaan("boleh"); }
+    })();
+    return () => { hidup = false; };
   }, []);
 
   async function benarkan() {

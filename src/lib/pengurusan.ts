@@ -239,6 +239,15 @@ export async function simpanDokumen(
   return { id: dok.id, versi, bilBaris };
 }
 
+/** Satu baris, dengan selnya. Null bila ia sudah tiada. */
+export async function satuBaris(id: string): Promise<Baris | null> {
+  const db = klienTulis();
+  const r = (await db.minta(
+    `pengurusan_baris?select=*&id=eq.${encodeURIComponent(id)}&limit=1`,
+  )) as Baris[];
+  return r[0] ?? null;
+}
+
 /**
  * Sunting satu baris, sambil MENYIMPAN apa yang PDF asalnya kata.
  *
