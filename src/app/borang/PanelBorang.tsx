@@ -2,11 +2,12 @@
 
 import { useMemo, useState } from "react";
 import { flushSync } from "react-dom";
+import { mulaCetak } from "@/components/cetak-mudah-alih";
 import CetakMedia from "@/components/CetakMedia";
 import TandaTangan from "@/components/TandaTangan";
 import CetakSurat, { type KepalaSurat } from "@/components/CetakSurat";
 import {
-  hantarSuratRasmi, hantarSuratGambar, tetapkanRujukan,
+  hantarSuratRasmi, hantarSuratGambar, tetapkanRujukan, padamSurat,
   type BarisSurat, type DataSuratRasmi, type DataSuratGambar,
 } from "@/lib/surat";
 
@@ -44,12 +45,18 @@ export default function PanelBorang({
    */
   function bukaCetak(baris: BarisSurat) {
     flushSync(() => setCetak(baris));
-    window.print();
+    mulaCetak("surat-cetak", baris.tajuk);
+  }
+
+  async function buangSurat(id: string) {
+    const r = await padamSurat(id);
+    if (r.ok) setSenaraiData((s) => s.filter((b) => b.id !== id));
+    return r;
   }
 
   return (
     <>
-      <div className="mt-6 flex gap-2 text-sm font-semibold">
+      <div className="mt-6 flex flex-wrap gap-2 text-sm font-semibold">
         {(["rasmi", "gambar", "senarai"] as const).map((t) => (
           <button
             key={t} type="button" onClick={() => setTab(t)}
@@ -73,6 +80,7 @@ export default function PanelBorang({
         <SenaraiSaya
           senarai={senaraiData} bolehPejabat={bolehPejabat}
           bukaCetak={bukaCetak}
+          buang={buangSurat}
           kemaskini={(id, patch) => setSenaraiData((s) => s.map((b) => (b.id === id ? { ...b, ...patch } : b)))}
         />
       )}
@@ -122,21 +130,22 @@ function FormRasmi({
     <div className="mt-5 space-y-4 rounded-xl border border-garis bg-white p-5">
       <Medan label="Tajuk surat">
         <input value={tajuk} onChange={(e) => setTajuk(e.target.value)} placeholder="Contoh: Permohonan Kebenaran Menggunakan Padang"
-          className="w-full rounded-lg border border-garis px-3 py-2 text-sm" />
+          maxLength={180} className="w-full rounded-lg border border-garis px-3 py-2 text-sm" />
       </Medan>
       <Medan label="Alamat (kepada)">
         <textarea value={alamat} onChange={(e) => setAlamat(e.target.value)} rows={3}
           placeholder={"Contoh:\nPengurus,\nDewan Serbaguna Seri Kembangan"}
-          className="w-full rounded-lg border border-garis px-3 py-2 text-sm" />
+          maxLength={360} className="w-full rounded-lg border border-garis px-3 py-2 text-sm" />
       </Medan>
       <Medan label="Tarikh">
         <input type="date" value={tarikh} onChange={(e) => setTarikh(e.target.value)}
           className="rounded-lg border border-garis px-3 py-2 text-sm" />
       </Medan>
       <Medan label="Isi surat">
-        <textarea value={isi} onChange={(e) => setIsi(e.target.value)} rows={8}
+        <textarea value={isi} onChange={(e) => setIsi(e.target.value)} rows={8} maxLength={1500}
           placeholder="Tulis isi surat di sini…"
           className="w-full rounded-lg border border-garis px-3 py-2 text-sm" />
+        <p className="mt-1 text-xs text-slate-500">{isi.length}/1,500 aksara · cetakan dihadkan kepada satu halaman A4.</p>
       </Medan>
       <Medan label="Ditandatangani bagi pihak Guru Besar oleh">
         <select value={wakil} onChange={(e) => setWakil(e.target.value)}
@@ -246,15 +255,17 @@ function FormGambar({ kelas, selesai }: { kelas: string[]; selesai: (b: BarisSur
 }
 
 function SenaraiSaya({
-  senarai, bolehPejabat, bukaCetak, kemaskini,
+  senarai, bolehPejabat, bukaCetak, buang, kemaskini,
 }: {
   senarai: BarisSurat[];
   bolehPejabat: boolean;
   bukaCetak: (b: BarisSurat) => void;
+  buang: (id: string) => Promise<{ ok: boolean; mesej: string }>;
   kemaskini: (id: string, patch: Partial<BarisSurat>) => void;
 }) {
   const [rujukan, setRujukan] = useState<Record<string, string>>({});
   const [sibuk, setSibuk] = useState<string | null>(null);
+  const [menuId, setMenuId] = useState<string | null>(null);
 
   async function simpanRujukan(id: string) {
     const nilai = rujukan[id]?.trim();
@@ -262,6 +273,14 @@ function SenaraiSaya({
     setSibuk(id);
     const r = await tetapkanRujukan(id, nilai);
     if (r.ok) kemaskini(id, { rujukan_kami: nilai, status: "selesai" });
+    setSibuk(null);
+  }
+
+  async function padam(id: string, tajuk: string) {
+    if (!window.confirm(`Padam "${tajuk}"? Tindakan ini tidak boleh diundur.`)) return;
+    setSibuk(id);
+    await buang(id);
+    setMenuId(null);
     setSibuk(null);
   }
 
@@ -281,7 +300,7 @@ function SenaraiSaya({
                 {b.rujukan_kami && <> · Rujukan: <b>{b.rujukan_kami}</b></>}
               </p>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex shrink-0 items-center gap-2">
               <span className={`rounded px-2 py-0.5 text-[10px] font-bold uppercase ${
                 b.status === "selesai" ? "bg-[#e5f4ec] text-[#167a4b]" : "bg-[#fdf3dc] text-[#9a6b06]"
               }`}>
@@ -292,6 +311,21 @@ function SenaraiSaya({
                   Cetak PDF
                 </button>
               )}
+              <span className="relative">
+                <button
+                  type="button" aria-label={`Tindakan untuk ${b.tajuk}`} aria-expanded={menuId === b.id}
+                  disabled={sibuk === b.id} onClick={() => setMenuId((m) => m === b.id ? null : b.id)}
+                  className="rounded-lg border border-garis px-2 py-1 text-sm leading-none text-slate-600 disabled:opacity-50"
+                >
+                  ⋮
+                </button>
+                {menuId === b.id && <>
+                  <span className="fixed inset-0 z-40" aria-hidden="true" onClick={() => setMenuId(null)} />
+                  <span className="absolute right-0 z-50 mt-1 block w-40 overflow-hidden rounded-xl border border-garis bg-white shadow-lg">
+                    <button type="button" onClick={() => void padam(b.id, b.tajuk)} className="block w-full px-4 py-3 text-left text-sm font-semibold text-[#8f2424] hover:bg-[#fbeaea]">Padam borang</button>
+                  </span>
+                </>}
+              </span>
             </div>
           </div>
           {bolehPejabat && b.jenis === "rasmi" && !b.rujukan_kami && (
@@ -314,7 +348,7 @@ function SenaraiSaya({
 
 function Medan({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <label className="block text-sm">
+    <label className="block min-w-0 text-sm">
       <span className="mb-1 block font-semibold text-navy-800">{label}</span>
       {children}
     </label>

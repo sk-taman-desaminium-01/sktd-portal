@@ -31,6 +31,19 @@ body {
   padding-bottom: env(safe-area-inset-bottom);
 }
 
+/* Safari iOS memberi lebar minimum dalaman kepada tarikh dan pilihan. Tanpa
+   had ini, kawalan boleh menolak tepi kad walaupun elemen sudah `w-full`. */
+input:not([type="checkbox"]):not([type="radio"]),
+select,
+textarea {
+  min-inline-size: 0;
+  max-inline-size: 100%;
+}
+
+input[type="date"] {
+  inline-size: 100%;
+}
+
 /* --- Tarik-untuk-segarkan: pemutar semasa halaman dimuat semula ---
    Disalin dari sktd-web. Portal juga boleh dipasang sebagai app, jadi ia
    kehilangan tarik-untuk-segarkan pelayar dengan cara yang sama. */

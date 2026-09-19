@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { pengguna, pastikanBoleh } from "./akses";
+import { pengguna, pastikanBoleh, bolehBuat } from "./akses";
 import { klienTulis } from "./supabase-pelayan";
 import { hantar, emelIkutPeranan } from "./notifikasi";
 import { emelGuruKelas } from "./guru-kelas";
@@ -76,6 +76,11 @@ export async function hantarSuratRasmi(input: {
   if (!tajuk) return { ok: false, mesej: "Tajuk surat diperlukan." };
   if (!isi) return { ok: false, mesej: "Isi surat diperlukan." };
   if (!alamat) return { ok: false, mesej: "Alamat penerima diperlukan." };
+  // Surat rasmi ialah satu halaman. Had dibuat di pelayan supaya telefon,
+  // laptop dan panggilan tindakan terus menerima peraturan yang sama.
+  if (tajuk.length > 180 || alamat.length > 360 || isi.length > 1_500) {
+    return { ok: false, mesej: "Surat rasmi mesti muat satu halaman: tajuk 180, alamat 360 dan isi 1,500 aksara maksimum." };
+  }
   if (!/^\d{4}-\d{2}-\d{2}$/.test(input.tarikh)) return { ok: false, mesej: "Tarikh tidak sah." };
   if (!input.wakilGbNama.trim()) return { ok: false, mesej: "Pilih Guru Besar / wakil." };
 
@@ -239,6 +244,32 @@ export async function tetapkanRujukan(id: string, rujukan_kami: string): Promise
   revalidatePath("/pejabat");
   revalidatePath("/borang");
   return { ok: true, mesej: "Rujukan kami disimpan." };
+}
+
+/** Padam hantaran sendiri; Urusan Pejabat boleh membuang hantaran yang salah. */
+export async function padamSurat(id: string): Promise<HasilSurat> {
+  const saya = await pengguna();
+  if (!saya?.peranan || !/^[0-9a-f-]{36}$/i.test(id)) return { ok: false, mesej: "Rekod tidak sah." };
+
+  try {
+    const db = klienTulis();
+    const baris = (await db.minta(
+      `pbd_surat?select=pemohon_emel&id=eq.${encodeURIComponent(id)}&limit=1`,
+    )) as { pemohon_emel: string }[];
+    const milikSaya = baris[0]?.pemohon_emel?.toLowerCase() === saya.emel.toLowerCase();
+    if (!baris[0] || (!milikSaya && !(await bolehBuat("urus_pejabat")))) {
+      return { ok: false, mesej: "Rekod itu tidak dijumpai atau tidak boleh dipadam." };
+    }
+    await db.minta(`pbd_surat?id=eq.${encodeURIComponent(id)}`, {
+      method: "DELETE", headers: { Prefer: "return=minimal" },
+    });
+  } catch (e) {
+    return { ok: false, mesej: e instanceof Error ? e.message : "Gagal memadam borang." };
+  }
+
+  revalidatePath("/borang");
+  revalidatePath("/pejabat");
+  return { ok: true, mesej: "Borang dipadam." };
 }
 
 /** Nama & kod rasmi sekolah — untuk letterhead cetakan. */

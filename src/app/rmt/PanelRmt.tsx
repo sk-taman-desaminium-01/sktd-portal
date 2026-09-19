@@ -5,12 +5,13 @@ import { useRouter } from "next/navigation";
 import { hadirRmtTarikh, naikRosterRmt, buangRosterRmt, simpanHadirRmt, type MuridRmt } from "@/lib/rmt";
 
 export default function PanelRmt({
-  tahunSesi, kelas, bolehRoster, senarai, tarikhAwal, hadirAwal,
+  tahunSesi, kelas, bolehRoster, senarai, rosterUrus, tarikhAwal, hadirAwal,
 }: {
   tahunSesi: number;
   kelas: string[];
   bolehRoster: boolean;
   senarai: MuridRmt[];
+  rosterUrus: MuridRmt[];
   tarikhAwal: string;
   hadirAwal: Record<string, boolean>;
 }) {
@@ -18,7 +19,7 @@ export default function PanelRmt({
     <div className="mt-6 space-y-10">
       <PanelKehadiran tahunSesi={tahunSesi} roster={senarai} tarikhAwal={tarikhAwal} hadirAwal={hadirAwal} />
       {bolehRoster && (
-        <PanelRoster tahunSesi={tahunSesi} kelas={kelas} roster={senarai} />
+        <PanelRoster tahunSesi={tahunSesi} kelas={kelas} roster={rosterUrus} />
       )}
     </div>
   );

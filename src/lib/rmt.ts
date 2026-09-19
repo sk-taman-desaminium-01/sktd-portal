@@ -8,6 +8,7 @@ import { klienTulis } from "./supabase-pelayan";
 import { sayaBertugas } from "./tugasan";
 import { belumDipasang } from "./db-belum-sedia";
 import { bacaSenaraiMurid } from "./kenal-murid";
+import { kelasBolehSunting } from "./guru-kelas";
 
 /**
  * Rancangan Makanan Tambahan (RMT) — permintaan pengguna E.
@@ -35,8 +36,21 @@ export interface MuridRmt {
 
 export type HasilRmt = { ok: boolean; mesej: string; diproses?: number; ditolak?: string[]; semakan?: { nama: string; no_kp: string | null }[] };
 
-async function bolehUrusRoster(): Promise<boolean> {
-  return (await sayaBertugas("guru_rmt")) || (await bolehBuat("urus_guru_kelas"));
+function labelKelasRmt(tahun: number, kelas: string) {
+  return tahun === 0 ? kelas.trim().toUpperCase() : `${tahun} ${kelas.trim().toUpperCase()}`;
+}
+
+/** `null` = semua kelas (Guru RMT/pentadbir); senarai = kelas sendiri. */
+export async function kelasBolehUrusRosterRmt(): Promise<string[] | null> {
+  if ((await sayaBertugas("guru_rmt")) || (await bolehBuat("urus_guru_kelas"))) return null;
+  return kelasBolehSunting();
+}
+
+async function bolehUrusRoster(tahun?: number, kelas?: string): Promise<boolean> {
+  const dibenarkan = await kelasBolehUrusRosterRmt();
+  if (dibenarkan === null) return true;
+  if (tahun === undefined || kelas === undefined) return dibenarkan.length > 0;
+  return dibenarkan.includes(labelKelasRmt(tahun, kelas));
 }
 
 /**
@@ -46,7 +60,7 @@ async function bolehUrusRoster(): Promise<boolean> {
 export async function naikRosterRmt(
   tahun_sesi: number, tahun: number, kelas: string, teks: string, simpan = false,
 ): Promise<HasilRmt> {
-  if (!(await bolehUrusRoster())) return { ok: false, mesej: "Tiada kebenaran." };
+  if (!(await bolehUrusRoster(tahun, kelas))) return { ok: false, mesej: "Anda hanya boleh mengurus senarai RMT kelas sendiri." };
   const { murid, ditolak } = bacaSenaraiMurid(teks);
   if (murid.length === 0) return { ok: false, mesej: "Tiada nama dikesan dalam teks ini.", ditolak };
 
@@ -102,9 +116,14 @@ export async function senaraiRosterRmt(
 }
 
 export async function buangRosterRmt(id: string): Promise<HasilRmt> {
-  if (!(await bolehUrusRoster())) return { ok: false, mesej: "Tiada kebenaran." };
   const db = klienTulis();
   try {
+    const rekod = (await db.minta(
+      `pbd_rmt_murid?select=tahun,kelas&id=eq.${encodeURIComponent(id)}&limit=1`,
+    )) as { tahun: number; kelas: string }[];
+    if (!rekod[0] || !(await bolehUrusRoster(rekod[0].tahun, rekod[0].kelas))) {
+      return { ok: false, mesej: "Rekod itu tidak dijumpai atau tidak boleh diurus." };
+    }
     await db.minta(`pbd_rmt_murid?id=eq.${encodeURIComponent(id)}`, {
       method: "PATCH",
       headers: { Prefer: "return=minimal" },

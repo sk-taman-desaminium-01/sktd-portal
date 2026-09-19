@@ -1,37 +1,68 @@
 "use client";
+
 import { PENYAKIT, type AkuanAktiviti, type AktivitiBorang } from "@/data/borang-aktiviti";
 import { SEKOLAH } from "@/data/sekolah";
 import { aset } from "@/lib/laluan";
-type Program = Pick<AktivitiBorang,"nama"|"tarikh"|"masa"|"tempat"|"anjuran">;
-export default function CetakAkuan({ aktiviti:a, data:d }: { aktiviti:Program; data:AkuanAktiviti }) {
- const butiran=(label:string,v:string)=><p className="mt-1"><b>{label}:</b> {v}</p>;
- return <><button type="button" onClick={()=>window.print()} className="my-4 rounded bg-navy-800 px-4 py-2 text-white print:hidden">Cetak / Simpan PDF</button>
- <div id="akuan-cetak" className="grid gap-6 bg-white p-5 text-[10px] leading-snug text-black lg:grid-cols-2 print:grid-cols-2">
- <style>{`@media print { @page {size:A4 landscape;margin:8mm} body * {visibility:hidden} #akuan-cetak,#akuan-cetak * {visibility:visible} #akuan-cetak {position:absolute;inset:0;width:100%;padding:0;gap:10mm;font-size:8.5pt;line-height:1.22} #akuan-cetak section {break-inside:avoid} }`}</style>
- <section>
- <header className="flex items-center justify-center gap-2 border-b border-black pb-2 text-center"><img src={aset("/logo-sktd.png")} alt="Lencana sekolah" className="h-10 w-10 object-contain"/><div><h1 className="font-bold">{SEKOLAH.namaPenuh.toUpperCase()}</h1><p>{SEKOLAH.hubungi.alamat}</p><p>Tel: {SEKOLAH.hubungi.telefon} · {SEKOLAH.hubungi.emel}</p></div></header>
- <h2 className="my-3 text-center font-bold uppercase">SURAT AKUAN KEBENARAN WARIS MENYERTAI<br/>{a.nama}</h2>
- <p>Saya <b>{d.penjagaNama}</b>, No. KP <b>{d.penjagaKp}</b>, beralamat <b>{d.alamat}</b>, No. telefon <b>{d.telefon}</b>, waris kepada:</p>
- {butiran("Nama Murid",d.muridNama)}{butiran("Kelas",d.kelas)}{butiran("No. KP / Surat Beranak",d.muridKp)}
- <p className="mt-2">Dengan ini <b>{d.bersetuju?"MEMBENARKAN":"TIDAK MEMBENARKAN"}</b> anak/jagaan saya menyertai:</p>
- {butiran("Nama Program",a.nama)}{butiran("Tarikh Program",a.tarikh)}{butiran("Masa",a.masa)}{butiran("Tempat",a.tempat)}{butiran("Anjuran",a.anjuran)}
- <p className="mt-3 text-justify">2. Saya difahamkan bahawa soal keselamatan dan disiplin sentiasa diberi perhatian sewajarnya oleh Guru / Pegawai / Urusetia yang telah diamanahkan. Sekiranya kesihatan anak / jagaan saya terganggu dalam masa latihan / perkhemahan atau perjalanan / semasa program, maka saya dengan sepenuh hati membenarkan Guru / Pegawai / Urusetia menguruskan bagi pihak saya untuk mendapatkan rawatan perubatan.</p>
- <p className="mt-2">3. Anak/jagaan saya <b>{d.penyakit.some(p=>p.ada)?"ADA":"TIDAK ADA"}</b> penyakit seperti dinyatakan dalam perakuan kesihatan di sebelah.</p>
- <p className="mt-2">4. Anak/jagaan saya ADA perlindungan insuran Takaful.</p>
- <div className="mt-8 grid grid-cols-2 gap-5"><p>.........................................<br/>Tandatangan Ibu Bapa/Penjaga<br/>Nama: {d.penjagaNama}<br/>Tarikh: ........................</p><p>.........................................<br/>Tandatangan Saksi<br/>Nama: ........................<br/>No. KP: ........................</p></div>
- <p className="mt-8">Disahkan oleh: .........................................<br/>Guru Besar {SEKOLAH.namaPenuh}<br/>Cop Sekolah:</p>
- </section>
- <section>
- {/* eslint-disable-next-line @next/next/no-img-element */}
- <img src={aset("/logo-kpm.png")} alt="Kementerian Pendidikan" className="mx-auto h-14 object-contain" />
- <h2 className="my-2 text-center font-bold">BORANG PERAKUAN KESIHATAN UNTUK MENYERTAI<br/>SUKAN DAN AKTIVITI KECERGASAN</h2>
- {butiran("A. NAMA SEKOLAH",SEKOLAH.namaPenuh)}
- <h3 className="mt-2 font-bold">B. MAKLUMAT PROGRAM</h3>{butiran("Nama Program",a.nama)}{butiran("Tarikh",a.tarikh)}{butiran("Tempat",a.tempat)}
- <h3 className="mt-2 font-bold">C. MAKLUMAT MURID</h3>{butiran("Nama Penuh",d.muridNama)}{butiran("Tahun/Kelas",d.kelas)}{butiran("No. Kad Pengenalan",d.muridKp)}
- <h3 className="my-2 font-bold">D. MAKLUMAT KESIHATAN</h3>
- <table className="w-full border-collapse text-left"><thead><tr>{["Penyakit","Ya","Tidak","Catatan"].map(x=><th key={x} className="border border-black p-1">{x}</th>)}</tr></thead>
- <tbody>{PENYAKIT.map((x,i)=><tr key={x}><td className="border border-black p-1">{x}</td><td className="border border-black p-1 text-center">{d.penyakit[i]?.ada?"/":""}</td><td className="border border-black p-1 text-center">{!d.penyakit[i]?.ada?"/":""}</td><td className="max-w-28 break-words border border-black p-1">{d.penyakit[i]?.catatan}</td></tr>)}</tbody></table>
- <p className="mt-3 text-justify">Saya mengaku bahawa maklumat yang diberikan adalah benar. Saya <b>{d.bersetuju?"MEMBENARKAN":"TIDAK MEMBENARKAN"}</b> anak/jagaan saya menyertai program di atas.</p>
- <p className="mt-8">.........................................<br/>Tandatangan Ibu Bapa/Penjaga<br/>Nama: {d.penjagaNama}<br/>Tarikh: ........................</p>
- </section></div></>;
+import { mulaCetak } from "./cetak-mudah-alih";
+
+type Program = Pick<AktivitiBorang, "nama" | "tarikh" | "masa" | "tempat" | "anjuran">;
+
+function Garis({ label, nilai, lebar = "w-full" }: { label: string; nilai: string; lebar?: string }) {
+  return <p className={`flex min-w-0 items-end gap-1 ${lebar}`}><b className="shrink-0">{label}</b><span className="min-w-0 flex-1 border-b border-black px-1 leading-5">{nilai}</span></p>;
+}
+
+/** Borang waris dan kesihatan — berdasarkan rujukan sekolah A4 melintang. */
+export default function CetakAkuan({ aktiviti: a, data: d }: { aktiviti: Program; data: AkuanAktiviti }) {
+  const penyakit = d.penyakit
+    .map((p, i) => p.ada ? `${PENYAKIT[i]}${p.catatan ? ` — ${p.catatan}` : ""}` : "")
+    .filter(Boolean).join("; ");
+
+  return <>
+    <button type="button" onClick={() => mulaCetak("akuan-cetak", "Borang Kebenaran Waris")}
+      className="my-4 rounded bg-navy-800 px-4 py-2 text-white print:hidden">
+      Cetak / Simpan PDF
+    </button>
+    <div id="akuan-cetak" className="grid gap-0 bg-white text-[11px] leading-[1.25] text-black lg:grid-cols-2 print:grid-cols-2">
+      <style>{`@media print {
+        @page { size: A4 landscape; margin: 7mm; }
+        body * { visibility: hidden; }
+        #akuan-cetak, #akuan-cetak * { visibility: visible; }
+        #akuan-cetak { position: absolute; inset: 0; width: 100%; padding: 0; font-size: 8pt; line-height: 1.17; }
+        #akuan-cetak section { break-inside: avoid; }
+      }`}</style>
+
+      <section className="min-w-0 border-b border-black p-5 lg:border-b-0 lg:border-r print:border-b-0 print:border-r">
+        <h1 className="text-center text-sm font-bold uppercase">Surat Akuan Kebenaran Waris Menyertai</h1>
+        <p className="mx-auto mt-1 w-3/4 border-b border-black text-center font-semibold">{a.nama}</p>
+        <div className="mt-3 space-y-1">
+          <Garis label="Saya" nilai={d.penjagaNama} />
+          <div className="flex gap-3"><Garis label="No. Kad Pengenalan" nilai={d.penjagaKp} /><Garis label="No. Telefon" nilai={d.telefon} /></div>
+          <Garis label="Alamat" nilai={d.alamat} />
+        </div>
+        <p className="mt-2">adalah waris kepada murid seperti di bawah:</p>
+        <div className="mt-1 space-y-1"><Garis label="Nama Murid" nilai={d.muridNama} /><div className="flex gap-3"><Garis label="Kelas" nilai={d.kelas} /><Garis label="No. KP / Surat Beranak" nilai={d.muridKp} /></div></div>
+        <p className="mt-2">Saya dengan ini memberi kebenaran bertulis kepada anak / jagaan untuk menyertai:</p>
+        <div className="mt-1 grid gap-1 sm:grid-cols-2 print:grid-cols-2"><Garis label="Nama Program" nilai={a.nama} /><Garis label="Tarikh Program" nilai={a.tarikh} /><Garis label="Masa" nilai={a.masa} /><Garis label="Tempat" nilai={a.tempat} /><Garis label="Anjuran" nilai={a.anjuran} lebar="sm:col-span-2 print:col-span-2" /></div>
+        <p className="mt-2 text-justify">2. Saya difahamkan bahawa soal keselamatan dan disiplin sentiasa diberi perhatian sewajarnya oleh Guru / Pegawai / Urusetia yang diamanahkan. Sekiranya kesihatan anak / jagaan saya terganggu semasa latihan, perjalanan atau program, saya membenarkan pihak sekolah mendapatkan rawatan perubatan bagi pihak saya.</p>
+        <p className="mt-2">3. Murid di atas <b>{penyakit ? "ADA" : "TIDAK ADA"}</b> menghidap penyakit kronik / berjangkit. Nyatakan jika ada: <span className="border-b border-black px-8">{penyakit}</span></p>
+        <p className="mt-2">4. Saya mengakui bahawa murid ADA perlindungan insurans Takaful.</p>
+        <div className="mt-4 grid grid-cols-2 gap-5"><p>…………………………………<br />Tandatangan Ibu Bapa / Penjaga<br />Tarikh: {a.tarikh}</p><p><b>Pengakuan Saksi</b><br />Tandatangan: ………………………<br />Nama: ………………………<br />No. Kad Pengenalan: ………………………</p></div>
+        <p className="mt-3">Disahkan oleh<br />…………………………………<br />Guru Besar<br />{SEKOLAH.namaPenuh}<br />Cop rasmi sekolah</p>
+      </section>
+
+      <section className="min-w-0 p-5">
+        <header className="flex items-center justify-center gap-2 border-b border-black pb-2 text-center">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={aset("/logo-sktd.png")} alt="Lencana sekolah" className="h-9 w-9 object-contain" />
+          <div><h2 className="font-bold uppercase">{SEKOLAH.namaPenuh}</h2><p>{SEKOLAH.hubungi.alamat.replace("\n", ", ")}</p><p>Tel: {SEKOLAH.hubungi.telefon} · Kod: {SEKOLAH.kod}</p></div>
+        </header>
+        <h2 className="mt-2 text-center text-sm font-bold uppercase">Borang Perakuan Kesihatan<br />Untuk Menyertai Sukan dan Aktiviti Kecergasan</h2>
+        <div className="mt-2 space-y-1"><Garis label="A. Nama Sekolah" nilai={SEKOLAH.namaPenuh} /><p className="font-bold">B. Maklumat Program</p><Garis label="1. Nama Program" nilai={a.nama} /><div className="flex gap-3"><Garis label="2. Tarikh" nilai={a.tarikh} /><Garis label="3. Tempat" nilai={a.tempat} /></div><p className="font-bold">C. Maklumat Murid</p><Garis label="1. Nama Penuh Murid" nilai={d.muridNama} /><div className="flex gap-3"><Garis label="2. Tahun / Kelas" nilai={d.kelas} /><Garis label="3. No. KP" nilai={d.muridKp} /></div></div>
+        <p className="mt-2 font-bold">D. Pengakuan Kesihatan Murid</p><p>Adakah anak anda sekarang ini menghidap masalah berikut?</p>
+        <table className="mt-1 w-full border-collapse text-left text-[9px]"><thead><tr>{["Jenis penyakit", "Ya", "Tidak", "Catatan"].map((x) => <th key={x} className="border border-black p-1">{x}</th>)}</tr></thead><tbody>{PENYAKIT.map((x, i) => <tr key={x}><td className="border border-black p-1">{String.fromCharCode(65 + i)}. {x}</td><td className="border border-black p-1 text-center">{d.penyakit[i]?.ada ? "/" : ""}</td><td className="border border-black p-1 text-center">{!d.penyakit[i]?.ada ? "/" : ""}</td><td className="max-w-24 break-words border border-black p-1">{d.penyakit[i]?.catatan}</td></tr>)}</tbody></table>
+        <p className="mt-2 text-justify">Saya mengaku bahawa semua maklumat di atas adalah benar mengikut pengetahuan saya. Dengan ini saya <b>{d.bersetuju ? "MEMBENARKAN" : "TIDAK MEMBENARKAN"}</b> anak / jagaan saya menyertai program di atas.</p>
+        <p className="mt-4">Tandatangan: …………………………………<br />Nama Penjaga: {d.penjagaNama}<br />Tarikh: {a.tarikh}</p>
+      </section>
+    </div>
+  </>;
 }

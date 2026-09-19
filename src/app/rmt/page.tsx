@@ -1,9 +1,7 @@
 import Link from "next/link";
-import { bolehBuat } from "@/lib/akses";
 import { hariIniMY } from "@/lib/bilik";
 import { sesiSemasa } from "@/lib/pbd";
-import { senaraiRosterRmt, hadirRmtTarikh } from "@/lib/rmt";
-import { sayaBertugas } from "@/lib/tugasan";
+import { senaraiRosterRmt, hadirRmtTarikh, kelasBolehUrusRosterRmt } from "@/lib/rmt";
 import { semuaKelas, semuaKelasPPKI } from "@/data/kelas";
 import PanelRmt from "./PanelRmt";
 
@@ -18,12 +16,17 @@ const HARI_INI = hariIniMY;
 export default async function Rmt() {
   const sesi = (await sesiSemasa())?.tahun_sesi ?? new Date().getFullYear();
   const tarikh = HARI_INI();
-  const [r, bolehRoster, hadir] = await Promise.all([
+  const [r, kelasRoster, hadir] = await Promise.all([
     senaraiRosterRmt(sesi),
-    Promise.all([sayaBertugas("guru_rmt"), bolehBuat("urus_guru_kelas")]).then((r) => r.some(Boolean)),
+    kelasBolehUrusRosterRmt(),
     hadirRmtTarikh(sesi, tarikh),
   ]);
-  const kelas = [...semuaKelas(), ...semuaKelasPPKI()];
+  const semua = [...semuaKelas(), ...semuaKelasPPKI()];
+  const kelas = kelasRoster === null ? semua : kelasRoster;
+  const bolehRoster = kelasRoster === null || kelasRoster.length > 0;
+  const rosterUrus = kelasRoster === null
+    ? r.senarai
+    : r.senarai.filter((m) => kelasRoster.includes(m.tahun === 0 ? m.kelas : `${m.tahun} ${m.kelas}`));
 
   if (!r.boleh) {
     return (
@@ -39,7 +42,7 @@ export default async function Rmt() {
       <Link href="/" className="text-sm text-slate-500 hover:text-navy-700">← Portal</Link>
       <h1 className="mt-3 text-2xl font-bold text-navy-800">Rancangan Makanan Tambahan</h1>
       <p className="mt-1 text-sm leading-relaxed text-slate-500">
-        Senarai murid RMT & kehadiran harian — sesiapa guru boleh isi kehadiran hari ini.
+        Senarai murid RMT & kehadiran harian — sesiapa guru boleh isi kehadiran; guru kelas mengurus murid kelas sendiri.
       </p>
 
       {r.belumSedia ? (
@@ -50,7 +53,7 @@ export default async function Rmt() {
       ) : (
         <PanelRmt
           tahunSesi={sesi} kelas={kelas} bolehRoster={bolehRoster}
-          senarai={r.senarai} tarikhAwal={tarikh} hadirAwal={hadir.hadir}
+          senarai={r.senarai} rosterUrus={rosterUrus} tarikhAwal={tarikh} hadirAwal={hadir.hadir}
         />
       )}
     </main>
