@@ -1,4 +1,4 @@
--- Pembaikan Disiplin & Sahsiah selepas pemasangan SQL awal.
+-- Pembaikan modul sekolah selepas pemasangan SQL awal.
 -- Selamat dijalankan sekali atau berulang kali di Supabase SQL Editor.
 begin;
 
@@ -13,6 +13,38 @@ create index if not exists pbd_disiplin_murid_sesi
 alter table public.pbd_disiplin enable row level security;
 revoke all on public.pbd_disiplin from anon, authenticated;
 grant all on public.pbd_disiplin to service_role;
+
+-- RMT menyimpan semula murid berdasarkan pasangan sesi + murid. Indeks
+-- biasa tidak mencukupi untuk `on_conflict`; ia mesti kekangan unik.
+do $$
+begin
+  if exists (
+    select 1
+      from public.pbd_rmt_murid
+     where murid_id is not null
+     group by tahun_sesi, murid_id
+    having count(*) > 1
+  ) then
+    raise exception 'Ada murid RMT berganda dalam sesi yang sama. Selesaikan pendua dahulu sebelum menambah kekangan unik.';
+  end if;
+end;
+$$;
+do $$
+begin
+  if not exists (
+    select 1 from pg_constraint
+     where conrelid = 'public.pbd_rmt_murid'::regclass
+       and conname = 'pbd_rmt_murid_tahun_sesi_murid_id_key'
+  ) then
+    alter table public.pbd_rmt_murid
+      add constraint pbd_rmt_murid_tahun_sesi_murid_id_key
+      unique (tahun_sesi, murid_id);
+  end if;
+end;
+$$;
+alter table public.pbd_rmt_murid enable row level security;
+revoke all on public.pbd_rmt_murid from anon, authenticated;
+grant all on public.pbd_rmt_murid to service_role;
 
 -- Pentadbir melantik Guru Disiplin pada /admin/guru-kelas. Skrip awal
 -- membenarkan nilai peranan tetapi tidak menyediakan RPC yang dipanggil UI.

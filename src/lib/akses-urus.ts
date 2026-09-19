@@ -50,6 +50,22 @@ async function senaraiSelepasUbah(): Promise<BarisAkses[] | undefined> {
   }
 }
 
+/**
+ * Menyembunyikan baris di UI bukan kawalan keselamatan. Tindakan pelayan boleh
+ * dipanggil terus dengan ID yang diketahui, jadi akaun berperanan `admin`
+ * mesti dilindungi semula di sini. Admin Mutlak sahaja boleh mengubahnya.
+ */
+async function sasaranBolehDiubah(
+  db: ReturnType<typeof klienTulis>, id: string, perananSaya: string | null,
+): Promise<boolean> {
+  const sasaran = (await db.minta(
+    `pbd_guru?select=peranan&id=eq.${encodeURIComponent(id)}&limit=1`,
+  )) as { peranan: Peranan }[];
+  return sasaran[0]?.peranan !== "admin" || perananSaya === "admin_mutlak";
+}
+
+const MESEJ_SASARAN_DILINDUNGI = "Rekod itu tidak dijumpai atau tidak boleh diubah.";
+
 export async function tambahAkses(data: FormData): Promise<Hasil> {
   const saya = await pastikanBoleh("urus_akses");
 
@@ -110,6 +126,9 @@ export async function tukarPeranan(id: string, peranan: Peranan): Promise<Hasil>
   // sebagai nilai, bukan sebagai lontaran.
   try {
     const db = klienTulis();
+    if (!(await sasaranBolehDiubah(db, id, saya.peranan))) {
+      return { ok: false, mesej: MESEJ_SASARAN_DILINDUNGI };
+    }
     await db.minta(`pbd_guru?id=eq.${id}`, {
       method: "PATCH",
       body: JSON.stringify({ peranan }),
@@ -145,9 +164,12 @@ export async function tukarPeranan(id: string, peranan: Peranan): Promise<Hasil>
  * yang kekal, jadual perlu satu lajur status, iaitu perubahan skema.
  */
 export async function tolakAkses(id: string): Promise<Hasil> {
-  await pastikanBoleh("urus_akses");
+  const saya = await pastikanBoleh("urus_akses");
   try {
     const db = klienTulis();
+    if (!(await sasaranBolehDiubah(db, id, saya.peranan))) {
+      return { ok: false, mesej: MESEJ_SASARAN_DILINDUNGI };
+    }
     const baris = (await db.minta(`pbd_guru?id=eq.${id}`, {
       method: "DELETE",
       headers: { Prefer: "return=representation" },
@@ -169,9 +191,12 @@ export async function tolakAkses(id: string): Promise<Hasil> {
 }
 
 export async function tarikAkses(id: string, dibenarkan: boolean): Promise<Hasil> {
-  await pastikanBoleh("urus_akses");
+  const saya = await pastikanBoleh("urus_akses");
   try {
     const db = klienTulis();
+    if (!(await sasaranBolehDiubah(db, id, saya.peranan))) {
+      return { ok: false, mesej: MESEJ_SASARAN_DILINDUNGI };
+    }
     const baris = (await db.minta(`pbd_guru?id=eq.${id}`, {
       method: "PATCH",
       headers: { Prefer: "return=representation" },

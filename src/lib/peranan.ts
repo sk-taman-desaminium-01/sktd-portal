@@ -112,21 +112,23 @@ export type Keupayaan =
   // pentadbir dan admin boleh MEMBACA rekod orang lain (permintaan F.3).
   | "urus_disiplin";
 
+/**
+ * Tugas operasi sekolah tidak boleh disenaraikan berasingan untuk Admin dan
+ * Pentadbir. Senarai yang berpecah pernah menyebabkan satu modul baharu
+ * (contohnya RMT atau diagnostik) hanya terbuka kepada satu daripada mereka.
+ * Kedua-duanya mengurus operasi harian; satu-satunya kuasa yang berasingan
+ * ialah pengurusan akaun berperanan admin.
+ */
+const KEUPAYAAN_OPERASI: readonly Keupayaan[] = [
+  "urus_akses", "terbit_kandungan", "lihat_data_murid", "lihat_diagnostik",
+  "urus_portal", "urus_guru_kelas", "urus_pengurusan", "urus_bilik",
+  "urus_pejabat", "urus_disiplin",
+];
+
 const KEUPAYAAN: Record<PerananBerkesan, Keupayaan[]> = {
-  admin_mutlak: ["urus_akses", "terbit_kandungan", "lihat_data_murid",
-                 "lihat_diagnostik", "urus_portal", "urus_admin",
-                 "urus_guru_kelas", "urus_pengurusan", "urus_bilik",
-                 "urus_pejabat", "urus_disiplin"],
-  // Admin TIDAK dapat `urus_admin` — lihat nota "Jawatankuasa admin" di bawah.
-  admin:        ["urus_akses", "terbit_kandungan", "lihat_data_murid",
-                 "lihat_diagnostik", "urus_guru_kelas", "urus_pengurusan", "urus_bilik",
-                 "urus_pejabat", "urus_disiplin"],
-  // Pentadbir (GB, PK, guru kanan) BOLEH urus akses — keputusan pengguna
-  // 16 Sep 2026. Menentukan siapa dapat masuk ialah keputusan pentadbiran
-  // sekolah, bukan keputusan teknikal, jadi ia milik mereka.
-  pentadbir:    ["urus_akses", "terbit_kandungan", "lihat_data_murid",
-                 "urus_guru_kelas", "urus_pengurusan", "urus_bilik",
-                 "urus_pejabat", "urus_disiplin"],
+  admin_mutlak: [...KEUPAYAAN_OPERASI, "urus_admin"],
+  admin:        [...KEUPAYAAN_OPERASI],
+  pentadbir:    [...KEUPAYAAN_OPERASI],
   // Kerani: HANYA `urus_pejabat`. Tiada akses data murid, tiada urus akses.
   kerani:       ["urus_pejabat"],
   // Unit ICT: urus bilik khas & peralatan — kuasa yang sebelum ini terkunci
@@ -138,26 +140,6 @@ const KEUPAYAAN: Record<PerananBerkesan, Keupayaan[]> = {
 
 export function boleh(p: PerananBerkesan | null, k: Keupayaan): boolean {
   if (!p) return false;
-
-  // 1. Admin Mutlak (Super Admin) - Bypass semua
-  if (p === "admin_mutlak") return true;
-
-  // 2. Admin (Bawah Mutlak) - Mempunyai akses penuh ke hampir semua keupayaan
-  // Nota: Admin tidak mempunyai 'urus_admin' (khas untuk mutlak)
-  if (p === "admin") {
-      if (k === "urus_admin") return false;
-      return true;
-  }
-
-  // 3. Pentadbir (Bawah Admin) - Mempunyai akses ke fungsi pentadbiran asas
-  if (p === "pentadbir") {
-      const keupayaanPentadbir: Keupayaan[] = [
-          "terbit_kandungan", "lihat_data_murid", "urus_guru_kelas",
-          "urus_pengurusan", "urus_bilik", "urus_pejabat", "urus_disiplin"
-      ];
-      return keupayaanPentadbir.includes(k);
-  }
-
   return KEUPAYAAN[p].includes(k);
 }
 
