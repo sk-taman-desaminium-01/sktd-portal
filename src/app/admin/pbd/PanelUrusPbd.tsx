@@ -12,6 +12,7 @@ import {
 } from "@/lib/tindakan-pbd";
 import type { RancanganNaik } from "@/data/naik-tahun";
 import PilihCari from "@/components/PilihCari";
+import PukalMurid from "./PukalMurid";
 import { SUBJEK, namaSubjek } from "@/data/subjek";
 
 /**
@@ -565,6 +566,11 @@ Tekan <b>Semak dahulu</b> sebelum ini boleh digunakan.
             )}
           </div>
         )}
+        {/* MUAT NAIK PUKAL — 57 kelas, satu pilihan fail.
+            Diletak SELEPAS kotak tampal, bukan sebelum: satu kelas ialah
+            kerja harian, dan pukal ialah kerja awal tahun. Yang kerap
+            dilakukan duduk di atas. */}
+        <PukalMurid semuaKelas={semuaKelas} />
       </section>
 
       {/* ---------------- Betulkan murid ---------------- */}

@@ -1,11 +1,12 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import CetakMedia from "@/components/CetakMedia";
 import TandaTangan from "@/components/TandaTangan";
 import CetakSurat, { type KepalaSurat } from "@/components/CetakSurat";
 import {
   hantarSuratRasmi, hantarSuratGambar, tetapkanRujukan,
-  type BarisSurat, type DataSuratRasmi,
+  type BarisSurat, type DataSuratRasmi, type DataSuratGambar,
 } from "@/lib/surat";
 
 type Kepala = KepalaSurat;
@@ -75,6 +76,7 @@ export default function PanelBorang({
         />
       )}
 
+      {cetak?.jenis === "gambar" && <CetakMedia surat={cetak} data={cetak.data as DataSuratGambar} kepala={kepala} />}
       {cetak && cetak.jenis === "rasmi" && (
         <CetakSurat surat={cetak} data={cetak.data as DataSuratRasmi} kepala={kepala} sayaNama={sayaNama} />
       )}
@@ -164,6 +166,7 @@ function FormGambar({ kelas, selesai }: { kelas: string[]; selesai: (b: BarisSur
   const [muridKelas, setMuridKelas] = useState(kelas[0] ?? "");
   const [bersetuju, setBersetuju] = useState<boolean | null>(null);
   const [catatan, setCatatan] = useState("");
+  const [penjaga, setPenjaga] = useState({ penjagaNama: "", penjagaKp: "", alamat: "", telefon: "", muridKp: "" });
   const [tandatangan, setTandatangan] = useState<string | null>(null);
   const [sibuk, setSibuk] = useState(false);
   const [mesej, setMesej] = useState<{ ok: boolean; teks: string } | null>(null);
@@ -175,13 +178,13 @@ function FormGambar({ kelas, selesai }: { kelas: string[]; selesai: (b: BarisSur
     }
     setSibuk(true);
     setMesej(null);
-    const r = await hantarSuratGambar({ muridNama, muridKelas, bersetuju, catatan, tandatangan_url: tandatangan });
+    const r = await hantarSuratGambar({ ...penjaga, muridNama, muridKelas, bersetuju, catatan, tandatangan_url: tandatangan });
     setMesej({ ok: r.ok, teks: r.mesej });
     if (r.ok && r.id) {
       selesai({
         id: r.id, jenis: "gambar", status: "selesai", tajuk: `Kebenaran Gambar — ${muridNama}`,
         rujukan_kami: null, pemohon_nama: "", pemohon_emel: "", tandatangan_url: tandatangan,
-        data: { muridNama, muridKelas, bersetuju, catatan }, dicipta: new Date().toISOString(),
+        data: { ...penjaga, muridNama, muridKelas, bersetuju, catatan }, dicipta: new Date().toISOString(),
       });
       setMuridNama(""); setBersetuju(null); setCatatan(""); setTandatangan(null);
     }
@@ -194,6 +197,13 @@ function FormGambar({ kelas, selesai }: { kelas: string[]; selesai: (b: BarisSur
         Borang Kebenaran Mengambil Gambar — keputusan ibu bapa direkod di sini
         oleh guru, dan guru kelas murid diberitahu secara automatik.
       </p>
+      {([
+        ["penjagaNama", "Nama ibu bapa/penjaga"], ["penjagaKp", "No. KP penjaga"],
+        ["alamat", "Alamat penjaga"], ["telefon", "No. telefon"], ["muridKp", "No. MyKid/KP murid"],
+      ] as const).map(([k, label]) => <Medan key={k} label={label}>
+        <input value={penjaga[k]} onChange={(e) => setPenjaga((p) => ({ ...p, [k]: e.target.value }))}
+          className="w-full rounded-lg border border-garis px-3 py-2 text-sm" />
+      </Medan>)}
       <Medan label="Nama murid">
         <input value={muridNama} onChange={(e) => setMuridNama(e.target.value)}
           className="w-full rounded-lg border border-garis px-3 py-2 text-sm" />
@@ -275,7 +285,7 @@ function SenaraiSaya({
               }`}>
                 {b.status}
               </span>
-              {b.jenis === "rasmi" && (
+              {(b.jenis === "rasmi" || b.jenis === "gambar") && (
                 <button type="button" onClick={() => bukaCetak(b)} className="text-xs font-semibold text-navy-700 underline">
                   Cetak PDF
                 </button>

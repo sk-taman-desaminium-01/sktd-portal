@@ -5,7 +5,7 @@ import { kelasBolehSunting } from "./guru-kelas";
 import { semakFail } from "./storan";
 import { muatanKeFail, type MuatanFail } from "@/data/fail-base64";
 import { setUntukKelas, type KelasJadual, type Waktu } from "@/data/jadual-jenis";
-import { semuaKelas } from "@/data/kelas";
+import { kesanKelas } from "@/data/kesan-kelas";
 import { binaDraf, binaDrafDariGrid, binaDrafDariKedudukan } from "./jadual-huraian";
 import { bacaDokumen } from "./baca-dokumen";
 import { ambilJadual } from "./jadual";
@@ -192,30 +192,18 @@ export interface HasilPukal {
   ok: boolean;
   mesej: string;
   draf?: KelasJadual;
+  /**
+   * Waktu kelas ini — supaya pelayar boleh MEMAPAR draf sebagai grid
+   * sebelum pentadbir menekan Simpan.
+   *
+   * Tanpa ini, satu-satunya maklumat sebelum menyimpan ialah nombor
+   * "44 slot dibaca" — dan nombor itu betul sekalipun setiap subjek
+   * diletakkan pada hari yang salah. Pengguna meminta melihat jadual
+   * kelas itu dahulu, dan itu betul: slot yang tersasar kelihatan serta
+   * -merta dalam grid, dan tidak pernah kelihatan dalam satu nombor.
+   */
+  waktu?: Waktu[];
   keyakinan?: { dikenal: number; jumlah: number };
-}
-
-/**
- * Kesan kelas daripada kandungan fail, kemudian daripada namanya.
- *
- * Kandungan didahulukan kerana ia yang dicetak sekolah: jadual 2 MAJU
- * mengandungi "2 MAJU" sebagai tajuknya. Nama fail hanya sandaran — ia mudah
- * ditukar orang, dan pentadbir yang menyusun 57 fail memang menamakannya
- * ikut suka.
- */
-function kesanKelas(teks: string, namaFail: string): string | null {
-  const senarai = semuaKelas();
-  const normal = (t: string) => ` ${t.toUpperCase().replace(/[^A-Z0-9]+/g, " ").replace(/\s+/g, " ").trim()} `;
-
-  const isi = normal(teks);
-  // Nama terpanjang dipadankan dahulu, supaya "1 INTELEK" tidak dikalahkan
-  // oleh padanan separa kelas lain.
-  const ikutPanjang = [...senarai].sort((a, b) => b.length - a.length);
-  for (const k of ikutPanjang) if (isi.includes(normal(k))) return k;
-
-  const nama = normal(namaFail);
-  for (const k of ikutPanjang) if (nama.includes(normal(k))) return k;
-  return null;
 }
 
 /**
@@ -268,6 +256,7 @@ export async function bacaJadualPukal(muatan: MuatanFail): Promise<HasilPukal> {
     return {
       nama, kelas, ok: hasil.dikenal > 0,
       draf: hasil.draf,
+      waktu: senaraiWaktu,
       keyakinan: { dikenal: hasil.dikenal, jumlah: hasil.jumlah },
       mesej:
         hasil.dikenal > 0

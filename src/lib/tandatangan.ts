@@ -1,7 +1,7 @@
 "use server";
 
 import { pengguna } from "./akses";
-import { muatNaik } from "./storan";
+
 
 /**
  * Muat naik tandatangan (lukisan atau gambar yang sudah diproses di
@@ -19,8 +19,13 @@ export async function naikTandaTangan(data: FormData): Promise<{ ok: boolean; me
     return { ok: false, mesej: "Tiada tandatangan." };
   }
   try {
-    const hasil = await muatNaik(fail, "tandatangan");
-    return { ok: true, mesej: "Tandatangan disimpan.", url: hasil.url };
+    if (fail.type !== "image/png" || fail.size > 256 * 1024)
+      return { ok: false, mesej: "Tandatangan mesti PNG tidak melebihi 256 KB." };
+    const bait = Buffer.from(await fail.arrayBuffer());
+    if (!bait.subarray(0, 8).equals(Buffer.from([137,80,78,71,13,10,26,10])))
+      return { ok: false, mesej: "Fail PNG tidak sah." };
+    // Disimpan bersama rekod borang terlindung, bukan bucket media awam.
+    return { ok: true, mesej: "Tandatangan sedia untuk disimpan bersama borang.", url: `data:image/png;base64,${bait.toString("base64")}` };
   } catch (e) {
     return { ok: false, mesej: e instanceof Error ? e.message : "Muat naik gagal." };
   }

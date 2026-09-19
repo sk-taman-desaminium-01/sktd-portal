@@ -1,5 +1,6 @@
 "use server";
 
+import { tahunSesiAktif } from "./sesi-aktif";
 import { revalidatePath } from "next/cache";
 import { pastikanBoleh, pengguna } from "./akses";
 import { klienTulis } from "./supabase-pelayan";
@@ -19,7 +20,7 @@ import { boleh } from "./peranan";
  * sini sahaja supaya tiada kod lain perlu tahu tentang kedua-dua bentuk.
  */
 
-const SESI = 2026;
+
 
 export interface TugasanKelas {
   guru_id: string;
@@ -52,6 +53,7 @@ function pecahLabel(label: string): { tahun: number; kelas: string } | null {
 
 export async function senaraiGuruKelas(): Promise<TugasanKelas[]> {
   await pastikanBoleh("terbit_kandungan");
+  const SESI = await tahunSesiAktif();
   const db = klienTulis();
   const baris = (await db.minta(
     `pbd_guru_kelas?select=guru_id,tahun,kelas,pbd_guru(nama,email)` +
@@ -81,8 +83,11 @@ export async function senaraiGuruKelas(): Promise<TugasanKelas[]> {
  * pemanggil tidak semestinya punya keupayaan `terbit_kandungan`.
  */
 export async function emelGuruKelas(label: string): Promise<string[]> {
+  const saya = await pengguna();
+  if (!saya?.peranan) throw new Error("Tiada kebenaran.");
   const pecah = pecahLabel(label);
   if (!pecah) return [];
+  const SESI = await tahunSesiAktif();
   const db = klienTulis();
   const baris = (await db.minta(
     `pbd_guru_kelas?select=pbd_guru(email)&tahun_sesi=eq.${SESI}&peranan=eq.guru_kelas` +
@@ -99,6 +104,9 @@ export async function emelGuruKelas(label: string): Promise<string[]> {
  * bukan skrin urus tugasan, jadi tiada sebab menuntut keupayaan admin.
  */
 export async function namaGuruKelasSemua(): Promise<Record<string, string>> {
+  const saya = await pengguna();
+  if (!saya?.peranan) throw new Error("Tiada kebenaran.");
+  const SESI = await tahunSesiAktif();
   const db = klienTulis();
   const baris = (await db.minta(
     `pbd_guru_kelas?select=tahun,kelas,pbd_guru(nama)&tahun_sesi=eq.${SESI}&peranan=eq.guru_kelas`,
@@ -122,9 +130,11 @@ export async function namaGuruKelasSemua(): Promise<Record<string, string>> {
 export async function kelasBolehSunting(): Promise<string[] | null> {
   const saya = await pengguna();
   if (!saya?.peranan) return [];
-  if (boleh(saya.peranan, "urus_guru_kelas")) return null; // semua kelas
+  // Admin mutlak dan pentadbir ke atas boleh sunting semua kelas.
+  if (saya.peranan === "admin_mutlak" || boleh(saya.peranan, "urus_guru_kelas")) return null; // semua kelas
   if (!saya.id) return [];
 
+  const SESI = await tahunSesiAktif();
   const db = klienTulis();
   const baris = (await db.minta(
     `pbd_guru_kelas?select=tahun,kelas&tahun_sesi=eq.${SESI}` +
@@ -140,22 +150,11 @@ export async function tetapGuruKelas(guruId: string, label: string): Promise<Has
   if (!pecah) return { ok: false, mesej: `Nama kelas tidak sah: ${label}` };
 
   try {
-    const db = klienTulis();
-    // Satu kelas, satu guru kelas. Tugasan lama dibuang dahulu supaya tiada
-    // dua orang memegang kelas yang sama tanpa sesiapa perasan.
-    await db.minta(
-      `pbd_guru_kelas?tahun_sesi=eq.${SESI}&peranan=eq.guru_kelas` +
-        `&tahun=eq.${pecah.tahun}&kelas=eq.${encodeURIComponent(pecah.kelas)}`,
-      { method: "DELETE" },
-    );
-    await db.minta("pbd_guru_kelas", {
-      method: "POST",
-      headers: { Prefer: "return=minimal" },
-      body: JSON.stringify({
-        guru_id: guruId, tahun_sesi: SESI,
-        tahun: pecah.tahun, kelas: pecah.kelas,
-        subjek: "", peranan: "guru_kelas",
-      }),
+    const SESI = await tahunSesiAktif();
+  const db = klienTulis();
+    await db.minta("rpc/tetap_tugasan_sekolah", {
+      method: "POST", body: JSON.stringify({ p_guru: guruId, p_sesi: SESI,
+        p_tahun: pecah.tahun, p_kelas: pecah.kelas, p_peranan: "guru_kelas" }),
     });
   } catch (e) {
     return { ok: false, mesej: e instanceof Error ? e.message : "Gagal menetapkan guru kelas." };
@@ -172,7 +171,8 @@ export async function buangGuruKelas(label: string): Promise<HasilTugasan> {
   if (!pecah) return { ok: false, mesej: `Nama kelas tidak sah: ${label}` };
 
   try {
-    const db = klienTulis();
+    const SESI = await tahunSesiAktif();
+  const db = klienTulis();
     await db.minta(
       `pbd_guru_kelas?tahun_sesi=eq.${SESI}&peranan=eq.guru_kelas` +
         `&tahun=eq.${pecah.tahun}&kelas=eq.${encodeURIComponent(pecah.kelas)}`,

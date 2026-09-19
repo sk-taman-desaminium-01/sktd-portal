@@ -35,7 +35,25 @@ import { kunciNama } from "../lib/nama.ts";
 export type JenisPindaan =
   | "ganti_nama"   // orang digantikan orang lain (pertukaran, kenaikan pangkat)
   | "buang_nama"   // orang sudah tiada di sekolah — baris yang menamakannya digugurkan
-  | "ganti_teks";  // pembetulan teks seluruh sel (jawatan tersalah eja dalam buku)
+  | "ganti_teks"   // pembetulan teks seluruh sel (jawatan tersalah eja dalam buku)
+  | "ganti_baris"
+  | "buang_baris"; // baris itu sendiri tidak sepatutnya ada — digugurkan setiap edisi
+
+/**
+ * KENAPA `buang_baris` WUJUD.
+ *
+ * Admin memadam satu baris dalam skrin Buku Pengurusan kerana ia sampah:
+ * ayat pelan strategik yang terbaca sebagai orang, atau baris kepala jadual
+ * yang menyelit ke dalam data. Memadamnya membetulkan edisi ini SAHAJA —
+ * dan buku tahun depan akan membawa baris yang sama semula, kerana ia
+ * memang tercetak begitu. Pengguna menyebutnya terus: pembetulan hari ini
+ * tidak boleh berulang tahun depan.
+ *
+ * Padanannya ialah SELURUH BARIS, bukan satu sel dan bukan subrentetan.
+ * Sel digabung dengan satu ruang dan dinormalkan — jadi baris yang sama
+ * yang dibaca dengan pemecahan sel yang sedikit berbeza masih dikenali,
+ * tetapi baris LAIN yang berkongsi satu nama tidak pernah tersentuh.
+ */
 
 export interface Pindaan {
   id: string;
@@ -46,6 +64,11 @@ export interface Pindaan {
   aktif: boolean;
   oleh: string | null;
   dicipta: string;
+}
+
+/** Normalkan SELURUH baris untuk perbandingan: sel digabung, ruang diseragam. */
+export function kunciBaris(sel: string[]): string {
+  return kunciTeks((sel ?? []).join(" "));
 }
 
 /** Normalkan sel untuk perbandingan teks — bukan nama. */
@@ -80,7 +103,19 @@ export function kenakanPindaan(sel: string[], pindaan: Pindaan[]): KesanPindaan 
   let keluar = sel;
 
   for (const p of aktif) {
-    if (p.jenis === "buang_nama") continue;
+    if (p.jenis === "buang_nama" || p.jenis === "buang_baris") continue;
+    if (p.jenis === "ganti_baris") {
+      try {
+        const asal: unknown = JSON.parse(p.dari);
+        const baru: unknown = JSON.parse(p.kepada ?? "null");
+        if (Array.isArray(asal) && Array.isArray(baru) &&
+            asal.every((x) => typeof x === "string") && baru.every((x) => typeof x === "string") &&
+            JSON.stringify(keluar.map(kunciTeks)) === JSON.stringify(asal.map(kunciTeks))) {
+          keluar = baru; kena.push(p.id);
+        }
+      } catch { /* Pindaan lama yang rosak tidak boleh mengubah data. */ }
+      continue;
+    }
     const kunciDari = p.jenis === "ganti_nama" ? kunciNama(p.dari) : kunciTeks(p.dari);
     if (kunciDari === "") continue;
 
@@ -98,6 +133,18 @@ export function kenakanPindaan(sel: string[], pindaan: Pindaan[]): KesanPindaan 
   }
 
   for (const p of aktif) {
+    if (p.jenis === "buang_baris") {
+      // Baris dibandingkan SELEPAS gantian dikenakan, supaya baris yang
+      // dibuang kerana ia sampah tidak terselamat hanya kerana satu nama
+      // di dalamnya bertukar.
+      const kunciDari = kunciTeks(p.dari);
+      if (kunciDari === "") continue;
+      if (kunciBaris(keluar) === kunciDari || kunciBaris(sel) === kunciDari) {
+        if (!kena.includes(p.id)) kena.push(p.id);
+        return { sel: keluar, gugur: true, kena };
+      }
+      continue;
+    }
     if (p.jenis !== "buang_nama") continue;
     const kunciDari = kunciNama(p.dari);
     if (kunciDari === "") continue;

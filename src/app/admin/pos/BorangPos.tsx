@@ -54,7 +54,7 @@ export default function BorangPos({
 
   function auto200(): string {
     const rata = kandungan.replace(/\s+/g, " ").trim();
-    return rata.length <= 200 ? rata : `${rata.slice(0, 60)}…`;
+    return rata.length <= 200 ? rata : `${rata.slice(0, 200)}…`;
   }
 
   async function hantarStatus(status: "draf" | "terbit", tajukAkhir: string) {
@@ -62,6 +62,7 @@ export default function BorangPos({
     const fd = new FormData();
     if (pos?.id) fd.set("id", pos.id);
     fd.set("kandungan", kandungan);
+    fd.set("ringkasan", auto200());
     fd.set("gambar_utama", gambar);
     fd.set("tajuk", tajukAkhir);
     fd.set("jenis", jenis);

@@ -18,7 +18,7 @@ import {
   ARA_JAWATAN, ara, arasKod, kekananan, rujukanKumpulan, kelihatanNama,
   type NodCarta,
 } from "../data/carta.ts";
-import { kunciNama, namaBersih } from "./nama.ts";
+import { kunciNama, namaBersih, cariPadanan } from "./nama.ts";
 
 export interface SeksyenCarta {
   kod: string;
@@ -33,6 +33,16 @@ export interface Warga {
   nama: string;
   kod: string | null;
   opsyen: string | null;
+  /**
+   * Baris senarai nama guru yang dia datang dari.
+   *
+   * Tanpa ini, nod "Guru & Kakitangan Lain" dalam carta TIDAK BOLEH
+   * DISUNTING: skrin hanya memapar butang Sunting dan Buang bagi nod yang
+   * membawa id baris, dan nod warga tidak pernah membawanya. Pengguna
+   * melaporkannya — tiga GAB dan seorang GAG yang namanya tersalah baca,
+   * dan tiada cara membetulkannya dari skrin.
+   */
+  barisId?: string;
 }
 
 /* ------------------------------------------------------------ senarai guru */
@@ -77,14 +87,44 @@ function barisPenunjuk(teks: string): boolean {
  * Mencari per baris tidak peduli lajur beranjak: kod ialah sel yang BERUPA
  * kod, dan nama ialah sel yang membawa penanda nasab.
  */
+/**
+ * Kod AKP yang MELEKAT pada nama, dengan jawatan dalam kurungan.
+ *
+ * Bentuk sebenar dari m.53 edisi 2026:
+ *
+ *     1  BAIDURIAH BINTI BAHROM KPT (KETUA PEMBANTU TADBIR)
+ *     4  OTHMAN BIN NASIR PKA (OPERASI)
+ *     7  IRNAWATI BINTI JOHAR PPM (INTEGRASI)
+ *
+ * Satu sel, tiga maklumat. Sebelum ini kod itu dibuang dari nama tetapi
+ * tidak DIAMBIL, jadi carta memapar jawatan mereka sebagai seluruh sel —
+ * nama, kod dan kurungan sekali — dan `kod` kekal kosong, yang bermakna
+ * mereka tiada aras dalam carta.
+ */
+export const RE_KOD_MELEKAT = /^(.+?)\s+([A-Z]{2,6}\d?)\s*\(([^)]*)\)\s*$/;
+
 function bacaBarisWarga(sel: string[]): Warga | null {
   const bersih = sel.map((c) => (c ?? "").trim());
 
   if (bersih.some(barisPenunjuk)) return null;
-  // Tajuk seksyen dalam senarai ("SENARAI NAMA ANGGOTA KUMPULAN PELAKSANA")
-  // membawa perkataan yang kelihatan seperti nama. Ia bukan.
   if (bersih.some((c) => /^(SENARAI|JADUAL|CARTA|PENUNJUK|BILANGAN)\b/i.test(c.trim()))) return null;
 
+  // Kod melekat dicuba DAHULU: ia bentuk yang paling khusus, dan carian kod
+  // am di bawah tidak akan mengenali "KPT" kerana penunjuk kod buku hanya
+  // menyenaraikan kod guru.
+  for (const c of bersih) {
+    const m = RE_KOD_MELEKAT.exec(c.replace(/^\d{1,3}[.)\s]+/, "").trim());
+    if (!m) continue;
+    const nama = namaBersih(m[1].replace(/^\d{1,3}[.)\s]+/, "").trim());
+    if (nama.length < 4 || !kelihatanNama(nama)) continue;
+    const opsyen = m[3].replace(/\s+/g, " ").trim();
+    return { nama, kod: m[2].toUpperCase(), opsyen: opsyen || null };
+  }
+
+  return bacaBarisBiasa(bersih);
+}
+
+function bacaBarisBiasa(bersih: string[]): Warga | null {
   let kod: string | null = null;
   let iKod = -1;
   let potong: [number, number] | null = null;
@@ -169,7 +209,7 @@ export function bacaWarga(seksyen: SeksyenCarta[]): Warga[] {
     const kunci = kunciNama(w.nama);
     if (!kunci || dilihat.has(kunci)) continue;
     dilihat.add(kunci);
-    keluar.push(w);
+    keluar.push({ ...w, barisId: b.id });
   }
   return keluar;
 }
@@ -188,6 +228,8 @@ function nod(x: Partial<NodCarta> & { label: string }): NodCarta {
     jenis: x.jenis ?? "orang",
     anak: x.anak ?? [],
     barisId: x.barisId,
+    sumber: x.sumber,
+    ejaanBuku: x.ejaanBuku,
     rujukan: x.rujukan,
   };
 }
@@ -343,15 +385,24 @@ export function binaCarta(
       // masuk menghasilkan carta yang setiap nod ketiganya ialah satu ayat.
       const rujuk = rujukanKumpulan(nama);
       if (!rujuk && !kelihatanNama(nama)) continue;
-      const w = rujuk ? null : warga.find((x) => kunciNama(x.nama) === kunciNama(nama));
+      const w = rujuk ? null : padanWarga(nama, warga);
       if (w) pakai(w);
 
+      // NAMA DIPAPAR MENGIKUT SENARAI NAMA GURU, bukan mengikut ejaan
+      // jawatankuasa. Buku yang sama menulis seorang guru empat cara
+      // berbeza; memapar setiap ejaan bermakna carta kelihatan seperti ada
+      // empat orang. Ejaan buku dikekalkan sebagai nota supaya padanan
+      // longgar boleh disemak.
+      const ejaan = namaBersih(nama);
+      const label = w ? namaBersih(w.nama) : ejaan;
       sasaran.anak.push(nod({
-        label: namaBersih(nama),
+        label,
         jawatan,
         kod: w?.kod ?? undefined,
         barisId: b.id,
+        sumber: "jawatankuasa",
         rujukan: rujuk,
+        ejaanBuku: kunciNama(label) === kunciNama(ejaan) ? undefined : ejaan,
       }));
     }
 
@@ -380,12 +431,49 @@ export function binaCarta(
         label: namaBersih(w.nama),
         jawatan: w.kod ? namaKod(w.kod) : w.opsyen ?? "",
         kod: w.kod ?? undefined,
+        // BARIS SENARAI NAMA GURU, bukan baris jawatankuasa. Tanpa id ini
+        // nod di bawah "Guru & Kakitangan Lain" tidak boleh disunting
+        // mahupun dibuang, dan itulah yang pengguna laporkan.
+        barisId: w.barisId,
+        sumber: "guru",
       }));
     }
     punca.anak.push(lain);
   }
 
   return { punca, warga, tidakDitempatkan: baki };
+}
+
+/**
+ * Padankan nama dalam jawatankuasa kepada warga dalam senarai nama guru.
+ *
+ * KENAPA PADANAN TEPAT TIDAK MENCUKUPI. Buku ini menulis orang yang sama
+ * dengan ejaan berbeza antara senarai nama guru dan senarai jawatankuasa —
+ * bukan sekali, tetapi bagi empat guru dalam edisi 2026:
+ *
+ *   senarai guru                      jawatankuasa
+ *   NOOR MASLIZA BINTI MAT SOOD       NOOR MASLIZA BINTI MAT SO'OD
+ *   NOOR RUWAIDA BINTI HJ MOHD ARIFIN NOOR RUWAIDA BINTI MOHD ARIFIN
+ *   SHARIFAH NUR-AIN BINTI AID ALI    SHARIFAH NUR-AIN BINTI SAID ALI
+ *   NOR HASFARADZI BIN HASHIM         NOR HASFARADZI BIN HASHIM AMER HAMZAH
+ *
+ * Dengan padanan tepat, keempat-empatnya jatuh ke dalam "Guru & Kakitangan
+ * Lain" seolah-olah mereka tiada tugas — sedangkan seorang daripadanya
+ * Ketua Panitia Sejarah dan seorang lagi Ketua Panitia Bahasa Elektif.
+ * Itu tepat apa yang pengguna nampak: "GAB 3 dan GAG 1 … mereka ada tugas
+ * mereka dan sistem salah baca."
+ *
+ * PAGARNYA ialah `cariPadanan`: ia menuntut sekurang-kurangnya dua
+ * perkataan bermakna dikongsi dan skor 80, dan ia MENOLAK seri — dua warga
+ * yang sama-sama padan bermakna nama itu berulang dalam sekolah, dan
+ * memilih salah satu secara senyap ialah cara seorang guru mewarisi
+ * jawatan orang lain.
+ */
+export function padanWarga(nama: string, warga: Warga[]): Warga | undefined {
+  const kunci = kunciNama(nama);
+  const tepat = warga.find((x) => kunciNama(x.nama) === kunci);
+  if (tepat) return tepat;
+  return cariPadanan(nama, warga, (w) => w.nama)?.item;
 }
 
 function ambilTiga(sel: string[]): [string, string, string] {

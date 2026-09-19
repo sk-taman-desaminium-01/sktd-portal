@@ -6,6 +6,7 @@ import { klienTulis } from "./supabase-pelayan";
 import { hantar, emelIkutPeranan } from "./notifikasi";
 import { emelGuruKelas } from "./guru-kelas";
 import { belumDipasang } from "./db-belum-sedia";
+import { senaraiPentadbirUntukSemua } from "./pentadbir";
 import { SEKOLAH } from "@/data/sekolah";
 
 /**
@@ -36,6 +37,7 @@ export interface DataSuratRasmi {
 }
 
 export interface DataSuratGambar {
+  penjagaNama?: string; penjagaKp?: string; alamat?: string; telefon?: string; muridKp?: string;
   muridNama: string;
   muridKelas: string;
   bersetuju: boolean;
@@ -63,6 +65,8 @@ export async function hantarSuratRasmi(input: {
   tajuk: string; alamat: string; tarikh: string; isi: string;
   wakilGbNama: string; wakilGbJawatan: string; tandatangan_url: string | null;
 }): Promise<HasilSurat> {
+  if (input.tandatangan_url && (!/^data:image\/png;base64,[A-Za-z0-9+/]+=*$/.test(input.tandatangan_url) || input.tandatangan_url.length > 350000))
+    return { ok: false, mesej: "Tandatangan tidak sah. Lukis atau muat naik semula." };
   const saya = await pengguna();
   if (!saya?.peranan) return { ok: false, mesej: "Tiada kebenaran." };
 
@@ -75,6 +79,9 @@ export async function hantarSuratRasmi(input: {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(input.tarikh)) return { ok: false, mesej: "Tarikh tidak sah." };
   if (!input.wakilGbNama.trim()) return { ok: false, mesej: "Pilih Guru Besar / wakil." };
 
+  const pentadbir = await senaraiPentadbirUntukSemua();
+  const wakil = pentadbir.find((p) => p.nama === input.wakilGbNama && p.jawatan === input.wakilGbJawatan);
+  if (!wakil) return { ok: false, mesej: "Senarai pentadbir berubah. Muat semula dan pilih penandatangan." };
   const db = klienTulis();
   let baris: { id: string }[];
   try {
@@ -122,8 +129,11 @@ async function beritahuPejabat(tajuk: string, oleh: string, olehEmel: string) {
 
 export async function hantarSuratGambar(input: {
   muridNama: string; muridKelas: string; bersetuju: boolean; catatan?: string;
+  penjagaNama: string; penjagaKp: string; alamat: string; telefon: string; muridKp: string;
   tandatangan_url: string | null;
 }): Promise<HasilSurat> {
+  if (input.tandatangan_url && (!/^data:image\/png;base64,[A-Za-z0-9+/]+=*$/.test(input.tandatangan_url) || input.tandatangan_url.length > 350000))
+    return { ok: false, mesej: "Tandatangan tidak sah. Lukis atau muat naik semula." };
   const saya = await pengguna();
   if (!saya?.peranan) return { ok: false, mesej: "Tiada kebenaran." };
   const muridNama = input.muridNama.trim();
@@ -131,11 +141,15 @@ export async function hantarSuratGambar(input: {
   if (!muridNama) return { ok: false, mesej: "Nama murid diperlukan." };
   if (!muridKelas) return { ok: false, mesej: "Kelas murid diperlukan." };
 
+  if (!input.penjagaNama?.trim() || !input.alamat?.trim() || !input.telefon?.trim() ||
+      !/^\d{12}$/.test(input.penjagaKp?.replace(/[- ]/g, "")) || !/^\d{12}$/.test(input.muridKp?.replace(/[- ]/g, "")) || typeof input.bersetuju !== "boolean")
+    return { ok: false, mesej: "Lengkapkan nama penjaga, alamat, telefon dan No. KP/MyKid 12 digit." };
   const db = klienTulis();
+  let id: string | undefined;
   try {
-    await db.minta("pbd_surat", {
+    const rows = await db.minta("pbd_surat", {
       method: "POST",
-      headers: { Prefer: "return=minimal" },
+      headers: { Prefer: "return=representation" },
       body: JSON.stringify({
         jenis: "gambar",
         status: "selesai",
@@ -145,11 +159,13 @@ export async function hantarSuratGambar(input: {
         pemohon_emel: saya.emel,
         tandatangan_url: input.tandatangan_url,
         data: {
+          penjagaNama: input.penjagaNama.trim(), penjagaKp: input.penjagaKp, alamat: input.alamat.trim(), telefon: input.telefon.trim(), muridKp: input.muridKp,
           muridNama, muridKelas, bersetuju: input.bersetuju,
           catatan: input.catatan?.trim() || undefined,
         },
       }),
-    });
+    }) as { id: string }[];
+    id = rows[0]?.id;
   } catch (e) {
     if (belumDipasang(e, "pbd_surat")) {
       return { ok: false, mesej: "Ciri ini belum dipasang — admin perlu jalankan SQL Borang Sekolah dahulu." };
@@ -169,7 +185,7 @@ export async function hantarSuratGambar(input: {
   }
 
   revalidatePath("/borang");
-  return { ok: true, mesej: "Direkod." };
+  return { ok: true, id, mesej: "Direkod." };
 }
 
 /** Surat yang SAYA hantar (bukan skrin pejabat). */

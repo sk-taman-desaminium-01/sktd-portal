@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { bolehBuat } from "@/lib/akses";
+import { hariIniMY } from "@/lib/bilik";
 import { sesiSemasa } from "@/lib/pbd";
 import { senaraiRosterRmt, hadirRmtTarikh } from "@/lib/rmt";
 import { sayaBertugas } from "@/lib/tugasan";
@@ -7,7 +9,7 @@ import PanelRmt from "./PanelRmt";
 
 export const metadata = { title: "Rancangan Makanan Tambahan (RMT)" };
 
-const HARI_INI = () => new Date().toISOString().slice(0, 10);
+const HARI_INI = hariIniMY;
 
 /**
  * RMT (permintaan pengguna E) — dipisahkan daripada Disiplin & Sahsiah
@@ -18,7 +20,7 @@ export default async function Rmt() {
   const tarikh = HARI_INI();
   const [r, bolehRoster, hadir] = await Promise.all([
     senaraiRosterRmt(sesi),
-    sayaBertugas("guru_rmt"),
+    Promise.all([sayaBertugas("guru_rmt"), bolehBuat("urus_guru_kelas")]).then((r) => r.some(Boolean)),
     hadirRmtTarikh(sesi, tarikh),
   ]);
   const kelas = [...semuaKelas(), ...semuaKelasPPKI()];

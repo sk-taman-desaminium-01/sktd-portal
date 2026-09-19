@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import {
   tambahAkses, tukarPeranan, tarikAkses, tolakAkses, senaraiAkses,
   type BarisAkses, type Hasil,
@@ -34,7 +34,8 @@ export default function PanelAkses({ baris, peranan: perananPilihan, padanan }: 
   // Salinan tempatan supaya skrin boleh dikemas kini serta-merta daripada
   // hasil tindakan. Ia disegerakkan semula bila pelayan menghantar prop baharu.
   const [senarai, setSenarai] = useState<BarisAkses[]>(baris);
-  useEffect(() => setSenarai(baris), [baris]);
+  const [sumberSenarai, setSumberSenarai] = useState(baris);
+  if (sumberSenarai !== baris) { setSumberSenarai(baris); setSenarai(baris); }
 
   const [hasil, setHasil] = useState<Hasil | null>(null);
   // SATU baris yang sibuk, bukan seluruh skrin.

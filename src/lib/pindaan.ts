@@ -15,9 +15,12 @@ export * from "@/data/pindaan";
 
 export async function senaraiPindaan(): Promise<Pindaan[]> {
   const db = klienTulis();
-  return (await db.minta(
-    "pengurusan_pindaan?select=*&order=dicipta.desc",
-  )) as Pindaan[];
+  const semua: Pindaan[] = [];
+  for (let offset = 0; ; offset += 500) {
+    const rows = await db.minta(`pengurusan_pindaan?select=*&order=dicipta.asc,id.asc&limit=500&offset=${offset}`) as Pindaan[];
+    semua.push(...rows);
+    if (rows.length < 500) return semua;
+  }
 }
 
 export async function tambahPindaan(
@@ -139,4 +142,11 @@ export async function wariskanPentadbir(
   const hasil = await kenakanPadaDokumen(dok.id, kenakan);
 
   return { pewaris, ...hasil, dilangkau };
+}
+
+/** Simpan baris dan ingatan pindaan dalam satu transaksi pangkalan data. */
+export async function pindaBarisKekal(id: string, sel: string[] | null, oleh: string | null): Promise<void> {
+  await klienTulis().minta("rpc/pinda_baris_kekal", {
+    method: "POST", body: JSON.stringify({ p_id: id, p_sel: sel, p_oleh: oleh }),
+  });
 }

@@ -36,6 +36,14 @@ const JENIS: { kod: JenisPindaan; nama: string; huraian: string }[] = [
     nama: "Betulkan teks",
     huraian: "Jawatan atau tajuk yang tersalah eja dalam cetakan.",
   },
+  {
+    kod: "buang_baris",
+    nama: "Buang baris",
+    huraian:
+      "Baris ini sampah — ayat pelan strategik yang terbaca sebagai orang, " +
+      "atau kepala jadual yang menyelit. Ia digugurkan pada setiap edisi. " +
+      "Tampal seluruh baris seperti ia dipapar.",
+  },
 ];
 
 export default function PanelPindaan({ dokumenId }: { dokumenId: string | null }) {
@@ -164,8 +172,12 @@ export default function PanelPindaan({ dokumenId }: { dokumenId: string | null }
               <input
                 value={kepada}
                 onChange={(e) => setKepada(e.target.value)}
-                disabled={jenis === "buang_nama"}
-                placeholder={jenis === "buang_nama" ? "— baris digugurkan —" : "Nama Guru Besar baharu"}
+                disabled={jenis === "buang_nama" || jenis === "buang_baris"}
+                placeholder={
+                  jenis === "buang_nama" || jenis === "buang_baris"
+                    ? "— baris digugurkan —"
+                    : "Nama Guru Besar baharu"
+                }
                 className="mt-1 w-full rounded-lg border border-garis px-3 py-2 text-sm disabled:bg-navy-50/50 disabled:text-slate-400"
               />
             </label>
@@ -217,7 +229,9 @@ export default function PanelPindaan({ dokumenId }: { dokumenId: string | null }
                   <span className="min-w-0 flex-1">
                     <span className={p.aktif ? "text-navy-800" : "text-slate-400 line-through"}>
                       <b>{p.dari}</b>
-                      {p.jenis === "buang_nama" ? " → digugurkan" : ` → ${p.kepada}`}
+                      {p.jenis === "buang_nama" || p.jenis === "buang_baris"
+                        ? " → digugurkan"
+                        : ` → ${p.kepada}`}
                     </span>
                     {p.sebab && <span className="mt-0.5 block text-slate-400">{p.sebab}</span>}
                   </span>

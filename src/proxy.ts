@@ -1,3 +1,4 @@
+import { NextResponse } from "next/server";
 import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 import { AWALAN } from "@/lib/laluan";
 
@@ -19,6 +20,8 @@ import { AWALAN } from "@/lib/laluan";
 const LALUAN_AWAM = createRouteMatcher([
   "/masuk(.*)",
   "/daftar(.*)",
+  "/kebenaran",
+  "/kebenaran/(.*)",
 ]);
 
 /**
@@ -57,9 +60,17 @@ export default clerkMiddleware(
       return Response.redirect(`${HOS_UTAMA}${url.pathname}${url.search}`, 308);
     }
 
-    if (!LALUAN_AWAM(req)) {
-      await auth.protect();
+    const kepala = new Headers(req.headers);
+    kepala.delete("x-sktd-borang-awam");
+    const path = req.nextUrl.pathname.replace(/^\/portal(?=\/|$)/, "");
+    if (path === "/kebenaran" || path.startsWith("/kebenaran/")) kepala.set("x-sktd-borang-awam", "1");
+    if (!LALUAN_AWAM(req)) await auth.protect();
+    const res = NextResponse.next({ request: { headers: kepala } });
+    if (kepala.has("x-sktd-borang-awam")) {
+      res.headers.set("Referrer-Policy", "no-referrer");
+      res.headers.set("Cache-Control", "private, no-store");
     }
+    return res;
   },
   {
     // Tanpa ini, pengguna yang belum log masuk dapat 404 dan bukan dialih ke

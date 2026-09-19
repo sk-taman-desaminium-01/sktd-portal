@@ -85,6 +85,7 @@ export default function PemotongWajah({
 }) {
   const imgRef = useRef<HTMLImageElement | null>(null);
   const kanvasRef = useRef<HTMLCanvasElement | null>(null);
+  const [maksLebar, setMaksLebar] = useState(100);
   const [siapMuat, setSiapMuat] = useState(false);
   const [bingkai, setBingkai] = useState<Bingkai | null>(null);
   const [dikesan, setDikesan] = useState<boolean | null>(null);
@@ -97,6 +98,7 @@ export default function PemotongWajah({
     const img = new Image();
     img.onload = async () => {
       imgRef.current = img;
+      setMaksLebar(Math.min(img.naturalWidth, img.naturalHeight));
       const wajah = await cariWajah(img);
       setDikesan(wajah !== null);
       setBingkai(bingkaiAwal(img, wajah));
@@ -172,9 +174,6 @@ export default function PemotongWajah({
     onSiap(new File([blob], nama, { type: "image/jpeg" }));
   }
 
-  const maksLebar = imgRef.current
-    ? Math.min(imgRef.current.naturalWidth, imgRef.current.naturalHeight)
-    : 100;
 
   return (
     <div

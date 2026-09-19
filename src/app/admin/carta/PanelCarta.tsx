@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import MuatTurun, { barisCsv, turunkanTeks } from "@/components/MuatTurun";
-import { suntingNod, padamNod } from "@/lib/tindakan-carta";
+import { suntingNod, padamNod, ambilCarta } from "@/lib/tindakan-carta";
 import type { NodCarta } from "@/data/carta";
 
 /**
@@ -30,6 +30,7 @@ export default function PanelCarta({ punca, tahun, namaSekolah, semuaDisahkan }:
   const [pokok, setPokok] = useState(punca);
   const [tutup, setTutup] = useState<Set<string>>(new Set());
   const [sunting, setSunting] = useState<string | null>(null);
+  const [sahBuang, setSahBuang] = useState<string | null>(null);
   const [mesej, setMesej] = useState<{ ok: boolean; teks: string } | null>(null);
   const [tapis, setTapis] = useState("");
 
@@ -45,23 +46,42 @@ export default function PanelCarta({ punca, tahun, namaSekolah, semuaDisahkan }:
     });
   }
 
-  async function simpan(nod: NodCarta, jawatan: string, nama: string) {
+  /**
+   * Simpan suntingan — DUA BENTUK BARIS, dua laluan.
+   *
+   * Nod jawatankuasa datang dari baris [jawatankuasa, jawatan, nama]. Nod di
+   * bawah "Guru & Kakitangan Lain" datang dari SENARAI NAMA GURU, yang
+   * bentuknya [bil, nama, kod, opsyen] — dan kadang-kadang satu sel sahaja,
+   * "NAMA KPT (JAWATAN)". Menulis bentuk jawatankuasa ke atas baris itu
+   * memusnahkan kod dan opsyen sekali gus, jadi pelayan yang mencari sel
+   * nama dan menukar hanya bahagian itu.
+   */
+  async function simpan(nod: NodCarta, sel: string[]) {
     if (!nod.barisId) return;
-    // Baris Buku Pengurusan bagi senarai jawatankuasa ialah
-    // [jawatankuasa, jawatan, nama] — kumpulan dikekalkan seadanya.
-    const hasil = await suntingNod(nod.barisId, [kumpulanBagi(pokok, nod.id), jawatan, nama]);
+    const hasil = await suntingNod(nod.barisId, sel);
     setMesej({ ok: hasil.ok, teks: hasil.mesej });
     if (hasil.ok) {
-      setPokok((p) => gantiNod(p, nod.id, { ...nod, jawatan, label: nama }));
+      const carta = await ambilCarta();
+      if (carta.punca) setPokok(carta.punca);
+      else setMesej({ ok: false, teks: "Suntingan disimpan tetapi carta gagal dimuat semula. " + carta.mesej });
       setSunting(null);
     }
   }
 
+  /**
+   * Buang seorang dari carta — dan dari edisi akan datang juga.
+   *
+   * Pengesahan diperlukan kerana ini memadam baris Buku Pengurusan, bukan
+   * sekadar menyembunyikan nod. Guru yang bertukar sekolah memang perlu
+   * dibuang; tekan silap pada nama yang betul pula memerlukan muat naik
+   * semula seluruh buku untuk dipulihkan.
+   */
   async function buang(nod: NodCarta) {
     if (!nod.barisId) return;
     const hasil = await padamNod(nod.barisId);
     setMesej({ ok: hasil.ok, teks: hasil.mesej });
     if (hasil.ok) setPokok((p) => buangNod(p, nod.id));
+    setSahBuang(null);
   }
 
   const turun = [
@@ -155,6 +175,8 @@ export default function PanelCarta({ punca, tahun, namaSekolah, semuaDisahkan }:
           setSunting={setSunting}
           simpan={simpan}
           buang={buang}
+          sahBuang={sahBuang}
+          setSahBuang={setSahBuang}
         />
       </div>
     </>
@@ -164,7 +186,7 @@ export default function PanelCarta({ punca, tahun, namaSekolah, semuaDisahkan }:
 /* ---------------------------------------------------------------- cabang */
 
 function Cabang({
-  nod, aras, tutup, togol, sunting, setSunting, simpan, buang,
+  nod, aras, tutup, togol, sunting, setSunting, simpan, buang, sahBuang, setSahBuang,
 }: {
   nod: NodCarta;
   aras: number;
@@ -172,8 +194,10 @@ function Cabang({
   togol: (id: string) => void;
   sunting: string | null;
   setSunting: (id: string | null) => void;
-  simpan: (n: NodCarta, jawatan: string, nama: string) => Promise<void>;
+  simpan: (n: NodCarta, sel: string[]) => Promise<void>;
   buang: (n: NodCarta) => Promise<void>;
+  sahBuang: string | null;
+  setSahBuang: (id: string | null) => void;
 }) {
   const adaAnak = nod.anak.length > 0;
   const dibuka = !tutup.has(nod.id);
@@ -225,22 +249,50 @@ function Cabang({
             )}
             {unit && adaAnak && <span className="text-[11px] text-slate-400">{nod.anak.length}</span>}
 
+            {nod.ejaanBuku && (
+              <span className="text-[10px] italic text-slate-400" title="Ejaan dalam Buku Pengurusan berbeza; dipadankan kepada senarai nama guru">
+                buku: {nod.ejaanBuku}
+              </span>
+            )}
+
             {nod.barisId && (
-              <span className="tiada-cetak ml-auto flex gap-1">
-                <button
-                  type="button"
-                  onClick={() => setSunting(nod.id)}
-                  className="rounded px-1.5 py-0.5 text-[11px] text-slate-400 hover:bg-navy-50 hover:text-navy-700"
-                >
-                  Sunting
-                </button>
-                <button
-                  type="button"
-                  onClick={() => void buang(nod)}
-                  className="rounded px-1.5 py-0.5 text-[11px] text-slate-300 hover:bg-[#fdf1f1] hover:text-[#8f2b2b]"
-                >
-                  Buang
-                </button>
+              <span className="tiada-cetak ml-auto flex items-center gap-1">
+                {sahBuang === nod.id ? (
+                  <>
+                    <span className="text-[11px] text-[#8f2b2b]">Buang {nod.label}?</span>
+                    <button
+                      type="button"
+                      onClick={() => void buang(nod)}
+                      className="rounded bg-[#8f2b2b] px-2 py-0.5 text-[11px] font-bold text-white"
+                    >
+                      Ya
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setSahBuang(null)}
+                      className="px-1 text-[11px] text-slate-500 underline"
+                    >
+                      Batal
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => setSunting(nod.id)}
+                      className="rounded px-1.5 py-0.5 text-[11px] text-slate-400 hover:bg-navy-50 hover:text-navy-700"
+                    >
+                      Sunting
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setSahBuang(nod.id)}
+                      className="rounded px-1.5 py-0.5 text-[11px] text-slate-300 hover:bg-[#fdf1f1] hover:text-[#8f2b2b]"
+                    >
+                      Buang
+                    </button>
+                  </>
+                )}
               </span>
             )}
           </>
@@ -260,6 +312,8 @@ function Cabang({
               setSunting={setSunting}
               simpan={simpan}
               buang={buang}
+              sahBuang={sahBuang}
+              setSahBuang={setSahBuang}
             />
           ))}
         </div>
@@ -273,35 +327,26 @@ function BorangSunting({
 }: {
   nod: NodCarta;
   batal: () => void;
-  simpan: (n: NodCarta, jawatan: string, nama: string) => Promise<void>;
+  simpan: (n: NodCarta, sel: string[]) => Promise<void>;
 }) {
-  const [jawatan, setJawatan] = useState(nod.jawatan);
-  const [nama, setNama] = useState(nod.label);
+  const [sel, setSel] = useState(nod.selAsal ?? []);
   const [sibuk, setSibuk] = useState(false);
 
   return (
     <span className="flex w-full flex-wrap items-center gap-2">
-      <input
-        value={jawatan}
-        onChange={(e) => setJawatan(e.target.value)}
-        placeholder="Jawatan"
-        aria-label="Jawatan"
-        className="w-36 rounded border border-garis px-2 py-1 text-xs"
-      />
-      <input
-        value={nama}
-        onChange={(e) => setNama(e.target.value)}
-        placeholder="Nama"
-        aria-label="Nama"
-        className="min-w-0 flex-1 rounded border border-garis px-2 py-1 text-xs"
-      />
+      {sel.map((nilai, i) => (
+        <label key={i} className="text-xs">Lajur {i + 1}
+          <input value={nilai} onChange={(e) => setSel((lama) => lama.map((v, j) => j === i ? e.target.value : v))}
+            disabled={sibuk} className="block rounded border border-garis px-2 py-1" />
+        </label>
+      ))}
       <button
         type="button"
         disabled={sibuk}
         onClick={async () => {
           setSibuk(true);
           try {
-            await simpan(nod, jawatan, nama);
+            await simpan(nod, sel);
           } finally {
             setSibuk(false);
           }

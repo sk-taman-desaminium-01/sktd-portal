@@ -6,6 +6,7 @@
  * daripadanya menulis No. KP dengan cara yang sama.
  */
 import { pilihBacaan } from "../src/data/pilih-bacaan.ts";
+import { kesanKelas } from "../src/data/kesan-kelas.ts";
 import { bacaBarisMurid, bacaSenaraiMurid, jantinaDariKp } from "../src/lib/kenal-murid.ts";
 
 let lulus = 0;
@@ -112,6 +113,27 @@ semak("seri dimenangi calon pertama",
 const banyakBaris = Array.from({ length: 40 }, (_, i) => `BARIS SAMPAH NOMBOR ${i}`).join("\n");
 semak("banyak baris tanpa No. KP tidak menang",
   pilihBacaan([{ cara: "sampah", teks: banyakBaris }, { cara: "betul", teks: BETUL }])?.cara, "betul");
+
+
+/* =============================== KESAN KELAS DARI FAIL ================= */
+/*
+ * Muat naik pukal mengesan kelas dari ISI fail, bukan dari namanya. Nama fail
+ * iDMe ialah nombor rujukan; kepala senarai membawa "4 BESTARI".
+ */
+semak("kelas dari kandungan",
+  kesanKelas("SENARAI MURID KELAS 4 DEDIKASI TAHUN 2026\n1. AHMAD", "eksport-993.pdf"),
+  "4 DEDIKASI");
+semak("kelas dari nama fail bila isi tidak menyebutnya",
+  kesanKelas("1. AHMAD BIN ALI 060101101233", "senarai 2 MAJU.pdf"),
+  "2 MAJU");
+// KANDUNGAN MENANG. Pentadbir yang menamakan fail "kelas1.pdf" tetapi
+// memuat naik senarai 5 MATRIKS patut mendapat 5 MATRIKS.
+semak("kandungan didahulukan daripada nama fail",
+  kesanKelas("KELAS 5 MATRIKS", "1 INTELEK.pdf"),
+  "5 MATRIKS");
+// TANDA BACA TIDAK PENTING: "4-DEDIKASI" dan "4  DEDIKASI" kelas yang sama.
+semak("tanda baca dinormalkan", kesanKelas("SENARAI 4-DEDIKASI", "x.pdf"), "4 DEDIKASI");
+semak("tiada kelas dikesan", kesanKelas("SENARAI MURID SEKOLAH", "eksport.pdf"), null);
 
 console.log(`\n${lulus} lulus, ${gagal.length} gagal`);
 process.exit(gagal.length === 0 ? 0 : 1);

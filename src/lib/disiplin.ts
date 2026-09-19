@@ -1,5 +1,8 @@
 "use server";
 
+import { bacaSemua } from "./baca-semua";
+import { senaraiMuridCadangan } from "./murid-cadangan";
+import { tahunSesiAktif } from "./sesi-aktif";
 import { revalidatePath } from "next/cache";
 import { pengguna, bolehBuat } from "./akses";
 import { klienTulis } from "./supabase-pelayan";
@@ -24,6 +27,7 @@ export interface BarisDisiplin {
   id: string;
   tahun_sesi: number;
   tarikh: string;
+  murid_id?: string | null;
   murid_nama: string;
   kelas: string;
   kesalahan: string;
@@ -59,13 +63,16 @@ export async function hantarDisiplin(input: {
 
   const db = klienTulis();
   try {
+    if (input.tahun_sesi !== await tahunSesiAktif()) return { ok: false, mesej: "Pilih sesi aktif." };
+    const padan = (await senaraiMuridCadangan(input.tahun_sesi)).filter((m) => m.nama.toUpperCase() === murid_nama.toUpperCase() && m.kelas === kelas);
+    if (padan.length > 1) return { ok: false, mesej: "Nama sama dalam kelas ini. Semak identiti murid dengan pentadbir dahulu." };
     await db.minta("pbd_disiplin", {
       method: "POST",
       headers: { Prefer: "return=minimal" },
       body: JSON.stringify({
         tahun_sesi: input.tahun_sesi,
         tarikh: input.tarikh,
-        murid_nama, kelas, kesalahan, tindakan,
+        murid_id: padan[0]?.id ?? null, murid_nama, kelas, kesalahan, tindakan,
         saksi: input.saksi?.trim() || null,
         guru_id: saya.id,
         guru_nama: saya.nama ?? saya.emel,
@@ -90,15 +97,16 @@ export async function senaraiDisiplin(
 
   const db = klienTulis();
   try {
-    const senarai = (await db.minta(
-      `pbd_disiplin?select=id,tahun_sesi,tarikh,murid_nama,kelas,kesalahan,tindakan,saksi,guru_nama,` +
-        `laporan_lembaga,rujukan_kami,dicipta&tahun_sesi=eq.${tahun_sesi}&order=tarikh.desc&limit=1000`,
+    const senarai = (await bacaSemua<BarisDisiplin>(
+      `pbd_disiplin?select=id,murid_id,tahun_sesi,tarikh,murid_nama,kelas,kesalahan,tindakan,saksi,guru_nama,` +
+        `laporan_lembaga,rujukan_kami,dicipta&tahun_sesi=eq.${tahun_sesi}&order=tarikh.desc,id.asc`,
     )) as BarisDisiplin[];
 
     // Kes berulang: nama murid yang muncul >= 2 kali TAHUN INI.
     const kira = new Map<string, number>();
-    for (const b of senarai) kira.set(b.murid_nama, (kira.get(b.murid_nama) ?? 0) + 1);
-    const berulang = [...kira.entries()].filter(([, n]) => n >= 2).map(([nama]) => nama);
+    const kunci = (b: BarisDisiplin) => b.murid_id ?? `${b.kelas}:${b.murid_nama.toUpperCase()}`;
+    for (const b of senarai) kira.set(kunci(b), (kira.get(kunci(b)) ?? 0) + 1);
+    const berulang = [...new Set(senarai.filter((b) => (kira.get(kunci(b)) ?? 0) >= 2).map((b) => `${b.murid_nama} (${b.kelas})`))];
 
     return { belumSedia: false, boleh: true, senarai, berulang };
   } catch (e) {
