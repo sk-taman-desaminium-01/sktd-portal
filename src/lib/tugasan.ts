@@ -26,11 +26,12 @@ import { klienTulis } from "./supabase-pelayan";
 
 export type JenisTugasan = "guru_rmt" | "guru_disiplin" | "pengurus_pasukan";
 
-/** Nama skop lalai bagi tugasan yang tidak terikat kelas/pasukan. */
-const SKOP_SEKOLAH = "SEKOLAH";
 function sahJenis(jenis: string) {
   if (!["guru_rmt", "guru_disiplin", "pengurus_pasukan"].includes(jenis)) throw new Error("Jenis tugasan tidak sah.");
 }
+
+/** Nama skop lalai bagi tugasan yang tidak terikat kelas/pasukan. */
+function skopSekolah() { return "SEKOLAH"; }
 
 export interface BarisTugasan {
   guru_id: string;
@@ -79,11 +80,11 @@ export async function tetapTugasan(
 ): Promise<HasilTugasan> {
   await pastikanBoleh("urus_guru_kelas");
   sahJenis(jenis);
-  const namaSkop = skop.trim() || SKOP_SEKOLAH;
+  const namaSkop = skop.trim() || skopSekolah();
 
   try {
     const SESI = await tahunSesiAktif();
-  const db = klienTulis();
+    const db = klienTulis();
     await db.minta("rpc/tetap_tugasan_sekolah", {
       method: "POST", body: JSON.stringify({ p_guru: guruId, p_sesi: SESI,
         p_tahun: 0, p_kelas: namaSkop, p_peranan: jenis }),
@@ -101,10 +102,10 @@ export async function buangTugasan(jenis: JenisTugasan, skop: string): Promise<H
   sahJenis(jenis);
   try {
     const SESI = await tahunSesiAktif();
-  const db = klienTulis();
+    const db = klienTulis();
     await db.minta(
       `pbd_guru_kelas?tahun_sesi=eq.${SESI}&peranan=eq.${jenis}` +
-        `&tahun=eq.0&kelas=eq.${encodeURIComponent(skop.trim() || SKOP_SEKOLAH)}`,
+        `&tahun=eq.0&kelas=eq.${encodeURIComponent(skop.trim() || skopSekolah())}`,
       { method: "DELETE" },
     );
   } catch (e) {
