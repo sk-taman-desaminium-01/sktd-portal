@@ -7,7 +7,7 @@ import TandaTangan from "@/components/TandaTangan";
 import { mulaCetak } from "@/components/cetak-mudah-alih";
 import type { KepalaSurat } from "@/components/CetakSurat";
 import type { BarisSurat, DataSuratGambar } from "@/lib/surat";
-import { hantarKebenaranGambarAwam } from "@/lib/surat-awam";
+import { hantarKebenaranGambarAwam, namaGuruKelasBorangAwam } from "@/lib/surat-awam";
 
 type Nilai = {
   penjagaNama: string;
@@ -64,12 +64,18 @@ export default function BorangKebenaranGambar({ kelas, kepala }: { kelas: string
     };
   }
 
-  function pratonton() {
+  async function pratonton() {
     setMesej(null);
     const data = dataCetak();
     if (!data) return;
-    flushSync(() => setRekodCetak(binaRekod(data, "pratonton", new Date().toISOString())));
-    mulaCetak("surat-cetak", "Kebenaran Gambar");
+    setSibuk(true);
+    try {
+      data.guruKelasNama = await namaGuruKelasBorangAwam(data.muridKelas);
+      flushSync(() => setRekodCetak(binaRekod(data, "pratonton", new Date().toISOString())));
+      mulaCetak("surat-cetak", "Kebenaran Gambar");
+    } finally {
+      setSibuk(false);
+    }
   }
 
   async function hantar(event: React.FormEvent<HTMLFormElement>) {
@@ -88,6 +94,7 @@ export default function BorangKebenaranGambar({ kelas, kepala }: { kelas: string
       });
       setMesej({ ok: hasil.ok, teks: hasil.mesej });
       if (hasil.ok && hasil.id && hasil.dicipta) {
+        data.guruKelasNama = hasil.guruKelasNama;
         setRekodCetak(binaRekod(data, hasil.id, hasil.dicipta));
       }
     } catch {
@@ -164,7 +171,7 @@ export default function BorangKebenaranGambar({ kelas, kepala }: { kelas: string
 
           {mesej && <p role="status" className={`rounded-xl border p-3 text-sm ${mesej.ok ? "border-[#b9ddca] bg-[#edf8f2] text-[#145f42]" : "border-[#edc2c2] bg-[#fff1f1] text-[#842525]"}`}>{mesej.teks}</p>}
           <div className="flex flex-col gap-3 sm:flex-row">
-            <button type="button" onClick={pratonton} className="min-h-11 rounded-lg border border-navy-700 px-5 py-2.5 text-sm font-semibold text-navy-800">Pratonton borang</button>
+            <button type="button" onClick={() => void pratonton()} className="min-h-11 rounded-lg border border-navy-700 px-5 py-2.5 text-sm font-semibold text-navy-800">Pratonton borang</button>
             <button type="submit" disabled={sibuk || Boolean(rekodCetak && mesej?.ok)} className="min-h-11 rounded-lg bg-navy-800 px-5 py-2.5 text-sm font-semibold text-white disabled:opacity-50">{sibuk ? "Menyimpan…" : rekodCetak && mesej?.ok ? "Keputusan telah disimpan" : "Hantar keputusan"}</button>
           </div>
         </fieldset>

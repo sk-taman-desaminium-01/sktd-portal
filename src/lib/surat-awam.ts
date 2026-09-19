@@ -28,6 +28,7 @@ export type HasilKebenaranGambarAwam = {
   mesej: string;
   id?: string;
   dicipta?: string;
+  guruKelasNama?: string;
 };
 
 const EMEL_AWAM = "borang-awam@sktd.invalid";
@@ -55,6 +56,25 @@ function mesejAwam(error: unknown) {
   return error instanceof RalatBorangAwam
     ? error.message
     : "Borang tidak dapat disimpan buat masa ini. Cuba lagi atau hubungi pihak sekolah.";
+}
+
+async function guruKelasBagi(label: string): Promise<{ nama?: string; emel: string[] }> {
+  const bahagian = pecahKelas(label);
+  if (!bahagian || !kelasSah.has(label.trim().toUpperCase())) return { emel: [] };
+  const sesi = await tahunSesiAktif();
+  const baris = (await klienTulis().minta(
+    `pbd_guru_kelas?select=pbd_guru(nama,email)&tahun_sesi=eq.${sesi}&peranan=eq.guru_kelas` +
+    `&tahun=eq.${bahagian.tahun}&kelas=eq.${encodeURIComponent(bahagian.kelas)}`,
+  )) as { pbd_guru: { nama: string | null; email: string | null } | null }[];
+  return {
+    nama: baris.map((b) => b.pbd_guru?.nama?.trim()).find(Boolean),
+    emel: [...new Set(baris.map((b) => b.pbd_guru?.email?.toLowerCase() ?? "").filter(Boolean))],
+  };
+}
+
+/** Nama sahaja untuk pratonton awam; label dihadkan kepada senarai kelas sah. */
+export async function namaGuruKelasBorangAwam(label: string): Promise<string> {
+  return (await guruKelasBagi(label)).nama ?? "";
 }
 
 /**
@@ -100,16 +120,12 @@ export async function hantarKebenaranGambarAwam(input: InputKebenaranGambarAwam)
     });
     if (!murid) gagal("Butiran murid tidak sepadan dengan daftar sekolah. Semak nama, kelas dan MyKid atau hubungi guru kelas.");
 
-    const bahagian = pecahKelas(muridKelas)!;
-    const guru = (await db.minta(
-      `pbd_guru_kelas?select=pbd_guru(email)&tahun_sesi=eq.${sesi}&peranan=eq.guru_kelas` +
-      `&tahun=eq.${bahagian.tahun}&kelas=eq.${encodeURIComponent(bahagian.kelas)}`,
-    )) as { pbd_guru: { email: string | null } | null }[];
-    const emelGuru = [...new Set(guru.map((baris) => baris.pbd_guru?.email?.toLowerCase() ?? "").filter(Boolean))];
+    const guru = await guruKelasBagi(muridKelas);
+    const emelGuru = guru.emel;
     const pemilik = emelGuru[0] ?? EMEL_AWAM;
     const data: DataSuratGambar = {
       penjagaNama, penjagaKp, alamat, telefon, muridKp,
-      muridNama, muridKelas, bersetuju: input.bersetuju, catatan, sumber: "awam",
+      muridNama, muridKelas, bersetuju: input.bersetuju, catatan, sumber: "awam", guruKelasNama: guru.nama,
     };
     const disimpan = (await db.minta("pbd_surat", {
       method: "POST",
@@ -130,7 +146,7 @@ export async function hantarKebenaranGambarAwam(input: InputKebenaranGambarAwam)
     });
 
     revalidatePath("/borang/urus");
-    return { ok: true, mesej: "Keputusan berjaya disimpan. Pratonton dan simpan salinan PDF di bawah.", id: disimpan[0].id, dicipta: disimpan[0].dicipta };
+    return { ok: true, mesej: "Keputusan berjaya disimpan. Pratonton dan simpan salinan PDF di bawah.", id: disimpan[0].id, dicipta: disimpan[0].dicipta, guruKelasNama: guru.nama };
   } catch (error) {
     return { ok: false, mesej: mesejAwam(error) };
   }

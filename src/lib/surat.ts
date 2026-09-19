@@ -5,6 +5,7 @@ import { pengguna, pastikanBoleh, bolehBuat } from "./akses";
 import { klienTulis } from "./supabase-pelayan";
 import { hantar, emelIkutPeranan } from "./notifikasi";
 import { emelGuruKelas } from "./guru-kelas";
+import { namaGuruKelasSemua } from "./guru-kelas";
 import { belumDipasang } from "./db-belum-sedia";
 import { senaraiPentadbirUntukSemua } from "./pentadbir";
 import { SEKOLAH } from "@/data/sekolah";
@@ -43,6 +44,7 @@ export interface DataSuratGambar {
   bersetuju: boolean;
   catatan?: string;
   sumber?: "kakitangan" | "awam";
+  guruKelasNama?: string;
 }
 
 export interface BarisSurat {
@@ -151,6 +153,7 @@ export async function hantarSuratGambar(input: {
       !/^\d{12}$/.test(input.penjagaKp?.replace(/[- ]/g, "")) || !/^\d{12}$/.test(input.muridKp?.replace(/[- ]/g, "")) || typeof input.bersetuju !== "boolean")
     return { ok: false, mesej: "Lengkapkan nama penjaga, alamat, telefon dan No. KP/MyKid 12 digit." };
   const db = klienTulis();
+  const guruKelasNama = (await namaGuruKelasSemua().catch(() => ({} as Record<string, string>)))[muridKelas]?.trim() || undefined;
   let id: string | undefined;
   try {
     const rows = await db.minta("pbd_surat", {
@@ -167,7 +170,7 @@ export async function hantarSuratGambar(input: {
         data: {
           penjagaNama: input.penjagaNama.trim(), penjagaKp: input.penjagaKp, alamat: input.alamat.trim(), telefon: input.telefon.trim(), muridKp: input.muridKp,
           muridNama, muridKelas, bersetuju: input.bersetuju,
-          catatan: input.catatan?.trim() || undefined, sumber: "kakitangan",
+          catatan: input.catatan?.trim() || undefined, sumber: "kakitangan", guruKelasNama,
         },
       }),
     }) as { id: string }[];

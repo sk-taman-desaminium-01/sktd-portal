@@ -16,8 +16,10 @@ const borangGambar = baca("src/app/borang/kebenaran-gambar/BorangKebenaranGambar
 const tindakanGambar = baca("src/lib/surat-awam.ts");
 const tandatangan = baca("src/components/TandaTangan.tsx");
 const cetak = baca("src/components/cetak-mudah-alih.ts");
+const pratontonCetak = baca("src/app/borang/pratonton-cetak/PratontonCetak.tsx");
+const cetakMedia = baca("src/components/CetakMedia.tsx");
 
-for (const laluan of ["/borang", "/borang/aktiviti", "/borang/kebenaran-gambar"]) {
+for (const laluan of ["/borang", "/borang/aktiviti", "/borang/kebenaran-gambar", "/borang/pratonton-cetak"]) {
   perlu(`${laluan} diisytihar awam secara tepat`, proxy.includes(`"${laluan}"`));
 }
 perlu("Laluan urus tidak dibuka secara wildcard", !proxy.includes('"/borang/(.*)"'));
@@ -34,13 +36,15 @@ perlu("Ralat pangkalan data tidak bocor kepada orang awam", tindakanGambar.inclu
 perlu("Borang awam hanya dua keputusan", borangGambar.includes("Bersetuju") && borangGambar.includes("Tidak bersetuju") && !borangGambar.includes("Tidak pasti"));
 perlu("Tandatangan awam kekal dalam borang", tandatangan.includes("tempatan") && tandatangan.includes("blobKeDataUrl"));
 perlu("Laluan pemeriksaan sementara sudah dibuang", !existsSync(resolve(akar, "src/app/kebenaran/semak-cetak/[jenis]/page.tsx")));
-perlu("Laptop dan telefon menggunakan dokumen cetak terpencil", !cetak.includes("if (!mudahAlih())") && cetak.includes('window.open("", "_blank")'));
-perlu("Pratonton tidak menyalin skrip aplikasi", cetak.includes("style,link[rel='stylesheet']") && !cetak.includes("document.head.cloneNode"));
-perlu("Cetakan meneutralkan susun atur halaman portal", cetak.includes("position: static !important") && cetak.includes("overflow: visible !important"));
-perlu("Cetakan menunggu fon dan gambar", cetak.includes("document.fonts.ready") && cetak.includes("document.images"));
+perlu("Laptop dan telefon menggunakan halaman pratonton yang sama", cetak.includes("/borang/pratonton-cetak") && cetak.includes("sessionStorage"));
+perlu("Pratonton tidak bergantung pada popup atau skrip sebaris", !cetak.includes("window.open") && !cetak.includes("<script>"));
+perlu("Kandungan cetak dibersihkan sebelum dipratonton", cetak.includes("script,iframe,object,embed") && cetak.includes("/^on/i"));
+perlu("Butang cetak React memanggil dialog terus daripada sentuhan", pratontonCetak.includes("onClick={cetak}") && pratontonCetak.includes("function cetak() { window.print(); }") && !pratontonCetak.includes("async function cetak"));
+perlu("Nama guru kelas dipaut dan ditukar huruf besar", cetakMedia.includes("guruKelasNama?.toUpperCase()") && tindakanGambar.includes("guruKelasNama: guru.nama"));
+perlu("Arahan HURUF BESAR tidak dicetak", !cetakMedia.includes("HURUF BESAR"));
 
 if (gagal.length) {
   console.error(`Kontrak Borang Sekolah awam gagal:\n${gagal.map((x) => `- ${x}`).join("\n")}`);
   process.exit(1);
 }
-console.log("Kontrak Borang Sekolah awam: 21 semakan lulus.");
+console.log("Kontrak Borang Sekolah awam: 24 semakan lulus.");
