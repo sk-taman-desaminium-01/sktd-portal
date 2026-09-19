@@ -187,12 +187,12 @@ export const KAD_TAMBAHAN: KadBaharu[] = [
     id: "borang", bahagian: "pentadbiran",
     nama: "Borang Sekolah", ikon: "BRG", warna: "#4a4a7a",
     fungsi: "Borang rasmi dalam talian dengan tandatangan digital.",
-    domain: "portal.sktd.edu.my/borang", pautan: "/borang", status: "bina",
+    domain: "portal.sktd.edu.my/borang/urus", pautan: "/borang/urus", status: "sedia",
     catatan: "Surat rasmi ringkas (Alamat/Tarikh/Tajuk/Isi) dengan nama & jawatan Guru "
       + "Besar diisi automatik — boleh ditukar kepada wakil pentadbir semasa. "
-      + "Borang Kebenaran Gambar & Surat Akuan Kebenaran/Kesihatan Penyertaan turut di sini.",
+      + "Borang Kebenaran Gambar dan Surat Akuan Penyertaan Aktiviti turut di sini.",
     rancangan: [
-      "Surat Akuan Kebenaran & Kesihatan Penyertaan Aktiviti/Pertandingan — pengisian pukal ibu bapa",
+      "Surat Akuan Penyertaan Aktiviti — pengisian pukal ibu bapa",
     ],
   },
   {

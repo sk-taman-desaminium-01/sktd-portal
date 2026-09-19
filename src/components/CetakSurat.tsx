@@ -74,9 +74,10 @@ export default function CetakSurat({
         #surat-cetak .surat-ruang-tandatangan { height: 17mm; }
         #surat-cetak .surat-penandatangan { margin: 0; line-height: 1.32; }
         @media print {
+          html, body { background: #fff !important; }
           body * { visibility: hidden; }
           #surat-cetak, #surat-cetak * { visibility: visible; }
-          #surat-cetak { position: absolute; inset: 0; width: 100%; }
+          #surat-cetak { position: absolute; inset: 0; min-height: 262mm; width: 100%; background: #fff; }
           @page { size: A4 portrait; margin: 18mm 19mm 17mm; }
         }
       `}</style>

@@ -1,61 +1,54 @@
 import Link from "next/link";
-import { pengguna } from "@/lib/akses";
-import { senaraiSuratSaya, kepalaSurat } from "@/lib/surat";
-import { senaraiPentadbirUntukSemua } from "@/lib/pentadbir";
-import { semuaKelas, semuaKelasPPKI } from "@/data/kelas";
-import PanelBorang from "./PanelBorang";
+import { aset } from "@/lib/laluan";
 
-export const metadata = { title: "Borang Sekolah" };
+export const metadata = {
+  title: "Borang Sekolah",
+  description: "Borang awam SK Taman Desaminium untuk ibu bapa dan penjaga.",
+  referrer: "no-referrer" as const,
+};
 
-/**
- * Borang Sekolah — surat rasmi & Borang Kebenaran Gambar (permintaan A.1,
- * A.2, A.4). Diisi oleh guru, AKP, pentadbir atau kakitangan; surat rasmi
- * dihantar ke Urusan Pejabat untuk nombor rujukan kami (permintaan B.3).
- */
-export default async function Borang() {
-  const saya = await pengguna();
-  if (!saya?.peranan) {
-    return (
-      <main className="mx-auto max-w-2xl px-5 py-16 text-center">
-        <h1 className="text-xl font-bold text-navy-800">Tiada kebenaran</h1>
-        <Link href="/" className="mt-6 inline-block text-sm text-navy-700 underline">← Portal</Link>
-      </main>
-    );
-  }
+const BORANG = [
+  {
+    href: "/borang/kebenaran-gambar",
+    ikon: "IMG",
+    tajuk: "Kebenaran Gambar",
+    huraian: "Keputusan ibu bapa atau penjaga bagi rakaman gambar, video dan audio murid.",
+  },
+  {
+    href: "/borang/aktiviti",
+    ikon: "AKT",
+    tajuk: "Surat Akuan Penyertaan Aktiviti",
+    huraian: "Pilih aktiviti yang sedang dibuka oleh sekolah dan lengkapkan akuan penyertaan murid.",
+  },
+] as const;
 
-  const [{ belumSedia, senarai }, pentadbir] = await Promise.all([
-    senaraiSuratSaya(),
-    senaraiPentadbirUntukSemua().catch(() => []),
-  ]);
-  const kelas = [...semuaKelas(), ...semuaKelasPPKI()];
-
+export default function BorangAwam() {
   return (
-    <main className="mx-auto max-w-3xl px-5 py-10">
-      <Link href="/" className="text-sm text-slate-500 hover:text-navy-700">← Portal</Link>
-      <h1 className="mt-3 text-2xl font-bold text-navy-800">Borang Sekolah</h1>
-      <p className="mt-1 text-sm leading-relaxed text-slate-500">
-        Surat rasmi dan Borang Kebenaran Gambar. Header, alamat sekolah dan
-        tandatangan Guru Besar diisi automatik.
-      </p>
-
-      <Link href="/borang/aktiviti" className="mt-5 block rounded-xl border border-garis bg-white p-4 font-semibold text-navy-800">Surat Akuan Kebenaran dan Kesihatan Penyertaan Aktiviti dan Pertandingan →</Link>
-      {belumSedia ? (
-        <div className="mt-6 rounded-xl border border-[#e9d9ae] bg-[#fdf9f0] p-5 text-sm leading-relaxed text-[#7a5a12]">
-          <p className="font-semibold">Modul ini belum dipasang.</p>
-          <p className="mt-1.5">
-            Admin perlu menjalankan SQL Borang Sekolah (lihat laporan
-            pemasangan) sekali sahaja; selepas itu skrin ini terus berfungsi.
-          </p>
+    <main className="mx-auto min-h-screen max-w-3xl px-4 py-8 sm:px-6 sm:py-12">
+      <a href="https://sktd.edu.my" className="text-sm font-medium text-slate-600 underline underline-offset-4">← Laman utama sekolah</a>
+      <header className="mt-6 flex items-center gap-4 rounded-2xl bg-navy-800 p-5 text-white shadow-sm sm:p-7">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={aset("/logo-sktd.png")} alt="Lencana SK Taman Desaminium" className="h-16 w-16 shrink-0 object-contain sm:h-20 sm:w-20" />
+        <div className="min-w-0">
+          <p className="text-xs font-semibold uppercase tracking-[.16em] text-white/75">SK Taman Desaminium</p>
+          <h1 className="mt-1 text-2xl font-bold leading-tight sm:text-3xl">Borang Sekolah</h1>
+          <p className="mt-2 text-sm leading-relaxed text-white/85">Borang untuk ibu bapa, penjaga dan orang awam.</p>
         </div>
-      ) : (
-        <PanelBorang
-          pentadbir={pentadbir.map((p) => ({ nama: p.nama, jawatan: p.jawatan }))}
-          kelas={kelas}
-          senarai={senarai}
-          kepala={await kepalaSurat()}
-          sayaNama={saya.nama ?? saya.emel}
-        />
-      )}
+      </header>
+
+      <ul className="mt-6 grid gap-4 sm:grid-cols-2">
+        {BORANG.map((borang) => (
+          <li key={borang.href}>
+            <Link href={borang.href} className="flex h-full min-h-44 flex-col rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:border-navy-700 hover:shadow-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-navy-700">
+              <span aria-hidden="true" className="flex h-11 w-11 items-center justify-center rounded-xl bg-navy-800 text-xs font-bold text-white">{borang.ikon}</span>
+              <h2 className="mt-4 text-lg font-bold leading-snug text-navy-800">{borang.tajuk}</h2>
+              <p className="mt-2 flex-1 text-sm leading-relaxed text-slate-600">{borang.huraian}</p>
+              <span className="mt-4 text-sm font-semibold text-navy-700">Buka borang →</span>
+            </Link>
+          </li>
+        ))}
+      </ul>
+      <p className="mt-8 text-center text-xs leading-relaxed text-slate-500">Maklumat dihantar terus kepada pihak sekolah dan digunakan untuk urusan berkaitan sahaja.</p>
     </main>
   );
 }

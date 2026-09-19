@@ -20,9 +20,20 @@ import { AWALAN } from "@/lib/laluan";
 const LALUAN_AWAM = createRouteMatcher([
   "/masuk(.*)",
   "/daftar(.*)",
+  "/borang",
+  "/borang/aktiviti",
+  "/borang/kebenaran-gambar",
   "/kebenaran",
   "/kebenaran/(.*)",
 ]);
+
+function borangAwam(path: string): boolean {
+  return path === "/borang" ||
+    path === "/borang/aktiviti" ||
+    path === "/borang/kebenaran-gambar" ||
+    path === "/kebenaran" ||
+    path.startsWith("/kebenaran/");
+}
 
 /**
  * SATU PINTU MASUK, bukan dua.
@@ -63,7 +74,7 @@ export default clerkMiddleware(
     const kepala = new Headers(req.headers);
     kepala.delete("x-sktd-borang-awam");
     const path = req.nextUrl.pathname.replace(/^\/portal(?=\/|$)/, "");
-    if (path === "/kebenaran" || path.startsWith("/kebenaran/")) kepala.set("x-sktd-borang-awam", "1");
+    if (borangAwam(path)) kepala.set("x-sktd-borang-awam", "1");
     if (!LALUAN_AWAM(req)) await auth.protect();
     const res = NextResponse.next({ request: { headers: kepala } });
     if (kepala.has("x-sktd-borang-awam")) {

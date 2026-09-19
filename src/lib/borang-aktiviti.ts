@@ -13,6 +13,11 @@ import { semakAkuan, type AktivitiBorang, type AkuanAktiviti, type JawapanAktivi
 const uuid = (s: string) => /^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(s);
 const hash = (s: string) => createHash("sha256").update(s).digest("hex");
 
+function segarAktiviti() {
+ revalidatePath("/borang/aktiviti");
+ revalidatePath("/borang/aktiviti/urus");
+}
+
 function mesejRalatModul(e: unknown) {
  const mesej = e instanceof Error ? e.message : "Gagal menghantar.";
  // Jangan beritahu ibu bapa butiran pangkalan data, tetapi jangan jadikan
@@ -63,7 +68,7 @@ export async function ciptaAktiviti(input: Omit<AktivitiBorang,"id"|"pengurus_em
   if (!/^\d{4}-\d{2}-\d{2}$/.test(input.tarikh) || !/^\d{4}-\d{2}-\d{2}$/.test(input.tutup) || input.tutup<hariIniMY() || input.tutup>input.tarikh) throw new Error("Tarikh tutup mesti hari ini atau kemudian dan tidak melebihi tarikh aktiviti.");
   if (!admin && !(await skopAktivitiSaya()).includes(input.skop)) throw new Error("Skop bukan tugasan anda.");
   const rows = await klienTulis().minta("borang_aktiviti", {method:"POST",body:JSON.stringify({nama:input.nama.trim(),tarikh:input.tarikh,masa:input.masa.trim(),tempat:input.tempat.trim(),anjuran:input.anjuran.trim(),skop:input.skop,pengurus_emel:saya.emel,tutup:input.tutup})}) as AktivitiBorang[];
-  revalidatePath("/borang/aktiviti"); return {ok:true,mesej:"Aktiviti dicipta. Tambah peserta sebelum berkongsi pautan.",rekod:rows[0]};
+  segarAktiviti(); return {ok:true,mesej:"Aktiviti dicipta. Tambah peserta sebelum berkongsi pautan.",rekod:rows[0]};
  } catch(e) {return {ok:false,mesej:e instanceof Error?e.message:"Gagal menyimpan."};}
 }
 export async function pesertaAktiviti(id: string) {
@@ -86,7 +91,7 @@ export async function jawapanAktiviti(id:string):Promise<JawapanAktiviti[]> {
  await urus(id); return bacaSemua<JawapanAktiviti>(`borang_jawapan?select=id,aktiviti_id,data,dicipta&aktiviti_id=eq.${id}&order=dicipta.asc,id.asc`);
 }
 export async function tutupAktiviti(id:string) {
- await urus(id); await klienTulis().minta(`borang_aktiviti?id=eq.${id}`,{method:"PATCH",body:JSON.stringify({aktif:false})}); revalidatePath("/borang/aktiviti");
+ await urus(id); await klienTulis().minta(`borang_aktiviti?id=eq.${id}`,{method:"PATCH",body:JSON.stringify({aktif:false})}); segarAktiviti();
 }
 export async function suntingAktiviti(id: string, input: Pick<AktivitiBorang,"nama"|"tarikh"|"masa"|"tempat"|"anjuran"|"tutup">) {
  try {
@@ -95,19 +100,19 @@ export async function suntingAktiviti(id: string, input: Pick<AktivitiBorang,"na
   if (!/^\d{4}-\d{2}-\d{2}$/.test(input.tarikh) || !/^\d{4}-\d{2}-\d{2}$/.test(input.tutup) || input.tutup > input.tarikh) throw new Error("Tarikh aktiviti atau tarikh tutup tidak sah.");
   const data = { nama: input.nama.trim(), tarikh: input.tarikh, masa: input.masa.trim(), tempat: input.tempat.trim(), anjuran: input.anjuran.trim(), tutup: input.tutup };
   await klienTulis().minta(`borang_aktiviti?id=eq.${asal.id}`, { method: "PATCH", body: JSON.stringify(data) });
-  revalidatePath("/borang/aktiviti"); return { ok: true, mesej: "Butiran aktiviti dikemas kini.", rekod: { ...asal, ...data } };
+  segarAktiviti(); return { ok: true, mesej: "Butiran aktiviti dikemas kini.", rekod: { ...asal, ...data } };
  } catch (e) { return { ok: false, mesej: e instanceof Error ? e.message : "Gagal menyunting aktiviti." }; }
 }
 export async function padamAktiviti(id: string) {
  await urus(id);
  await klienTulis().minta(`borang_aktiviti?id=eq.${id}`, { method: "DELETE" });
- revalidatePath("/borang/aktiviti");
+ segarAktiviti();
 }
 export async function padamJawapanAktiviti(aktivitiId: string, jawapanId: string) {
  await urus(aktivitiId);
  if (!uuid(jawapanId)) throw new Error("Jawapan tidak sah.");
  await klienTulis().minta(`borang_jawapan?id=eq.${jawapanId}&aktiviti_id=eq.${aktivitiId}`, { method: "DELETE" });
- revalidatePath("/borang/aktiviti");
+ segarAktiviti();
 }
 /** Hanya butiran program awam; tiada senarai peserta atau maklumat penjaga. */
 export async function aktivitiAwam(id?:string) {
