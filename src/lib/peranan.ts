@@ -138,6 +138,7 @@ const KEUPAYAAN: Record<PerananBerkesan, Keupayaan[]> = {
 
 export function boleh(p: PerananBerkesan | null, k: Keupayaan): boolean {
   if (!p) return false;
+  if (p === "admin_mutlak") return true;
   return KEUPAYAAN[p].includes(k);
 }
 
