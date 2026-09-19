@@ -73,9 +73,8 @@ export default async function GuruKelasHub() {
         <Kad href="/pbd" nama="Nilai & Ulasan PBD" nota="Isi pukal untuk kelas anda." />
         <Kad href="/kawalan-kelas" nama="Kawalan Kelas & Kehadiran" nota="Rekod harian." />
         <Kad href="/borang/urus" nama="Borang Sekolah" nota="Kebenaran Gambar & surat rasmi." />
-        <Kad href="/disiplin" nama="Disiplin & Sahsiah" nota="Rekod salah laku." />
+        <Kad href="/disiplin" nama="Disiplin & Sahsiah" nota={guruDisiplin ? "Rekod, sunting dan urus laporan disiplin." : "Rekod salah laku."} />
         {bolehRmt && <Kad href="/rmt" nama="RMT" nota={guruRmt ? "Anda Guru RMT — urus semua senarai & kehadiran." : "Muat naik murid RMT untuk kelas sendiri."} />}
-        {guruDisiplin && <Kad href="/disiplin" nama="Disiplin (Guru Disiplin)" nota="Anda boleh baca semua rekod." />}
         {pengurusPasukan && <Kad href="/borang/aktiviti/urus" nama="Pengurus Pasukan" nota="Surat Akuan Penyertaan Aktiviti." />}
       </div>
     </main>

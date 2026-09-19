@@ -2,9 +2,11 @@
 
 import { useMemo, useState } from "react";
 import { flushSync } from "react-dom";
+import { useRouter } from "next/navigation";
 import { mulaCetak } from "@/components/cetak-mudah-alih";
 import {
-  hantarDisiplin, tandaLaporanLembaga, type BarisDisiplin,
+  hantarDisiplin, padamDisiplin, suntingDisiplin, tandaLaporanLembaga,
+  type BarisDisiplin,
 } from "@/lib/disiplin";
 import { SEKOLAH } from "@/data/sekolah";
 
@@ -23,7 +25,7 @@ export default function PanelDisiplin({
   return (
     <div className="mt-6 space-y-10">
       <BorangRekod tahunSesi={tahunSesi} kelas={kelas} cadangan={cadangan} />
-      {boleh && <SenaraiPenuh senarai={senarai} berulang={berulang} />}
+      {boleh && <SenaraiPenuh key={senarai.map((b) => `${b.id}:${b.tarikh}:${b.kesalahan}`).join("|")} senarai={senarai} berulang={berulang} />}
     </div>
   );
 }
@@ -31,6 +33,7 @@ export default function PanelDisiplin({
 function BorangRekod({ tahunSesi, kelas, cadangan }: {
   tahunSesi: number; kelas: string[]; cadangan: { nama: string; kelas: string }[];
 }) {
+  const router = useRouter();
   const [tarikh, setTarikh] = useState(HARI_INI);
   const [muridNama, setMuridNama] = useState("");
   const [muridKelas, setMuridKelas] = useState("");
@@ -50,6 +53,7 @@ function BorangRekod({ tahunSesi, kelas, cadangan }: {
     setNota({ ok: r.ok, teks: r.mesej });
     if (r.ok) {
       setMuridNama(""); setKesalahan(""); setTindakan(""); setSaksi("");
+      router.refresh();
     }
     setSibuk(false);
   }
@@ -60,44 +64,44 @@ function BorangRekod({ tahunSesi, kelas, cadangan }: {
       <div className="mt-4 grid gap-4 sm:grid-cols-2">
         <Medan label="Tarikh">
           <input type="date" value={tarikh} onChange={(e) => setTarikh(e.target.value)}
-            className="w-full rounded-lg border border-garis px-3 py-2 text-sm" />
+            className="block w-full min-w-0 max-w-full rounded-lg border border-garis px-3 py-2 text-sm" />
         </Medan>
         <Medan label="Kelas">
           <select value={muridKelas} onChange={(e) => setMuridKelas(e.target.value)}
-            className="w-full rounded-lg border border-garis px-3 py-2 text-sm">
+            className="block w-full min-w-0 max-w-full rounded-lg border border-garis px-3 py-2 text-sm">
             <option value="">Pilih kelas…</option>
             {kelas.map((k) => <option key={k} value={k}>{k}</option>)}
           </select>
         </Medan>
         <Medan label="Nama Murid">
           <input list="cadangan-murid-disiplin" value={muridNama} onChange={(e) => setMuridNama(e.target.value)}
-            placeholder="Taip nama — cadangan akan keluar" className="w-full rounded-lg border border-garis px-3 py-2 text-sm" />
+            placeholder="Taip nama — cadangan akan keluar" className="block w-full min-w-0 max-w-full rounded-lg border border-garis px-3 py-2 text-sm" />
           <datalist id="cadangan-murid-disiplin">
             {cadangan.map((m) => <option key={`${m.nama}-${m.kelas}`} value={m.nama} label={m.kelas} />)}
           </datalist>
         </Medan>
         <Medan label="Saksi (jika ada)">
           <input value={saksi} onChange={(e) => setSaksi(e.target.value)}
-            className="w-full rounded-lg border border-garis px-3 py-2 text-sm" />
+            className="block w-full min-w-0 max-w-full rounded-lg border border-garis px-3 py-2 text-sm" />
         </Medan>
       </div>
       <div className="mt-4">
         <Medan label="Butiran Salah Laku">
           <textarea value={kesalahan} onChange={(e) => setKesalahan(e.target.value)} rows={3}
-            className="w-full rounded-lg border border-garis px-3 py-2 text-sm" />
+            className="block w-full min-w-0 max-w-full rounded-lg border border-garis px-3 py-2 text-sm" />
         </Medan>
       </div>
       <div className="mt-4">
         <Medan label="Tindakan Diambil">
           <textarea value={tindakan} onChange={(e) => setTindakan(e.target.value)} rows={2}
-            className="w-full rounded-lg border border-garis px-3 py-2 text-sm" />
+            className="block w-full min-w-0 max-w-full rounded-lg border border-garis px-3 py-2 text-sm" />
         </Medan>
       </div>
       {nota && (
         <p className={`mt-3 text-sm ${nota.ok ? "text-[#167a4b]" : "text-red-600"}`}>{nota.teks}</p>
       )}
       <button type="button" disabled={sibuk} onClick={hantar}
-        className="mt-4 rounded-lg bg-navy-800 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">
+        className="mt-4 min-h-11 touch-manipulation rounded-lg bg-navy-800 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">
         Simpan Rekod
       </button>
     </section>
@@ -108,6 +112,10 @@ function SenaraiPenuh({ senarai, berulang }: { senarai: BarisDisiplin[]; berulan
   const [data, setData] = useState(senarai);
   const [rujukan, setRujukan] = useState<Record<string, string>>({});
   const [cetak, setCetak] = useState(false);
+  const [sunting, setSunting] = useState<string | null>(null);
+  const [draf, setDraf] = useState<Pick<BarisDisiplin, "tarikh" | "murid_nama" | "kelas" | "kesalahan" | "tindakan" | "saksi"> | null>(null);
+  const [sibuk, setSibuk] = useState<string | null>(null);
+  const [nota, setNota] = useState<{ ok: boolean; teks: string } | null>(null);
 
   function cetakLaporan() {
     // Pastikan laporan sudah dirender dan kekalkan gerak isyarat klik untuk
@@ -123,13 +131,40 @@ function SenaraiPenuh({ senarai, berulang }: { senarai: BarisDisiplin[]; berulan
     if (r.ok) setData((d) => d.map((b) => (b.id === id ? { ...b, laporan_lembaga: nilai, rujukan_kami: rujukan[id]?.trim() || b.rujukan_kami } : b)));
   }
 
+  function mulaSunting(b: BarisDisiplin) {
+    setSunting(b.id);
+    setDraf({ tarikh: b.tarikh, murid_nama: b.murid_nama, kelas: b.kelas, kesalahan: b.kesalahan, tindakan: b.tindakan, saksi: b.saksi });
+    setNota(null);
+  }
+
+  async function simpanSunting(b: BarisDisiplin) {
+    if (!draf) return;
+    setSibuk(b.id); setNota(null);
+    const r = await suntingDisiplin(b.id, { tahun_sesi: b.tahun_sesi, ...draf, saksi: draf.saksi ?? undefined });
+    setNota({ ok: r.ok, teks: r.mesej });
+    if (r.ok) {
+      setData((lama) => lama.map((x) => x.id === b.id ? { ...x, ...draf } : x));
+      setSunting(null); setDraf(null);
+    }
+    setSibuk(null);
+  }
+
+  async function padam(b: BarisDisiplin) {
+    if (!window.confirm(`Padam rekod disiplin ${b.murid_nama}?`)) return;
+    setSibuk(b.id); setNota(null);
+    const r = await padamDisiplin(b.id);
+    setNota({ ok: r.ok, teks: r.mesej });
+    if (r.ok) setData((lama) => lama.filter((x) => x.id !== b.id));
+    setSibuk(null);
+  }
+
   return (
     <section className="border-t border-garis pt-8">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h2 className="text-lg font-bold text-navy-800">Senarai Rekod ({data.length})</h2>
         {untukLembaga.length > 0 && (
           <button type="button" onClick={cetakLaporan}
-            className="text-xs font-semibold text-navy-700 underline">
+            className="min-h-11 touch-manipulation px-1 text-xs font-semibold text-navy-700 underline">
             Cetak Laporan Lembaga ({untukLembaga.length})
           </button>
         )}
@@ -140,6 +175,8 @@ function SenaraiPenuh({ senarai, berulang }: { senarai: BarisDisiplin[]; berulan
           Kes berulang tahun ini: {berulang.join(", ")}
         </p>
       )}
+
+      {nota && <p className={`mt-3 rounded-lg px-3 py-2 text-sm ${nota.ok ? "bg-[#eef8f2] text-[#167a4b]" : "bg-[#fdecec] text-red-700"}`}>{nota.teks}</p>}
 
       <ul className="mt-4 space-y-3">
         {data.map((b) => (
@@ -153,6 +190,27 @@ function SenaraiPenuh({ senarai, berulang }: { senarai: BarisDisiplin[]; berulan
             {b.saksi && <p className="text-xs text-slate-500">Saksi: {b.saksi}</p>}
             <p className="mt-1 text-xs text-slate-400">Direkod oleh {b.guru_nama}</p>
 
+            {sunting === b.id && draf && (
+              <div className="mt-3 grid min-w-0 gap-3 rounded-lg bg-slate-50 p-3 sm:grid-cols-2">
+                <input aria-label="Tarikh" type="date" value={draf.tarikh} onChange={(e) => setDraf({ ...draf, tarikh: e.target.value })}
+                  className="block w-full min-w-0 max-w-full rounded-lg border border-garis px-3 py-2 text-sm" />
+                <input aria-label="Kelas" value={draf.kelas} onChange={(e) => setDraf({ ...draf, kelas: e.target.value })}
+                  className="block w-full min-w-0 max-w-full rounded-lg border border-garis px-3 py-2 text-sm" />
+                <input aria-label="Nama murid" value={draf.murid_nama} onChange={(e) => setDraf({ ...draf, murid_nama: e.target.value })}
+                  className="block w-full min-w-0 max-w-full rounded-lg border border-garis px-3 py-2 text-sm sm:col-span-2" />
+                <textarea aria-label="Butiran salah laku" value={draf.kesalahan} onChange={(e) => setDraf({ ...draf, kesalahan: e.target.value })} rows={2}
+                  className="block w-full min-w-0 max-w-full rounded-lg border border-garis px-3 py-2 text-sm sm:col-span-2" />
+                <textarea aria-label="Tindakan" value={draf.tindakan} onChange={(e) => setDraf({ ...draf, tindakan: e.target.value })} rows={2}
+                  className="block w-full min-w-0 max-w-full rounded-lg border border-garis px-3 py-2 text-sm" />
+                <input aria-label="Saksi" value={draf.saksi ?? ""} onChange={(e) => setDraf({ ...draf, saksi: e.target.value })}
+                  className="block w-full min-w-0 max-w-full rounded-lg border border-garis px-3 py-2 text-sm" />
+                <div className="flex flex-wrap gap-2 sm:col-span-2">
+                  <button type="button" disabled={sibuk === b.id} onClick={() => void simpanSunting(b)} className="min-h-11 touch-manipulation rounded-lg bg-navy-800 px-3 py-2 text-xs font-semibold text-white disabled:opacity-50">Simpan perubahan</button>
+                  <button type="button" onClick={() => { setSunting(null); setDraf(null); }} className="min-h-11 touch-manipulation rounded-lg border border-garis px-3 py-2 text-xs font-semibold text-navy-700">Batal</button>
+                </div>
+              </div>
+            )}
+
             <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-garis pt-2">
               <label className="flex items-center gap-1.5 text-xs">
                 <input type="checkbox" checked={b.laporan_lembaga} onChange={(e) => tanda(b.id, e.target.checked)} />
@@ -162,8 +220,12 @@ function SenaraiPenuh({ senarai, berulang }: { senarai: BarisDisiplin[]; berulan
                 placeholder="No. rujukan kami (jika perlu)" defaultValue={b.rujukan_kami ?? ""}
                 onChange={(e) => setRujukan((r) => ({ ...r, [b.id]: e.target.value }))}
                 onBlur={() => b.laporan_lembaga && tanda(b.id, true)}
-                className="flex-1 rounded-lg border border-garis px-2 py-1 text-xs"
+                className="min-w-0 flex-1 rounded-lg border border-garis px-2 py-1 text-xs"
               />
+              <span className="ml-auto flex gap-2">
+                <button type="button" disabled={sibuk === b.id} onClick={() => mulaSunting(b)} className="min-h-11 touch-manipulation px-1 text-xs font-semibold text-navy-700 underline disabled:opacity-50">Sunting</button>
+                <button type="button" disabled={sibuk === b.id} onClick={() => void padam(b)} className="min-h-11 touch-manipulation px-1 text-xs font-semibold text-red-600 underline disabled:opacity-50">Padam</button>
+              </span>
             </div>
           </li>
         ))}

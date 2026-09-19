@@ -16,6 +16,11 @@ const tugasan = baca("src/lib/tugasan.ts");
 const sql = baca("supabase/pembaikan-disiplin.sql");
 const aktivitiKod = baca("src/lib/borang-aktiviti.ts");
 const aktivitiSql = baca("supabase/migrations/20260919_borang_aktiviti.sql");
+const kawalan = baca("src/lib/kawalan-kelas.ts");
+const panelRmt = baca("src/app/rmt/PanelRmt.tsx");
+const surat = baca("src/lib/surat.ts");
+const cetakSurat = baca("src/components/CetakSurat.tsx");
+const bahagian = baca("src/data/bahagian.ts");
 const gagal: string[] = [];
 const perlu = (nama: string, ada: boolean) => { if (!ada) gagal.push(nama); };
 
@@ -33,9 +38,20 @@ perlu("Aktiviti menggunakan jawapan", /borang_jawapan/.test(aktivitiKod));
 perlu("SQL menghalang jawapan murid berganda", /unique \(aktiviti_id, murid_id\)/i.test(aktivitiSql));
 perlu("Aktiviti menggunakan RPC had cubaan", /rpc\/borang_ambil_giliran/.test(aktivitiKod));
 perlu("SQL menyediakan RPC had cubaan", /create or replace function public\.borang_ambil_giliran/i.test(aktivitiSql));
+perlu("Disiplin boleh disunting", /export async function suntingDisiplin/.test(disiplin));
+perlu("Disiplin boleh dipadam", /export async function padamDisiplin/.test(disiplin));
+perlu("Kawalan kelas boleh disunting", /export async function suntingKawalanKelas/.test(kawalan));
+perlu("Kawalan kelas boleh dipadam", /export async function padamKawalanKelas/.test(kawalan));
+perlu("RMT dipapar sebagai kad kelas buka tutup", panelRmt.includes("<details") && panelRmt.includes("No. KP:"));
+perlu("Kerani boleh menolak surat dengan komen", /export async function tolakSuratRasmi/.test(surat) && surat.includes("komenPejabat"));
+perlu("Pemohon atau pejabat boleh menyunting surat", /export async function suntingSuratRasmi/.test(surat));
+perlu("Tandatangan surat rasmi sentiasa kosong", surat.includes("tandatangan_url: null") && !cetakSurat.includes("surat.tandatangan_url"));
+for (const id of ["guru-kelas-portal", "kawalan-kelas", "rmt", "disiplin"]) {
+  perlu(`Kad ${id} berstatus sedia`, new RegExp(`id: "${id}"[\\s\\S]{0,350}status: "sedia"`).test(bahagian));
+}
 
 if (gagal.length) {
   console.error(`Kontrak modul gagal:\n${gagal.map((x) => `- ${x}`).join("\n")}`);
   process.exit(1);
 }
-console.log("Kontrak modul: 14 semakan lulus.");
+console.log("Kontrak modul: 26 semakan lulus.");
