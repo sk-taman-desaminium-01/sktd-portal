@@ -26,9 +26,11 @@ export default function CetakSurat({
           @page { size: A4 portrait; margin: 20mm; }
         }
       `}</style>
-      <header className="flex items-center gap-5 border-b-2 border-black pb-3 text-[10pt]">
+      <header className="flex items-center gap-4 border-b-2 border-black pb-3 text-[10pt]">
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={aset("/logo-kpm.png")} alt="Kementerian Pendidikan Malaysia" className="h-20 w-28 object-contain" />
+        <img src={aset("/logo-kpm.png")} alt="Kementerian Pendidikan Malaysia" className="h-16 w-20 object-contain" />
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={aset("/logo-sktd.png")} alt="Lencana SK Taman Desaminium" className="h-16 w-16 object-contain" />
         <div><p className="font-bold">KEMENTERIAN PENDIDIKAN MALAYSIA</p><h1 className="font-bold uppercase">{kepala.nama}</h1>
         <p className="whitespace-pre-line">{kepala.alamat}</p><p>Tel: {kepala.telefon} · {kepala.emel}</p></div>
       </header>

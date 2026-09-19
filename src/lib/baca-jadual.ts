@@ -18,13 +18,11 @@ import { ambilJadual } from "./jadual";
  * automatik. Fungsi ini memulangkan CADANGAN; guru kelas menyemaknya dalam
  * grid dan menekan Simpan sendiri.
  *
- * APA YANG BOLEH DAN TIDAK BOLEH DIBACA
+ * APA YANG BOLEH DIBACA
  *  · PDF dengan lapisan teks  → boleh (ditaip dalam Word/Excel lalu dieksport)
  *  · DOCX                     → boleh
- *  · PDF imbasan / gambar     → TIDAK. Ia perlu OCR, dan OCR dalam projek ini
- *    menggunakan Ollama tempatan yang tidak wujud di Vercel. Kita BERHENTI dan
- *    beritahu, bukan meneka — tekaan pada jadual bermakna ibu bapa membaca
- *    subjek yang salah untuk anak mereka.
+ *  · PDF imbasan / gambar     → komponen muat naik menjalankan OCR dalam
+ *    pelayar sebelum teks dihantar ke tindakan ini.
  *
  * FAIL TIDAK DISIMPAN. Ia dibaca dalam ingatan dan dilupakan.
  *

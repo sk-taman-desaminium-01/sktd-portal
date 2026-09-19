@@ -198,3 +198,16 @@ export async function simpanPos(data: FormData): Promise<HasilSimpan> {
 
   return { ok: true, mesej: "Draf disimpan. Ia TIDAK kelihatan di laman awam." };
 }
+
+/** Padam pos secara nyata, hanya untuk pemegang kuasa penerbitan kandungan. */
+export async function padamPos(id: string): Promise<{ ok: boolean; mesej: string }> {
+  await pastikanMasuk();
+  if (!/^[0-9a-f-]{36}$/i.test(id)) return { ok: false, mesej: "Pos tidak sah." };
+  try {
+    await klienTulis().minta(`web_pos?id=eq.${id}`, { method: "DELETE" });
+    revalidatePath("/admin");
+    return { ok: true, mesej: "Pos dipadam." };
+  } catch (e) {
+    return { ok: false, mesej: e instanceof Error ? e.message : "Gagal memadam pos." };
+  }
+}

@@ -15,10 +15,8 @@ import { gridDariKedudukan } from "./grid-kedudukan";
  * padanan menjadi kedudukan, bukan tekaan urutan. Itu perbezaan antara
  * jadual yang boleh dipercayai dan jadual yang perlu disemak sel demi sel.
  *
- * APA YANG TIDAK BOLEH DIBACA: PDF imbasan dan gambar. Ia perlu OCR, dan OCR
- * dalam projek ini menggunakan Ollama tempatan yang tidak wujud di Vercel
- * (docs/buku-pengurusan.md). Kita katakan demikian dan berhenti — tekaan pada
- * dokumen sekolah bermakna orang membaca maklumat yang tidak pernah wujud.
+ * PDF imbasan dan gambar ditanda sebagai `imbasan`; komponen muat naik akan
+ * menjalankan OCR dalam pelayar dan menghantar teks yang terhasil semula.
  */
 
 export type JenisDokumen = "pdf" | "docx" | "xlsx" | "csv" | "imbasan" | "lain";
@@ -97,7 +95,7 @@ async function bacaPdf(buf: ArrayBuffer): Promise<Dokumen> {
       jenis: "imbasan", teks, grid: [],
       amaran: [
         `PDF ini hanya mengandungi ${teks.length} aksara teks — hampir pasti ia imbasan atau gambar.`,
-        "Membacanya memerlukan OCR, yang tidak berjalan di pelayan ini.",
+        "Membacanya memerlukan OCR dalam pelayar.",
       ],
     };
   }
@@ -221,7 +219,7 @@ export async function bacaDokumen(fail: File): Promise<Dokumen> {
     return {
       jenis: "imbasan", teks: "", grid: [],
       amaran: [
-        "Gambar tidak boleh dibaca automatik — ia memerlukan OCR, yang tidak berjalan di pelayan ini.",
+        "Gambar perlu dibaca dengan OCR dalam pelayar.",
       ],
     };
   }

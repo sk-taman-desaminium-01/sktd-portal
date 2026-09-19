@@ -9,7 +9,7 @@ export default function CetakAkuan({ aktiviti:a, data:d }: { aktiviti:Program; d
  <div id="akuan-cetak" className="grid gap-6 bg-white p-5 text-[10px] leading-snug text-black lg:grid-cols-2 print:grid-cols-2">
  <style>{`@media print { @page {size:A4 landscape;margin:8mm} body * {visibility:hidden} #akuan-cetak,#akuan-cetak * {visibility:visible} #akuan-cetak {position:absolute;inset:0;width:100%;padding:0;gap:10mm;font-size:8.5pt;line-height:1.22} #akuan-cetak section {break-inside:avoid} }`}</style>
  <section>
- <header className="border-b border-black pb-2 text-center"><h1 className="font-bold">{SEKOLAH.namaPenuh.toUpperCase()}</h1><p>{SEKOLAH.hubungi.alamat}</p><p>Tel: {SEKOLAH.hubungi.telefon} · {SEKOLAH.hubungi.emel}</p></header>
+ <header className="flex items-center justify-center gap-2 border-b border-black pb-2 text-center"><img src={aset("/logo-sktd.png")} alt="Lencana sekolah" className="h-10 w-10 object-contain"/><div><h1 className="font-bold">{SEKOLAH.namaPenuh.toUpperCase()}</h1><p>{SEKOLAH.hubungi.alamat}</p><p>Tel: {SEKOLAH.hubungi.telefon} · {SEKOLAH.hubungi.emel}</p></div></header>
  <h2 className="my-3 text-center font-bold uppercase">SURAT AKUAN KEBENARAN WARIS MENYERTAI<br/>{a.nama}</h2>
  <p>Saya <b>{d.penjagaNama}</b>, No. KP <b>{d.penjagaKp}</b>, beralamat <b>{d.alamat}</b>, No. telefon <b>{d.telefon}</b>, waris kepada:</p>
  {butiran("Nama Murid",d.muridNama)}{butiran("Kelas",d.kelas)}{butiran("No. KP / Surat Beranak",d.muridKp)}

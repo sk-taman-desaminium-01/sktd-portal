@@ -69,6 +69,27 @@ export async function jawapanAktiviti(id:string):Promise<JawapanAktiviti[]> {
 export async function tutupAktiviti(id:string) {
  await urus(id); await klienTulis().minta(`borang_aktiviti?id=eq.${id}`,{method:"PATCH",body:JSON.stringify({aktif:false})}); revalidatePath("/borang/aktiviti");
 }
+export async function suntingAktiviti(id: string, input: Pick<AktivitiBorang,"nama"|"tarikh"|"masa"|"tempat"|"anjuran"|"tutup">) {
+ try {
+  const asal = await urus(id);
+  for (const k of ["nama","masa","tempat","anjuran"] as const) if (!input[k]?.trim() || input[k].length > 500) throw new Error("Lengkapkan butiran aktiviti.");
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(input.tarikh) || !/^\d{4}-\d{2}-\d{2}$/.test(input.tutup) || input.tutup > input.tarikh) throw new Error("Tarikh aktiviti atau tarikh tutup tidak sah.");
+  const data = { nama: input.nama.trim(), tarikh: input.tarikh, masa: input.masa.trim(), tempat: input.tempat.trim(), anjuran: input.anjuran.trim(), tutup: input.tutup };
+  await klienTulis().minta(`borang_aktiviti?id=eq.${asal.id}`, { method: "PATCH", body: JSON.stringify(data) });
+  revalidatePath("/borang/aktiviti"); return { ok: true, mesej: "Butiran aktiviti dikemas kini.", rekod: { ...asal, ...data } };
+ } catch (e) { return { ok: false, mesej: e instanceof Error ? e.message : "Gagal menyunting aktiviti." }; }
+}
+export async function padamAktiviti(id: string) {
+ await urus(id);
+ await klienTulis().minta(`borang_aktiviti?id=eq.${id}`, { method: "DELETE" });
+ revalidatePath("/borang/aktiviti");
+}
+export async function padamJawapanAktiviti(aktivitiId: string, jawapanId: string) {
+ await urus(aktivitiId);
+ if (!uuid(jawapanId)) throw new Error("Jawapan tidak sah.");
+ await klienTulis().minta(`borang_jawapan?id=eq.${jawapanId}&aktiviti_id=eq.${aktivitiId}`, { method: "DELETE" });
+ revalidatePath("/borang/aktiviti");
+}
 /** Hanya butiran program awam; tiada senarai peserta atau maklumat penjaga. */
 export async function aktivitiAwam(id?:string) {
  if(id && !uuid(id)) return [];
