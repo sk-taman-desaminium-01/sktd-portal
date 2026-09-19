@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { importMuridKelas, type HasilImportKelas } from "@/lib/import-murid";
 import { importFailMurid, type HasilFail } from "@/lib/fail-murid";
 import { failKeMuatan } from "@/data/fail-base64";
+import { bacaImbasan } from "@/data/ocr-pelayar";
 import {
   tugaskanGuruSubjek, buangTugasanGuruSubjek, naikTahunTindakan, cubaNaikTahun,
   undoNaikTahunTindakan, senaraiSesiTindakan, jadikanSesiAktif,
@@ -164,7 +165,13 @@ export default function PanelUrusPbd({
     const k = sisa.join(" ");
     setSibukFail(true);
     try {
-      const r = await importFailMurid(tahun, k, await failKeMuatan(fail), simpan);
+      let r = await importFailMurid(tahun, k, await failKeMuatan(fail), simpan);
+      if ((/\.pdf$/i.test(fail.name) || fail.type.startsWith("image/")) && !r.ok && /Tiada No\. KP|imbasan|gambar/i.test(r.mesej)) {
+        const teksOcr = await bacaImbasan(fail, () => undefined);
+        if (!teksOcr) throw new Error("OCR selesai tetapi tiada teks dapat dikenal pasti.");
+        const semakan = await importMuridKelas(tahun, k, teksOcr, simpan);
+        r = { ...semakan, teks: teksOcr, cara: "OCR pada peranti", calon: [] };
+      }
       setHasilFail(r);
       // Teks yang dipilih dimasukkan ke kotak tampal, supaya pentadbir boleh
       // membetulkan baris yang tersasar sebelum menyimpan.
@@ -461,7 +468,8 @@ Tekan <b>Semak dahulu</b> sebelum ini boleh digunakan.
               Atau muat naik fail senarai kelas
             </p>
             <p className="mt-1 text-[11px] leading-relaxed text-slate-400">
-              PDF dari iDMe, Excel, Word atau CSV. Fail dibaca beberapa cara —
+              PDF dari iDMe, gambar, Excel, Word atau CSV. PDF imbasan dan gambar
+              dibaca dengan OCR terus pada peranti, kemudian fail dibaca beberapa cara —
               baris, lajur menegak, jadual — dan cara yang menghasilkan No. KP
               sah paling banyak dipilih. Fail yang terbalik atau senget tidak
               perlu dibetulkan dahulu.
@@ -470,7 +478,7 @@ Tekan <b>Semak dahulu</b> sebelum ini boleh digunakan.
             <div className="mt-2 flex flex-wrap items-center gap-2">
               <input
                 type="file"
-                accept=".pdf,.xlsx,.xls,.docx,.doc,.csv,.txt"
+                accept=".pdf,.xlsx,.xls,.docx,.doc,.csv,.txt,image/png,image/jpeg"
                 onChange={(e) => { setFail(e.target.files?.[0] ?? null); setHasilFail(null); }}
                 aria-label="Fail senarai kelas"
                 className="max-w-full text-xs file:mr-2 file:rounded-lg file:border file:border-garis file:bg-white file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-navy-700"

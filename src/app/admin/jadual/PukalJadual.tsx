@@ -5,6 +5,7 @@ import { bacaJadualPukal, type HasilPukal } from "@/lib/baca-jadual";
 import { simpanJadualBanyak } from "@/lib/jadual";
 import { failKeMuatan } from "@/data/fail-base64";
 import { semakSaiz } from "@/data/had-fail";
+import { bacaImbasan, failTeksOcr } from "@/data/ocr-pelayar";
 import { HARI, NAMA_HARI, type KelasJadual, type Waktu } from "@/data/jadual-jenis";
 import { namaSubjek } from "@/data/subjek";
 
@@ -102,7 +103,14 @@ export default function PukalJadual() {
           continue;
         }
         try {
-          const r = await bacaJadualPukal(await failKeMuatan(fail));
+          let r = await bacaJadualPukal(await failKeMuatan(fail));
+          if ((/\.pdf$/i.test(fail.name) || fail.type.startsWith("image/")) && !r.ok && /imbasan|gambar|teks/i.test(r.mesej)) {
+            const teksOcr = await bacaImbasan(fail, (teks) =>
+              setHasil({ ok: true, mesej: `${nama}: ${teks}` }),
+            );
+            if (!teksOcr) throw new Error("OCR selesai tetapi tiada teks dapat dikenal pasti.");
+            r = await bacaJadualPukal(await failKeMuatan(failTeksOcr(fail, teksOcr)));
+          }
           keputusan.push({ ...r, pilih: r.ok, kunci: `${nama}-${i}` });
         } catch (e) {
           keputusan.push({
@@ -156,7 +164,7 @@ export default function PukalJadual() {
       >
         <input
           type="file" name="fail" multiple required
-          accept=".pdf,.docx,.xlsx,.xlsm,.csv,.zip"
+          accept=".pdf,.docx,.xlsx,.xlsm,.csv,.zip,image/png,image/jpeg"
           className="min-w-0 flex-1 rounded-lg border border-garis px-3 py-2.5 text-sm"
         />
         <button

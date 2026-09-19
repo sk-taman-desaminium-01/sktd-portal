@@ -6,6 +6,7 @@ import { JENIS_SEKSYEN, type KodSeksyen } from "@/data/seksyen-pengurusan";
 import { failKeMuatan } from "@/data/fail-base64";
 import { semakSaiz } from "@/data/had-fail";
 import { mukaDariPdf } from "@/lib/muka-pdf";
+import { bacaImbasan, failTeksOcr } from "@/data/ocr-pelayar";
 
 /**
  * Muat naik dan semak Buku Pengurusan Tahunan.
@@ -72,6 +73,11 @@ export default function NaikPengurusan() {
         const muka = await mukaDariPdf(dok, (kini, jumlah) => setKemajuan({ kini, jumlah }));
         setKemajuan({ kini: muka.length, jumlah: muka.length });
         hasil = await huraiMuka(muka);
+        if (!hasil.ok && muka.every((m) => m.bilItem <= 3)) {
+          const teksOcr = await bacaImbasan(fail, (teks) => setMesej({ ok: true, teks }), 100);
+          if (!teksOcr) throw new Error("OCR selesai tetapi tiada teks dapat dikenal pasti.");
+          hasil = await huraiFail(await failKeMuatan(failTeksOcr(fail, teksOcr)));
+        }
       } else {
         const terlalu = semakSaiz(fail);
         if (terlalu) {

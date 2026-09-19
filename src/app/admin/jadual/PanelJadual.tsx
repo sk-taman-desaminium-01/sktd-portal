@@ -7,6 +7,7 @@ import PukalJadual from "./PukalJadual";
 import { SUBJEK } from "@/data/subjek";
 import { semakSaiz } from "@/data/had-fail";
 import { failKeMuatan } from "@/data/fail-base64";
+import { bacaImbasan, failTeksOcr } from "@/data/ocr-pelayar";
 import {
   HARI, NAMA_HARI, NAMA_SESI, SESI, jamPapar, setUntukKelas, tahunKelas,
   type Hari, type Jadual, type Sesi, type SetWaktu, type Waktu,
@@ -149,7 +150,14 @@ export default function PanelJadual({
     try {
       // Dihantar sebagai base64, BUKAN muat naik multipart — WAF Cloudflare
       // menyekat muat naik PDF ke domain ini. Lihat src/data/fail-base64.ts.
-      setBaca(await naikFailJadual(pilih, await failKeMuatan(fail)));
+      let dibaca = await naikFailJadual(pilih, await failKeMuatan(fail));
+      if ((/\.pdf$/i.test(fail.name) || fail.type.startsWith("image/")) && !dibaca.draf && /TIDAK boleh dibaca|imbasan|gambar/i.test(dibaca.mesej)) {
+        const teksOcr = await bacaImbasan(fail, (teks) => setBaca({ ok: true, mesej: teks }));
+        if (!teksOcr) throw new Error("OCR selesai tetapi tiada teks dapat dikenal pasti.");
+        dibaca = await naikFailJadual(pilih, await failKeMuatan(failTeksOcr(fail, teksOcr)));
+        dibaca.mesej = `OCR pada peranti selesai. ${dibaca.mesej}`;
+      }
+      setBaca(dibaca);
     } catch (e) {
       setBaca({ ok: false, mesej: e instanceof Error ? e.message : "Muat naik gagal." });
     } finally {
@@ -287,8 +295,8 @@ export default function PanelJadual({
           <b>Excel (.xlsx) dan CSV paling tepat</b> — ia menyimpan baris dan
           lajur sebenar, jadi sistem tahu sel mana di bawah hari yang mana.
           DOCX berjadual juga baik. PDF berteks boleh dibaca tetapi kurang
-          tepat. PDF imbasan dan gambar TIDAK boleh — ia perlu OCR, yang tidak
-          berjalan di pelayan ini.
+          tepat. PDF imbasan dan gambar dibaca dengan OCR terus pada peranti
+          anda; semak cadangan grid sebelum menyimpan.
         </p>
         <p className="mt-2 text-xs leading-relaxed text-slate-500">
           <b>Fail anda tidak disimpan.</b> Ia dibaca sekali, kemudian

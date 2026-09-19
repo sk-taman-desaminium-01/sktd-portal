@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { simpanPos, type HasilSimpan, type PosCms, type Keutamaan } from "@/lib/cms";
+import { simpanPos, padamPos, type HasilSimpan, type PosCms, type Keutamaan } from "@/lib/cms";
 import { naikMedia } from "@/lib/media";
 import {
   kecilkanGambar, bolehDikecilkan, ceritaKecil, bait, HAD_GAMBAR_BAIT,
@@ -86,6 +86,15 @@ export default function BorangPos({
     // menulis boleh disambung kemudian tanpa disekat oleh medan wajib.
     const auto = tajuk.trim() || kandungan.trim().slice(0, 60) || "(draf tanpa tajuk)";
     void hantarStatus("draf", auto);
+  }
+
+  async function padam() {
+    if (!pos || !window.confirm(`Padam pos “${pos.tajuk}”?`)) return;
+    setSibuk(true);
+    const r = await padamPos(pos.id);
+    setHasil(r);
+    setSibuk(false);
+    if (r.ok) router.push("/admin/pos");
   }
 
   return (
@@ -184,6 +193,11 @@ export default function BorangPos({
           >
             Hantar
           </button>
+          {pos && (
+            <button type="button" disabled={sibuk} onClick={() => void padam()} className="ml-auto text-sm font-semibold text-[#8f2424] underline disabled:opacity-50">
+              Padam pos
+            </button>
+          )}
         </div>
 
         {hasil && (

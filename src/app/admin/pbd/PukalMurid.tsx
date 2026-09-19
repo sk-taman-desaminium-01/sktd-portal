@@ -5,6 +5,7 @@ import { bacaMuridPukal, type HasilPukalMurid } from "@/lib/pukal-murid";
 import { importMuridKelas } from "@/lib/import-murid";
 import { failKeMuatan } from "@/data/fail-base64";
 import { semakSaiz } from "@/data/had-fail";
+import { bacaImbasan, failTeksOcr } from "@/data/ocr-pelayar";
 import PilihCari from "@/components/PilihCari";
 
 /**
@@ -100,7 +101,15 @@ export default function PukalMurid({ semuaKelas }: { semuaKelas: string[] }) {
           continue;
         }
         try {
-          const r = await bacaMuridPukal(await failKeMuatan(fail));
+          let r = await bacaMuridPukal(await failKeMuatan(fail));
+          if ((/\.pdf$/i.test(fail.name) || fail.type.startsWith("image/")) && !r.ok && /Tiada No\. KP|imbasan|gambar/i.test(r.mesej)) {
+            const teksOcr = await bacaImbasan(fail, (teks) =>
+              setNota({ ok: true, teks: `${nama}: ${teks}` }),
+            );
+            if (!teksOcr) throw new Error("OCR selesai tetapi tiada teks dapat dikenal pasti.");
+            r = await bacaMuridPukal(await failKeMuatan(failTeksOcr(fail, teksOcr)));
+            r.cara = "OCR pada peranti";
+          }
           keputusan.push({
             ...r, kunci, pilih: false, kelasPilih: r.kelas ?? "",
           });
