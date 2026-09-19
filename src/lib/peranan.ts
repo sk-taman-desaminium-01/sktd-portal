@@ -138,7 +138,26 @@ const KEUPAYAAN: Record<PerananBerkesan, Keupayaan[]> = {
 
 export function boleh(p: PerananBerkesan | null, k: Keupayaan): boolean {
   if (!p) return false;
-  if (p === "admin_mutlak" || p === "admin" || p === "pentadbir") return true;
+
+  // 1. Admin Mutlak (Super Admin) - Bypass semua
+  if (p === "admin_mutlak") return true;
+
+  // 2. Admin (Bawah Mutlak) - Mempunyai akses penuh ke hampir semua keupayaan
+  // Nota: Admin tidak mempunyai 'urus_admin' (khas untuk mutlak)
+  if (p === "admin") {
+      if (k === "urus_admin") return false;
+      return true;
+  }
+
+  // 3. Pentadbir (Bawah Admin) - Mempunyai akses ke fungsi pentadbiran asas
+  if (p === "pentadbir") {
+      const keupayaanPentadbir: Keupayaan[] = [
+          "terbit_kandungan", "lihat_data_murid", "urus_guru_kelas",
+          "urus_pengurusan", "urus_bilik", "urus_pejabat", "urus_disiplin"
+      ];
+      return keupayaanPentadbir.includes(k);
+  }
+
   return KEUPAYAAN[p].includes(k);
 }
 
