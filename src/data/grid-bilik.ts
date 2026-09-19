@@ -1,4 +1,4 @@
-import { HARI, type Hari, type Jadual, type SetWaktu, type Waktu } from "./jadual-jenis.ts";
+import { HARI, JADUAL_KOSONG, type Hari, type Jadual, type SetWaktu, type Waktu } from "./jadual-jenis.ts";
 import { keMinit, type Bilik, type Tempahan } from "./bilik.ts";
 import { terpakaiPada, type Tetap } from "./bilik-tetap.ts";
 
@@ -67,6 +67,13 @@ export function sesiGrid(jadual: Jadual): SesiGrid[] {
     { sesi: "petang", nama: "Sesi Petang", blok: kumpul("petang") },
   ].filter((s) => s.blok.length > 0) as SesiGrid[];
 }
+
+/**
+ * Jadual tempahan mesti kekal kelihatan walaupun seseorang pernah menyimpan
+ * konfigurasi Jadual Waktu yang kosong. Ini menggunakan waktu rasmi lalai
+ * sekolah, bukan mengembalikan pengguna kepada borang atau skrin kosong.
+ */
+export const SESI_GRID_LALAI: SesiGrid[] = sesiGrid(JADUAL_KOSONG);
 
 /* ------------------------------------------------------------- tarikh */
 

@@ -10,7 +10,7 @@ import { labelTarikh, type Tempahan } from "@/data/bilik";
 import {
   isninMinggu, tambahHari, tarikhMinggu, labelLajur, perluKelulusan, hujungMinggu,
   selGrid, statusBilik, gabungJulat, kunciSel, huraiKunci, tempahanAktif,
-  type BlokGrid,
+  SESI_GRID_LALAI, type BlokGrid,
 } from "@/data/grid-bilik";
 
 /**
@@ -132,13 +132,17 @@ export default function GridBilik({ papan, barangIct }: {
   }, [tarikh, data.hariIni, data.sesi]);
 
   const bilikAktif = useMemo(() => data.bilik.filter((b) => b.aktif), [data.bilik]);
+  // Jangan hilangkan jadual hanya kerana konfigurasi waktu belum disimpan.
+  // Pengguna masih melihat bentuk Isnin–Jumaat × masa yang diminta dan
+  // pentadbir boleh menyamakan semula waktunya kemudian di Jadual Waktu.
+  const sesi = data.sesi.length > 0 ? data.sesi : SESI_GRID_LALAI;
   const namaBilik = useMemo(
     () => new Map(data.bilik.map((b) => [b.id, b.nama])),
     [data.bilik],
   );
 
   const blokPilih = useMemo(() => {
-    const semua = data.sesi.flatMap((s) => s.blok);
+    const semua = sesi.flatMap((s) => s.blok);
     return [...pilih]
       .map((k) => {
         const { tarikh: t, blokId } = huraiKunci(k);
@@ -147,7 +151,7 @@ export default function GridBilik({ papan, barangIct }: {
       })
       .filter((x): x is { tarikh: string; blok: BlokGrid } => x !== null)
       .sort((a, b) => a.tarikh.localeCompare(b.tarikh) || a.blok.mula.localeCompare(b.blok.mula));
-  }, [pilih, data.sesi]);
+  }, [pilih, sesi]);
 
   /** Tarikh yang ada dalam pemilihan, mengikut urutan. */
   const tarikhPilih = useMemo(
@@ -303,17 +307,6 @@ export default function GridBilik({ papan, barangIct }: {
     [data.tempahan],
   );
 
-  if (data.sesi.length === 0) {
-    return (
-      <p className="mt-5 rounded-xl border border-[#e9d9ae] bg-[#fdf9f0] p-4 text-sm leading-relaxed text-[#7a5a12]">
-        <b>Waktu sekolah belum ditetapkan.</b> Grid tempahan mengambil blok
-        waktunya dari Jadual Waktu — pentadbir perlu menetapkan set waktu di
-        sana dahulu, supaya papan ini memapar waktu yang SAMA seperti jadual
-        kelas.
-      </p>
-    );
-  }
-
   return (
     <section className="mt-5">
       {/* ------------------------------------------ navigasi minggu --- */}
@@ -370,10 +363,11 @@ export default function GridBilik({ papan, barangIct }: {
           dipilih
         </span>
         <span>Tekan slot untuk melihat bilik mana kosong.</span>
+        {data.sesi.length === 0 && <span className="text-[#7a5a12]">Waktu lalai dipaparkan sementara.</span>}
       </div>
 
       {/* ---------------------------------------------------- grid --- */}
-      {data.sesi.map((s) => (
+      {sesi.map((s) => (
         <div key={s.sesi} className="mt-4">
           <h3 className="text-[11px] font-bold uppercase tracking-widest text-emas">{s.nama}</h3>
           <div
