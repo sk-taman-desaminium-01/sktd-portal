@@ -26,7 +26,7 @@ export default function CetakMedia({ surat, data: d, kepala }: { surat: BarisSur
       <p>Nama: {d.penjagaNama?.toUpperCase()}<br/>Tarikh: {surat.dicipta.slice(0,10)}</p>
       <h2 className="mt-8 font-bold">DISAHKAN OLEH GURU KELAS</h2>
       <p className="mt-3">Saya dengan ini memperakui bahawa ibu bapa/penjaga murid seperti yang dinyatakan telah menandatangani borang ini bagi tujuan di atas.</p>
-      <p className="mt-12">........................................................<br/>Tandatangan Guru Kelas<br/>Nama (HURUF BESAR):<br/>Tarikh:<br/>Cop Institusi Pendidikan:</p>
+      <p className="mt-12">........................................................<br/>Tandatangan Guru Kelas<br/>Nama: {d.guruKelasNama?.toUpperCase() || ""}<br/>Tarikh:<br/>Cop Institusi Pendidikan:</p>
     </section>
   </div>;
 }

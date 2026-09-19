@@ -23,6 +23,7 @@ const LALUAN_AWAM = createRouteMatcher([
   "/borang",
   "/borang/aktiviti",
   "/borang/kebenaran-gambar",
+  "/borang/pratonton-cetak",
   "/kebenaran",
   "/kebenaran/(.*)",
 ]);
@@ -31,6 +32,7 @@ function borangAwam(path: string): boolean {
   return path === "/borang" ||
     path === "/borang/aktiviti" ||
     path === "/borang/kebenaran-gambar" ||
+    path === "/borang/pratonton-cetak" ||
     path === "/kebenaran" ||
     path.startsWith("/kebenaran/");
 }
