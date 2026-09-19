@@ -22,6 +22,8 @@ const carta = baca("src/app/admin/carta/PanelCarta.tsx");
 
 perlu("Pratonton telefon mempunyai Kembali", enjin.includes('id="sktd-kembali"'));
 perlu("Pratonton telefon mempunyai Cetak", enjin.includes('id="sktd-cetak"'));
+perlu("Pelayar mudah alih tersamar dikesan melalui lebar skrin", enjin.includes("window.innerWidth <= 720"));
+perlu("Pop-up disekat beralih ke pratonton tab semasa", enjin.includes("URL.createObjectURL(new Blob") && enjin.includes("window.location.assign(url)"));
 perlu("Enjin menetapkan margin A4 terakhir", /@page \{ size: A4/.test(enjin));
 perlu("Enjin menghidupkan kandungan print:block", enjin.includes('kelas.startsWith("print:")'));
 perlu("Surat rasmi isytihar A4 potret", surat.includes('data-cetak-kertas="portrait"'));
@@ -37,4 +39,4 @@ if (gagal.length) {
   console.error(`Kontrak cetakan gagal:\n${gagal.map((x) => `- ${x}`).join("\n")}`);
   process.exit(1);
 }
-console.log("Kontrak cetakan: 13 semakan lulus.");
+console.log("Kontrak cetakan: 15 semakan lulus.");

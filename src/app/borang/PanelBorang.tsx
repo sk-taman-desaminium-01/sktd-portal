@@ -139,7 +139,7 @@ function FormRasmi({
       </Medan>
       <Medan label="Tarikh">
         <input type="date" value={tarikh} onChange={(e) => setTarikh(e.target.value)}
-          className="rounded-lg border border-garis px-3 py-2 text-sm" />
+          className="block w-full min-w-0 max-w-full rounded-lg border border-garis px-3 py-2 text-sm" />
       </Medan>
       <Medan label="Isi surat">
         <textarea value={isi} onChange={(e) => setIsi(e.target.value)} rows={8} maxLength={1200}

@@ -8,7 +8,10 @@
  * Cetak / Simpan PDF di situ; pada laptop dialog cetak kekal dibuka terus.
  */
 function mudahAlih() {
-  return /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+  // Sesetengah pelayar privasi menyamarkan user-agent sebagai desktop.
+  // Lebar skrin menjadi sandaran supaya telefon tetap mendapat tab
+  // pratonton dengan butang Kembali dan Cetak / Simpan PDF.
+  return /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) || window.innerWidth <= 720;
 }
 
 function selamat(teks: string) {
@@ -86,13 +89,6 @@ export function mulaCetak(id: string, tajuk: string): boolean {
   }
 
   const tetingkap = window.open("", "_blank");
-  if (!tetingkap) {
-    // Penyemak imbas menyekat tetingkap baharu. Cuba laluan biasa supaya
-    // pengguna masih tidak kehilangan fungsi cetak sepenuhnya.
-    window.print();
-    return false;
-  }
-
   const dokumen = asal.cloneNode(true) as HTMLElement;
   hidupkanKandunganCetak(dokumen);
   dokumen.style.display = "block";
@@ -109,8 +105,7 @@ export function mulaCetak(id: string, tajuk: string): boolean {
     }
   }
 
-  tetingkap.document.open();
-  tetingkap.document.write(`<!doctype html><html lang="ms"><head>${kepala.innerHTML}
+  const html = `<!doctype html><html lang="ms"><head>${kepala.innerHTML}
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>${selamat(tajuk)}</title>
     <style>
@@ -140,7 +135,19 @@ export function mulaCetak(id: string, tajuk: string): boolean {
           window.location.assign(document.referrer || window.location.origin);
         });
       }());
-    </script></body></html>`);
+    </script></body></html>`;
+
+  if (!tetingkap) {
+    // Jika pop-up disekat (kerap dalam PWA iOS), buka dokumen yang sama pada
+    // tab semasa. Butang Kembali menggunakan sejarah pelayar untuk pulang ke
+    // borang; fungsi cetak tidak lagi jatuh semula kepada window.print().
+    const url = URL.createObjectURL(new Blob([html], { type: "text/html;charset=utf-8" }));
+    window.location.assign(url);
+    return true;
+  }
+
+  tetingkap.document.open();
+  tetingkap.document.write(html);
   tetingkap.document.close();
   return true;
 }

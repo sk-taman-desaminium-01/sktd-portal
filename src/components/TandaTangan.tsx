@@ -15,10 +15,12 @@ import { naikTandaTangan } from "@/lib/tandatangan";
  * memerlukan pustaka pemprosesan imej baharu di pelayan.
  */
 export default function TandaTangan({
-  nilai, tetap,
+  nilai, tetap, tempatan = false,
 }: {
   nilai: string | null;
   tetap: (url: string | null) => void;
+  /** Simpan sebagai data URL dalam borang awam; tiada endpoint muat naik terbuka. */
+  tempatan?: boolean;
 }) {
   const [mod, setMod] = useState<"lukis" | "naik">("lukis");
   const [sibuk, setSibuk] = useState(false);
@@ -76,11 +78,20 @@ export default function TandaTangan({
     setSibuk(true);
     setRalat(null);
     try {
+      if (blob.size > 260_000) throw new Error("Tandatangan terlalu besar. Cuba lukis semula atau guna gambar yang lebih ringkas.");
+      if (tempatan) {
+        const dataUrl = await blobKeDataUrl(blob);
+        if (dataUrl.length > 350_000) throw new Error("Tandatangan terlalu besar untuk disimpan.");
+        tetap(dataUrl);
+        return;
+      }
       const fd = new FormData();
       fd.set("fail", new File([blob], "tandatangan.png", { type: "image/png" }));
       const r = await naikTandaTangan(fd);
       if (r.ok && r.url) tetap(r.url);
       else setRalat(r.mesej);
+    } catch (err) {
+      setRalat(err instanceof Error ? err.message : "Gagal menyimpan tandatangan.");
     } finally {
       setSibuk(false);
     }
@@ -98,6 +109,10 @@ export default function TandaTangan({
     const f = e.target.files?.[0];
     e.target.value = "";
     if (!f) return;
+    if (!f.type.startsWith("image/") || f.size > 10 * 1024 * 1024) {
+      setRalat("Pilih fail gambar sehingga 10 MB.");
+      return;
+    }
     setSibuk(true);
     setRalat(null);
     try {
@@ -163,7 +178,7 @@ export default function TandaTangan({
         </div>
       ) : (
         <div className="mt-3">
-          <input type="file" accept="image/*" onChange={pilihFail} disabled={sibuk} className="text-xs" />
+          <input type="file" accept="image/*" onChange={pilihFail} disabled={sibuk} className="block w-full min-w-0 max-w-full text-xs" />
           <p className="mt-1 text-xs text-slate-500">
             Latar belakang dibuang dan gambar dipotong ketat secara automatik.
           </p>
@@ -183,10 +198,14 @@ export default function TandaTangan({
 async function buangLatarDanPotong(fail: File): Promise<Blob> {
   const gambar = await muatGambar(fail);
   const kv = document.createElement("canvas");
-  kv.width = gambar.width;
-  kv.height = gambar.height;
+  // Foto iPhone lazimnya 12–48 MP. Mengecilkan sebelum membaca setiap piksel
+  // mengelakkan tab kehabisan memori, sedangkan tandatangan tidak perlukan
+  // resolusi kamera penuh.
+  const skala = Math.min(1, 1600 / Math.max(gambar.width, gambar.height));
+  kv.width = Math.max(1, Math.round(gambar.width * skala));
+  kv.height = Math.max(1, Math.round(gambar.height * skala));
   const ctx = kv.getContext("2d")!;
-  ctx.drawImage(gambar, 0, 0);
+  ctx.drawImage(gambar, 0, 0, kv.width, kv.height);
 
   const img = ctx.getImageData(0, 0, kv.width, kv.height);
   const d = img.data;
@@ -231,8 +250,18 @@ async function buangLatarDanPotong(fail: File): Promise<Blob> {
 function muatGambar(fail: File): Promise<HTMLImageElement> {
   return new Promise((res, rej) => {
     const img = new Image();
-    img.onload = () => res(img);
-    img.onerror = () => rej(new Error("Gambar tidak boleh dibaca."));
-    img.src = URL.createObjectURL(fail);
+    const url = URL.createObjectURL(fail);
+    img.onload = () => { URL.revokeObjectURL(url); res(img); };
+    img.onerror = () => { URL.revokeObjectURL(url); rej(new Error("Gambar tidak boleh dibaca.")); };
+    img.src = url;
+  });
+}
+
+function blobKeDataUrl(blob: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const pembaca = new FileReader();
+    pembaca.onload = () => typeof pembaca.result === "string" ? resolve(pembaca.result) : reject(new Error("Tandatangan tidak dapat dibaca."));
+    pembaca.onerror = () => reject(new Error("Tandatangan tidak dapat dibaca."));
+    pembaca.readAsDataURL(blob);
   });
 }

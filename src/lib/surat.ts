@@ -42,6 +42,7 @@ export interface DataSuratGambar {
   muridKelas: string;
   bersetuju: boolean;
   catatan?: string;
+  sumber?: "kakitangan" | "awam";
 }
 
 export interface BarisSurat {
@@ -117,7 +118,7 @@ export async function hantarSuratRasmi(input: {
   const id = baris[0]?.id;
   await beritahuPejabat(tajuk, saya.nama ?? saya.emel, saya.emel);
 
-  revalidatePath("/borang");
+  revalidatePath("/borang/urus");
   revalidatePath("/pejabat");
   return { ok: true, mesej: "Surat dihantar ke Urusan Pejabat.", id };
 }
@@ -166,7 +167,7 @@ export async function hantarSuratGambar(input: {
         data: {
           penjagaNama: input.penjagaNama.trim(), penjagaKp: input.penjagaKp, alamat: input.alamat.trim(), telefon: input.telefon.trim(), muridKp: input.muridKp,
           muridNama, muridKelas, bersetuju: input.bersetuju,
-          catatan: input.catatan?.trim() || undefined,
+          catatan: input.catatan?.trim() || undefined, sumber: "kakitangan",
         },
       }),
     }) as { id: string }[];
@@ -185,11 +186,11 @@ export async function hantarSuratGambar(input: {
       penerima: emelGk, jenis: "borang",
       tajuk: "Kebenaran Gambar direkod",
       teks: `${muridNama} (${muridKelas}): ibu bapa ${input.bersetuju ? "BERSETUJU" : "TIDAK BERSETUJU"} gambar diambil.`,
-      pautan: "/borang", oleh: saya.emel,
+      pautan: "/borang/urus", oleh: saya.emel,
     }).catch(() => {});
   }
 
-  revalidatePath("/borang");
+  revalidatePath("/borang/urus");
   return { ok: true, id, mesej: "Direkod." };
 }
 
@@ -199,9 +200,10 @@ export async function senaraiSuratSaya(): Promise<{ belumSedia: boolean; senarai
   if (!saya?.peranan) return { belumSedia: false, senarai: [] };
   const db = klienTulis();
   try {
+    const lihatSemua = await bolehBuat("lihat_data_murid");
     const senarai = (await db.minta(
       `pbd_surat?select=id,jenis,status,tajuk,rujukan_kami,pemohon_nama,pemohon_emel,tandatangan_url,data,dicipta` +
-        `&pemohon_emel=eq.${encodeURIComponent(saya.emel)}&order=dicipta.desc&limit=100`,
+        `${lihatSemua ? "" : `&pemohon_emel=eq.${encodeURIComponent(saya.emel)}`}&order=dicipta.desc&limit=${lihatSemua ? 300 : 100}`,
     )) as BarisSurat[];
     return { belumSedia: false, senarai };
   } catch (e) {
@@ -242,7 +244,7 @@ export async function tetapkanRujukan(id: string, rujukan_kami: string): Promise
     return { ok: false, mesej: e instanceof Error ? e.message : "Gagal menyimpan." };
   }
   revalidatePath("/pejabat");
-  revalidatePath("/borang");
+  revalidatePath("/borang/urus");
   return { ok: true, mesej: "Rujukan kami disimpan." };
 }
 
@@ -267,7 +269,7 @@ export async function padamSurat(id: string): Promise<HasilSurat> {
     return { ok: false, mesej: e instanceof Error ? e.message : "Gagal memadam borang." };
   }
 
-  revalidatePath("/borang");
+  revalidatePath("/borang/urus");
   revalidatePath("/pejabat");
   return { ok: true, mesej: "Borang dipadam." };
 }

@@ -3,8 +3,8 @@ import type { KepalaSurat } from "./CetakSurat";
 import { aset } from "@/lib/laluan";
 export default function CetakMedia({ surat, data: d, kepala }: { surat: BarisSurat; data: DataSuratGambar; kepala: KepalaSurat }) {
   const baris = (label: string, nilai?: string) => <p className="mt-5 flex gap-4"><span className="w-48 shrink-0">{label}</span><span className="flex-1 whitespace-pre-line border-b border-black">{nilai || " "}</span></p>;
-  return <div id="surat-cetak" data-cetak-kertas="portrait" className="hidden text-[11pt] leading-relaxed text-black print:block">
-    <style>{`@media print { body * {visibility:hidden} #surat-cetak,#surat-cetak * {visibility:visible} #surat-cetak {position:absolute;inset:0;width:100%} @page {size:A4 portrait;margin:22mm} .media-muka {break-after:page;min-height:240mm} .media-muka:last-child {break-after:auto} }`}</style>
+  return <div id="surat-cetak" data-cetak-kertas="portrait" className="hidden bg-white text-[11pt] leading-relaxed text-black print:block">
+    <style>{`@media print { html,body {background:#fff!important} body * {visibility:hidden} #surat-cetak,#surat-cetak * {visibility:visible} #surat-cetak {position:absolute;inset:0;width:100%;background:#fff} @page {size:A4 portrait;margin:18mm 19mm 17mm} .media-muka {break-after:page;min-height:262mm} .media-muka:last-child {break-after:auto} }`}</style>
     <section className="media-muka">
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img src={aset("/logo-kpm.png")} alt="Kementerian Pendidikan" className="mx-auto mb-8 h-24 object-contain" />

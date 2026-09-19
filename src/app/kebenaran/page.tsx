@@ -1,4 +1,5 @@
-import Link from "next/link";
-import { aktivitiAwam } from "@/lib/borang-aktiviti";
-export const metadata={title:"Kebenaran Penyertaan Aktiviti",referrer:"no-referrer" as const};
-export default async function Page(){const senarai=await aktivitiAwam();return <main className="mx-auto max-w-2xl p-6"><h1 className="text-2xl font-bold">Kebenaran Penyertaan Aktiviti</h1><p className="mt-3">Pilih aktiviti anak/jagaan anda. Butiran murid perlu diisi sendiri.</p><ul className="mt-5 space-y-3">{senarai.map(a=><li key={a.id} className="rounded-xl border bg-white p-4"><Link href={`/kebenaran/${a.id}`} className="font-bold text-navy-800">{a.nama}</Link><p>{a.tarikh} · {a.tempat}</p><p className="text-sm">Tutup: {a.tutup}</p></li>)}</ul>{!senarai.length&&<p className="mt-5">Tiada borang aktiviti dibuka buat masa ini.</p>}</main>}
+import { redirect } from "next/navigation";
+
+export default function KebenaranLama() {
+  redirect("/borang/aktiviti");
+}

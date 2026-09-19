@@ -66,6 +66,7 @@ export default function CetakAkuan({ aktiviti: a, data: d }: { aktiviti: Program
         #akuan-cetak .akuan-garis-pendek { display: inline-block; min-width: 42mm; border-bottom: 1px dotted #000; }
         @media (min-width: 960px) { #akuan-cetak { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); } #akuan-cetak .akuan-waris { border-bottom: 0; border-right: 1px solid #000; } }
         @media print {
+          html, body { background: #fff !important; }
           body * { visibility: hidden; }
           #akuan-cetak, #akuan-cetak * { visibility: visible; }
           #akuan-cetak { position: absolute; inset: 0; display: grid !important; grid-template-columns: repeat(2, minmax(0, 1fr)); width: 100%; font-size: 8.1pt; line-height: 1.17; }
