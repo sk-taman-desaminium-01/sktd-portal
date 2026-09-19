@@ -35,7 +35,7 @@ export default async function GuruKelasHub() {
     sayaBertugas("guru_disiplin"),
   ]);
 
-  const nampakSemua = kelasSendiri === null || saya?.peranan === "admin_mutlak";
+  const nampakSemua = kelasSendiri === null || saya?.peranan === "admin_mutlak" || saya?.peranan === "admin" || saya?.peranan === "pentadbir";
   const kelasDipilih = nampakSemua
     ? isiKelas.map((k) => `${k.tahun} ${k.kelas}`)
     : kelasSendiri ?? [];
