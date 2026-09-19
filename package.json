@@ -20,6 +20,7 @@
     "uji:inventori": "node --experimental-strip-types --no-warnings scripts/uji-inventori.mts",
     "uji:pindaan-zip": "node --experimental-strip-types --no-warnings scripts/uji-pindaan-zip.mts",
     "uji:kontrak-modul": "node --experimental-strip-types --no-warnings scripts/uji-kontrak-modul.mts",
+    "uji:cetak": "node --experimental-strip-types --no-warnings scripts/uji-cetak.mts",
     "uji:kuasa": "node --experimental-strip-types --no-warnings scripts/uji-kuasa.mts"
   },
   "dependencies": {

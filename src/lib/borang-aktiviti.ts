@@ -12,6 +12,25 @@ import { hariIniMY } from "./bilik";
 import { semakAkuan, type AktivitiBorang, type AkuanAktiviti, type JawapanAktiviti } from "@/data/borang-aktiviti";
 const uuid = (s: string) => /^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(s);
 const hash = (s: string) => createHash("sha256").update(s).digest("hex");
+
+function mesejRalatModul(e: unknown) {
+ const mesej = e instanceof Error ? e.message : "Gagal menghantar.";
+ // Jangan beritahu ibu bapa butiran pangkalan data, tetapi jangan jadikan
+ // pemasangan yang tertinggal kelihatan seperti mereka tersalah isi borang.
+ if (/\bborang_(aktiviti|peserta|jawapan|had_akuan|ambil_giliran)\b/i.test(mesej))
+   return "Modul borang aktiviti belum lengkap di pangkalan data. Pengurus perlu menjalankan SQL Borang Aktiviti sekali sahaja.";
+ return mesej.startsWith("[supabase]") ? "Borang tidak dapat disimpan buat masa ini. Cuba lagi atau hubungi pengurus." : mesej;
+}
+
+/** Semakan ringan untuk mengelakkan skrin pengurus gagal putih jika SQL belum dipasang. */
+export async function modulAktivitiSedia() {
+ try {
+   await klienTulis().minta("borang_aktiviti?select=id&limit=1");
+   return true;
+ } catch {
+   return false;
+ }
+}
 async function akses() {
  const saya = await pengguna(); if (!saya?.peranan) throw new Error("Tiada kebenaran.");
  return { saya, admin: boleh(saya.peranan,"urus_guru_kelas") };
@@ -93,7 +112,13 @@ export async function padamJawapanAktiviti(aktivitiId: string, jawapanId: string
 /** Hanya butiran program awam; tiada senarai peserta atau maklumat penjaga. */
 export async function aktivitiAwam(id?:string) {
  if(id && !uuid(id)) return [];
- return bacaSemua<Pick<AktivitiBorang,"id"|"nama"|"tarikh"|"masa"|"tempat"|"anjuran"|"tutup">>(`borang_aktiviti?select=id,nama,tarikh,masa,tempat,anjuran,tutup&aktif=eq.true&tutup=gte.${hariIniMY()}&order=tarikh.asc,id.asc${id?`&id=eq.${id}`:""}`);
+ try {
+   return await bacaSemua<Pick<AktivitiBorang,"id"|"nama"|"tarikh"|"masa"|"tempat"|"anjuran"|"tutup">>(`borang_aktiviti?select=id,nama,tarikh,masa,tempat,anjuran,tutup&aktif=eq.true&tutup=gte.${hariIniMY()}&order=tarikh.asc,id.asc${id?`&id=eq.${id}`:""}`);
+ } catch {
+   // Laluan ini awam. Tiada skema DB atau ralat dalaman boleh dipaparkan
+   // kepada penjaga; mereka hanya melihat tiada borang dibuka.
+   return [];
+ }
 }
 export async function hantarAkuan(id:string, data: AkuanAktiviti, lamanPerangkap="") {
  try {
@@ -113,13 +138,17 @@ export async function hantarAkuan(id:string, data: AkuanAktiviti, lamanPerangkap
   return {ok:true,mesej:"Akuan diterima. Simpan pautan resit untuk cetakan semula.",resit};
  } catch(e) {
   const mesej=e instanceof Error?e.message:"Gagal menghantar.";
-  return {ok:false,mesej:/23505|duplicate key/.test(mesej)?"Akuan bagi peserta ini sudah diterima. Hubungi pengurus untuk pindaan.":mesej.startsWith("[supabase]")?"Borang tidak dapat disimpan. Cuba lagi atau hubungi pengurus.":mesej};
+  return {ok:false,mesej:/23505|duplicate key/.test(mesej)?"Akuan bagi peserta ini sudah diterima. Hubungi pengurus untuk pindaan.":mesejRalatModul(e)};
  }
 }
 export async function resitAkuan(token:string) {
  if(!/^[a-f0-9]{64}$/.test(token)) return null;
- const rows=await klienTulis().minta(`borang_jawapan?select=id,aktiviti_id,data,dicipta&resit_hash=eq.${hash(token)}&limit=1`) as JawapanAktiviti[];
- const r=rows[0]; if(!r || Date.now()-new Date(r.dicipta).getTime()>90*86400000) return null;
- const aktiviti=await klienTulis().minta(`borang_aktiviti?select=id,nama,tarikh,masa,tempat,anjuran,tutup&id=eq.${r.aktiviti_id}&limit=1`) as AktivitiBorang[];
- return aktiviti[0]?{jawapan:r,aktiviti:aktiviti[0]}:null;
+ try {
+   const rows=await klienTulis().minta(`borang_jawapan?select=id,aktiviti_id,data,dicipta&resit_hash=eq.${hash(token)}&limit=1`) as JawapanAktiviti[];
+   const r=rows[0]; if(!r || Date.now()-new Date(r.dicipta).getTime()>90*86400000) return null;
+   const aktiviti=await klienTulis().minta(`borang_aktiviti?select=id,nama,tarikh,masa,tempat,anjuran,tutup&id=eq.${r.aktiviti_id}&limit=1`) as AktivitiBorang[];
+   return aktiviti[0]?{jawapan:r,aktiviti:aktiviti[0]}:null;
+ } catch {
+   return null;
+ }
 }

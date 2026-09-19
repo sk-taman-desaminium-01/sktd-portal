@@ -154,7 +154,7 @@ export default function PanelCarta({ punca, tahun, namaSekolah, semuaDisahkan }:
         </p>
       )}
 
-      <div id="carta-cetak" className="mt-4">
+      <div id="carta-cetak" data-cetak-kertas="portrait" className="mt-4">
         <div className="hidden print:block">
           <h1 className="text-center text-lg font-bold">Carta Organisasi</h1>
           <p className="mt-0.5 text-center text-sm">

@@ -3,17 +3,42 @@ import type { BarisSurat, DataSuratRasmi } from "@/lib/surat";
 
 export type KepalaSurat = { nama: string; kod: string; alamat: string; telefon: string; faks: string; emel: string };
 
+const HAD_ISI_SATU_MUKA = 1_200;
+const HAD_PERENGGAN = 8;
+
+/**
+ * Surat rasmi ialah SATU halaman. Selain had aksara, baris kosong dan ruang
+ * berganda dinormalkan kerana seribu aksara yang berupa baris baharu masih
+ * boleh menjadi puluhan halaman ketika dicetak.
+ */
 function isiSatuMukaSurat(isi: string) {
-  const bersih = isi.trim();
-  if (bersih.length <= 1_500) return { isi: bersih, dipendekkan: false };
-  const potong = bersih.slice(0, 1_500);
-  return { isi: `${potong.slice(0, potong.lastIndexOf(" ") || potong.length)}…`, dipendekkan: true };
+  const perenggan = isi
+    .replace(/\r/g, "")
+    .split(/\n+/)
+    .map((baris) => baris.replace(/\s+/g, " ").trim())
+    .filter(Boolean)
+    .slice(0, HAD_PERENGGAN);
+  const bersih = perenggan.join("\n\n");
+  if (bersih.length <= HAD_ISI_SATU_MUKA) return { perenggan, dipendekkan: false };
+  const potong = bersih.slice(0, HAD_ISI_SATU_MUKA);
+  const akhir = potong.lastIndexOf(" ");
+  return {
+    perenggan: [`${potong.slice(0, akhir > 0 ? akhir : potong.length)}…`],
+    dipendekkan: true,
+  };
+}
+
+function tarikhBahasaMelayu(tarikh: string) {
+  const nilai = new Date(`${tarikh}T12:00:00`);
+  return Number.isNaN(nilai.getTime())
+    ? tarikh
+    : nilai.toLocaleDateString("ms-MY", { day: "numeric", month: "long", year: "numeric" });
 }
 
 /**
- * Susun atur cetak surat rasmi — dikongsi antara `/borang` (pemohon
- * mencetak salinannya) dan `/pejabat` (kerani mencetak selepas rujukan
- * kami diisi). SATU susun atur, bukan disalin dua kali.
+ * Surat rasmi sekolah mengikut struktur Surat Kebenaran Padang Hoki:
+ * kepala surat lapang, rujukan di kanan, isi berindent, dan tandatangan
+ * pada bahagian bawah. Ia dikongsi oleh Borang Sekolah dan Urusan Pejabat.
  */
 export default function CetakSurat({
   surat, data, kepala,
@@ -25,54 +50,79 @@ export default function CetakSurat({
 }) {
   const isi = isiSatuMukaSurat(data.isi);
   return (
-    <div id="surat-cetak" className="hidden print:block">
+    <div id="surat-cetak" data-cetak-kertas="portrait" className="hidden text-black print:block">
       <style>{`
+        #surat-cetak .surat-dokumen { background: #fff; color: #000; font-family: "Times New Roman", Times, serif; font-size: 10.5pt; line-height: 1.32; }
+        #surat-cetak .surat-kepala { display: grid; grid-template-columns: 27mm minmax(0, 1fr) 28mm; column-gap: 4mm; align-items: start; border-bottom: 1.5px solid #000; padding: 0 0 3.5mm; font-family: Arial, Helvetica, sans-serif; }
+        #surat-cetak .surat-logo-kpm { width: 25mm; height: 25mm; object-fit: contain; object-position: left top; }
+        #surat-cetak .surat-logo-sktd { width: 23mm; height: 25mm; object-fit: contain; object-position: right top; }
+        #surat-cetak .surat-kepala-nama { margin: 1mm 0 0; font-size: 13pt; font-weight: 700; line-height: 1.12; }
+        #surat-cetak .surat-kepala-alamat { margin: 1mm 0 0; white-space: pre-line; font-size: 10.5pt; line-height: 1.18; }
+        #surat-cetak .surat-hubungi { margin: 1.5mm 0 0; text-align: right; font-size: 9.5pt; line-height: 1.2; }
+        #surat-cetak .surat-rujukan { display: flex; justify-content: flex-end; margin: 4mm 10mm 0; font-size: 11pt; line-height: 1.25; }
+        #surat-cetak .surat-rujukan p { min-width: 57mm; margin: 0; }
+        #surat-cetak .surat-kandungan { padding: 0 11mm; }
+        #surat-cetak .surat-alamat { margin: 13mm 0 0; white-space: pre-line; }
+        #surat-cetak .surat-sapaan { margin: 12mm 0 0; }
+        #surat-cetak .surat-tajuk { margin: 7mm 0 0; font-weight: 700; text-transform: uppercase; }
+        #surat-cetak .surat-isi { margin: 5mm 0 0; text-align: justify; }
+        #surat-cetak .surat-isi p { margin: 0 0 3.5mm; }
+        #surat-cetak .surat-penutup { margin: 7mm 0 0; }
+        #surat-cetak .surat-cogan { margin: 12mm 0 0; font-weight: 700; line-height: 1.75; }
+        #surat-cetak .surat-tandatangan { margin: 5mm 0 0; }
+        #surat-cetak .surat-tandatangan img { display: block; width: 35mm; height: 16mm; margin: 1mm 0 -1mm; object-fit: contain; object-position: left bottom; }
+        #surat-cetak .surat-ruang-tandatangan { height: 17mm; }
+        #surat-cetak .surat-penandatangan { margin: 0; line-height: 1.32; }
         @media print {
           body * { visibility: hidden; }
           #surat-cetak, #surat-cetak * { visibility: visible; }
           #surat-cetak { position: absolute; inset: 0; width: 100%; }
-          @page { size: A4 portrait; margin: 14mm 16mm; }
-          #surat-cetak { font-size: 10pt; line-height: 1.35; }
+          @page { size: A4 portrait; margin: 18mm 19mm 17mm; }
         }
       `}</style>
-      <header className="flex items-center gap-4 border-b-2 border-black pb-3 text-[10pt]">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={aset("/logo-kpm.png")} alt="Kementerian Pendidikan Malaysia" className="h-16 w-20 object-contain" />
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={aset("/logo-sktd.png")} alt="Lencana SK Taman Desaminium" className="h-16 w-16 object-contain" />
-        <div><p className="font-bold">KEMENTERIAN PENDIDIKAN MALAYSIA</p><h1 className="font-bold uppercase">{kepala.nama}</h1>
-        <p className="whitespace-pre-line">{kepala.alamat}</p><p>Tel: {kepala.telefon} · {kepala.emel}</p></div>
-      </header>
 
-      <div className="mt-3 flex justify-between text-[10pt]">
-        <span>{surat.rujukan_kami ? `Rujukan Kami: ${surat.rujukan_kami}` : ""}</span>
-        <span>{new Date(data.tarikh).toLocaleDateString("ms-MY", { day: "numeric", month: "long", year: "numeric" })}</span>
-      </div>
+      <article className="surat-dokumen">
+        <header className="surat-kepala">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={aset("/logo-kpm.png")} alt="Kementerian Pendidikan Malaysia" className="surat-logo-kpm" />
+          <div>
+            <p className="m-0 text-[11pt] font-bold">KEMENTERIAN PENDIDIKAN MALAYSIA</p>
+            <h1 className="surat-kepala-nama">{kepala.nama.toUpperCase()}</h1>
+            <p className="surat-kepala-alamat">{kepala.alamat}</p>
+          </div>
+          <div>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={aset("/logo-sktd.png")} alt="Lencana SK Taman Desaminium" className="surat-logo-sktd" />
+            <p className="surat-hubungi">Tel : {kepala.telefon}<br />E-mel : {kepala.emel}</p>
+          </div>
+        </header>
 
-      <p className="mt-3 whitespace-pre-line text-[10pt]">{data.alamat}</p>
+        <div className="surat-rujukan">
+          <p>{surat.rujukan_kami && <>Ruj Kami : {surat.rujukan_kami}<br /></>}Tarikh : {tarikhBahasaMelayu(data.tarikh)}</p>
+        </div>
 
-      <p className="mt-3 text-[10pt]">Tuan/Puan,</p>
-      <p className="mt-3 text-[10pt]"><b>{surat.tajuk.toUpperCase()}</b></p>
+        <div className="surat-kandungan">
+          <p className="surat-alamat">{data.alamat}</p>
+          <p className="surat-sapaan">Tuan/Puan,</p>
+          <p className="surat-tajuk">{surat.tajuk}</p>
 
-      <p className="mt-2 whitespace-pre-line text-justify text-[10pt] leading-[1.4]">{isi.isi}</p>
-      {isi.dipendekkan && <p className="mt-1 text-[8pt] italic">Isi asal melebihi had surat satu halaman dan telah dipendekkan untuk cetakan ini.</p>}
+          <div className="surat-isi">
+            {isi.perenggan.map((perenggan, indeks) => <p key={indeks}>{perenggan}</p>)}
+          </div>
+          {isi.dipendekkan && <p className="m-0 text-[8pt] italic">Isi melebihi ruang satu halaman dan dipendekkan pada penghujung ayat.</p>}
 
-      <p className="mt-4 text-[10pt]">Sekian, terima kasih.</p>
-      <p className="text-[10pt]">&quot;MALAYSIA MADANI&quot;</p>
-      <p className="text-[10pt]">&quot;BERKHIDMAT UNTUK NEGARA&quot;</p>
-
-      <div className="mt-6 text-[10pt]">
-        <p>Saya yang menjalankan amanah,</p>
-        {surat.tandatangan_url ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={surat.tandatangan_url} alt="" className="mt-1 h-12 object-contain" />
-        ) : <div className="mt-7" />}
-        <p className="mt-1 font-bold">({data.wakilGbNama})</p>
-        <p>{data.wakilGbJawatan}</p>
-        <p>{kepala.nama}</p>
-      </div>
-
-
+          <p className="surat-penutup">Sekian, terima kasih.</p>
+          <p className="surat-cogan">“MALAYSIA MADANI”<br />“BERKHIDMAT UNTUK NEGARA”</p>
+          <div className="surat-tandatangan">
+            <p className="m-0">Saya yang menjalankan amanah</p>
+            {surat.tandatangan_url ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={surat.tandatangan_url} alt="Tandatangan" />
+            ) : <div className="surat-ruang-tandatangan" />}
+            <p className="surat-penandatangan"><b>({data.wakilGbNama.toUpperCase()})</b><br />{data.wakilGbJawatan}<br />{kepala.nama}</p>
+          </div>
+        </div>
+      </article>
     </div>
   );
 }
