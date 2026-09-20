@@ -1,5 +1,8 @@
 import "server-only";
 import { gridDariKedudukan } from "./grid-kedudukan";
+import { jenisDokumen, type JenisDokumen } from "@/data/jenis-dokumen";
+
+export type { JenisDokumen } from "@/data/jenis-dokumen";
 
 /**
  * Pembacaan dokumen yang DIKONGSI — jadual waktu, Buku Pengurusan, dan
@@ -18,8 +21,6 @@ import { gridDariKedudukan } from "./grid-kedudukan";
  * PDF imbasan dan gambar ditanda sebagai `imbasan`; komponen muat naik akan
  * menjalankan OCR dalam pelayar dan menghantar teks yang terhasil semula.
  */
-
-export type JenisDokumen = "pdf" | "docx" | "xlsx" | "csv" | "imbasan" | "lain";
 
 /** Satu serpihan teks dengan kedudukannya pada muka surat. */
 export interface ItemTeks {
@@ -45,17 +46,6 @@ export interface Dokumen {
    */
   item?: ItemTeks[][];
   amaran: string[];
-}
-
-/** Tentukan jenis dari MIME dan nama fail — MIME sahaja tidak boleh dipercayai. */
-export function jenisFail(nama: string, mime: string): JenisDokumen {
-  const n = nama.toLowerCase();
-  if (mime === "application/pdf" || n.endsWith(".pdf")) return "pdf";
-  if (mime.includes("wordprocessingml") || n.endsWith(".docx")) return "docx";
-  if (mime.includes("spreadsheetml") || n.endsWith(".xlsx") || n.endsWith(".xlsm")) return "xlsx";
-  if (mime === "text/csv" || n.endsWith(".csv")) return "csv";
-  if (mime.startsWith("image/")) return "imbasan";
-  return "lain";
 }
 
 /* --------------------------------------------------------------------- PDF */
@@ -191,6 +181,12 @@ function bacaCsv(teksMentah: string): Dokumen {
   return { jenis: "csv", teks: teksMentah.trim(), grid, amaran: [] };
 }
 
+function bacaTeksBiasa(teksMentah: string): Dokumen {
+  const teks = teksMentah.trim();
+  const baris = teks.split(/\r?\n/).filter((b) => b.trim() !== "").map((b) => [b.trim()]);
+  return { jenis: "teks", teks, grid: baris.length ? [baris] : [], amaran: [] };
+}
+
 /** Pecah satu baris CSV, menghormati petikan berganda. */
 function pecahBarisCsv(baris: string): string[] {
   const sel: string[] = [];
@@ -213,7 +209,7 @@ function pecahBarisCsv(baris: string): string[] {
 /* ------------------------------------------------------------------- utama */
 
 export async function bacaDokumen(fail: File): Promise<Dokumen> {
-  const jenis = jenisFail(fail.name, fail.type);
+  const jenis = jenisDokumen(fail.name, fail.type);
 
   if (jenis === "imbasan") {
     return {
@@ -234,5 +230,6 @@ export async function bacaDokumen(fail: File): Promise<Dokumen> {
   if (jenis === "pdf") return bacaPdf(buf);
   if (jenis === "docx") return bacaDocx(buf);
   if (jenis === "xlsx") return bacaXlsx(buf);
-  return bacaCsv(new TextDecoder().decode(buf));
+  const teks = new TextDecoder().decode(buf);
+  return jenis === "teks" ? bacaTeksBiasa(teks) : bacaCsv(teks);
 }

@@ -1,11 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { bacaMuridPukal, type HasilPukalMurid } from "@/lib/pukal-murid";
+import { bacaMuridPukal, bacaTeksMuridPukal, type HasilPukalMurid } from "@/lib/pukal-murid";
 import { importMuridKelas } from "@/lib/import-murid";
 import { failKeMuatan } from "@/data/fail-base64";
 import { semakSaiz } from "@/data/had-fail";
-import { ciptaPembacaImbasan, failTeksOcr, type PembacaImbasan } from "@/data/ocr-pelayar";
+import { ciptaPembacaImbasan, type PembacaImbasan } from "@/data/ocr-pelayar";
 import PilihCari from "@/components/PilihCari";
 
 /**
@@ -118,8 +118,10 @@ export default function PukalMurid({ semuaKelas }: { semuaKelas: string[] }) {
               setNota({ ok: true, teks: `${nama}: ${teks}` }),
             );
             if (!teksOcr) throw new Error("OCR selesai tetapi tiada teks dapat dikenal pasti.");
-            r = await bacaMuridPukal(await failKeMuatan(failTeksOcr(fail, teksOcr)));
-            r.cara = "OCR pada peranti";
+            // Hantar TEKS kecil terus. Laluan lama membungkusnya sebagai
+            // `.ocr.txt`, tetapi pembaca fail tidak mengenali TXT lalu
+            // setiap PDF dalam ZIP dilaporkan gagal selepas OCR 100%.
+            r = await bacaTeksMuridPukal(fail.name, teksOcr);
           }
           keputusan.push({
             ...r, kunci, pilih: false, kelasPilih: r.kelas ?? "",

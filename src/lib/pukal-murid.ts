@@ -46,6 +46,60 @@ export interface HasilPukalMurid {
   amaran?: string[];
 }
 
+/** Bentuk keputusan kad daripada teks yang sudah dipilih/OCR. */
+function hasilDaripadaTeks(
+  nama: string,
+  teks: string,
+  cara: string,
+  calon: { cara: string; skor: number }[],
+): HasilPukalMurid {
+  const kelas = kesanKelas(teks, nama);
+  const { murid, ditolak, berulang } = bacaSenaraiMurid(teks);
+  const amaran: string[] = [];
+  for (const b of ditolak.slice(0, 20)) amaran.push(`Tidak difahami: "${b.slice(0, 60)}"`);
+  for (const kp of berulang) amaran.push(`No. KP ${kp} muncul lebih sekali dalam fail ini.`);
+
+  if (murid.length === 0) {
+    return {
+      nama, kelas, ok: false, cara, calon, amaran,
+      mesej: "Fail dibaca, tetapi tiada nama murid dapat difahami di dalamnya.",
+    };
+  }
+
+  const lelaki = murid.filter((m) => m.jantina === "L").length;
+  const perempuan = murid.filter((m) => m.jantina === "P").length;
+  const tanpaKp = murid.filter((m) => !m.no_kp).length;
+  return {
+    nama, kelas, ok: true, murid, teks, cara, calon, amaran,
+    mesej:
+      `${murid.length} murid · ${lelaki} L, ${perempuan} P` +
+      (tanpaKp > 0 ? ` · ${tanpaKp} TIADA No. KP` : "") +
+      (kelas ? "" : " · kelas tidak dikesan — pilih sendiri"),
+  };
+}
+
+/**
+ * Terima teks OCR terus daripada PWA. Jangan bungkus sebagai `.ocr.txt`,
+ * kod base64, hantar, kemudian baca fail itu semula — itulah jurang yang
+ * menjadikan import solo berjaya tetapi ZIP gagal.
+ */
+export async function bacaTeksMuridPukal(nama: string, teks: string): Promise<HasilPukalMurid> {
+  try {
+    await pastikanBoleh("urus_guru_kelas");
+  } catch {
+    return { nama, kelas: null, ok: false, mesej: "Tiada kebenaran." };
+  }
+  const pilih = pilihBacaan([{ cara: "OCR pada peranti", teks }]);
+  if (!pilih || pilih.skor === 0) {
+    return {
+      nama, kelas: kesanKelas(teks, nama), ok: false,
+      calon: pilih?.semua,
+      mesej: "OCR selesai tetapi tiada pasangan nama dan No. KP sah dapat dikenal pasti.",
+    };
+  }
+  return hasilDaripadaTeks(nama, pilih.teks, pilih.cara, pilih.semua);
+}
+
 export async function bacaMuridPukal(muatan: MuatanFail): Promise<HasilPukalMurid> {
   const nama = muatan?.nama ?? "(fail)";
   try {
@@ -75,38 +129,7 @@ export async function bacaMuridPukal(muatan: MuatanFail): Promise<HasilPukalMuri
 
     // Kelas dikesan dari teks yang MENANG, bukan dari bacaan pertama —
     // bacaan yang tersasar juga menyebut nama kelas yang tersasar.
-    const kelas = kesanKelas(pilih.teks, nama);
-    const { murid, ditolak, berulang } = bacaSenaraiMurid(pilih.teks);
-
-    const amaran: string[] = [];
-    for (const b of ditolak.slice(0, 20)) amaran.push(`Tidak difahami: "${b.slice(0, 60)}"`);
-    for (const kp of berulang) amaran.push(`No. KP ${kp} muncul lebih sekali dalam fail ini.`);
-
-    if (murid.length === 0) {
-      return {
-        nama, kelas, ok: false, cara: pilih.cara, calon: pilih.semua, amaran,
-        mesej: "Fail dibaca, tetapi tiada nama murid dapat difahami di dalamnya.",
-      };
-    }
-
-    const lelaki = murid.filter((m) => m.jantina === "L").length;
-    const perempuan = murid.filter((m) => m.jantina === "P").length;
-    const tanpaKp = murid.filter((m) => !m.no_kp).length;
-
-    return {
-      nama,
-      kelas,
-      ok: true,
-      murid,
-      teks: pilih.teks,
-      cara: pilih.cara,
-      calon: pilih.semua,
-      amaran,
-      mesej:
-        `${murid.length} murid · ${lelaki} L, ${perempuan} P` +
-        (tanpaKp > 0 ? ` · ${tanpaKp} TIADA No. KP` : "") +
-        (kelas ? "" : " · kelas tidak dikesan — pilih sendiri"),
-    };
+    return hasilDaripadaTeks(nama, pilih.teks, pilih.cara, pilih.semua);
   } catch (e) {
     return {
       nama, kelas: null, ok: false,
