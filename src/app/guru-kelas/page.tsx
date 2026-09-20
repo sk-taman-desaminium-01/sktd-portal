@@ -3,6 +3,7 @@ import { pengguna } from "@/lib/akses";
 import { kelasBolehSunting } from "@/lib/guru-kelas";
 import { sayaBertugas } from "@/lib/tugasan";
 import { kelasBerisi, sesiSemasa } from "@/lib/pbd";
+import PanelMuridKelas, { type KelasGuru } from "./PanelMuridKelas";
 
 export const metadata = { title: "Guru Kelas" };
 
@@ -41,10 +42,13 @@ export default async function GuruKelasHub() {
     : kelasSendiri ?? [];
   const bolehRmt = guruRmt || kelasSendiri === null || (kelasSendiri?.length ?? 0) > 0;
 
-  const bilMurid = (label: string) => {
-    const cari = isiKelas.find((k) => `${k.tahun} ${k.kelas}` === label);
-    return cari?.bil ?? 0;
-  };
+  const kelasUrus: KelasGuru[] = kelasDipilih.map((label) => {
+    const sedia = isiKelas.find((k) => `${k.tahun} ${k.kelas}` === label);
+    if (sedia) return { label, tahun: sedia.tahun, kelas: sedia.kelas, bil: sedia.bil };
+    if (/^PPKI\s+/i.test(label)) return { label, tahun: 0, kelas: label.toUpperCase(), bil: 0 };
+    const [t, ...nama] = label.split(" ");
+    return { label, tahun: Number(t), kelas: nama.join(" ").toUpperCase(), bil: 0 };
+  });
 
   return (
     <main className="mx-auto max-w-3xl px-5 py-10">
@@ -58,16 +62,7 @@ export default async function GuruKelasHub() {
         <p className="mt-6 rounded-xl border border-garis bg-white p-5 text-sm text-slate-500">
           Anda belum ditugaskan sebagai guru kelas.
         </p>
-      ) : (
-        <ul className="mt-6 space-y-2">
-          {kelasDipilih.map((label) => (
-            <li key={label} className="rounded-xl border border-garis bg-white p-4">
-              <p className="font-semibold text-navy-800">{label}</p>
-              <p className="text-xs text-slate-500">{bilMurid(label)} murid berdaftar</p>
-            </li>
-          ))}
-        </ul>
-      )}
+      ) : <PanelMuridKelas kelasGuru={kelasUrus} />}
 
       <div className="mt-8 grid gap-3 sm:grid-cols-2">
         <Kad href="/pbd" nama="Nilai & Ulasan PBD" nota="Isi pukal untuk kelas anda." />
