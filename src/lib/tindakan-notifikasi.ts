@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { pengguna } from "./akses";
 import { untukSaya, bilangBelumBaca, tandaDibaca, padamNotifikasi, kosongkan } from "./notifikasi";
-import { simpanLanggananPush, buangLanggananPush } from "./push";
+import { simpanLanggananPush, buangLanggananPush, hantarPush } from "./push";
 import type { Notifikasi } from "@/data/notifikasi";
 
 export interface HasilNotifikasi {
@@ -97,15 +97,43 @@ export async function daftarPush(
   if (!saya?.emel) return { ok: false, mesej: "Tiada kebenaran." };
   try {
     await simpanLanggananPush(saya.emel, langganan);
+    const uji = await hantarPush([saya.emel], {
+      tajuk: "Notifikasi Portal SKTD aktif",
+      teks: "Peranti ini berjaya menerima pemberitahuan sistem.",
+      pautan: "/notifikasi",
+    });
+    if (!uji.dikonfigur) {
+      return { ok: false, mesej: "Peranti disimpan tetapi kunci penghantaran pelayan belum lengkap." };
+    }
+    if (uji.berjaya === 0) {
+      return { ok: false, mesej: "Peranti disimpan tetapi pemberitahuan ujian gagal dihantar. Cuba hidupkan semula." };
+    }
     return {
       ok: true,
-      mesej: "Peranti ini akan menerima pemberitahuan walaupun portal ditutup.",
+      mesej: "Aktif — pemberitahuan ujian sudah dihantar ke peranti anda.",
     };
   } catch (e) {
     if (belumPasang(e)) {
       return { ok: false, mesej: "Notifikasi belum dipasang. Admin perlu menjalankan SQLnya dahulu." };
     }
     return { ok: false, mesej: "Peranti ini gagal didaftarkan." };
+  }
+}
+
+export async function ujiPushTindakan(): Promise<{ ok: boolean; mesej: string }> {
+  const saya = await pengguna();
+  if (!saya?.emel) return { ok: false, mesej: "Tiada kebenaran." };
+  try {
+    const hasil = await hantarPush([saya.emel], {
+      tajuk: "Ujian Notifikasi Portal SKTD",
+      teks: "Jika mesej ini muncul, pemberitahuan telefon dan komputer anda berfungsi.",
+      pautan: "/notifikasi",
+    });
+    if (!hasil.dikonfigur) return { ok: false, mesej: "Kunci penghantaran pelayan belum lengkap." };
+    if (hasil.berjaya === 0) return { ok: false, mesej: "Tiada peranti aktif berjaya menerima ujian. Hidupkan semula pemberitahuan." };
+    return { ok: true, mesej: `Ujian dihantar ke ${hasil.berjaya} peranti.` };
+  } catch {
+    return { ok: false, mesej: "Pemberitahuan ujian gagal dihantar." };
   }
 }
 

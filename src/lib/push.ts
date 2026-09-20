@@ -1,4 +1,5 @@
 import "server-only";
+import webpush from "web-push";
 import { klienTulis } from "./supabase-pelayan";
 
 /**
@@ -19,9 +20,22 @@ import { klienTulis } from "./supabase-pelayan";
  */
 
 export interface Langganan {
+  emel?: string;
   endpoint: string;
   p256dh: string;
   auth: string;
+}
+
+export interface MuatanPush {
+  tajuk: string;
+  teks: string;
+  pautan?: string | null;
+}
+
+export interface HasilPush {
+  dikonfigur: boolean;
+  berjaya: number;
+  gagal: number;
 }
 
 export async function simpanLanggananPush(emel: string, l: Langganan): Promise<void> {
@@ -52,7 +66,7 @@ export async function langgananUntuk(emel: string[]): Promise<Langganan[]> {
   const db = klienTulis();
   const senarai = emel.map((e) => `"${e.toLowerCase()}"`).join(",");
   return (await db.minta(
-    `push_langganan?select=endpoint,p256dh,auth&emel=in.(${senarai})`,
+    `push_langganan?select=emel,endpoint,p256dh,auth&emel=in.(${senarai})`,
   )) as Langganan[];
 }
 
@@ -61,4 +75,60 @@ export function pushDikonfigur(): boolean {
     !!process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY &&
     !!process.env.VAPID_PRIVATE_KEY
   );
+}
+
+function pautanPortal(pautan?: string | null): string {
+  if (!pautan) return "/portal/notifikasi";
+  if (/^https?:\/\//i.test(pautan) || pautan.startsWith("/portal/")) return pautan;
+  return `/portal${pautan.startsWith("/") ? pautan : `/${pautan}`}`;
+}
+
+async function buangLanggananTamat(endpoint: string): Promise<void> {
+  await klienTulis().minta(`push_langganan?endpoint=eq.${encodeURIComponent(endpoint)}`, {
+    method: "DELETE", headers: { Prefer: "return=minimal" },
+  });
+}
+
+/**
+ * Hantar pemberitahuan sistem operasi kepada setiap peranti yang dilanggan.
+ * Dipanggil dari `after()` bersama notifikasi loceng, jadi rangkaian Google,
+ * Apple atau Mozilla tidak menahan respons butang pengguna.
+ */
+export async function hantarPush(emel: string[], muatan: MuatanPush): Promise<HasilPush> {
+  const awam = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
+  const rahsia = process.env.VAPID_PRIVATE_KEY;
+  if (!awam || !rahsia) return { dikonfigur: false, berjaya: 0, gagal: 0 };
+  if (emel.length === 0) return { dikonfigur: true, berjaya: 0, gagal: 0 };
+
+  webpush.setVapidDetails(
+    process.env.VAPID_SUBJECT || "mailto:admin@sktd.edu.my",
+    awam,
+    rahsia,
+  );
+  const langganan = await langgananUntuk(emel);
+  const payload = JSON.stringify({
+    tajuk: muatan.tajuk.slice(0, 120),
+    teks: muatan.teks.slice(0, 240),
+    pautan: pautanPortal(muatan.pautan),
+  });
+
+  const keputusan = await Promise.all(langganan.map(async (l) => {
+    try {
+      await webpush.sendNotification({
+        endpoint: l.endpoint,
+        keys: { p256dh: l.p256dh, auth: l.auth },
+      }, payload, { TTL: 300, urgency: "normal" });
+      return true;
+    } catch (e) {
+      const status = (e as { statusCode?: number }).statusCode;
+      if (status === 404 || status === 410) {
+        await buangLanggananTamat(l.endpoint).catch(() => {});
+        return false;
+      }
+      console.error("[push] penghantaran gagal", status ?? "tanpa-status");
+      return false;
+    }
+  }));
+  const berjaya = keputusan.filter(Boolean).length;
+  return { dikonfigur: true, berjaya, gagal: keputusan.length - berjaya };
 }

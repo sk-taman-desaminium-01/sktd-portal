@@ -4,6 +4,7 @@ import { after } from "next/server";
 import { klienTulis } from "./supabase-pelayan";
 import { penerimaBersih, type JenisNotifikasi, type Notifikasi } from "@/data/notifikasi";
 import { tahunSesiAktif } from "./sesi-aktif";
+import { hantarPush } from "./push";
 
 export type { Notifikasi, JenisNotifikasi };
 
@@ -104,6 +105,11 @@ async function hantarSekarang(h: Hantaran): Promise<boolean> {
         });
       } else throw e;
     }
+    await hantarPush(untuk, {
+      tajuk: h.tajuk,
+      teks: h.teks,
+      pautan: h.pautan,
+    });
     return true;
   } catch (e) {
     console.error("[notifikasi] gagal menghantar", h.jenis, h.tajuk, e);
