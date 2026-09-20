@@ -4,11 +4,11 @@ import { revalidatePath } from "next/cache";
 import { pengguna, pastikanBoleh, bolehBuat } from "./akses";
 import { klienTulis } from "./supabase-pelayan";
 import { hantar } from "./notifikasi";
-import { emelGuruKelas } from "./guru-kelas";
-import { namaGuruKelasSemua } from "./guru-kelas";
+import { kelasBolehSunting, namaGuruKelasSemua } from "./guru-kelas";
 import { belumDipasang } from "./db-belum-sedia";
 import { senaraiPentadbirUntukSemua } from "./pentadbir";
 import { SEKOLAH } from "@/data/sekolah";
+import { bacaSemua } from "./baca-semua";
 
 /**
  * Borang Sekolah — surat rasmi ringkas & Borang Kebenaran Gambar
@@ -234,9 +234,8 @@ export async function hantarSuratGambar(input: {
   }
 
   // Guru kelas murid ini diberitahu keputusan (permintaan A.4).
-  const emelGk = await emelGuruKelas(muridKelas).catch(() => [] as string[]);
   await hantar({
-    penerima: emelGk, jenis: "borang",
+    penerima: [], tugasan: [{ peranan: "guru_kelas", skop: muridKelas }], jenis: "borang",
     tajuk: "Kebenaran Gambar direkod",
     teks: `${muridNama} (${muridKelas}): ibu bapa ${input.bersetuju ? "BERSETUJU" : "TIDAK BERSETUJU"} gambar diambil.`,
     pautan: "/borang/urus", oleh: saya.emel,
@@ -253,10 +252,41 @@ export async function senaraiSuratSaya(): Promise<{ belumSedia: boolean; senarai
   const db = klienTulis();
   try {
     const lihatSemua = await bolehBuat("lihat_data_murid");
-    const senarai = (await db.minta(
+    const dibaca = (await db.minta(
       `pbd_surat?select=id,jenis,status,tajuk,rujukan_kami,pemohon_nama,pemohon_emel,tandatangan_url,data,dicipta` +
         `${lihatSemua ? "" : `&pemohon_emel=eq.${encodeURIComponent(saya.emel)}`}&order=dicipta.desc&limit=${lihatSemua ? 300 : 100}`,
     )) as BarisSurat[];
+    // Borang awam dihantar oleh ibu bapa. Walaupun emel guru kelas disimpan
+    // sebagai pemilik teknikal, ia hanya muncul pada kad Guru Kelas dan tidak
+    // boleh disalahanggap sebagai hantaran guru tersebut.
+    const senarai = lihatSemua
+      ? dibaca
+      : dibaca.filter((b) => b.jenis !== "gambar" || (b.data as DataSuratGambar).sumber !== "awam");
+    return { belumSedia: false, senarai };
+  } catch (e) {
+    if (belumDipasang(e, "pbd_surat")) return { belumSedia: true, senarai: [] };
+    throw e;
+  }
+}
+
+/** Paparan baca sahaja pada kad Guru Kelas: hanya Kebenaran Gambar kelas sendiri. */
+export async function senaraiKebenaranGambarKelas(
+  kelasDiminta: string[],
+): Promise<{ belumSedia: boolean; senarai: BarisSurat[] }> {
+  const skop = await kelasBolehSunting();
+  const diminta = new Set(kelasDiminta.map((k) => k.trim().toUpperCase()).filter(Boolean));
+  const kelas = skop === null
+    ? null
+    : new Set(skop.map((k) => k.toUpperCase()).filter((k) => diminta.has(k)));
+  if (kelas?.size === 0) return { belumSedia: false, senarai: [] };
+  try {
+    const semua = await bacaSemua<BarisSurat>(
+      "pbd_surat?select=id,jenis,status,tajuk,rujukan_kami,pemohon_nama,pemohon_emel,tandatangan_url,data,dicipta" +
+        "&jenis=eq.gambar&order=dicipta.desc,id.asc",
+    );
+    const senarai = kelas === null
+      ? semua
+      : semua.filter((b) => kelas.has((b.data as DataSuratGambar).muridKelas?.trim().toUpperCase()));
     return { belumSedia: false, senarai };
   } catch (e) {
     if (belumDipasang(e, "pbd_surat")) return { belumSedia: true, senarai: [] };

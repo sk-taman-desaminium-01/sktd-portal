@@ -13,19 +13,20 @@ import { SEKOLAH } from "@/data/sekolah";
 const HARI_INI = new Date().toISOString().slice(0, 10);
 
 export default function PanelDisiplin({
-  tahunSesi, kelas, cadangan, boleh, senarai, berulang,
+  tahunSesi, kelas, cadangan, boleh, urusSemua, senarai, berulang,
 }: {
   tahunSesi: number;
   kelas: string[];
   cadangan: { nama: string; kelas: string }[];
   boleh: boolean;
+  urusSemua: boolean;
   senarai: BarisDisiplin[];
   berulang: string[];
 }) {
   return (
     <div className="mt-6 space-y-10">
       <BorangRekod tahunSesi={tahunSesi} kelas={kelas} cadangan={cadangan} />
-      {boleh && <SenaraiPenuh key={senarai.map((b) => `${b.id}:${b.tarikh}:${b.kesalahan}`).join("|")} senarai={senarai} berulang={berulang} />}
+      {boleh && <SenaraiPenuh key={senarai.map((b) => `${b.id}:${b.tarikh}:${b.kesalahan}`).join("|")} senarai={senarai} berulang={berulang} urusSemua={urusSemua} />}
     </div>
   );
 }
@@ -108,7 +109,7 @@ function BorangRekod({ tahunSesi, kelas, cadangan }: {
   );
 }
 
-function SenaraiPenuh({ senarai, berulang }: { senarai: BarisDisiplin[]; berulang: string[] }) {
+function SenaraiPenuh({ senarai, berulang, urusSemua }: { senarai: BarisDisiplin[]; berulang: string[]; urusSemua: boolean }) {
   const [data, setData] = useState(senarai);
   const [rujukan, setRujukan] = useState<Record<string, string>>({});
   const [cetak, setCetak] = useState(false);
@@ -124,7 +125,7 @@ function SenaraiPenuh({ senarai, berulang }: { senarai: BarisDisiplin[]; berulan
     mulaCetak("disiplin-cetak", "Laporan Lembaga Disiplin");
   }
 
-  const untukLembaga = useMemo(() => data.filter((d) => d.laporan_lembaga), [data]);
+  const untukLembaga = useMemo(() => urusSemua ? data.filter((d) => d.laporan_lembaga) : [], [data, urusSemua]);
 
   async function tanda(id: string, nilai: boolean) {
     const r = await tandaLaporanLembaga(id, nilai, rujukan[id]);
@@ -161,7 +162,7 @@ function SenaraiPenuh({ senarai, berulang }: { senarai: BarisDisiplin[]; berulan
   return (
     <section className="border-t border-garis pt-8">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 className="text-lg font-bold text-navy-800">Senarai Rekod ({data.length})</h2>
+        <h2 className="text-lg font-bold text-navy-800">{urusSemua ? "Semua Rekod" : "Rekod Saya"} ({data.length})</h2>
         {untukLembaga.length > 0 && (
           <button type="button" onClick={cetakLaporan}
             className="min-h-11 touch-manipulation px-1 text-xs font-semibold text-navy-700 underline">
@@ -212,6 +213,7 @@ function SenaraiPenuh({ senarai, berulang }: { senarai: BarisDisiplin[]; berulan
             )}
 
             <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-garis pt-2">
+              {urusSemua && <>
               <label className="flex items-center gap-1.5 text-xs">
                 <input type="checkbox" checked={b.laporan_lembaga} onChange={(e) => tanda(b.id, e.target.checked)} />
                 Laporan Lembaga Disiplin
@@ -222,6 +224,7 @@ function SenaraiPenuh({ senarai, berulang }: { senarai: BarisDisiplin[]; berulan
                 onBlur={() => b.laporan_lembaga && tanda(b.id, true)}
                 className="min-w-0 flex-1 rounded-lg border border-garis px-2 py-1 text-xs"
               />
+              </>}
               <span className="ml-auto flex gap-2">
                 <button type="button" disabled={sibuk === b.id} onClick={() => mulaSunting(b)} className="min-h-11 touch-manipulation px-1 text-xs font-semibold text-navy-700 underline disabled:opacity-50">Sunting</button>
                 <button type="button" disabled={sibuk === b.id} onClick={() => void padam(b)} className="min-h-11 touch-manipulation px-1 text-xs font-semibold text-red-600 underline disabled:opacity-50">Padam</button>
