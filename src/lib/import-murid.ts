@@ -203,8 +203,12 @@ async function simpanMuridKelasTerus(
   // setiap murid. Ini ketara apabila satu ZIP mengandungi semua 57 kelas.
   for (let i = 0; i < baharuDenganKp.length; i += 100) {
     const keping = baharuDenganKp.slice(i, i + 100);
-    const cipta = (await db.minta("pbd_murid", {
+    const cipta = (await db.minta("pbd_murid?on_conflict=no_kp", {
       method: "POST",
+      // Dua pentadbir boleh mengimport kelas yang sama serentak. Orang yang
+      // tiba kemudian mengabaikan No. KP yang baru sahaja dicipta oleh orang
+      // pertama, kemudian membacanya semula di bawah.
+      headers: { Prefer: "resolution=ignore-duplicates,return=representation" },
       body: JSON.stringify(keping.map(({ m }) => ({
         no_kp: m.no_kp,
         nama: m.nama,
@@ -212,6 +216,16 @@ async function simpanMuridKelasTerus(
       }))),
     })) as { id: string; no_kp: string }[];
     for (const baris of cipta) padanan.ikutKp.set(baris.no_kp, baris.id);
+
+    const belum = keping.map(({ m }) => m.no_kp).filter((kp): kp is string =>
+      !!kp && !padanan.ikutKp.has(kp));
+    if (belum.length) {
+      const senarai = belum.map((kp) => `"${kp}"`).join(",");
+      const wujud = (await db.minta(
+        `pbd_murid?select=id,no_kp&no_kp=in.(${senarai})`,
+      )) as { id: string; no_kp: string }[];
+      for (const baris of wujud) padanan.ikutKp.set(baris.no_kp, baris.id);
+    }
   }
 
   for (let indeks = 0; indeks < murid.length; indeks++) {
