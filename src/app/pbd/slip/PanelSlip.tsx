@@ -5,7 +5,7 @@ import MuatTurun, { barisCsv, turunkanTeks } from "@/components/MuatTurun";
 import { mulaCetak } from "@/components/cetak-mudah-alih";
 import { simpanUlasanMurid, type BarisSlip } from "@/lib/tindakan-pbd";
 import { namaSubjek } from "@/data/subjek";
-import { TAHAP, huraianTahap } from "@/data/tahap";
+import { TAHAP } from "@/data/tahap";
 
 /**
  * Slip PBD — apa yang guru kelas semak, dan apa yang ibu bapa terima.
@@ -215,7 +215,6 @@ export default function PanelSlip({
                 <tr>
                   <th className="border border-black p-1 text-left">Mata Pelajaran</th>
                   <th className="w-16 border border-black p-1 text-center">TP</th>
-                  <th className="border border-black p-1 text-left">Tahap Penguasaan</th>
                   <th className="w-16 border border-black p-1 text-center">Sumatif</th>
                 </tr>
               </thead>
@@ -226,7 +225,6 @@ export default function PanelSlip({
                     <td className="border border-black p-1 text-center font-bold">
                       {b.nilai[s]?.tp ?? "—"}
                     </td>
-                    <td className="border border-black p-1">{huraianTahap(b.nilai[s]?.tp)}</td>
                     <td className="border border-black p-1 text-center">
                       {b.nilai[s]?.sumatif ?? "—"}
                     </td>
