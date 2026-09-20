@@ -17,7 +17,7 @@ import { leraiTakwim } from "./takwim";
 import {
   sesiGrid, tarikhCuti, perluKelulusan, gabungJulat, type SesiGrid,
 } from "@/data/grid-bilik";
-import { hantar, emelIkutPeranan } from "./notifikasi";
+import { hantar } from "./notifikasi";
 import { simpanPermohonanPukal, penyeliaUnit } from "./inventori";
 import {
   senaraiTetap, semuaTetap, tambahTetapPukal, padamTetap,
@@ -303,8 +303,9 @@ export async function tempahBanyakTindakan(data: {
       }
     }
 
-    void hantar({
-      penerima: await emelIkutPeranan(["admin", "pentadbir"]),
+    await hantar({
+      penerima: [],
+      peranan: ["unit_ict"],
       jenis: "tempahan",
       tajuk: menunggu ? "Tempahan hari cuti MENUNGGU kelulusan" : "Bilik ditempah",
       teks:
@@ -372,7 +373,7 @@ export async function putuskanTempahanTindakan(
 
     await putuskanTempahan(id, status);
 
-    void hantar({
+    await hantar({
       penerima: [t.oleh],
       jenis: "tempahan",
       tajuk: status === "lulus" ? "Tempahan hari cuti DILULUSKAN" : "Tempahan hari cuti DITOLAK",

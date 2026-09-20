@@ -8,6 +8,7 @@ import { pengguna, bolehBuat } from "./akses";
 import { klienTulis } from "./supabase-pelayan";
 import { sayaBertugas } from "./tugasan";
 import { belumDipasang } from "./db-belum-sedia";
+import { hantar } from "./notifikasi";
 
 /**
  * Disiplin & Sahsiah (permintaan pengguna F).
@@ -99,6 +100,14 @@ export async function hantarDisiplin(input: {
     return { ok: false, mesej: e instanceof Error ? e.message : "Gagal merekod." };
   }
 
+  await hantar({
+    penerima: [],
+    tugasan: [{ peranan: "guru_disiplin" }, { peranan: "guru_kelas", skop: kelas }],
+    jenis: "pbd",
+    tajuk: `Rekod disiplin · ${kelas}`,
+    teks: `${saya.nama ?? saya.emel} merekod kes ${murid_nama}: ${kesalahan}.`,
+    pautan: "/disiplin", oleh: saya.emel,
+  });
   revalidatePath("/disiplin");
   return { ok: true, mesej: "Rekod disimpan." };
 }

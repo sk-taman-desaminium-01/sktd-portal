@@ -6,6 +6,7 @@ import { revalidatePath } from "next/cache";
 import { pengguna, bolehBuat } from "./akses";
 import { klienTulis } from "./supabase-pelayan";
 import { belumDipasang } from "./db-belum-sedia";
+import { hantar } from "./notifikasi";
 
 /**
  * Rekod Kawalan Kelas & Kehadiran (permintaan pengguna G) — kad baharu.
@@ -86,6 +87,18 @@ export async function hantarKawalanKelas(input: {
     return { ok: false, mesej: e instanceof Error ? e.message : "Gagal merekod." };
   }
 
+  await hantar({
+    penerima: [],
+    tugasan: [
+      { peranan: "guru_kelas", skop: kelas },
+      ...(input.masalah_disiplin?.trim() ? [{ peranan: "guru_disiplin" as const }] : []),
+    ],
+    jenis: "pbd",
+    tajuk: `Kawalan kelas · ${kelas}`,
+    teks: `${saya.nama ?? saya.emel} merekod ${subjek} pada ${input.tarikh}` +
+      (input.masalah_disiplin?.trim() ? " · ada catatan disiplin." : "."),
+    pautan: "/kawalan-kelas", oleh: saya.emel,
+  });
   revalidatePath("/kawalan-kelas");
   return { ok: true, mesej: "Rekod disimpan." };
 }

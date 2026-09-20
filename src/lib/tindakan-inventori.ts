@@ -97,8 +97,8 @@ export async function mohonTindakan(data: {
 
     // Penyelia unit DAN pentadbir diberitahu. Kegagalan di sini tidak
     // membatalkan permohonan yang sudah tersimpan.
-    void hantar({
-      penerima: [...(await penyeliaUnit(UNIT)), ...(await emelIkutPeranan(["admin", "pentadbir"]))],
+    await hantar({
+      penerima: [...(await penyeliaUnit(UNIT)), ...(await emelIkutPeranan(["unit_ict"]))],
       jenis: "inventori",
       tajuk: `Permohonan ${barang?.nama ?? "barang"} · ${data.kuantiti} unit`,
       teks:
@@ -144,7 +144,7 @@ export async function putuskanTindakan(
     const rekod = await putuskanPermohonan(id, status, catatan.trim() || null, emel);
     if (rekod) {
       const barang = (await senaraiBarang(UNIT, true)).find((b) => b.id === rekod.barang_id);
-      void hantar({
+      await hantar({
         penerima: [rekod.oleh],
         jenis: "inventori",
         tajuk: `Permohonan ${barang?.nama ?? "barang"} — ${NAMA_STATUS[status]}`,

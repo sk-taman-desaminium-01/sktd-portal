@@ -73,9 +73,8 @@ export async function importFailMurid(
       calon: pilih?.semua,
       mesej:
         "Tiada No. KP dikesan dalam fail ini walau dibaca " +
-        `${calon.length} cara berlainan. Kalau ia PDF hasil imbasan, teksnya ` +
-        "mungkin gambar semata-mata — tiada penghurai boleh membaca teks yang " +
-        "tidak wujud. Salin senarai itu dan tampal terus sebagai gantinya.",
+        `${calon.length} cara berlainan. Jika ia PDF hasil imbasan atau gambar, ` +
+        "portal akan menjalankan OCR automatik dan membetulkan orientasinya.",
     };
   }
 

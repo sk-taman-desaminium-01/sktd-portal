@@ -68,8 +68,8 @@ export async function bacaMuridPukal(muatan: MuatanFail): Promise<HasilPukalMuri
         calon: pilih?.semua,
         mesej:
           `Tiada No. KP dikesan walau dibaca ${calon.length} cara. ` +
-          "Kalau ia PDF imbasan, teksnya gambar semata-mata — jalankan " +
-          "scripts/ocr-senarai-murid.py di Mac dahulu, atau tampal senarai itu terus.",
+          "Jika ia PDF imbasan atau gambar, portal akan mencuba OCR automatik " +
+          "serta putaran 0°, 90°, 180° dan 270° pada peranti ini.",
       };
     }
 

@@ -5,7 +5,7 @@ import { bacaMuridPukal, type HasilPukalMurid } from "@/lib/pukal-murid";
 import { importMuridKelas } from "@/lib/import-murid";
 import { failKeMuatan } from "@/data/fail-base64";
 import { semakSaiz } from "@/data/had-fail";
-import { bacaImbasan, failTeksOcr } from "@/data/ocr-pelayar";
+import { ciptaPembacaImbasan, failTeksOcr, type PembacaImbasan } from "@/data/ocr-pelayar";
 import PilihCari from "@/components/PilihCari";
 
 /**
@@ -64,6 +64,15 @@ export default function PukalMurid({ semuaKelas }: { semuaKelas: string[] }) {
     return keluar;
   }
 
+  function jenisFail(nama: string): string {
+    if (/\.pdf$/i.test(nama)) return "application/pdf";
+    if (/\.png$/i.test(nama)) return "image/png";
+    if (/\.jpe?g$/i.test(nama)) return "image/jpeg";
+    if (/\.webp$/i.test(nama)) return "image/webp";
+    if (/\.txt$/i.test(nama)) return "text/plain";
+    return "";
+  }
+
   async function proses(borang: HTMLFormElement) {
     const fd = new FormData(borang);
     const dipilih = fd.getAll("fail").filter((f): f is File => f instanceof File && f.size > 0);
@@ -77,6 +86,7 @@ export default function PukalMurid({ semuaKelas }: { semuaKelas: string[] }) {
     setKad([]);
     setBuka(new Set());
 
+    let pembacaOcr: PembacaImbasan | null = null;
     try {
       const senarai = await kembangkan(dipilih);
       if (senarai.length === 0) {
@@ -90,7 +100,7 @@ export default function PukalMurid({ semuaKelas }: { semuaKelas: string[] }) {
         const { nama, bait } = senarai[i];
         // `bait.slice()` memberi salinan dengan bufernya sendiri — Uint8Array
         // dari unzip boleh menjadi paparan ke dalam buffer yang lebih besar.
-        const fail = new File([bait.slice().buffer as ArrayBuffer], nama);
+        const fail = new File([bait.slice().buffer as ArrayBuffer], nama, { type: jenisFail(nama) });
         const kunci = `${nama}-${i}`;
         const terlalu = semakSaiz(fail);
         if (terlalu) {
@@ -103,7 +113,8 @@ export default function PukalMurid({ semuaKelas }: { semuaKelas: string[] }) {
         try {
           let r = await bacaMuridPukal(await failKeMuatan(fail));
           if ((/\.pdf$/i.test(fail.name) || fail.type.startsWith("image/")) && !r.ok && /Tiada No\. KP|imbasan|gambar/i.test(r.mesej)) {
-            const teksOcr = await bacaImbasan(fail, (teks) =>
+            pembacaOcr ??= await ciptaPembacaImbasan();
+            const teksOcr = await pembacaOcr.baca(fail, (teks) =>
               setNota({ ok: true, teks: `${nama}: ${teks}` }),
             );
             if (!teksOcr) throw new Error("OCR selesai tetapi tiada teks dapat dikenal pasti.");
@@ -124,6 +135,7 @@ export default function PukalMurid({ semuaKelas }: { semuaKelas: string[] }) {
     } catch (e) {
       setNota({ ok: false, teks: e instanceof Error ? e.message : "Proses gagal. Cuba semula." });
     } finally {
+      await pembacaOcr?.tutup();
       setKemajuan(null);
       setSibuk(false);
       borang.reset();
@@ -255,7 +267,7 @@ export default function PukalMurid({ semuaKelas }: { semuaKelas: string[] }) {
       >
         <input
           type="file" name="fail" multiple required
-          accept=".pdf,.docx,.doc,.xlsx,.xls,.csv,.txt,.zip"
+          accept=".pdf,.docx,.doc,.xlsx,.xls,.csv,.txt,.zip,.png,.jpg,.jpeg,.webp,image/png,image/jpeg,image/webp"
           className="min-w-0 flex-1 rounded-lg border border-garis px-3 py-2.5 text-sm"
         />
         <button
@@ -267,7 +279,9 @@ export default function PukalMurid({ semuaKelas }: { semuaKelas: string[] }) {
       </form>
 
       <p className="mt-2 text-[11px] leading-relaxed text-slate-400">
-        PDF berteks boleh dibaca terus. Untuk PDF imbasan, gunakan salinan dengan pengecaman teks (OCR) atau fail Excel/TXT, kemudian semak nama dan No. KP sebelum menyimpan.
+        PDF berteks dibaca terus. PDF imbasan dan gambar menjalankan OCR automatik
+        dalam portal, termasuk fail yang mengiring atau terbalik. Satu enjin OCR
+        digunakan semula untuk seluruh ZIP supaya lebih pantas pada telefon.
       </p>
 
       {/* Bar kemajuan: tanpa ini, memproses 57 fail kelihatan seperti skrin

@@ -12,6 +12,7 @@ import {
   type Nilai,
 } from "./pbd";
 import { gerakKelas, type RancanganNaik } from "@/data/naik-tahun";
+import { hantar } from "./notifikasi";
 
 /**
  * Tindakan pelayan ePBD.
@@ -145,6 +146,13 @@ export async function simpanIsi(
     }
 
     const bil = await simpanNilai(subjek, tapis, k.emel);
+    const label = labelKelas(tahun, kelas);
+    await hantar({
+      penerima: [], tugasan: [{ peranan: "guru_kelas", skop: label }], jenis: "pbd",
+      tajuk: `ePBD dikemas kini · ${label}`,
+      teks: `${namaSubjek(subjek)} disimpan untuk ${bil} murid.`,
+      pautan: "/pbd", oleh: k.emel,
+    });
     revalidatePath("/pbd");
     return { ok: true, mesej: `${bil} murid disimpan.` };
   } catch (e) {
@@ -525,4 +533,3 @@ function ralat(e: unknown): string {
   return "Sistem gagal. Tunjukkan mesej ini kepada admin: " +
     (e instanceof Error ? `${e.name}: ${e.message}` : String(e));
 }
-

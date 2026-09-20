@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { pengguna, pastikanBoleh, bolehBuat } from "./akses";
 import { klienTulis } from "./supabase-pelayan";
-import { hantar, emelIkutPeranan } from "./notifikasi";
+import { hantar } from "./notifikasi";
 import { emelGuruKelas } from "./guru-kelas";
 import { namaGuruKelasSemua } from "./guru-kelas";
 import { belumDipasang } from "./db-belum-sedia";
@@ -178,10 +178,9 @@ export async function suntingSuratRasmi(id: string, input: {
 }
 
 async function beritahuPejabat(tajuk: string, oleh: string, olehEmel: string) {
-  const penerima = await emelIkutPeranan(PERANAN_PEJABAT).catch(() => [] as string[]);
-  if (penerima.length === 0) return;
   await hantar({
-    penerima, jenis: "surat", tajuk: "Surat rasmi baharu",
+    penerima: [], peranan: PERANAN_PEJABAT,
+    jenis: "surat", tajuk: "Surat rasmi baharu",
     teks: `${oleh} menghantar "${tajuk}" — perlu nombor rujukan kami.`,
     pautan: "/pejabat", oleh: olehEmel,
   }).catch(() => {});
@@ -236,14 +235,12 @@ export async function hantarSuratGambar(input: {
 
   // Guru kelas murid ini diberitahu keputusan (permintaan A.4).
   const emelGk = await emelGuruKelas(muridKelas).catch(() => [] as string[]);
-  if (emelGk.length > 0) {
-    await hantar({
-      penerima: emelGk, jenis: "borang",
-      tajuk: "Kebenaran Gambar direkod",
-      teks: `${muridNama} (${muridKelas}): ibu bapa ${input.bersetuju ? "BERSETUJU" : "TIDAK BERSETUJU"} gambar diambil.`,
-      pautan: "/borang/urus", oleh: saya.emel,
-    }).catch(() => {});
-  }
+  await hantar({
+    penerima: emelGk, jenis: "borang",
+    tajuk: "Kebenaran Gambar direkod",
+    teks: `${muridNama} (${muridKelas}): ibu bapa ${input.bersetuju ? "BERSETUJU" : "TIDAK BERSETUJU"} gambar diambil.`,
+    pautan: "/borang/urus", oleh: saya.emel,
+  }).catch(() => {});
 
   revalidatePath("/borang/urus");
   return { ok: true, id, mesej: "Direkod." };

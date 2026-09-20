@@ -4,7 +4,7 @@ import { pastikanBoleh } from "./akses";
 import { revalidatePath } from "next/cache";
 import { klienTulis } from "./supabase-pelayan";
 import { binaSemulaLamanAwam } from "./bina-semula";
-import { hantar, emelSemuaWarga } from "./notifikasi";
+import { hantar } from "./notifikasi";
 
 export type Keutamaan = "segera" | "utama" | "biasa";
 export type Status = "draf" | "terbit";
@@ -167,8 +167,9 @@ export async function simpanPos(data: FormData): Promise<HasilSimpan> {
   // sepatutnya membunyikan loceng seluruh sekolah sekali lagi.
   const kaliPertama = status === "terbit" && !data.get("tarikh_terbit");
   if (kaliPertama) {
-    void hantar({
-      penerima: await emelSemuaWarga(),
+    await hantar({
+      penerima: [],
+      semuaWarga: true,
       jenis: "umum",
       tajuk,
       teks:

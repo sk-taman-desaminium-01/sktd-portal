@@ -7,6 +7,7 @@ import { pengguna, bolehBuat } from "./akses";
 import { klienTulis } from "./supabase-pelayan";
 import { sayaBertugas } from "./tugasan";
 import { belumDipasang } from "./db-belum-sedia";
+import { hantar } from "./notifikasi";
 import { bacaSenaraiMurid } from "./kenal-murid";
 import { kelasBolehSunting } from "./guru-kelas";
 
@@ -92,6 +93,16 @@ export async function naikRosterRmt(
     return { ok: false, mesej: e instanceof Error ? e.message : "Gagal menyimpan." };
   }
 
+  const saya = await pengguna();
+  const label = labelKelasRmt(tahun, kelas);
+  await hantar({
+    penerima: [],
+    tugasan: [{ peranan: "guru_rmt" }, { peranan: "guru_kelas", skop: label }],
+    jenis: "pbd",
+    tajuk: `Senarai RMT · ${label}`,
+    teks: `${murid.length} murid ditambah ke senarai RMT ${label}.`,
+    pautan: "/rmt", oleh: saya?.emel ?? null,
+  });
   revalidatePath("/rmt");
   return { ok: true, mesej: `${murid.length} murid ditambah ke senarai RMT.`, diproses: murid.length, ditolak };
 }
