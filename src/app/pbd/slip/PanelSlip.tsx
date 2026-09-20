@@ -254,10 +254,6 @@ export default function PanelSlip({
               </ul>
             </div>
 
-            <div className="mt-6 flex justify-between text-[10px]">
-              <span>………………………………<br />Guru Kelas</span>
-              <span>………………………………<br />Ibu Bapa / Penjaga</span>
-            </div>
           </section>
         ))}
       </div>
