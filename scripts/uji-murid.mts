@@ -8,6 +8,7 @@
 import { pilihBacaan } from "../src/data/pilih-bacaan.ts";
 import { kesanKelas } from "../src/data/kesan-kelas.ts";
 import { bacaBarisMurid, bacaSenaraiMurid, jantinaDariKp } from "../src/lib/kenal-murid.ts";
+import { jenisDokumen } from "../src/data/jenis-dokumen.ts";
 
 let lulus = 0;
 const gagal: string[] = [];
@@ -134,6 +135,12 @@ semak("kandungan didahulukan daripada nama fail",
 // TANDA BACA TIDAK PENTING: "4-DEDIKASI" dan "4  DEDIKASI" kelas yang sama.
 semak("tanda baca dinormalkan", kesanKelas("SENARAI 4-DEDIKASI", "x.pdf"), "4 DEDIKASI");
 semak("tiada kelas dikesan", kesanKelas("SENARAI MURID SEKOLAH", "eksport.pdf"), null);
+
+console.log("\n— teks sementara OCR pukal —");
+semak(".ocr.txt dikenali sebagai teks",
+  jenisDokumen("1 MATRIKS.ocr.txt", "text/plain"), "teks");
+semak("nama .txt memadai walaupun MIME kosong",
+  jenisDokumen("2 NILAM.ocr.txt", ""), "teks");
 
 console.log(`\n${lulus} lulus, ${gagal.length} gagal`);
 process.exit(gagal.length === 0 ? 0 : 1);
