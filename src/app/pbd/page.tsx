@@ -74,9 +74,9 @@ export default async function Pbd() {
         <Pilihan
           href="/pbd/guru"
           tajuk="ePBD-Guru"
-          ringkasan="Isi Tahap Penguasaan dan gred sumatif bagi subjek yang anda ajar."
-          bilangan={k.tugas.length}
-          unit="subjek"
+          ringkasan={k.penuh ? "Pilih mana-mana kelas dan subjek untuk semak atau isi." : "Isi Tahap Penguasaan dan gred sumatif bagi subjek yang anda ajar."}
+          bilangan={k.penuh ? semua.length : k.tugas.length}
+          unit={k.penuh ? "kelas (semua)" : "subjek"}
           kosong="Anda belum ditugaskan mengajar mana-mana subjek untuk sesi ini."
         />
         <Pilihan

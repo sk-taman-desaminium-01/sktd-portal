@@ -24,7 +24,7 @@ import { TAHAP, huraianTahap } from "@/data/tahap";
  */
 
 export default function PanelSlip({
-  tahun, kelas, tahunSesi, namaSekolah, baris, subjekAda,
+  tahun, kelas, tahunSesi, namaSekolah, baris, subjekAda, subjekUasa, uasaAktif,
 }: {
   tahun: number;
   kelas: string;
@@ -32,6 +32,8 @@ export default function PanelSlip({
   namaSekolah: string;
   baris: BarisSlip[];
   subjekAda: string[];
+  subjekUasa: string[];
+  uasaAktif: boolean;
 }) {
   const [data, setData] = useState(baris);
   const [sunting, setSunting] = useState<string | null>(null);
@@ -39,6 +41,7 @@ export default function PanelSlip({
 
   const label = `${tahun} ${kelas}`;
   const subjek = subjekAda.slice().sort();
+  const uasa = subjekUasa.slice().sort();
 
   async function simpanUlasan(id: string, teks: string) {
     const hasil = await simpanUlasanMurid(tahun, kelas, id, teks);
@@ -51,15 +54,15 @@ export default function PanelSlip({
 
   const turun = [
     {
-      label: "PDF (cetak)",
-      nota: "Satu slip satu halaman, sedia dipotong dan diedar.",
-      jalan: () => mulaCetak("slip-cetak", `Slip PBD ${label}`),
+      label: "PDF Slip PBD",
+      nota: "TP dan sumatif, tanpa UASA.",
+      jalan: () => mulaCetak("slip-pbd-cetak", `Slip PBD ${label}`),
     },
     {
-      label: "CSV",
-      nota: "Seluruh kelas dalam satu jadual, untuk rekod.",
+      label: "CSV PBD",
+      nota: "TP dan sumatif seluruh kelas.",
       jalan: () => {
-        const kepala = ["Nama", ...subjek.flatMap((s) => [`${s} TP`, `${s} UASA`]), "Ulasan"];
+        const kepala = ["Nama", ...subjek.flatMap((s) => [`${s} TP`, `${s} Sumatif`]), "Ulasan"];
         const isi = data.map((b) =>
           barisCsv([
             b.nama,
@@ -73,6 +76,28 @@ export default function PanelSlip({
         );
       },
     },
+    ...(uasaAktif && tahun === 6 && uasa.length > 0 ? [
+      {
+        label: "PDF Slip UASA",
+        nota: "Slip berasingan: TP dan UASA sahaja.",
+        jalan: () => mulaCetak("slip-uasa-cetak", `Slip UASA ${label}`),
+      },
+      {
+        label: "CSV UASA",
+        nota: "TP dan gred UASA A–C seluruh kelas.",
+        jalan: () => {
+          const kepala = ["Nama", ...uasa.flatMap((s) => [`${s} TP`, `${s} UASA`])];
+          const isi = data.map((b) => barisCsv([
+            b.nama,
+            ...uasa.flatMap((s) => [b.nilai[s]?.tp ?? "", b.nilai[s]?.uasa ?? ""]),
+          ]));
+          turunkanTeks(
+            `slip-uasa-${label.replace(/\s+/g, "-").toLowerCase()}-${tahunSesi}.csv`,
+            "﻿" + [barisCsv(kepala), ...isi].join("\r\n"),
+          );
+        },
+      },
+    ] : []),
   ];
 
   return (
@@ -80,8 +105,8 @@ export default function PanelSlip({
       <style>{`
         @media print {
           body * { visibility: hidden; }
-          #slip-cetak, #slip-cetak * { visibility: visible; }
-          #slip-cetak { position: absolute; inset: 0; width: 100%; }
+          #slip-pbd-cetak, #slip-pbd-cetak *, #slip-uasa-cetak, #slip-uasa-cetak * { visibility: visible; }
+          #slip-pbd-cetak, #slip-uasa-cetak { position: absolute; inset: 0; width: 100%; }
           .tiada-cetak { display: none !important; }
           .satu-slip { break-after: page; page-break-after: always; }
           .satu-slip:last-child { break-after: auto; page-break-after: auto; }
@@ -114,6 +139,11 @@ export default function PanelSlip({
           masih kosong. Slip boleh dicetak sebaik sahaja ada nilai.
         </p>
       )}
+      {uasaAktif && tahun === 6 && uasa.length === 0 && (
+        <p className="tiada-cetak mt-3 rounded-xl border border-[#e9d9ae] bg-[#fdf9f0] p-4 text-sm text-[#7a5a12]">
+          UASA Tahun 6 sedang dibuka, tetapi belum ada gred UASA. Slip UASA akan muncul selepas gred A, B atau C disimpan.
+        </p>
+      )}
 
       {/* ---------- Skrin: jadual padat untuk semakan ---------- */}
       <div className="tiada-cetak mt-5 overflow-x-auto rounded-xl border border-garis bg-white">
@@ -135,9 +165,9 @@ export default function PanelSlip({
                 <td className="p-2 font-medium text-navy-800">{b.nama}</td>
                 {subjek.map((s) => (
                   <td key={s} className="p-2 text-center">
-                    <span className="font-semibold text-navy-800">{b.nilai[s]?.tp ?? "—"}</span>
+                    <span className="font-semibold text-navy-800">TP {b.nilai[s]?.tp ?? "—"}</span>
                     {b.nilai[s]?.sumatif && (
-                      <span className="ml-1 text-xs text-slate-500">{b.nilai[s]?.sumatif}</span>
+                      <span className="ml-1 text-xs text-slate-500">· Sumatif {b.nilai[s]?.sumatif}</span>
                     )}
                   </td>
                 ))}
@@ -165,7 +195,7 @@ export default function PanelSlip({
       </div>
 
       {/* ---------- Cetak: satu slip satu halaman ---------- */}
-      <div id="slip-cetak" data-cetak-kertas="portrait" className="hidden print:block">
+      <div id="slip-pbd-cetak" data-cetak-kertas="portrait" className="hidden print:block">
         {data.map((b) => (
           <section key={b.pendaftaran_id} className="satu-slip">
             <header className="border-b-2 border-black pb-2 text-center">
@@ -186,7 +216,7 @@ export default function PanelSlip({
                   <th className="border border-black p-1 text-left">Mata Pelajaran</th>
                   <th className="w-16 border border-black p-1 text-center">TP</th>
                   <th className="border border-black p-1 text-left">Tahap Penguasaan</th>
-                  <th className="w-16 border border-black p-1 text-center">UASA</th>
+                  <th className="w-16 border border-black p-1 text-center">Sumatif</th>
                 </tr>
               </thead>
               <tbody>
@@ -233,6 +263,39 @@ export default function PanelSlip({
           </section>
         ))}
       </div>
+
+      {uasaAktif && tahun === 6 && uasa.length > 0 && (
+        <div id="slip-uasa-cetak" data-cetak-kertas="portrait" className="hidden print:block">
+          {data.map((b) => (
+            <section key={b.pendaftaran_id} className="satu-slip">
+              <header className="border-b-2 border-black pb-2 text-center">
+                <h1 className="text-sm font-bold uppercase">{namaSekolah}</h1>
+                <p className="mt-0.5 text-xs">Slip UASA Tahun 6 · Sesi {tahunSesi}</p>
+              </header>
+              <div className="mt-3 text-xs">
+                <p><b>Nama:</b> {b.nama}</p>
+                <p className="mt-0.5"><b>Kelas:</b> {label}</p>
+              </div>
+              <table className="mt-3 w-full border-collapse text-xs">
+                <thead><tr>
+                  <th className="border border-black p-1 text-left">Mata Pelajaran</th>
+                  <th className="w-20 border border-black p-1 text-center">TP</th>
+                  <th className="w-24 border border-black p-1 text-center">UASA</th>
+                </tr></thead>
+                <tbody>
+                  {uasa.map((s) => (
+                    <tr key={s}>
+                      <td className="border border-black p-1">{namaSubjek(s)}</td>
+                      <td className="border border-black p-1 text-center font-bold">{b.nilai[s]?.tp ?? "—"}</td>
+                      <td className="border border-black p-1 text-center font-bold">{b.nilai[s]?.uasa ?? "—"}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </section>
+          ))}
+        </div>
+      )}
     </>
   );
 }

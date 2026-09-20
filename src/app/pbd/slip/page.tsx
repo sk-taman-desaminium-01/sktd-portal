@@ -3,6 +3,7 @@ import { SEKOLAH } from "@/data/sekolah";
 import { slipKelas } from "@/lib/tindakan-pbd";
 import { kuasaPbd, kelasBerisi, sesiSemasa } from "@/lib/pbd";
 import PanelSlip from "./PanelSlip";
+import PemilihKelasSlip from "./PemilihKelasSlip";
 
 export const metadata = { title: "ePBD-Slip" };
 
@@ -60,6 +61,8 @@ export default async function Slip({
           namaSekolah={SEKOLAH.namaPenuh}
           baris={hasil.baris}
           subjekAda={hasil.subjekAda ?? []}
+          subjekUasa={hasil.subjekUasa ?? []}
+          uasaAktif={hasil.uasaAktif ?? false}
         />
       )}
     </main>
@@ -122,24 +125,7 @@ async function PilihKelas() {
       )}
 
       {milik.length > 0 && (
-        <ul className="mt-5 grid gap-3 sm:grid-cols-2">
-          {milik.map((x) => (
-            <li key={`${x.tahun}-${x.kelas}`}>
-              <Link
-                href={`/pbd/slip?tahun=${x.tahun}&kelas=${encodeURIComponent(x.kelas)}`}
-                className="flex h-full items-center justify-between gap-3 rounded-xl border border-garis bg-white p-4 hover:border-navy-700"
-              >
-                <span className="min-w-0">
-                  <span className="block font-semibold text-navy-800">
-                    {x.tahun} {x.kelas}
-                  </span>
-                  <span className="mt-0.5 block text-sm text-slate-500">{x.bil} murid</span>
-                </span>
-                <span aria-hidden="true" className="shrink-0 text-slate-300">→</span>
-              </Link>
-            </li>
-          ))}
-        </ul>
+        <PemilihKelasSlip kelas={milik} />
       )}
     </main>
   );

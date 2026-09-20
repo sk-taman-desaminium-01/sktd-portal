@@ -10,7 +10,7 @@ export async function GET() {
     const murid = kelas.reduce((jumlah, k) => jumlah + k.bil, 0);
     return Response.json(
       { murid, sesi: sesi?.tahun_sesi ?? null },
-      { headers: { "Cache-Control": "public, max-age=15, s-maxage=30, stale-while-revalidate=60" } },
+      { headers: { "Cache-Control": "public, max-age=300, s-maxage=600, stale-while-revalidate=1800" } },
     );
   } catch {
     return Response.json({ ralat: "Statistik belum tersedia." }, { status: 503 });

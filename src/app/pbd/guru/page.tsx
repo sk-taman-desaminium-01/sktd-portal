@@ -1,6 +1,6 @@
 import Link from "next/link";
-import { kuasaPbd, sesiSemasa, labelKelas } from "@/lib/pbd";
-import { namaSubjek } from "@/data/subjek";
+import { kuasaPbd, sesiSemasa, kelasBerisi } from "@/lib/pbd";
+import PemilihPbdGuru from "./PemilihPbdGuru";
 
 export const metadata = { title: "ePBD-Guru" };
 
@@ -28,6 +28,10 @@ export default async function PbdGuru() {
       </main>
     );
   }
+  const semuaKelas = sesi ? await kelasBerisi(sesi.tahun_sesi) : [];
+  const kelas = k.penuh
+    ? semuaKelas
+    : semuaKelas.filter((x) => k.tugas.some((t) => t.tahun === x.tahun && t.kelas === x.kelas));
 
   return (
     <main className="mx-auto max-w-4xl px-5 py-10">
@@ -47,7 +51,7 @@ export default async function PbdGuru() {
         )}
       </div>
       <p className="mt-1 text-sm text-slate-500">
-        Subjek yang anda ajar. Isi Tahap Penguasaan dan gred sumatif.
+        {k.penuh ? "Pilih mana-mana kelas dan subjek untuk semak atau isi." : "Subjek yang anda ajar. Isi Tahap Penguasaan dan gred sumatif."}
       </p>
 
       {!sesi && (
@@ -57,31 +61,12 @@ export default async function PbdGuru() {
         </p>
       )}
 
-      {k.tugas.length === 0 ? (
+      {!k.penuh && k.tugas.length === 0 ? (
         <p className="mt-6 rounded-xl border border-garis bg-white p-5 text-sm leading-relaxed text-slate-600">
           Anda belum ditugaskan mengajar mana-mana subjek untuk sesi ini.
           Pentadbir menetapkannya di skrin <b>Urus ePBD</b>.
         </p>
-      ) : (
-        <ul className="mt-5 grid gap-3 sm:grid-cols-2">
-          {k.tugas.map((t) => (
-            <li key={`${t.subjek}-${t.tahun}-${t.kelas}`}>
-              <Link
-                href={`/pbd/isi?tahun=${t.tahun}&kelas=${encodeURIComponent(t.kelas)}&subjek=${encodeURIComponent(t.subjek)}`}
-                className="flex h-full items-center justify-between gap-3 rounded-xl border border-garis bg-white p-4 hover:border-navy-700"
-              >
-                <span className="min-w-0">
-                  <span className="block font-semibold text-navy-800">{namaSubjek(t.subjek)}</span>
-                  <span className="mt-0.5 block text-sm text-slate-500">
-                    {labelKelas(t.tahun, t.kelas)}
-                  </span>
-                </span>
-                <span aria-hidden="true" className="shrink-0 text-slate-300">→</span>
-              </Link>
-            </li>
-          ))}
-        </ul>
-      )}
+      ) : <PemilihPbdGuru kelas={kelas} tugas={k.tugas} penuh={k.penuh} />}
 
       <p className="mt-8 rounded-xl border border-garis bg-navy-50 p-4 text-sm leading-relaxed text-navy-800">
         <b>Dua perkara sahaja yang masuk ke slip:</b> Tahap Penguasaan (TP 1–6)

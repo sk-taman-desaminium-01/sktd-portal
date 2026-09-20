@@ -9,7 +9,7 @@ import {
   tugaskanGuruSubjek, buangTugasanGuruSubjek, naikTahunTindakan, cubaNaikTahun,
   undoNaikTahunTindakan, senaraiSesiTindakan, jadikanSesiAktif,
   muridKelasTindakan, suntingMuridTindakan,
-  buangMuridTindakan, tukarKelasTindakan, type MuridRingkas,
+  buangMuridTindakan, tukarKelasTindakan, tetapUasaTindakan, type MuridRingkas,
 } from "@/lib/tindakan-pbd";
 import type { RancanganNaik } from "@/data/naik-tahun";
 import PilihCari from "@/components/PilihCari";
@@ -40,7 +40,7 @@ export interface Tugasan {
 }
 
 export default function PanelUrusPbd({
-  tugasanAwal, senaraiGuru, senaraiKelas, semuaKelas, tahunSesi, jumlahMurid,
+  tugasanAwal, senaraiGuru, senaraiKelas, semuaKelas, tahunSesi, jumlahMurid, uasaAktifAwal,
 }: {
   tugasanAwal: Tugasan[];
   senaraiGuru: { emel: string; nama: string }[];
@@ -49,11 +49,26 @@ export default function PanelUrusPbd({
   semuaKelas: string[];
   tahunSesi: number;
   jumlahMurid: number;
+  uasaAktifAwal: boolean;
 }) {
   /* --------------------------------------------------------------- sesi */
   const [sahNaik, setSahNaik] = useState(false);
   const [sibukSesi, setSibukSesi] = useState(false);
   const [mesejSesi, setMesejSesi] = useState<{ ok: boolean; teks: string } | null>(null);
+  const [uasaAktif, setUasaAktif] = useState(uasaAktifAwal);
+  const [sibukUasa, setSibukUasa] = useState(false);
+  const [mesejUasa, setMesejUasa] = useState<{ ok: boolean; teks: string } | null>(null);
+
+  async function togolUasa() {
+    setSibukUasa(true);
+    try {
+      const r = await tetapUasaTindakan(!uasaAktif);
+      setMesejUasa({ ok: r.ok, teks: r.mesej });
+      if (r.ok) setUasaAktif((v) => !v);
+    } finally {
+      setSibukUasa(false);
+    }
+  }
 
   const [cuba, setCuba] = useState<
     { rancangan: RancanganNaik; gerak: { label: string; bil: number }[] } | null
@@ -303,6 +318,27 @@ export default function PanelUrusPbd({
 
   return (
     <>
+      <section className="mt-6 rounded-xl border border-garis bg-white p-4">
+        <div className="flex flex-wrap items-center gap-3">
+          <span className="min-w-0 flex-1">
+            <span className="block font-bold text-navy-800">UASA Tahun 6</span>
+            <span className="block text-xs text-slate-500">Buka hanya ketika gred UASA mula diisi. Slip UASA kekal berasingan daripada slip PBD.</span>
+          </span>
+          <button
+            type="button"
+            role="switch"
+            aria-checked={uasaAktif}
+            onClick={() => void togolUasa()}
+            disabled={sibukUasa}
+            className={`relative h-8 w-14 rounded-full transition ${uasaAktif ? "bg-[#176b49]" : "bg-slate-300"}`}
+          >
+            <span className={`absolute top-1 h-6 w-6 rounded-full bg-white shadow transition ${uasaAktif ? "left-7" : "left-1"}`} />
+            <span className="sr-only">{uasaAktif ? "Tutup UASA" : "Buka UASA"}</span>
+          </button>
+        </div>
+        {mesejUasa && <div className="mt-3"><Mesej ok={mesejUasa.ok} teks={mesejUasa.teks} /></div>}
+      </section>
+
       {/* ---------------- Hujung sesi ---------------- */}
       <section className="mt-8 rounded-xl border border-garis bg-white p-5">
         <h2 className="text-base font-bold text-navy-800">Hujung sesi</h2>
@@ -748,13 +784,10 @@ function Berbilang({
     return [...ditapis, ...pilihan.filter((p) => dipilih.has(p.nilai) && !nampak.has(p.nilai))];
   }, [ditapis, pilihan, dipilih]);
 
-  return (
-    <div className="mt-4">
+  const isi = (
+    <>
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <span className="text-xs font-semibold text-slate-500">
-          {tajuk}
-          {dipilih.size > 0 && <span className="ml-1.5 text-navy-700">· {dipilih.size} dipilih</span>}
-        </span>
+        <span className="text-xs font-semibold text-slate-500">{dipilih.size} dipilih</span>
         {dipilih.size > 0 && (
           <button
             type="button"
@@ -800,6 +833,25 @@ function Berbilang({
           <li className="py-1 text-xs text-slate-400">Tiada yang sepadan.</li>
         )}
       </ul>
+    </>
+  );
+
+  if (pilihan.length > 12) {
+    return (
+      <details className="mt-4 rounded-xl border border-garis bg-white">
+        <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 px-3 py-2 text-sm font-semibold text-navy-800">
+          <span>{tajuk}</span>
+          <span className="text-xs font-normal text-slate-500">{dipilih.size ? `${dipilih.size} dipilih` : "Buka & cari"} ▾</span>
+        </summary>
+        <div className="max-h-72 overflow-y-auto border-t border-garis p-3">{isi}</div>
+      </details>
+    );
+  }
+
+  return (
+    <div className="mt-4">
+      <p className="mb-1 text-xs font-semibold text-slate-500">{tajuk}</p>
+      {isi}
     </div>
   );
 }

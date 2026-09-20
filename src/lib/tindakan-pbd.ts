@@ -10,7 +10,7 @@ import {
   simpanUlasan, ulasanKelas, bolehTulisNilai, bolehLihatKelas, labelKelas,
   tetapGuruSubjek, buangGuruSubjek, naikTahun, naikTahunKering, undoNaikTahun,
   padamSesi, tetapSesi, senaraiSesi, suntingMurid, buangPendaftaran,
-  tukarKelasMurid,
+  tukarKelasMurid, adakahUasaAktif, tetapUasaAktif,
   type Nilai,
 } from "./pbd";
 import { gerakKelas, type RancanganNaik } from "@/data/naik-tahun";
@@ -41,6 +41,7 @@ export interface BarisIsi {
   no_kp: string | null;
   tp: number | null;
   sumatif: string | null;
+  uasa: string | null;
   oleh: string | null;
 }
 
@@ -49,6 +50,7 @@ export interface HasilSenaraiIsi extends HasilPbd {
   sesiTutup?: boolean;
   bolehTulis?: boolean;
   namaSubjek?: string;
+  uasaAktif?: boolean;
   baris?: BarisIsi[];
 }
 
@@ -73,7 +75,10 @@ export async function senaraiIsi(
       };
     }
 
-    const murid = await muridKelas(sesi.tahun_sesi, tahun, kelas);
+    const [murid, uasaAktif] = await Promise.all([
+      muridKelas(sesi.tahun_sesi, tahun, kelas),
+      adakahUasaAktif(sesi.tahun_sesi, tahun),
+    ]);
     const nilai = await nilaiPendaftaran(murid.map((m) => m.pendaftaran_id), subjek);
     const peta = new Map(nilai.map((n) => [n.pendaftaran_id, n]));
 
@@ -83,6 +88,7 @@ export async function senaraiIsi(
       sesiTutup: sesi.status === "tutup",
       bolehTulis: tulis && sesi.status !== "tutup",
       namaSubjek: namaSubjek(subjek),
+      uasaAktif,
       baris: murid.map((m) => ({
         pendaftaran_id: m.pendaftaran_id,
         nama: m.nama,
@@ -96,6 +102,7 @@ export async function senaraiIsi(
         no_kp: null,
         tp: peta.get(m.pendaftaran_id)?.tp ?? null,
         sumatif: peta.get(m.pendaftaran_id)?.sumatif ?? null,
+        uasa: peta.get(m.pendaftaran_id)?.uasa ?? null,
         oleh: peta.get(m.pendaftaran_id)?.oleh ?? null,
       })),
       mesej: `${murid.length} murid.`,
@@ -108,7 +115,7 @@ export async function senaraiIsi(
 /** Simpan TP dan sumatif bagi satu subjek. */
 export async function simpanIsi(
   tahun: number, kelas: string, subjek: string,
-  masuk: { pendaftaran_id: string; tp: number | null; sumatif: string | null }[],
+  masuk: { pendaftaran_id: string; tp: number | null; sumatif: string | null; uasa?: string | null }[],
 ): Promise<HasilPbd> {
   try {
     const k = await kuasaPbd();
@@ -128,6 +135,10 @@ export async function simpanIsi(
         mesej: `Anda tidak ditugaskan mengajar ${namaSubjek(subjek)} bagi ${labelKelas(tahun, kelas)}.`,
       };
     }
+    const uasaAktif = await adakahUasaAktif(sesi.tahun_sesi, tahun);
+    if (!uasaAktif && masuk.some((m) => m.uasa !== undefined)) {
+      return { ok: false, mesej: "Pengisian UASA Tahun 6 belum dibuka oleh pentadbir." };
+    }
 
     // Murid yang dihantar mesti BENAR-BENAR dalam kelas ini. Tanpa semakan
     // ini, permintaan yang direka tangan boleh menulis TP kepada murid
@@ -141,6 +152,7 @@ export async function simpanIsi(
 
     const tapis = masuk.filter((m) => {
       if (m.tp !== null && (!Number.isInteger(m.tp) || m.tp < 1 || m.tp > 6)) return false;
+      if (m.uasa != null && !["A", "B", "C"].includes(m.uasa)) return false;
       return true;
     });
     if (tapis.length !== masuk.length) {
@@ -167,7 +179,7 @@ export async function simpanIsi(
 export interface BarisSlip {
   pendaftaran_id: string;
   nama: string;
-  nilai: Record<string, { tp: number | null; sumatif: string | null }>;
+  nilai: Record<string, { tp: number | null; sumatif: string | null; uasa: string | null }>;
   ulasan: string;
 }
 
@@ -175,6 +187,8 @@ export interface HasilSlip extends HasilPbd {
   tahunSesi?: number;
   baris?: BarisSlip[];
   subjekAda?: string[];
+  subjekUasa?: string[];
+  uasaAktif?: boolean;
 }
 
 /**
@@ -197,9 +211,10 @@ export async function slipKelas(tahun: number, kelas: string): Promise<HasilSlip
 
     const murid = await muridKelas(sesi.tahun_sesi, tahun, kelas);
     const ids = murid.map((m) => m.pendaftaran_id);
-    const [nilai, ulasan] = await Promise.all([
+    const [nilai, ulasan, uasaAktif] = await Promise.all([
       nilaiPendaftaran(ids),
       ulasanKelas(ids),
+      adakahUasaAktif(sesi.tahun_sesi, tahun),
     ]);
 
     const ikutMurid = new Map<string, Nilai[]>();
@@ -213,23 +228,42 @@ export async function slipKelas(tahun: number, kelas: string): Promise<HasilSlip
     // Tahun 1 memberi ibu bapa gambaran anak mereka gagal 13 subjek.
     const adaSubjek = new Set<string>();
     for (const n of nilai) if (n.tp !== null || n.sumatif) adaSubjek.add(n.subjek);
+    const adaUasa = new Set<string>();
+    if (uasaAktif) for (const n of nilai) if (n.uasa) adaUasa.add(n.subjek);
 
     return {
       ok: true,
       tahunSesi: sesi.tahun_sesi,
       subjekAda: [...adaSubjek],
+      subjekUasa: [...adaUasa],
+      uasaAktif,
       baris: murid.map((m) => ({
         pendaftaran_id: m.pendaftaran_id,
         nama: m.nama,
         ulasan: ulasan.get(m.pendaftaran_id) ?? "",
         nilai: Object.fromEntries(
           (ikutMurid.get(m.pendaftaran_id) ?? []).map((n) => [
-            n.subjek, { tp: n.tp, sumatif: n.sumatif },
+            n.subjek, { tp: n.tp, sumatif: n.sumatif, uasa: n.uasa ?? null },
           ]),
         ),
       })),
       mesej: `${murid.length} murid.`,
     };
+  } catch (e) {
+    return { ok: false, mesej: ralat(e) };
+  }
+}
+
+export async function tetapUasaTindakan(aktif: boolean): Promise<HasilPbd> {
+  try {
+    await pastikanBoleh("urus_guru_kelas");
+    const sesi = await sesiSemasa();
+    if (!sesi || sesi.status === "tutup") return { ok: false, mesej: "Tiada sesi aktif." };
+    await tetapUasaAktif(sesi.tahun_sesi, aktif);
+    revalidatePath("/admin/pbd");
+    revalidatePath("/pbd/isi");
+    revalidatePath("/pbd/slip");
+    return { ok: true, mesej: `UASA Tahun 6 ${aktif ? "dibuka" : "ditutup"}.` };
   } catch (e) {
     return { ok: false, mesej: ralat(e) };
   }

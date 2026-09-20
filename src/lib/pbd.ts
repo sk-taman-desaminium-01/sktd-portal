@@ -24,8 +24,8 @@ import { rancangNaik, type Pendaftaran, type RancanganNaik } from "@/data/naik-t
  * bergantung pada pemanggilnya sudah menyemak.
  *
  * DUA NILAI SAHAJA, dan itu keputusan pengguna (17 Sep 2026): Tahap
- * Penguasaan (TP 1–6) dan gred sumatif UASA (A–E). Itu yang masuk ke slip
- * PBD, dan tiada apa lagi.
+ * Penguasaan (TP 1–6) dan gred sumatif (A–E). UASA Tahun 6 disimpan dan
+ * dicetak pada slipnya sendiri apabila pentadbir membukanya.
  *
  * Penandaan Standard Prestasi setiap SP TIDAK dibuat di sini — itu kerja
  * eRPM, app berasingan setiap panitia. Membinanya semula dalam ePBD
@@ -50,8 +50,32 @@ export interface Nilai {
   subjek: string;
   tp: number | null;
   sumatif: string | null;
+  uasa: string | null;
   oleh: string | null;
   dikemaskini: string | null;
+}
+
+/** UASA ialah mod sementara Tahun 6, berasingan daripada sumatif PBD. */
+export async function adakahUasaAktif(tahunSesi: number, tahun: number): Promise<boolean> {
+  if (tahun !== 6) return false;
+  try {
+    const db = klienTulis();
+    const baris = (await db.minta(
+      `pbd_uasa_tetapan?select=aktif&tahun_sesi=eq.${tahunSesi}&tahun=eq.6&limit=1`,
+    )) as { aktif: boolean }[];
+    return baris[0]?.aktif === true;
+  } catch {
+    return false;
+  }
+}
+
+export async function tetapUasaAktif(tahunSesi: number, aktif: boolean): Promise<void> {
+  const db = klienTulis();
+  await db.minta("pbd_uasa_tetapan?on_conflict=tahun_sesi,tahun", {
+    method: "POST",
+    headers: { Prefer: "resolution=merge-duplicates,return=minimal" },
+    body: JSON.stringify({ tahun_sesi: tahunSesi, tahun: 6, aktif, dikemaskini: new Date().toISOString() }),
+  });
 }
 
 export interface TugasSubjek {
@@ -337,10 +361,10 @@ export async function nilaiPendaftaran(ids: string[], subjek?: string): Promise<
  */
 export async function simpanNilai(
   subjek: string,
-  masuk: { pendaftaran_id: string; tp?: number | null; sumatif?: string | null }[],
+  masuk: { pendaftaran_id: string; tp?: number | null; sumatif?: string | null; uasa?: string | null }[],
   oleh: string,
 ): Promise<number> {
-  const bersih = masuk.filter((m) => m.tp !== undefined || m.sumatif !== undefined);
+  const bersih = masuk.filter((m) => m.tp !== undefined || m.sumatif !== undefined || m.uasa !== undefined);
   if (bersih.length === 0) return 0;
 
   const db = klienTulis();
@@ -349,7 +373,7 @@ export async function simpanNilai(
 
   const muatan = bersih.map((m) => {
     const l = lama.get(m.pendaftaran_id);
-    return {
+    const baris: Record<string, unknown> = {
       pendaftaran_id: m.pendaftaran_id,
       subjek,
       tp: m.tp === undefined ? (l?.tp ?? null) : m.tp,
@@ -357,6 +381,10 @@ export async function simpanNilai(
       oleh,
       dikemaskini: new Date().toISOString(),
     };
+    // Jangan sebut lajur UASA pada simpanan PBD biasa. Ini memastikan TP dan
+    // sumatif terus berfungsi sementara migrasi UASA belum dijalankan.
+    if (m.uasa !== undefined) baris.uasa = m.uasa;
+    return baris;
   });
 
   const KEPING = 200;
