@@ -39,7 +39,7 @@ perlu("Laluan pemeriksaan sementara sudah dibuang", !existsSync(resolve(akar, "s
 perlu("Laptop dan telefon menggunakan halaman pratonton yang sama", cetak.includes("/borang/pratonton-cetak") && cetak.includes("sessionStorage"));
 perlu("Pratonton tidak bergantung pada popup atau skrip sebaris", !cetak.includes("window.open") && !cetak.includes("<script>"));
 perlu("Kandungan cetak dibersihkan sebelum dipratonton", cetak.includes("script,iframe,object,embed") && cetak.includes("/^on/i"));
-perlu("Butang cetak React memanggil dialog terus daripada sentuhan", pratontonCetak.includes("onClick={cetak}") && pratontonCetak.includes("function cetak() { window.print(); }") && !pratontonCetak.includes("async function cetak"));
+perlu("Telefon dan PWA menjana PDF sebenar dengan sandaran simpan", pratontonCetak.includes("onClick={cetak}") && pratontonCetak.includes('import("jspdf")') && pratontonCetak.includes('import("html2canvas-pro")') && pratontonCetak.includes('pdf.output("blob")') && pratontonCetak.includes("Buka / Simpan PDF"));
 perlu("Nama guru kelas dipaut dan ditukar huruf besar", cetakMedia.includes("guruKelasNama?.toUpperCase()") && tindakanGambar.includes("guruKelasNama: guru.nama"));
 perlu("Arahan HURUF BESAR tidak dicetak", !cetakMedia.includes("HURUF BESAR"));
 
