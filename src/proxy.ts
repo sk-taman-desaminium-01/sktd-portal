@@ -26,6 +26,7 @@ const LALUAN_AWAM = createRouteMatcher([
   "/borang/pratonton-cetak",
   "/kebenaran",
   "/kebenaran/(.*)",
+  "/api/statistik-murid",
 ]);
 
 function borangAwam(path: string): boolean {
