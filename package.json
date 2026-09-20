@@ -29,6 +29,8 @@
     "@clerk/nextjs": "^7.9.3",
     "exceljs": "^4.4.0",
     "fflate": "^0.8.3",
+    "html2canvas-pro": "^2.4.4",
+    "jspdf": "^4.2.1",
     "mammoth": "^1.12.3",
     "next": "16.3.5",
     "react": "19.2.8",
