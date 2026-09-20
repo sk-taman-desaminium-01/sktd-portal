@@ -5,6 +5,7 @@ import { pastikanBoleh } from "./akses";
 import { klienTulis } from "./supabase-pelayan";
 import { sesiSemasa } from "./pbd";
 import { bacaSenaraiMurid, type MuridDikenal } from "./kenal-murid";
+import { hantar } from "./notifikasi";
 
 /**
  * Import senarai murid.
@@ -135,6 +136,123 @@ export interface HasilImportKelas extends HasilImport {
   murid?: MuridDikenal[];
 }
 
+type KlienDb = ReturnType<typeof klienTulis>;
+
+function namaKunci(nama: string): string {
+  return nama.normalize("NFKC").replace(/[^A-Z0-9]/gi, "").toUpperCase();
+}
+
+/**
+ * Cari murid sedia ada tanpa RPC khas.
+ *
+ * RPC `import_murid_kelas` pernah dipanggil oleh UI walaupun fungsinya tidak
+ * wujud dalam migrasi pangkalan data. Import kini menggunakan REST jadual
+ * yang sama seperti import CSV, jadi pemasangan baharu tidak bergantung pada
+ * fungsi tersembunyi dalam schema cache Supabase.
+ */
+async function padanMuridKelas(
+  db: KlienDb,
+  sesi: number,
+  tahun: number,
+  kelas: string,
+  murid: MuridDikenal[],
+): Promise<{ ikutKp: Map<string, string>; tanpaKp: Map<string, string> }> {
+  const ikutKp = new Map<string, string>();
+  const semuaKp = [...new Set(murid.map((m) => m.no_kp).filter((x): x is string => !!x))];
+
+  for (let i = 0; i < semuaKp.length; i += 100) {
+    const senarai = semuaKp.slice(i, i + 100).map((kp) => `"${kp}"`).join(",");
+    const jumpa = (await db.minta(
+      `pbd_murid?select=id,no_kp&no_kp=in.(${senarai})`,
+    )) as { id: string; no_kp: string }[];
+    for (const baris of jumpa) ikutKp.set(baris.no_kp, baris.id);
+  }
+
+  // Murid tanpa No. KP hanya dipadankan dalam kelas dan sesi yang sama.
+  // Ini mengelakkan dua murid senama dari kelas berlainan disatukan.
+  const tanpaKp = new Map<string, string>();
+  if (murid.some((m) => !m.no_kp)) {
+    const kelasKod = encodeURIComponent(kelas);
+    const daftar = (await db.minta(
+      `pbd_pendaftaran?select=murid_id,pbd_murid!inner(nama,no_kp)` +
+        `&tahun_sesi=eq.${sesi}&tahun=eq.${tahun}&kelas=eq.${kelasKod}` +
+        "&status=in.(aktif,pindah_masuk,ulang)",
+    )) as { murid_id: string; pbd_murid: { nama: string; no_kp: string | null } }[];
+    for (const baris of daftar) {
+      if (!baris.pbd_murid?.no_kp) tanpaKp.set(namaKunci(baris.pbd_murid.nama), baris.murid_id);
+    }
+  }
+
+  return { ikutKp, tanpaKp };
+}
+
+async function simpanMuridKelasTerus(
+  db: KlienDb,
+  sesi: number,
+  tahun: number,
+  kelas: string,
+  murid: MuridDikenal[],
+  padanan: { ikutKp: Map<string, string>; tanpaKp: Map<string, string> },
+): Promise<void> {
+  const idIkutBaris = new Map<number, string>();
+  const baharuDenganKp = murid
+    .map((m, indeks) => ({ m, indeks }))
+    .filter(({ m }) => m.no_kp && !padanan.ikutKp.has(m.no_kp));
+
+  // Satu permintaan bagi sehingga 100 murid, bukan dua permintaan bagi
+  // setiap murid. Ini ketara apabila satu ZIP mengandungi semua 57 kelas.
+  for (let i = 0; i < baharuDenganKp.length; i += 100) {
+    const keping = baharuDenganKp.slice(i, i + 100);
+    const cipta = (await db.minta("pbd_murid", {
+      method: "POST",
+      body: JSON.stringify(keping.map(({ m }) => ({
+        no_kp: m.no_kp,
+        nama: m.nama,
+        jantina: m.jantina,
+      }))),
+    })) as { id: string; no_kp: string }[];
+    for (const baris of cipta) padanan.ikutKp.set(baris.no_kp, baris.id);
+  }
+
+  for (let indeks = 0; indeks < murid.length; indeks++) {
+    const m = murid[indeks];
+    const sedia = m.no_kp
+      ? padanan.ikutKp.get(m.no_kp)
+      : padanan.tanpaKp.get(namaKunci(m.nama));
+    if (sedia) {
+      idIkutBaris.set(indeks, sedia);
+      continue;
+    }
+
+    // Kes tanpa No. KP jarang berlaku dan tidak mempunyai kunci unik untuk
+    // dipadankan selepas sisipan pukal, maka ia dicipta satu demi satu.
+    const [cipta] = (await db.minta("pbd_murid", {
+      method: "POST",
+      body: JSON.stringify({ no_kp: null, nama: m.nama, jantina: m.jantina }),
+    })) as { id: string }[];
+    idIkutBaris.set(indeks, cipta.id);
+    padanan.tanpaKp.set(namaKunci(m.nama), cipta.id);
+  }
+
+  const pendaftaran = murid.map((m, indeks) => ({
+    murid_id: idIkutBaris.get(indeks) ?? (m.no_kp ? padanan.ikutKp.get(m.no_kp) : undefined),
+    tahun_sesi: sesi,
+    tahun,
+    kelas,
+    status: "aktif",
+  }));
+  if (pendaftaran.some((p) => !p.murid_id)) {
+    throw new Error("Padanan murid tidak lengkap selepas sisipan.");
+  }
+  for (let i = 0; i < pendaftaran.length; i += 100) {
+    await db.minta("pbd_pendaftaran?on_conflict=murid_id,tahun_sesi", {
+      method: "POST",
+      headers: { Prefer: "resolution=merge-duplicates,return=minimal" },
+      body: JSON.stringify(pendaftaran.slice(i, i + 100)),
+    });
+  }
+}
+
 /**
  * Import satu KELAS: kelas dipilih dari dropdown, nama dan No. KP ditampal.
  *
@@ -149,8 +267,9 @@ export interface HasilImportKelas extends HasilImport {
 export async function importMuridKelas(
   tahun: number, kelas: string, teks: string, simpan = false,
 ): Promise<HasilImportKelas> {
+  let oleh: string | null = null;
   try {
-    await pastikanBoleh("urus_guru_kelas");
+    oleh = (await pastikanBoleh("urus_guru_kelas")).emel;
   } catch {
     return { ok: false, kering: true, mesej: "Tiada kebenaran." };
   }
@@ -175,19 +294,34 @@ export async function importMuridKelas(
     for (const m of murid) for (const a of m.amaran) ralat.push(`${m.nama}: ${a}`);
 
     if (berulang.length) return { ok: false, kering: true, mesej: "No. KP berulang. Betulkan senarai sebelum import.", ralat, murid };
-    const hasil = await klienTulis().minta("rpc/import_murid_kelas", {
-      method: "POST", body: JSON.stringify({ p_sesi: sesi.tahun_sesi, p_tahun: tahun,
-        p_kelas: kelas.trim().toUpperCase(), p_murid: murid.map((m) => ({ nama: m.nama, no_kp: m.no_kp, jantina: m.jantina })), p_simpan: simpan }),
-    }) as { baharu: number; sedia: number };
+    const kelasBersih = kelas.trim().toUpperCase();
+    const db = klienTulis();
+    const padanan = await padanMuridKelas(db, sesi.tahun_sesi, tahun, kelasBersih, murid);
+    const sedia = murid.filter((m) => m.no_kp
+      ? padanan.ikutKp.has(m.no_kp)
+      : padanan.tanpaKp.has(namaKunci(m.nama))).length;
+    const baharu = murid.length - sedia;
+
+    if (simpan) {
+      await simpanMuridKelasTerus(db, sesi.tahun_sesi, tahun, kelasBersih, murid, padanan);
+      const label = `${tahun} ${kelasBersih}`;
+      await hantar({
+        penerima: [], tugasan: [{ peranan: "guru_kelas", skop: label }], jenis: "pbd",
+        tajuk: `Daftar murid ePBD · ${label}`,
+        teks: `${murid.length} murid disahkan dalam daftar ePBD ${label}.`,
+        pautan: "/pbd", oleh,
+      });
+    }
     if (simpan) { revalidatePath("/admin/pbd"); revalidatePath("/pbd"); }
     return { ok: true, kering: !simpan, murid, ralat, jumlah: murid.length,
-      baharu: hasil.baharu, sedia: hasil.sedia, tanpaKp: murid.filter((m) => !m.no_kp).length,
-      mesej: `${simpan ? "Disimpan" : "Semakan tanpa menyimpan"}: ${murid.length} murid, ${hasil.baharu} baharu, ${hasil.sedia} sedia ada.`,
+      baharu, sedia, tanpaKp: murid.filter((m) => !m.no_kp).length,
+      mesej: `${simpan ? "Disimpan" : "Semakan tanpa menyimpan"}: ${murid.length} murid, ${baharu} baharu, ${sedia} sedia ada.`,
     };
   } catch (e) {
+    console.error("[importMuridKelas]", e);
     return { ok: false, kering: !simpan,
-      mesej: "Import tidak disahkan: " + (e instanceof Error ? e.message : String(e)) +
-        (simpan ? " Muat semula untuk semak; penghantaran semula dipadankan dengan rekod sedia ada." : ""),
+      mesej: "Import gagal diproses. Cuba semula; rekod sedia ada akan dipadankan dan tidak digandakan." +
+        (simpan ? " Muat semula halaman untuk menyemak hasil semasa." : ""),
     };
   }
 }

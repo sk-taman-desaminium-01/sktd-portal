@@ -10,6 +10,7 @@ import { bacaSemua } from "./baca-semua";
 import { bacaSenaraiMurid } from "./kenal-murid";
 import { hariIniMY } from "./bilik";
 import { semakAkuan, type AktivitiBorang, type AkuanAktiviti, type JawapanAktiviti } from "@/data/borang-aktiviti";
+import { hantar } from "./notifikasi";
 const uuid = (s: string) => /^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(s);
 const hash = (s: string) => createHash("sha256").update(s).digest("hex");
 
@@ -134,12 +135,21 @@ export async function hantarAkuan(id:string, data: AkuanAktiviti, lamanPerangkap
   const db=klienTulis();
   const dibenar=await db.minta("rpc/borang_ambil_giliran",{method:"POST",body:JSON.stringify({p_kunci:hash(`${ip}:${id}`)})});
   if(!dibenar) throw new Error("Had cubaan hari ini dicapai. Hubungi pengurus aktiviti.");
-  if(!(await aktivitiAwam(id)).length) throw new Error("Borang telah ditutup atau tidak ditemui.");
+  const aktiviti = await db.minta(
+    `borang_aktiviti?select=id,nama,pengurus_emel&aktif=eq.true&tutup=gte.${hariIniMY()}&id=eq.${id}&limit=1`,
+  ) as { id: string; nama: string; pengurus_emel: string }[];
+  if(!aktiviti[0]) throw new Error("Borang telah ditutup atau tidak ditemui.");
   const p=await db.minta(`borang_peserta?select=murid_id,nama,kelas&aktiviti_id=eq.${id}&no_kp=eq.${data.muridKp}&limit=1`) as {murid_id:string;nama:string;kelas:string}[];
   const sama=(s:string)=>s.toUpperCase().replace(/[^A-Z0-9]/g,"");
   if(!p[0] || sama(p[0].nama)!==sama(data.muridNama) || sama(p[0].kelas)!==sama(data.kelas)) throw new Error("Butiran peserta tidak sepadan. Semak nama, kelas dan No. MyKid dengan pengurus.");
   const resit=randomBytes(32).toString("hex");
   await db.minta("borang_jawapan",{method:"POST",headers:{Prefer:"return=minimal"},body:JSON.stringify({aktiviti_id:id,murid_id:p[0].murid_id,data,resit_hash:hash(resit)})});
+  await hantar({
+    penerima: [aktiviti[0].pengurus_emel], jenis: "borang",
+    tajuk: `Akuan penyertaan diterima · ${aktiviti[0].nama}`,
+    teks: `${p[0].nama} (${p[0].kelas}) menghantar Surat Akuan Penyertaan Aktiviti.`,
+    pautan: "/borang/aktiviti/urus",
+  });
   return {ok:true,mesej:"Akuan diterima. Simpan pautan resit untuk cetakan semula.",resit};
  } catch(e) {
   const mesej=e instanceof Error?e.message:"Gagal menghantar.";

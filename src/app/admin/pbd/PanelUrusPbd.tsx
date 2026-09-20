@@ -146,6 +146,7 @@ export default function PanelUrusPbd({
   const [fail, setFail] = useState<File | null>(null);
   const [hasilFail, setHasilFail] = useState<HasilFail | null>(null);
   const [sibukFail, setSibukFail] = useState(false);
+  const [kemajuanFail, setKemajuanFail] = useState("");
 
   /**
    * Baca fail senarai kelas terus, tanpa menampal.
@@ -164,10 +165,11 @@ export default function PanelUrusPbd({
     }
     const k = sisa.join(" ");
     setSibukFail(true);
+    setKemajuanFail("");
     try {
       let r = await importFailMurid(tahun, k, await failKeMuatan(fail), simpan);
       if ((/\.pdf$/i.test(fail.name) || fail.type.startsWith("image/")) && !r.ok && /Tiada No\. KP|imbasan|gambar/i.test(r.mesej)) {
-        const teksOcr = await bacaImbasan(fail, () => undefined);
+        const teksOcr = await bacaImbasan(fail, setKemajuanFail);
         if (!teksOcr) throw new Error("OCR selesai tetapi tiada teks dapat dikenal pasti.");
         const semakan = await importMuridKelas(tahun, k, teksOcr, simpan);
         r = { ...semakan, teks: teksOcr, cara: "OCR pada peranti", calon: [] };
@@ -178,6 +180,7 @@ export default function PanelUrusPbd({
       if (r.teks && !simpan) setTeks(r.teks);
     } finally {
       setSibukFail(false);
+      setKemajuanFail("");
     }
   }
 
@@ -478,7 +481,7 @@ Tekan <b>Semak dahulu</b> sebelum ini boleh digunakan.
             <div className="mt-2 flex flex-wrap items-center gap-2">
               <input
                 type="file"
-                accept=".pdf,.xlsx,.xls,.docx,.doc,.csv,.txt,image/png,image/jpeg"
+                accept=".pdf,.xlsx,.xls,.docx,.doc,.csv,.txt,.png,.jpg,.jpeg,.webp,image/png,image/jpeg,image/webp"
                 onChange={(e) => { setFail(e.target.files?.[0] ?? null); setHasilFail(null); }}
                 aria-label="Fail senarai kelas"
                 className="max-w-full text-xs file:mr-2 file:rounded-lg file:border file:border-garis file:bg-white file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-navy-700"
@@ -493,6 +496,12 @@ Tekan <b>Semak dahulu</b> sebelum ini boleh digunakan.
                 </button>
               )}
             </div>
+
+            {kemajuanFail && (
+              <p role="status" aria-live="polite" className="mt-2 text-xs font-medium text-navy-700">
+                {kemajuanFail}
+              </p>
+            )}
 
             {hasilFail && (
               <div className="mt-2">

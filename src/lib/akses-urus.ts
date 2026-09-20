@@ -215,7 +215,7 @@ export async function tarikAkses(id: string, dibenarkan: boolean): Promise<Hasil
     // tanpa tahu bila ia berlaku, dan bertanya kepada pentadbir — iaitu
     // kerja yang notifikasi wujud untuk hapuskan.
     if (dibenarkan && baris[0]?.email) {
-      void hantar({
+      await hantar({
         penerima: [baris[0].email],
         jenis: "akses",
         tajuk: "Akses portal diluluskan",

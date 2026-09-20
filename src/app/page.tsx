@@ -1,6 +1,5 @@
 import Image from "next/image";
 import { aset } from "@/lib/laluan";
-import { currentUser } from "@clerk/nextjs/server";
 import { SignOutButton } from "@clerk/nextjs";
 import { SEKOLAH } from "@/data/sekolah";
 import Loceng from "@/components/Loceng";
@@ -127,16 +126,18 @@ function BelumDiberiAkses({
 }
 
 export default async function Hab() {
-  const user = await currentUser();
   const saya = await pengguna();
   const admin = saya?.peranan === "admin" || saya?.peranan === "admin_mutlak";
 
-  const nama = user?.fullName ?? user?.firstName ?? "Cikgu";
+  // `pengguna()` sudah membaca identiti daripada token sesi (dan dicache
+  // untuk request ini). Memanggil currentUser() sekali lagi membuat satu
+  // perjalanan Clerk tambahan pada setiap buka hab/kad.
+  const nama = saya?.nama ?? "Cikgu";
 
   // Kelas yang pengguna ini pegang sebagai guru kelas. `null` bermakna semua
   // kelas (pentadbir & admin) — itu bukan "guru kelas", jadi tidak dipapar.
   const kelasSaya = saya?.peranan ? await kelasBolehSunting() : [];
-  const emel = user?.emailAddresses[0]?.emailAddress ?? "";
+  const emel = saya?.emel ?? "";
 
   // Log masuk berjaya TETAPI belum ada dalam senarai akses.
   // Tanpa skrin ini guru nampak hab kosong dan fikir sistem rosak — dan pada
