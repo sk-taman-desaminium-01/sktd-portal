@@ -2,6 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 import { pastikanBoleh } from "./akses";
+import { klienTulis } from "./supabase-pelayan";
+import { jantinaDariKp } from "./kenal-murid";
 import { namaSubjek } from "@/data/subjek";
 import {
   kuasaPbd, sesiSemasa, muridKelas, nilaiPendaftaran, simpanNilai,
@@ -367,6 +369,188 @@ export interface MuridRingkas {
   murid_id: string;
   nama: string;
   no_kp: string | null;
+}
+
+export interface MuridUrusKelas extends MuridRingkas {
+  tahun: number;
+  kelas: string;
+  keadaan: "aktif" | "apung" | "pindah_keluar";
+}
+
+type BarisUrusMurid = {
+  id: string;
+  murid_id: string;
+  tahun: number;
+  kelas: string;
+  status: string;
+  pbd_murid: { nama: string; no_kp: string | null; status: string } | null;
+};
+
+async function pastikanKelasSendiri(tahun: number, kelas: string) {
+  const kuasa = await kuasaPbd();
+  if (!kuasa || !bolehLihatKelas(kuasa, tahun, kelas)) {
+    throw new Error(`Anda bukan guru kelas ${labelKelas(tahun, kelas)}.`);
+  }
+  const sesi = await sesiSemasa();
+  if (!sesi || sesi.status === "tutup") throw new Error("Tiada sesi aktif yang boleh diubah.");
+  return sesi;
+}
+
+async function pendaftaranUntukUrus(pendaftaranId: string): Promise<BarisUrusMurid> {
+  const db = klienTulis();
+  const baris = (await db.minta(
+    `pbd_pendaftaran?select=id,murid_id,tahun,kelas,status,pbd_murid(nama,no_kp,status)` +
+      `&id=eq.${encodeURIComponent(pendaftaranId)}&limit=1`,
+  )) as BarisUrusMurid[];
+  if (!baris[0] || !baris[0].pbd_murid) throw new Error("Rekod murid tidak ditemui.");
+  return baris[0];
+}
+
+function keadaanMurid(b: BarisUrusMurid): MuridUrusKelas["keadaan"] {
+  if (b.status !== "pindah_keluar") return "aktif";
+  return b.pbd_murid?.status === "pindah_keluar" ? "pindah_keluar" : "apung";
+}
+
+function segarSemulaMurid() {
+  for (const laluan of [
+    "/guru-kelas", "/admin/pbd", "/pbd", "/pbd/guru", "/pbd/slip",
+    "/disiplin", "/rmt", "/borang/urus", "/borang/aktiviti", "/kawalan-kelas",
+  ]) revalidatePath(laluan);
+}
+
+/** Senarai lengkap kelas untuk guru kelas, termasuk murid apung dan pindah. */
+export async function senaraiUrusMuridKelasTindakan(
+  tahun: number, kelas: string,
+): Promise<{ ok: boolean; mesej: string; murid?: MuridUrusKelas[] }> {
+  try {
+    const sesi = await pastikanKelasSendiri(tahun, kelas);
+    const db = klienTulis();
+    const baris = (await db.minta(
+      `pbd_pendaftaran?select=id,murid_id,tahun,kelas,status,pbd_murid(nama,no_kp,status)` +
+        `&tahun_sesi=eq.${sesi.tahun_sesi}&tahun=eq.${tahun}` +
+        `&kelas=eq.${encodeURIComponent(kelas)}&order=id.asc`,
+    )) as BarisUrusMurid[];
+    const murid = baris.filter((b) => b.pbd_murid && keadaanMurid(b) !== "pindah_keluar").map((b) => ({
+      pendaftaran_id: b.id,
+      murid_id: b.murid_id,
+      nama: b.pbd_murid!.nama,
+      no_kp: b.pbd_murid!.no_kp,
+      tahun: b.tahun,
+      kelas: b.kelas,
+      keadaan: keadaanMurid(b),
+    })).sort((a, b) => a.nama.localeCompare(b.nama, "ms"));
+    return { ok: true, mesej: `${murid.filter((m) => m.keadaan === "aktif").length} murid aktif.`, murid };
+  } catch (e) {
+    return { ok: false, mesej: ralat(e) };
+  }
+}
+
+/** Tambah murid pada sumber pusat; modul lain terus membaca rekod yang sama. */
+export async function tambahMuridKelasTindakan(
+  tahun: number, kelas: string, nama: string, noKp: string,
+): Promise<HasilPbd> {
+  try {
+    const sesi = await pastikanKelasSendiri(tahun, kelas);
+    const namaBersih = nama.trim().replace(/\s+/g, " ").toUpperCase();
+    const kp = noKp.replace(/\D/g, "");
+    if (namaBersih.length < 3) throw new Error("Nama murid terlalu pendek.");
+    if (kp.length !== 12) throw new Error("No. KP/MyKid mesti 12 digit.");
+
+    const db = klienTulis();
+    const sedia = (await db.minta(
+      `pbd_murid?select=id,status&no_kp=eq.${kp}&limit=1`,
+    )) as { id: string; status: string }[];
+    let muridId = sedia[0]?.id;
+    let daftar: { id: string; tahun: number; kelas: string; status: string }[] = [];
+    if (!muridId) {
+      const cipta = (await db.minta("pbd_murid", {
+        method: "POST",
+        headers: { Prefer: "return=representation" },
+        body: JSON.stringify({ nama: namaBersih, no_kp: kp, jantina: jantinaDariKp(kp), status: "aktif" }),
+      })) as { id: string }[];
+      muridId = cipta[0]?.id;
+    } else {
+      daftar = (await db.minta(
+        `pbd_pendaftaran?select=id,tahun,kelas,status&murid_id=eq.${muridId}` +
+          `&tahun_sesi=eq.${sesi.tahun_sesi}&limit=1`,
+      )) as { id: string; tahun: number; kelas: string; status: string }[];
+      if (daftar[0] && daftar[0].status !== "pindah_keluar") {
+        throw new Error(`Murid ini sudah aktif dalam ${labelKelas(daftar[0].tahun, daftar[0].kelas)}.`);
+      }
+      await db.minta(`pbd_murid?id=eq.${muridId}`, {
+        method: "PATCH", headers: { Prefer: "return=minimal" },
+        body: JSON.stringify({ nama: namaBersih, jantina: jantinaDariKp(kp), status: "aktif" }),
+      });
+    }
+    if (!muridId) throw new Error("Rekod murid gagal diwujudkan.");
+
+    const badanDaftar = {
+      tahun_sesi: sesi.tahun_sesi,
+      murid_id: muridId,
+      tahun,
+      kelas: kelas.trim().toUpperCase(),
+      aliran: /^PPKI\b/i.test(kelas) ? "ppki" : tahun === 0 ? "prasekolah" : "perdana",
+      status: daftar[0] ? "pindah_masuk" : "aktif",
+    };
+    if (daftar[0]) {
+      await db.minta(`pbd_pendaftaran?id=eq.${daftar[0].id}`, {
+        method: "PATCH", headers: { Prefer: "return=minimal" }, body: JSON.stringify(badanDaftar),
+      });
+      // Jika murid ini pernah menerima RMT, pulihkan rekod yang sama dan
+      // pindahkan label kelasnya. Murid bukan RMT tidak pernah ditambah.
+      await db.minta(`pbd_rmt_murid?murid_id=eq.${muridId}&tahun_sesi=eq.${sesi.tahun_sesi}`, {
+        method: "PATCH", headers: { Prefer: "return=minimal" },
+        body: JSON.stringify({ tahun, kelas: kelas.trim().toUpperCase(), aktif: true }),
+      });
+    } else {
+      await db.minta("pbd_pendaftaran", {
+        method: "POST", headers: { Prefer: "return=minimal" }, body: JSON.stringify(badanDaftar),
+      });
+    }
+    segarSemulaMurid();
+    return { ok: true, mesej: `${namaBersih} ditambah ke ${labelKelas(tahun, kelas)}.` };
+  } catch (e) {
+    return { ok: false, mesej: ralat(e) };
+  }
+}
+
+export async function ubahKeadaanMuridTindakan(
+  pendaftaranId: string, keadaan: "apung" | "pindah_keluar" | "aktif",
+  tahunSasaran?: number, kelasSasaran?: string,
+): Promise<HasilPbd> {
+  try {
+    const b = await pendaftaranUntukUrus(pendaftaranId);
+    const tahun = keadaan === "aktif" && tahunSasaran !== undefined ? tahunSasaran : b.tahun;
+    const kelas = keadaan === "aktif" && kelasSasaran ? kelasSasaran : b.kelas;
+    const sesi = await pastikanKelasSendiri(tahun, kelas);
+    if (keadaan !== "aktif") await pastikanKelasSendiri(b.tahun, b.kelas);
+    if (keadaan === "aktif" && (b.status !== "pindah_keluar" || b.pbd_murid?.status === "pindah_keluar")) {
+      throw new Error("Hanya murid apung boleh dimasukkan semula.");
+    }
+    const db = klienTulis();
+
+    await db.minta(`pbd_pendaftaran?id=eq.${b.id}`, {
+      method: "PATCH", headers: { Prefer: "return=minimal" },
+      body: JSON.stringify(keadaan === "aktif"
+        ? { tahun, kelas: kelas.trim().toUpperCase(), status: "aktif" }
+        : { status: "pindah_keluar" }),
+    });
+    await db.minta(`pbd_murid?id=eq.${b.murid_id}`, {
+      method: "PATCH", headers: { Prefer: "return=minimal" },
+      body: JSON.stringify({ status: keadaan === "pindah_keluar" ? "pindah_keluar" : "aktif" }),
+    });
+    await db.minta(`pbd_rmt_murid?murid_id=eq.${b.murid_id}&tahun_sesi=eq.${sesi.tahun_sesi}`, {
+      method: "PATCH", headers: { Prefer: "return=minimal" },
+      body: JSON.stringify(keadaan === "aktif"
+        ? { tahun, kelas: kelas.trim().toUpperCase(), aktif: true }
+        : { aktif: false }),
+    });
+    segarSemulaMurid();
+    const kata = keadaan === "aktif" ? "diaktifkan semula" : keadaan === "apung" ? "diapungkan" : "ditandakan pindah keluar";
+    return { ok: true, mesej: `${b.pbd_murid!.nama} ${kata}.` };
+  } catch (e) {
+    return { ok: false, mesej: ralat(e) };
+  }
 }
 
 export async function muridKelasTindakan(

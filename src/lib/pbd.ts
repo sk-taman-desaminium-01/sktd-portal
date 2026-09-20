@@ -132,7 +132,7 @@ export async function kuasaPbd(): Promise<Kuasa | null> {
 
 /** Label kelas seperti dipapar: "3 AMANAH". */
 export function labelKelas(tahun: number, kelas: string): string {
-  return `${tahun} ${kelas}`.trim();
+  return tahun === 0 ? kelas.trim() : `${tahun} ${kelas}`.trim();
 }
 
 /** Boleh MENULIS nilai subjek ini bagi kelas ini? */
