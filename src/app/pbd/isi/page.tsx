@@ -59,6 +59,7 @@ export default async function Isi({
           awal={hasil.baris}
           bolehTulis={hasil.bolehTulis ?? false}
           sesiTutup={hasil.sesiTutup ?? false}
+          uasaAktif={hasil.uasaAktif ?? false}
         />
       )}
     </main>

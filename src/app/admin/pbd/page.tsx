@@ -2,7 +2,7 @@ import Link from "next/link";
 import { pengguna } from "@/lib/akses";
 import { boleh } from "@/lib/peranan";
 import { senaraiAkses } from "@/lib/akses-urus";
-import { sesiSemasa, kelasBerisi, tugasanSubjek } from "@/lib/pbd";
+import { sesiSemasa, kelasBerisi, tugasanSubjek, adakahUasaAktif } from "@/lib/pbd";
 import { semuaKelas } from "@/data/kelas";
 import PanelUrusPbd from "./PanelUrusPbd";
 
@@ -29,10 +29,11 @@ export default async function UrusPbd() {
   }
 
   const sesi = await sesiSemasa();
-  const [kelas, tugasan, orang] = await Promise.all([
+  const [kelas, tugasan, orang, uasaAktif] = await Promise.all([
     sesi ? kelasBerisi(sesi.tahun_sesi) : Promise.resolve([]),
     sesi ? tugasanSubjek(sesi.tahun_sesi) : Promise.resolve([]),
     senaraiAkses(),
+    sesi ? adakahUasaAktif(sesi.tahun_sesi, 6) : Promise.resolve(false),
   ]);
 
   // Hanya orang yang SUDAH dibenarkan masuk portal boleh ditugaskan —
@@ -83,6 +84,7 @@ export default async function UrusPbd() {
           semuaKelas={semuaKelas()}
           tahunSesi={sesi.tahun_sesi}
           jumlahMurid={jumlahMurid}
+          uasaAktifAwal={uasaAktif}
         />
       )}
     </main>

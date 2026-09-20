@@ -16,10 +16,11 @@ import { simpanIsi, type BarisIsi } from "@/lib/tindakan-pbd";
  * dan medan yang guru KOSONGKAN sendiri dihantar sebagai null.
  */
 
-const GRED = ["", "A", "B", "C", "D", "E"];
+const GRED_SUMATIF = ["", "A", "B", "C", "D", "E"];
+const GRED_UASA = ["", "A", "B", "C"];
 
 export default function PanelIsi({
-  tahun, kelas, subjek, awal, bolehTulis, sesiTutup,
+  tahun, kelas, subjek, awal, bolehTulis, sesiTutup, uasaAktif,
 }: {
   tahun: number;
   kelas: string;
@@ -27,13 +28,14 @@ export default function PanelIsi({
   awal: BarisIsi[];
   bolehTulis: boolean;
   sesiTutup: boolean;
+  uasaAktif: boolean;
 }) {
   const [baris, setBaris] = useState(awal);
   const [diubah, setDiubah] = useState<Set<string>>(new Set());
   const [sibuk, setSibuk] = useState(false);
   const [mesej, setMesej] = useState<{ ok: boolean; teks: string } | null>(null);
 
-  function ubah(id: string, medan: "tp" | "sumatif", nilai: string) {
+  function ubah(id: string, medan: "tp" | "sumatif" | "uasa", nilai: string) {
     setBaris((lama) =>
       lama.map((b) => {
         if (b.pendaftaran_id !== id) return b;
@@ -41,7 +43,8 @@ export default function PanelIsi({
           const n = nilai === "" ? null : Number(nilai);
           return { ...b, tp: n };
         }
-        return { ...b, sumatif: nilai === "" ? null : nilai };
+        if (medan === "sumatif") return { ...b, sumatif: nilai === "" ? null : nilai };
+        return { ...b, uasa: nilai === "" ? null : nilai };
       }),
     );
     setDiubah((s) => new Set(s).add(id));
@@ -57,7 +60,12 @@ export default function PanelIsi({
     try {
       const hantar = baris
         .filter((b) => diubah.has(b.pendaftaran_id))
-        .map((b) => ({ pendaftaran_id: b.pendaftaran_id, tp: b.tp, sumatif: b.sumatif }));
+        .map((b) => ({
+          pendaftaran_id: b.pendaftaran_id,
+          tp: b.tp,
+          sumatif: b.sumatif,
+          ...(uasaAktif ? { uasa: b.uasa } : {}),
+        }));
       const hasil = await simpanIsi(tahun, kelas, subjek, hantar);
       setMesej({ ok: hasil.ok, teks: hasil.mesej });
       if (hasil.ok) setDiubah(new Set());
@@ -89,6 +97,11 @@ export default function PanelIsi({
           TP di sini mesti ikut TP yang telah anda catat di IDme.
         </p>
       )}
+      {uasaAktif && (
+        <p className="mt-2 rounded-lg border border-[#e9d9ae] bg-[#fdf9f0] px-3 py-2 text-xs text-[#7a5a12]">
+          UASA Tahun 6 sedang dibuka. Gred UASA disimpan berasingan dan hanya muncul pada Slip UASA.
+        </p>
+      )}
 
       {mesej && (
         <p
@@ -110,6 +123,7 @@ export default function PanelIsi({
               <th className="p-2 text-[11px] font-bold uppercase tracking-wide text-slate-500">Nama</th>
               <th className="w-24 p-2 text-[11px] font-bold uppercase tracking-wide text-slate-500">TP</th>
               <th className="w-24 p-2 text-[11px] font-bold uppercase tracking-wide text-slate-500">Sumatif</th>
+              {uasaAktif && <th className="w-24 bg-[#fdf9f0] p-2 text-[11px] font-bold uppercase tracking-wide text-[#7a5a12]">UASA</th>}
             </tr>
           </thead>
           <tbody className="divide-y divide-garis">
@@ -136,19 +150,32 @@ export default function PanelIsi({
                     value={b.sumatif ?? ""}
                     disabled={!bolehTulis}
                     onChange={(e) => ubah(b.pendaftaran_id, "sumatif", e.target.value)}
-                    aria-label={`Gred UASA untuk ${b.nama}`}
+                    aria-label={`Gred sumatif untuk ${b.nama}`}
                     className="w-16 rounded border border-garis px-2 py-1.5 text-sm disabled:bg-slate-50 disabled:text-slate-400"
                   >
-                    {GRED.map((g) => (
+                    {GRED_SUMATIF.map((g) => (
                       <option key={g || "kosong"} value={g}>{g || "—"}</option>
                     ))}
                   </select>
                 </td>
+                {uasaAktif && (
+                  <td className="bg-[#fffdf8] p-2">
+                    <select
+                      value={b.uasa ?? ""}
+                      disabled={!bolehTulis}
+                      onChange={(e) => ubah(b.pendaftaran_id, "uasa", e.target.value)}
+                      aria-label={`Gred UASA untuk ${b.nama}`}
+                      className="w-16 rounded border border-[#e9d9ae] px-2 py-1.5 text-sm disabled:bg-slate-50 disabled:text-slate-400"
+                    >
+                      {GRED_UASA.map((g) => <option key={g || "kosong"} value={g}>{g || "—"}</option>)}
+                    </select>
+                  </td>
+                )}
               </tr>
             ))}
             {baris.length === 0 && (
               <tr>
-                <td colSpan={4} className="p-6 text-center text-sm text-slate-500">
+                <td colSpan={uasaAktif ? 5 : 4} className="p-6 text-center text-sm text-slate-500">
                   Tiada murid dalam kelas ini untuk sesi semasa.
                 </td>
               </tr>
