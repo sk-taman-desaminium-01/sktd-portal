@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import {
   notifikasiSaya, tandaDibacaTindakan, padamNotifikasiTindakan,
-  kosongkanTindakan, daftarPush, kunciPush, ujiPushTindakan,
+  kosongkanTindakan, daftarPush, kunciPush,
 } from "@/lib/tindakan-notifikasi";
 import { IKON_JENIS, NAMA_JENIS, masaLalu, ikutHari, type Notifikasi } from "@/data/notifikasi";
 
@@ -217,35 +217,12 @@ function Push() {
     }
   }
 
-  async function uji() {
-    setSibuk(true);
-    setNota(null);
-    try {
-      const r = await ujiPushTindakan();
-      setNota(r.mesej);
-    } finally {
-      setSibuk(false);
-    }
-  }
-
   if (keadaan === "memuat" || keadaan === "tiada") {
     return nota ? <p className="mt-4 text-xs text-[#167a4b]">{nota}</p> : null;
   }
 
   if (keadaan === "hidup") {
-    return (
-      <div className="mt-4 rounded-xl border border-[#bfe3ce] bg-[#f4fbf7] p-4">
-        <p className="text-sm font-semibold text-[#14603c]">Pemberitahuan peranti aktif</p>
-        <p className="mt-1 text-xs leading-relaxed text-slate-600">
-          Tempahan, borang, disiplin, kelas, ICT dan pengumuman berkaitan akan muncul pada peranti ini.
-        </p>
-        <button type="button" onClick={() => void uji()} disabled={sibuk}
-          className="mt-3 rounded-lg border border-[#14603c] px-3 py-2 text-xs font-semibold text-[#14603c] disabled:opacity-50">
-          {sibuk ? "Menghantar…" : "Hantar notifikasi ujian"}
-        </button>
-        {nota && <p className="mt-2 text-xs leading-relaxed text-[#14603c]">{nota}</p>}
-      </div>
-    );
+    return <p className="mt-4 text-xs font-semibold text-[#14603c]">✓ Pemberitahuan peranti aktif</p>;
   }
 
   return (

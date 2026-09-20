@@ -9,10 +9,8 @@ export const metadata = { title: "Disiplin & Sahsiah" };
 
 /**
  * Disiplin & Sahsiah (permintaan F). Kad ini kelihatan kepada SEMUA guru
- * (F.3) — mereka boleh merekod salah laku, tetapi hanya guru disiplin,
- * pentadbir & admin dapat membaca senarai penuh. `senaraiDisiplin()`
- * memulangkan `boleh: false` untuk guru biasa; halaman tetap memaparkan
- * borang rekod sahaja kepada mereka.
+ * (F.3) — mereka boleh merekod salah laku dan membaca rekod sendiri sahaja.
+ * Guru disiplin, pentadbir & admin mendapat senarai penuh.
  */
 export default async function Disiplin() {
   const sesi = (await sesiSemasa())?.tahun_sesi ?? new Date().getFullYear();
@@ -28,7 +26,9 @@ export default async function Disiplin() {
       <h1 className="mt-3 text-2xl font-bold text-navy-800">Disiplin & Sahsiah</h1>
       <p className="mt-1 text-sm leading-relaxed text-slate-500">
         Rekod salah laku murid — tarikh, saksi & tindakan.
-        {!d.boleh && " Hanya Guru Disiplin, pentadbir & admin boleh membaca senarai penuh."}
+        {d.urusSemua
+          ? " Anda mempunyai paparan penuh semua rekod."
+          : " Senarai di bawah hanya memaparkan rekod yang anda sendiri laporkan."}
       </p>
 
       {d.belumSedia ? (
@@ -39,7 +39,7 @@ export default async function Disiplin() {
       ) : (
         <PanelDisiplin
           tahunSesi={sesi} kelas={kelas} cadangan={cadangan}
-          boleh={d.boleh} senarai={d.senarai} berulang={d.berulang}
+          boleh={d.boleh} urusSemua={d.urusSemua} senarai={d.senarai} berulang={d.berulang}
         />
       )}
     </main>

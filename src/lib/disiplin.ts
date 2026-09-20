@@ -9,6 +9,7 @@ import { klienTulis } from "./supabase-pelayan";
 import { sayaBertugas } from "./tugasan";
 import { belumDipasang } from "./db-belum-sedia";
 import { hantar } from "./notifikasi";
+import { kelasBolehSunting } from "./guru-kelas";
 
 /**
  * Disiplin & Sahsiah (permintaan pengguna F).
@@ -16,9 +17,9 @@ import { hantar } from "./notifikasi";
  * AKSES TERHAD — permintaan F.2/F.3, bukan andaian kami: SEMUA guru boleh
  * MEREKOD (kad kekal kelihatan di hab supaya guru tidak keliru kenapa "kad
  * hilang"), tetapi hanya Guru Disiplin (`tugasan.ts`, jenis "guru_disiplin"),
- * pentadbir & admin boleh MEMBACA senarai. Guru biasa yang menghantar rekod
- * TIDAK dapat menyemak senarai selepas itu — itu bukan pepijat, itu dasar
- * capaian F.3 secara literal ("bukan semua guru boleh membaca semua rekod").
+ * pentadbir & admin boleh MEMBACA semua rekod. Guru biasa boleh menyemak,
+ * menyunting dan memadam rekod yang mereka sendiri hantar sahaja. Guru kelas
+ * mendapat paparan baca sahaja untuk murid kelasnya pada kad Guru Kelas.
  *
  * "PEMANTAUAN KES BERULANG" (F.4) dikira dari jadual yang sama — tiada
  * jadual berasingan, kerana ia hanya kiraan baris sedia ada ikut nama murid.
@@ -26,6 +27,7 @@ import { hantar } from "./notifikasi";
 
 export interface BarisDisiplin {
   id: string;
+  guru_id?: string | null;
   tahun_sesi: number;
   tarikh: string;
   murid_id?: string | null;
@@ -42,8 +44,30 @@ export interface BarisDisiplin {
 
 export type HasilDisiplin = { ok: boolean; mesej: string };
 
-async function bolehBaca(): Promise<boolean> {
+async function bolehBacaSemua(): Promise<boolean> {
   return (await bolehBuat("urus_disiplin")) || (await sayaBertugas("guru_disiplin"));
+}
+
+const LAJUR_DISIPLIN = "id,guru_id,murid_id,tahun_sesi,tarikh,murid_nama,kelas,kesalahan,tindakan,saksi,guru_nama,laporan_lembaga,rujukan_kami,dicipta";
+
+function ringkasBerulang(senarai: BarisDisiplin[]): string[] {
+  const kira = new Map<string, number>();
+  const kunci = (b: BarisDisiplin) => b.murid_id ?? `${b.kelas}:${b.murid_nama.toUpperCase()}`;
+  for (const b of senarai) kira.set(kunci(b), (kira.get(kunci(b)) ?? 0) + 1);
+  return [...new Set(senarai
+    .filter((b) => (kira.get(kunci(b)) ?? 0) >= 2)
+    .map((b) => `${b.murid_nama} (${b.kelas})`))];
+}
+
+async function bolehUbahRekod(id: string): Promise<boolean> {
+  const saya = await pengguna();
+  if (!saya?.peranan || !/^[0-9a-f-]{36}$/i.test(id)) return false;
+  if (await bolehBacaSemua()) return true;
+  if (!saya.id) return false;
+  const rows = (await klienTulis().minta(
+    `pbd_disiplin?select=guru_id&id=eq.${encodeURIComponent(id)}&limit=1`,
+  )) as { guru_id: string | null }[];
+  return rows[0]?.guru_id === saya.id;
 }
 
 /**
@@ -112,27 +136,47 @@ export async function hantarDisiplin(input: {
   return { ok: true, mesej: "Rekod disimpan." };
 }
 
-/** Senarai penuh — HANYA Guru Disiplin, pentadbir & admin (lihat nota fail). */
+/** Senarai penuh untuk pihak berkuasa; pelapor biasa menerima rekod sendiri sahaja. */
 export async function senaraiDisiplin(
   tahun_sesi: number,
-): Promise<{ belumSedia: boolean; boleh: boolean; senarai: BarisDisiplin[]; berulang: string[] }> {
-  if (!(await bolehBaca())) return { belumSedia: false, boleh: false, senarai: [], berulang: [] };
+): Promise<{ belumSedia: boolean; boleh: boolean; urusSemua: boolean; senarai: BarisDisiplin[]; berulang: string[] }> {
+  const saya = await pengguna();
+  if (!saya?.peranan) return { belumSedia: false, boleh: false, urusSemua: false, senarai: [], berulang: [] };
+  const urusSemua = await bolehBacaSemua();
+  if (!urusSemua && !saya.id) return { belumSedia: false, boleh: true, urusSemua: false, senarai: [], berulang: [] };
 
   try {
     const senarai = (await bacaSemua<BarisDisiplin>(
-      `pbd_disiplin?select=id,murid_id,tahun_sesi,tarikh,murid_nama,kelas,kesalahan,tindakan,saksi,guru_nama,` +
-        `laporan_lembaga,rujukan_kami,dicipta&tahun_sesi=eq.${tahun_sesi}&order=tarikh.desc,id.asc`,
+      `pbd_disiplin?select=${LAJUR_DISIPLIN}&tahun_sesi=eq.${tahun_sesi}` +
+        `${urusSemua ? "" : `&guru_id=eq.${saya.id}`}&order=tarikh.desc,id.asc`,
     )) as BarisDisiplin[];
-
-    // Kes berulang: nama murid yang muncul >= 2 kali TAHUN INI.
-    const kira = new Map<string, number>();
-    const kunci = (b: BarisDisiplin) => b.murid_id ?? `${b.kelas}:${b.murid_nama.toUpperCase()}`;
-    for (const b of senarai) kira.set(kunci(b), (kira.get(kunci(b)) ?? 0) + 1);
-    const berulang = [...new Set(senarai.filter((b) => (kira.get(kunci(b)) ?? 0) >= 2).map((b) => `${b.murid_nama} (${b.kelas})`))];
-
-    return { belumSedia: false, boleh: true, senarai, berulang };
+    return { belumSedia: false, boleh: true, urusSemua, senarai, berulang: ringkasBerulang(senarai) };
   } catch (e) {
-    if (skemaDisiplinBelumLengkap(e)) return { belumSedia: true, boleh: true, senarai: [], berulang: [] };
+    if (skemaDisiplinBelumLengkap(e)) return { belumSedia: true, boleh: true, urusSemua, senarai: [], berulang: [] };
+    throw e;
+  }
+}
+
+/** Paparan baca sahaja pada kad Guru Kelas: kelas sendiri sahaja; pentadbir melihat semua. */
+export async function senaraiDisiplinKelas(
+  tahun_sesi: number, kelasDiminta: string[],
+): Promise<{ belumSedia: boolean; senarai: BarisDisiplin[] }> {
+  const skop = await kelasBolehSunting();
+  const diminta = new Set(kelasDiminta.map((k) => k.trim().toUpperCase()).filter(Boolean));
+  const kelas = skop === null
+    ? null
+    : skop.map((k) => k.toUpperCase()).filter((k) => diminta.has(k));
+  if (kelas?.length === 0) return { belumSedia: false, senarai: [] };
+  try {
+    const asas = `pbd_disiplin?select=${LAJUR_DISIPLIN}&tahun_sesi=eq.${tahun_sesi}`;
+    const senarai = kelas === null
+      ? await bacaSemua<BarisDisiplin>(`${asas}&order=tarikh.desc,id.asc`)
+      : (await Promise.all(kelas.map((k) =>
+          bacaSemua<BarisDisiplin>(`${asas}&kelas=eq.${encodeURIComponent(k)}&order=tarikh.desc,id.asc`),
+        ))).flat();
+    return { belumSedia: false, senarai: senarai.sort((a, b) => b.tarikh.localeCompare(a.tarikh)) };
+  } catch (e) {
+    if (skemaDisiplinBelumLengkap(e)) return { belumSedia: true, senarai: [] };
     throw e;
   }
 }
@@ -146,7 +190,7 @@ export async function senaraiDisiplin(
 export async function tandaLaporanLembaga(
   id: string, laporan_lembaga: boolean, rujukan_kami?: string,
 ): Promise<HasilDisiplin> {
-  if (!(await bolehBaca())) return { ok: false, mesej: "Tiada kebenaran." };
+  if (!(await bolehBacaSemua())) return { ok: false, mesej: "Tiada kebenaran." };
 
   const db = klienTulis();
   try {
@@ -165,12 +209,12 @@ export async function tandaLaporanLembaga(
   return { ok: true, mesej: "Dikemas kini." };
 }
 
-/** Guru Disiplin/pentadbir/admin boleh membetulkan rekod yang tersalah isi. */
+/** Pelapor membetulkan rekod sendiri; Guru Disiplin/pentadbir/admin boleh membetulkan semua. */
 export async function suntingDisiplin(id: string, input: {
   tahun_sesi: number; tarikh: string; murid_nama: string; kelas: string;
   kesalahan: string; tindakan: string; saksi?: string;
 }): Promise<HasilDisiplin> {
-  if (!(await bolehBaca()) || !/^[0-9a-f-]{36}$/i.test(id)) return { ok: false, mesej: "Rekod ini tidak boleh disunting." };
+  if (!(await bolehUbahRekod(id))) return { ok: false, mesej: "Rekod ini tidak boleh disunting." };
   const murid_nama = input.murid_nama.trim();
   const kelas = input.kelas.trim();
   const kesalahan = input.kesalahan.trim();
@@ -199,9 +243,9 @@ export async function suntingDisiplin(id: string, input: {
   return { ok: true, mesej: "Rekod disiplin dikemas kini." };
 }
 
-/** Pemadaman kekal dihadkan kepada pihak yang boleh membaca keseluruhan rekod. */
+/** Pelapor boleh memadam rekod sendiri; pihak disiplin/pentadbir boleh memadam semua. */
 export async function padamDisiplin(id: string): Promise<HasilDisiplin> {
-  if (!(await bolehBaca()) || !/^[0-9a-f-]{36}$/i.test(id)) return { ok: false, mesej: "Rekod ini tidak boleh dipadam." };
+  if (!(await bolehUbahRekod(id))) return { ok: false, mesej: "Rekod ini tidak boleh dipadam." };
   try {
     await klienTulis().minta(`pbd_disiplin?id=eq.${encodeURIComponent(id)}`, {
       method: "DELETE", headers: { Prefer: "return=minimal" },
