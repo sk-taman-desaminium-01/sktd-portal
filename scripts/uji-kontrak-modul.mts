@@ -21,6 +21,8 @@ const panelRmt = baca("src/app/rmt/PanelRmt.tsx");
 const surat = baca("src/lib/surat.ts");
 const cetakSurat = baca("src/components/CetakSurat.tsx");
 const bahagian = baca("src/data/bahagian.ts");
+const guruKelas = baca("src/app/guru-kelas/page.tsx");
+const notifikasi = baca("src/app/notifikasi/PanelNotifikasi.tsx");
 const gagal: string[] = [];
 const perlu = (nama: string, ada: boolean) => { if (!ada) gagal.push(nama); };
 
@@ -46,6 +48,12 @@ perlu("RMT dipapar sebagai kad kelas buka tutup", panelRmt.includes("<details") 
 perlu("Kerani boleh menolak surat dengan komen", /export async function tolakSuratRasmi/.test(surat) && surat.includes("komenPejabat"));
 perlu("Pemohon atau pejabat boleh menyunting surat", /export async function suntingSuratRasmi/.test(surat));
 perlu("Tandatangan surat rasmi sentiasa kosong", surat.includes("tandatangan_url: null") && !cetakSurat.includes("surat.tandatangan_url"));
+perlu("Guru biasa hanya membaca disiplin yang dilaporkan sendiri", disiplin.includes('`&guru_id=eq.${saya.id}`'));
+perlu("Pelapor hanya boleh mengubah rekod disiplin miliknya", disiplin.includes("bolehUbahRekod(id)"));
+perlu("Paparan disiplin Guru Kelas disahkan semula di pelayan", disiplin.includes("senaraiDisiplinKelas") && disiplin.includes("kelasBolehSunting()"));
+perlu("Borang awam ibu bapa tidak disalahanggap sebagai hantaran guru", surat.includes('sumber !== "awam"'));
+perlu("Kad Guru Kelas memaparkan rekod kelas secara baca sahaja", guruKelas.includes("senaraiKebenaranGambarKelas") && guruKelas.includes("senaraiDisiplinKelas") && guruKelas.includes("Paparan baca sahaja"));
+perlu("Kad ujian push sudah dibuang", !notifikasi.includes("Hantar notifikasi ujian") && !notifikasi.includes("ujiPushTindakan"));
 for (const id of ["guru-kelas-portal", "kawalan-kelas", "rmt", "disiplin"]) {
   perlu(`Kad ${id} berstatus sedia`, new RegExp(`id: "${id}"[\\s\\S]{0,350}status: "sedia"`).test(bahagian));
 }
@@ -54,4 +62,4 @@ if (gagal.length) {
   console.error(`Kontrak modul gagal:\n${gagal.map((x) => `- ${x}`).join("\n")}`);
   process.exit(1);
 }
-console.log("Kontrak modul: 26 semakan lulus.");
+console.log("Kontrak modul: 32 semakan lulus.");
