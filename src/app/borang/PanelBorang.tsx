@@ -14,6 +14,7 @@ import {
   tandatanganSurat,
 } from "@/lib/surat";
 import PilihCari from "@/components/PilihCari";
+import { hariIniMY } from "@/data/tarikh-my";
 
 type Kepala = KepalaSurat;
 
@@ -111,7 +112,7 @@ function FormRasmi({
 }) {
   const [tajuk, setTajuk] = useState("");
   const [alamat, setAlamat] = useState("");
-  const [tarikh, setTarikh] = useState(new Date().toISOString().slice(0, 10));
+  const [tarikh, setTarikh] = useState(hariIniMY);
   const [isi, setIsi] = useState("");
   const [wakil, setWakil] = useState(guruBesarLalai ? `${guruBesarLalai.nama}|${guruBesarLalai.jawatan}` : "");
   const [sibuk, setSibuk] = useState(false);

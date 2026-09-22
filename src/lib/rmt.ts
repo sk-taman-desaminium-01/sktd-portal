@@ -10,6 +10,7 @@ import { belumDipasang } from "./db-belum-sedia";
 import { hantar } from "./notifikasi";
 import { bacaSenaraiMurid } from "./kenal-murid";
 import { kelasBolehSunting } from "./guru-kelas";
+import { sahInt, sahTarikh, sahUuid } from "./sah";
 
 /**
  * Rancangan Makanan Tambahan (RMT) — permintaan pengguna E.
@@ -61,6 +62,7 @@ async function bolehUrusRoster(tahun?: number, kelas?: string): Promise<boolean>
 export async function naikRosterRmt(
   tahun_sesi: number, tahun: number, kelas: string, teks: string, simpan = false,
 ): Promise<HasilRmt> {
+  sahInt(tahun_sesi, "sesi", 2000, 2100); sahInt(tahun, "tahun", 0, 6);
   if (!(await bolehUrusRoster(tahun, kelas))) return { ok: false, mesej: "Anda hanya boleh mengurus senarai RMT kelas sendiri." };
   const { murid, ditolak } = bacaSenaraiMurid(teks);
   if (murid.length === 0) return { ok: false, mesej: "Tiada nama dikesan dalam teks ini.", ditolak };
@@ -110,6 +112,7 @@ export async function naikRosterRmt(
 export async function senaraiRosterRmt(
   tahun_sesi: number,
 ): Promise<{ belumSedia: boolean; boleh: boolean; senarai: MuridRmt[] }> {
+  sahInt(tahun_sesi, "sesi", 2000, 2100);
   const boleh = (await bolehUrusRoster()) || Boolean((await pengguna())?.peranan);
   if (!boleh) return { belumSedia: false, boleh: false, senarai: [] };
 
@@ -127,6 +130,7 @@ export async function senaraiRosterRmt(
 }
 
 export async function buangRosterRmt(id: string): Promise<HasilRmt> {
+  sahUuid(id);
   const db = klienTulis();
   try {
     const rekod = (await db.minta(
@@ -151,6 +155,7 @@ export async function buangRosterRmt(id: string): Promise<HasilRmt> {
 export async function hadirRmtTarikh(
   tahun_sesi: number, tarikh: string,
 ): Promise<{ belumSedia: boolean; hadir: Record<string, boolean> }> {
+  sahInt(tahun_sesi, "sesi", 2000, 2100); sahTarikh(tarikh);
   const saya = await pengguna();
   if (!saya?.peranan) throw new Error("Tiada kebenaran.");
   if (!Number.isInteger(tahun_sesi) || !/^\d{4}-\d{2}-\d{2}$/.test(tarikh)) {
@@ -177,6 +182,7 @@ export async function hadirRmtTarikh(
 export async function simpanHadirRmt(
   tahun_sesi: number, tarikh: string, hadir: Record<string, boolean>,
 ): Promise<HasilRmt> {
+  sahInt(tahun_sesi, "sesi", 2000, 2100); sahTarikh(tarikh);
   const saya = await pengguna();
   if (!saya?.peranan) return { ok: false, mesej: "Tiada kebenaran." };
   if (!/^\d{4}-\d{2}-\d{2}$/.test(tarikh)) return { ok: false, mesej: "Tarikh tidak sah." };

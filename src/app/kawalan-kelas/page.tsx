@@ -4,10 +4,10 @@ import { senaraiKawalanKelas } from "@/lib/kawalan-kelas";
 import { namaGuruKelasSemua } from "@/lib/guru-kelas";
 import { semuaKelas, semuaKelasPPKI } from "@/data/kelas";
 import PanelKawalanKelas from "./PanelKawalanKelas";
+import { hariIniMY } from "@/data/tarikh-my";
 
 export const metadata = { title: "Rekod Kawalan Kelas & Kehadiran" };
 
-const HARI_INI = () => new Date().toISOString().slice(0, 10);
 
 /**
  * Rekod Kawalan Kelas & Kehadiran (permintaan G) — kad baharu, log
@@ -37,7 +37,7 @@ export default async function KawalanKelas() {
       ) : (
         <PanelKawalanKelas
           tahunSesi={sesi} kelas={kelas} namaGuruKelas={namaGuruKelas}
-          senarai={k.senarai} tarikhAwal={HARI_INI()}
+          senarai={k.senarai} tarikhAwal={hariIniMY()}
         />
       )}
     </main>

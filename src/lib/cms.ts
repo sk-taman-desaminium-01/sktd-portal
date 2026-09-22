@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { klienTulis } from "./supabase-pelayan";
 import { binaSemulaLamanAwam } from "./bina-semula";
 import { hantar } from "./notifikasi";
+import { sahUuid } from "./sah";
 
 export type Keutamaan = "segera" | "utama" | "biasa";
 export type Status = "draf" | "terbit";
@@ -57,6 +58,7 @@ export async function senaraiPos(): Promise<PosCms[]> {
  * borang sunting perlukan teks penuh, bukan sekadar ringkasan.
  */
 export async function ambilPos(id: string): Promise<(PosCms & { kandungan: string | null }) | null> {
+  sahUuid(id);
   await pastikanMasuk();
   if (!id.trim()) return null;
   const db = klienTulis();
@@ -202,6 +204,7 @@ export async function simpanPos(data: FormData): Promise<HasilSimpan> {
 
 /** Padam pos secara nyata, hanya untuk pemegang kuasa penerbitan kandungan. */
 export async function padamPos(id: string): Promise<{ ok: boolean; mesej: string }> {
+  sahUuid(id);
   await pastikanMasuk();
   if (!/^[0-9a-f-]{36}$/i.test(id)) return { ok: false, mesej: "Pos tidak sah." };
   try {

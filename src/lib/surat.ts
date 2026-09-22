@@ -284,10 +284,12 @@ export async function senaraiSuratSaya(): Promise<{ belumSedia: boolean; senarai
   const db = klienTulis();
   try {
     const lihatSemua = await bolehBuat("lihat_data_murid");
-    const dibaca = (await db.minta(
+    // Tiada had 300: pentadbir mesti nampak SEMUA borang (±2,250 murid
+    // Kebenaran Gambar). Senarai ringan kerana tiada imej tandatangan.
+    const dibaca = await bacaSemua<BarisSurat>(
       `pbd_surat?select=${LAJUR_SENARAI}` +
-        `${lihatSemua ? "" : `&pemohon_emel=eq.${encodeURIComponent(saya.emel)}`}&order=dicipta.desc&limit=${lihatSemua ? 300 : 100}`,
-    )) as BarisSurat[];
+        `${lihatSemua ? "" : `&pemohon_emel=eq.${encodeURIComponent(saya.emel)}`}&order=dicipta.desc,id.asc`,
+    );
     // Borang awam dihantar oleh ibu bapa. Walaupun emel guru kelas disimpan
     // sebagai pemilik teknikal, ia hanya muncul pada kad Guru Kelas dan tidak
     // boleh disalahanggap sebagai hantaran guru tersebut.
@@ -335,7 +337,7 @@ export async function senaraiSuratPejabat(): Promise<{ belumSedia: boolean; sena
   try {
     const senarai = (await db.minta(
       `pbd_surat?select=${LAJUR_SENARAI}` +
-        `&jenis=eq.rasmi&order=dicipta.desc&limit=200`,
+        `&jenis=eq.rasmi&order=dicipta.desc,id.asc&limit=500`,
     )) as BarisSurat[];
     return { belumSedia: false, senarai };
   } catch (e) {

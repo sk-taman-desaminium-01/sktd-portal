@@ -6,6 +6,7 @@ import { klienTulis } from "./supabase-pelayan";
 import { sesiSemasa } from "./pbd";
 import { bacaSenaraiMurid, type MuridDikenal } from "./kenal-murid";
 import { hantar } from "./notifikasi";
+import { sahInt } from "./sah";
 
 /**
  * Import senarai murid.
@@ -281,6 +282,7 @@ async function simpanMuridKelasTerus(
 export async function importMuridKelas(
   tahun: number, kelas: string, teks: string, simpan = false,
 ): Promise<HasilImportKelas> {
+  sahInt(tahun, "tahun", 0, 6);
   let oleh: string | null = null;
   try {
     oleh = (await pastikanBoleh("urus_guru_kelas")).emel;

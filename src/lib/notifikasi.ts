@@ -194,7 +194,7 @@ export async function emelSemuaWarga(): Promise<string[]> {
   const keluar: string[] = [];
   for (let mula = 0; ; mula += KEPING) {
     const keping = (await db.minta(
-      `pbd_guru?select=email&dibenarkan=eq.true&offset=${mula}&limit=${KEPING}`,
+      `pbd_guru?select=email&dibenarkan=eq.true&order=id.asc&offset=${mula}&limit=${KEPING}`,
     )) as { email: string | null }[];
     keluar.push(...keping.map((b) => b.email ?? "").filter((e) => e !== ""));
     if (keping.length < KEPING) return keluar;

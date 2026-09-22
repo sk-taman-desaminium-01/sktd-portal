@@ -2,6 +2,7 @@
 
 import { pengguna } from "./akses";
 import { klienTulis } from "./supabase-pelayan";
+import { sahInt } from "./sah";
 
 /**
  * Cadangan nama murid untuk medan "taip nama" di skrin kakitangan — Disiplin,
@@ -24,6 +25,7 @@ export interface CadanganMurid {
 }
 
 export async function senaraiMuridCadangan(tahun_sesi: number): Promise<CadanganMurid[]> {
+  sahInt(tahun_sesi, "sesi", 2000, 2100);
   const saya = await pengguna();
   if (!saya?.peranan) return [];
 

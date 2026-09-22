@@ -7,6 +7,8 @@ import { pengguna, bolehBuat } from "./akses";
 import { klienTulis } from "./supabase-pelayan";
 import { belumDipasang } from "./db-belum-sedia";
 import { hantar } from "./notifikasi";
+import { hariIniMY } from "@/data/tarikh-my";
+import { sahInt } from "./sah";
 
 /**
  * Rekod Kawalan Kelas & Kehadiran (permintaan pengguna G) — kad baharu.
@@ -106,12 +108,11 @@ export async function hantarKawalanKelas(input: {
 export async function senaraiKawalanKelas(
   tahun_sesi: number, hari: number = 30,
 ): Promise<{ belumSedia: boolean; senarai: BarisKawalanKelas[] }> {
+  sahInt(tahun_sesi, "sesi", 2000, 2100); sahInt(hari, "hari", 1, 400);
   const saya = await pengguna();
   if (!saya?.peranan) return { belumSedia: false, senarai: [] };
 
-  const sejak = new Date();
-  sejak.setDate(sejak.getDate() - hari);
-  const sejakIso = sejak.toISOString().slice(0, 10);
+  const sejakIso = hariIniMY(-hari);
 
   try {
     const senarai = (await bacaSemua<BarisKawalanKelas>(
