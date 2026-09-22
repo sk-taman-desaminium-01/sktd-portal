@@ -24,8 +24,10 @@ export interface MuatanFail {
   nama: string;
   jenis: string;
   saiz: number;
-  /** Kandungan fail, dikodkan base64 (tanpa awalan data:). */
-  data: string;
+  /** Kandungan fail, dikodkan base64 (tanpa awalan data:). Fail kecil sahaja. */
+  data?: string;
+  /** Laluan baldi `sementara` — fail > 3 MB dimuat naik terus ke storan. */
+  laluan?: string;
 }
 
 /** Pelayar: baca fail menjadi muatan base64. */
@@ -51,6 +53,7 @@ export async function failKeMuatan(fail: File): Promise<MuatanFail> {
 
 /** Pelayan: tukar muatan kembali menjadi File. */
 export function muatanKeFail(m: MuatanFail): File {
+  if (!m.data) throw new Error("Muatan tiada data — guna bacaMuatan() untuk fail yang dimuat naik terus.");
   const biner = Buffer.from(m.data, "base64");
   return new File([new Uint8Array(biner)], m.nama, { type: m.jenis });
 }

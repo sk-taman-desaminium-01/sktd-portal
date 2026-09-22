@@ -433,3 +433,172 @@ export async function kunciSkrin(): Promise<() => void> {
     return () => {};
   }
 }
+
+/* ======================================================== OCR JADUAL WAKTU */
+
+/**
+ * Item teks berkoordinat — bentuk SAMA dengan `ItemTeks` PDF di pelayan
+ * (x kiri, y dari BAWAH seperti PDF, w lebar), dalam unit titik A4.
+ */
+export interface ItemOcr { str: string; x: number; y: number; w: number }
+
+const HARI_RE = /\b(ISNIN|SELASA|RABU|KHAMIS|JUMAAT|SABTU|AHAD)\b/gi;
+
+/** Skor arah jadual: nama hari (kuat) + corak masa 7:30 / 7.30 (sokongan). */
+function skorJadual(teks: string): number {
+  // aSc mencetak singkatan Inggeris sebaris sendiri: Mo, Tu, We, Th, Fr.
+  const singkat = teks.match(/^\s*(Mo|Tu|We|Th|Fr)\s*$/gm) ?? [];
+  const hari = new Set([...(teks.match(HARI_RE) ?? []), ...singkat].map((h) => h.trim().toUpperCase())).size;
+  const masa = (teks.match(/\b\d{1,2}[.:]\d{2}\b/g) ?? []).length;
+  return hari * 10 + Math.min(masa, 30);
+}
+
+/**
+ * Perkataan TSV → frasa berkoordinat. Perkataan pada baris sama yang
+ * dekat (jurang < 0.9 × tinggi huruf) dicantum — seperti item teks PDF,
+ * supaya "Bahasa Melayu" kekal satu sel dan bukan dua.
+ */
+function itemDariTsv(tsv: string | null): ItemOcr[] {
+  const kata = kataDariTsv(tsv);
+  if (kata.length === 0) return [];
+  const H = Math.max(...kata.map((k) => k.atas + k.tinggi));
+  const W = Math.max(...kata.map((k) => k.kiri + k.lebar));
+  const s = 842 / Math.max(H, W);
+  const susun = [...kata].sort((a, b) => a.tengahY - b.tengahY || a.kiri - b.kiri);
+  const frasa: { kiri: number; kanan: number; atas: number; bawah: number; teks: string[] }[] = [];
+  for (const k of susun) {
+    const f = frasa.find((x) =>
+      Math.abs((x.atas + x.bawah) / 2 - k.tengahY) < k.tinggi * 0.5 &&
+      k.kiri - x.kanan >= -2 && k.kiri - x.kanan < k.tinggi * 0.9);
+    if (f) { f.teks.push(k.teks); f.kanan = k.kiri + k.lebar; f.atas = Math.min(f.atas, k.atas); f.bawah = Math.max(f.bawah, k.atas + k.tinggi); }
+    else frasa.push({ kiri: k.kiri, kanan: k.kiri + k.lebar, atas: k.atas, bawah: k.atas + k.tinggi, teks: [k.teks] });
+  }
+  // Julat masa aSc "01:00 - 01:30": OCR kerap kehilangan sengkang, jadi dua
+  // masa bersebelahan pada baris sama dicantum semula menjadi satu julat —
+  // pembaca kedudukan mengenal lajur waktu daripada JULAT, bukan satu masa.
+  const MASA = /^\d{1,2}[:.]\d{2}$/;
+  frasa.sort((a, b) => (a.atas + a.bawah) / 2 - (b.atas + b.bawah) / 2 || a.kiri - b.kiri);
+  for (let i = 0; i < frasa.length - 1; i++) {
+    const a = frasa[i], b = frasa[i + 1];
+    const t = a.bawah - a.atas;
+    const sama = Math.abs((a.atas + a.bawah) / 2 - (b.atas + b.bawah) / 2) < t * 0.6;
+    const ta = a.teks.join(" ").replace(/\s*[-–—]\s*$/, "");
+    if (sama && MASA.test(ta) && MASA.test(b.teks.join(" ")) && b.kiri - a.kanan < t * 3) {
+      a.teks = [`${ta} - ${b.teks.join(" ")}`];
+      a.kanan = b.kanan;
+      frasa.splice(i + 1, 1);
+    }
+  }
+  return frasa.map((f) => ({ str: betulkanHurufJadual(f.teks.join(" ")), x: f.kiri * s, y: (H - f.bawah) * s, w: (f.kanan - f.kiri) * s }));
+}
+
+/**
+ * Jadual aSc ditaip HURUF BESAR. Tesseract kerap membaca "I" sebagai "l",
+ * "1" atau "|" ("Bl", "P.lSLAM"), dan "O" sebagai "0". Dalam perkataan yang
+ * selebihnya huruf besar, gantikan semula — tanpa menyentuh nombor masa.
+ */
+export function betulkanHurufJadual(teks: string): string {
+  return teks.split(" ").map((k) => {
+    if (/^\d{1,2}[:.]\d{2}$/.test(k) || /^\d+$/.test(k)) return k;
+    const huruf = k.replace(/[^A-Za-z]/g, "");
+    const besar = huruf.replace(/[^A-Z]/g, "").length;
+    if (huruf.length === 0 || besar < Math.max(1, huruf.length - 1)) return k;
+    return k.replace(/[l|]/g, "I").replace(/(?<=[A-Z.])1(?=[A-Z.]|$)/g, "I").replace(/(?<=[A-Z])0(?=[A-Z]|$)/g, "O");
+  }).join(" ");
+}
+
+/**
+ * OCR JADUAL WAKTU — foto atau imbasan jadual dari telefon.
+ *
+ * Berbeza daripada OCR senarai murid: TIADA pemotongan lajur kiri (jadual
+ * memenuhi seluruh muka), dan arah dipilih mengikut bilangan NAMA HARI,
+ * bukan No. KP. Hasilnya ialah item berkoordinat, jadi pelayan membaca
+ * foto dengan pembaca kedudukan yang sama seperti PDF aSc.
+ */
+export async function bacaImbasanJadual(
+  fail: File,
+  kemajuan?: (teks: string) => void,
+  hadMuka = 3,
+): Promise<{ teks: string; item: ItemOcr[][] }> {
+  const modul = await import("tesseract.js");
+  const worker = await modul.createWorker("eng", modul.OEM.LSTM_ONLY, {
+    logger: (m) => { if (m.status === "recognizing text") kemajuan?.(`OCR ${Math.round(m.progress * 100)}%…`); },
+  });
+  await worker.setParameters({ tessedit_pageseg_mode: modul.PSM.SPARSE_TEXT, preserve_interword_spaces: "1", user_defined_dpi: "240" });
+
+  // Putar kanvas SENDIRI dengan saiz dibesarkan. `rotateRadians` Tesseract
+  // memutar di dalam bingkai asal — foto landskap yang dipusing 90° terpotong
+  // di kedua-dua hujung (lajur hari dan dua waktu terakhir hilang).
+  // Foto kecil/kabur dibesarkan ke ±3600 px pada sisi panjang — huruf
+  // jadual yang kecil (nama guru) perlu ±20 px tinggi untuk dibaca.
+  function putar(kanvas: HTMLCanvasElement, sudut: number): HTMLCanvasElement {
+    const skala = Math.min(2, Math.max(1, 3600 / Math.max(kanvas.width, kanvas.height)));
+    if (sudut === 0 && skala === 1) return kanvas;
+    const suku = Math.abs(Math.round(sudut / (Math.PI / 2))) % 2 === 1;
+    const k = document.createElement("canvas");
+    k.width = Math.round((suku ? kanvas.height : kanvas.width) * skala);
+    k.height = Math.round((suku ? kanvas.width : kanvas.height) * skala);
+    const ctx = k.getContext("2d", { willReadFrequently: true });
+    if (!ctx) throw new Error("Pelayar tidak dapat memutar imej OCR.");
+    ctx.fillStyle = "#fff";
+    ctx.fillRect(0, 0, k.width, k.height);
+    ctx.translate(k.width / 2, k.height / 2);
+    ctx.rotate(sudut);
+    ctx.scale(skala, skala);
+    ctx.imageSmoothingQuality = "high";
+    ctx.drawImage(kanvas, -kanvas.width / 2, -kanvas.height / 2);
+    return k;
+  }
+
+  async function satuMuka(kanvas: HTMLCanvasElement): Promise<{ teks: string; item: ItemOcr[] }> {
+    let terbaik: { teks: string; item: ItemOcr[]; skor: number } | null = null;
+    for (const sudut of [0, Math.PI / 2, -Math.PI / 2, Math.PI]) {
+      kemajuan?.(`Mengesan arah ${darjah(sudut)}°…`);
+      const imej = putar(kanvas, sudut);
+      let r;
+      try {
+        r = await worker.recognize(imej, {}, { text: true, tsv: true, blocks: false });
+      } finally {
+        if (imej !== kanvas) { imej.width = 1; imej.height = 1; }
+      }
+      const skor = skorJadual(r.data.text);
+      if (!terbaik || skor > terbaik.skor) terbaik = { teks: r.data.text, item: itemDariTsv(r.data.tsv), skor };
+      if (skor >= 40) break; // ≥ 4 nama hari: arah sudah pasti
+    }
+    return terbaik ?? { teks: "", item: [] };
+  }
+
+  try {
+    if (!/\.pdf$/i.test(fail.name) && fail.type !== "application/pdf") {
+      const kanvas = await kanvasImej(fail);
+      try {
+        const r = await satuMuka(kanvas);
+        return { teks: r.teks, item: r.item.length ? [r.item] : [] };
+      } finally { kanvas.width = 1; kanvas.height = 1; }
+    }
+    const { getDocumentProxy } = await import("unpdf");
+    const pdf = await getDocumentProxy(new Uint8Array(await fail.arrayBuffer()));
+    const teks: string[] = [];
+    const item: ItemOcr[][] = [];
+    try {
+      for (let n = 1; n <= Math.min(pdf.numPages, hadMuka); n++) {
+        kemajuan?.(`Menyediakan muka ${n}…`);
+        const kanvas = await kanvasMuka(pdf, n);
+        try {
+          const r = await satuMuka(kanvas);
+          teks.push(r.teks);
+          if (r.item.length) item.push(r.item);
+        } finally { kanvas.width = 1; kanvas.height = 1; }
+      }
+    } finally { await pdf.loadingTask.destroy(); }
+    return { teks: teks.join("\n"), item };
+  } finally {
+    await worker.terminate();
+  }
+}
+
+/** Bungkus hasil OCR jadual sebagai fail kecil untuk Server Action. */
+export function failOcrJadual(fail: File, hasil: { teks: string; item: ItemOcr[][] }): File {
+  const nama = fail.name.replace(/\.[^.]+$/, "") || "jadual";
+  return new File([JSON.stringify(hasil)], `${nama}.ocrjadual.txt`, { type: "text/plain" });
+}

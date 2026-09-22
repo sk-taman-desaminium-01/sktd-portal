@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { huraiMuka, huraiFail, simpanPengurusan, type SeksyenCadangan } from "@/lib/tindakan-pengurusan";
 import { JENIS_SEKSYEN, type KodSeksyen } from "@/data/seksyen-pengurusan";
-import { failKeMuatan } from "@/data/fail-base64";
+import { sediaMuatan } from "@/data/muatan-pelayar";
 import { semakSaiz } from "@/data/had-fail";
 import { mukaDariPdf } from "@/lib/muka-pdf";
 import { bacaImbasan, failTeksOcr } from "@/data/ocr-pelayar";
@@ -76,7 +76,7 @@ export default function NaikPengurusan() {
         if (!hasil.ok && muka.every((m) => m.bilItem <= 3)) {
           const teksOcr = await bacaImbasan(fail, (teks) => setMesej({ ok: true, teks }), 100);
           if (!teksOcr) throw new Error("OCR selesai tetapi tiada teks dapat dikenal pasti.");
-          hasil = await huraiFail(await failKeMuatan(failTeksOcr(fail, teksOcr)));
+          hasil = await huraiFail(await sediaMuatan(failTeksOcr(fail, teksOcr)));
         }
       } else {
         const terlalu = semakSaiz(fail);
@@ -85,7 +85,7 @@ export default function NaikPengurusan() {
           setFasa("pilih");
           return;
         }
-        hasil = await huraiFail(await failKeMuatan(fail));
+        hasil = await huraiFail(await sediaMuatan(fail));
       }
 
       setMesej({ ok: hasil.ok, teks: hasil.mesej });

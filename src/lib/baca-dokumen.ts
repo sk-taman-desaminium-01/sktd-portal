@@ -92,6 +92,30 @@ async function bacaPdf(buf: ArrayBuffer): Promise<Dokumen> {
   return { jenis: "pdf", teks, grid, item, amaran: [] };
 }
 
+/* ------------------------------------------------ OCR jadual dari pelayar */
+
+/**
+ * Hasil `bacaImbasanJadual()` di pelayar: item berkoordinat dalam unit
+ * titik, bentuk sama seperti PDF — jadi foto jadual dibaca dengan pembaca
+ * kedudukan aSc yang sama. Disahkan ketat: ini input pengguna.
+ */
+function bacaOcrJadual(json: string): Dokumen {
+  let data: { teks?: unknown; item?: unknown };
+  try { data = JSON.parse(json); } catch { return { jenis: "lain", teks: "", grid: [], amaran: ["Hasil OCR rosak. Cuba lagi."] }; }
+  const teks = typeof data.teks === "string" ? data.teks.slice(0, 200_000) : "";
+  const item: ItemTeks[][] = Array.isArray(data.item)
+    ? (data.item as unknown[]).slice(0, 5).map((m) => (Array.isArray(m) ? m : []).slice(0, 5000)
+        .filter((i): i is ItemTeks => !!i && typeof i.str === "string" && [i.x, i.y, i.w].every((v) => typeof v === "number" && Number.isFinite(v)))
+        .map((i) => ({ str: i.str.slice(0, 200), x: i.x, y: i.y, w: i.w })))
+        .filter((m) => m.length > 0)
+    : [];
+  const grid = item.map((m) => gridDariKedudukan(m)).filter((g) => g.length > 0);
+  if (!teks.trim() && item.length === 0) {
+    return { jenis: "imbasan", teks: "", grid: [], amaran: ["OCR tidak menemui teks pada gambar ini."] };
+  }
+  return { jenis: "ocr", teks, grid, item, amaran: [] };
+}
+
 /* -------------------------------------------------------------------- DOCX */
 
 /** Tarik jadual dari HTML mammoth tanpa penghurai DOM — pelayan tiada DOM. */
@@ -227,6 +251,7 @@ export async function bacaDokumen(fail: File): Promise<Dokumen> {
   }
 
   const buf = await fail.arrayBuffer();
+  if (jenis === "ocr") return bacaOcrJadual(new TextDecoder().decode(buf));
   if (jenis === "pdf") return bacaPdf(buf);
   if (jenis === "docx") return bacaDocx(buf);
   if (jenis === "xlsx") return bacaXlsx(buf);

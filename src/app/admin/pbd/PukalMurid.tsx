@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { bacaMuridPukal, bacaTeksMuridPukal, type HasilPukalMurid } from "@/lib/pukal-murid";
 import { importMuridKelas } from "@/lib/import-murid";
-import { failKeMuatan } from "@/data/fail-base64";
+import { sediaMuatan } from "@/data/muatan-pelayar";
 import { semakSaiz } from "@/data/had-fail";
 import { ciptaPembacaImbasan, pdfTanpaTeks, kunciSkrin, type PembacaImbasan } from "@/data/ocr-pelayar";
 import PilihCari from "@/components/PilihCari";
@@ -118,7 +118,7 @@ export default function PukalMurid({ semuaKelas }: { semuaKelas: string[] }) {
             (/\.pdf$/i.test(fail.name) && await pdfTanpaTeks(fail));
           let r = imbasan
             ? { nama, kelas: null, ok: false, mesej: "Tiada No. KP — imbasan" } as Awaited<ReturnType<typeof bacaMuridPukal>>
-            : await bacaMuridPukal(await failKeMuatan(fail));
+            : await bacaMuridPukal(await sediaMuatan(fail));
           if ((/\.pdf$/i.test(fail.name) || fail.type.startsWith("image/")) && !r.ok && /Tiada No\. KP|imbasan|gambar/i.test(r.mesej)) {
             pembacaOcr ??= await ciptaPembacaImbasan();
             const teksOcr = await pembacaOcr.baca(fail, (teks) =>

@@ -6,8 +6,8 @@ import { naikFailJadual, type HasilBaca } from "@/lib/baca-jadual";
 import PukalJadual from "./PukalJadual";
 import { SUBJEK } from "@/data/subjek";
 import { semakSaiz } from "@/data/had-fail";
-import { failKeMuatan } from "@/data/fail-base64";
-import { bacaImbasan, failTeksOcr } from "@/data/ocr-pelayar";
+import { sediaMuatan, normalkanFail } from "@/data/muatan-pelayar";
+import { bacaImbasanJadual, failOcrJadual, pdfTanpaTeks } from "@/data/ocr-pelayar";
 import {
   HARI, NAMA_HARI, NAMA_SESI, SESI, jamPapar, setUntukKelas, tahunKelas,
   type Hari, type Jadual, type Sesi, type SetWaktu, type Waktu,
@@ -149,13 +149,18 @@ export default function PanelJadual({
     setNaik(true);
     setBaca(null);
     try {
-      // Dihantar sebagai base64, BUKAN muat naik multipart — WAF Cloudflare
-      // menyekat muat naik PDF ke domain ini. Lihat src/data/fail-base64.ts.
-      let dibaca = await naikFailJadual(pilih, await failKeMuatan(fail));
-      if ((/\.pdf$/i.test(fail.name) || fail.type.startsWith("image/")) && !dibaca.draf && /TIDAK boleh dibaca|imbasan|gambar/i.test(dibaca.mesej)) {
-        const teksOcr = await bacaImbasan(fail, (teks) => setBaca({ ok: true, mesej: teks }));
-        if (!teksOcr) throw new Error("OCR selesai tetapi tiada teks dapat dikenal pasti.");
-        dibaca = await naikFailJadual(pilih, await failKeMuatan(failTeksOcr(fail, teksOcr)));
+      // Fail ≤ 3 MB dihantar sebagai base64 (WAF Cloudflare menyekat muat naik
+      // multipart PDF ke domain ini); fail lebih besar terus ke storan
+      // Supabase — lihat src/data/muatan-pelayar.ts.
+      // Jenis dikenal daripada kandungan (Android kerap memberi octet-stream).
+      const f = await normalkanFail(fail);
+      // Foto / imbasan terus ke OCR JADUAL di peranti — tiada muat naik fail besar.
+      const imbasan = f.type.startsWith("image/") || (/\.pdf$/i.test(f.name) && await pdfTanpaTeks(f));
+      let dibaca = imbasan ? null : await naikFailJadual(pilih, await sediaMuatan(f));
+      if (!dibaca || ((/\.pdf$/i.test(f.name) || f.type.startsWith("image/")) && !dibaca.draf && /TIDAK boleh dibaca|imbasan|gambar/i.test(dibaca.mesej))) {
+        const hasil = await bacaImbasanJadual(f, (teks) => setBaca({ ok: true, mesej: teks }));
+        if (!hasil.teks.trim() && hasil.item.length === 0) throw new Error("OCR selesai tetapi tiada teks dapat dikenal pasti. Ambil foto lebih dekat dan terang.");
+        dibaca = await naikFailJadual(pilih, await sediaMuatan(failOcrJadual(f, hasil)));
         dibaca.mesej = `OCR pada peranti selesai. ${dibaca.mesej}`;
       }
       setBaca(dibaca);
@@ -270,7 +275,7 @@ export default function PanelJadual({
         >
           <input
             type="file" name="fail" required
-            accept=".pdf,.docx,.xlsx,.xlsm,.csv,image/png,image/jpeg"
+            accept=".pdf,.docx,.xlsx,.xlsm,.csv,application/pdf,application/octet-stream,image/png,image/jpeg,image/webp"
             className="min-w-0 flex-1 rounded-lg border border-garis px-3 py-2.5 text-sm"
           />
           <button

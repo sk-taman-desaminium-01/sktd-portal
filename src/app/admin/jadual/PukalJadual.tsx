@@ -3,9 +3,9 @@
 import { useState } from "react";
 import { bacaJadualPukal, type HasilPukal } from "@/lib/baca-jadual";
 import { simpanJadualBanyak } from "@/lib/jadual";
-import { failKeMuatan } from "@/data/fail-base64";
+import { sediaMuatan, normalkanFail } from "@/data/muatan-pelayar";
 import { semakSaiz } from "@/data/had-fail";
-import { bacaImbasan, failTeksOcr } from "@/data/ocr-pelayar";
+import { bacaImbasanJadual, failOcrJadual, pdfTanpaTeks } from "@/data/ocr-pelayar";
 import { HARI, NAMA_HARI, type KelasJadual, type Waktu } from "@/data/jadual-jenis";
 import { namaSubjek } from "@/data/subjek";
 
@@ -103,13 +103,15 @@ export default function PukalJadual() {
           continue;
         }
         try {
-          let r = await bacaJadualPukal(await failKeMuatan(fail));
-          if ((/\.pdf$/i.test(fail.name) || fail.type.startsWith("image/")) && !r.ok && /imbasan|gambar|teks/i.test(r.mesej)) {
-            const teksOcr = await bacaImbasan(fail, (teks) =>
+          const f = await normalkanFail(fail);
+          const imbasan = f.type.startsWith("image/") || (/\.pdf$/i.test(f.name) && await pdfTanpaTeks(f));
+          let r = imbasan ? null : await bacaJadualPukal(await sediaMuatan(f));
+          if (!r || ((/\.pdf$/i.test(f.name) || f.type.startsWith("image/")) && !r.ok && /imbasan|gambar|teks/i.test(r.mesej))) {
+            const hasil = await bacaImbasanJadual(f, (teks) =>
               setHasil({ ok: true, mesej: `${nama}: ${teks}` }),
             );
-            if (!teksOcr) throw new Error("OCR selesai tetapi tiada teks dapat dikenal pasti.");
-            r = await bacaJadualPukal(await failKeMuatan(failTeksOcr(fail, teksOcr)));
+            if (!hasil.teks.trim() && hasil.item.length === 0) throw new Error("OCR selesai tetapi tiada teks dapat dikenal pasti.");
+            r = await bacaJadualPukal(await sediaMuatan(failOcrJadual(f, hasil)));
           }
           keputusan.push({ ...r, pilih: r.ok, kunci: `${nama}-${i}` });
         } catch (e) {
@@ -164,7 +166,7 @@ export default function PukalJadual() {
       >
         <input
           type="file" name="fail" multiple required
-          accept=".pdf,.docx,.xlsx,.xlsm,.csv,.zip,image/png,image/jpeg"
+          accept=".pdf,.docx,.xlsx,.xlsm,.csv,.zip,application/pdf,application/octet-stream,image/png,image/jpeg,image/webp"
           className="min-w-0 flex-1 rounded-lg border border-garis px-3 py-2.5 text-sm"
         />
         <button

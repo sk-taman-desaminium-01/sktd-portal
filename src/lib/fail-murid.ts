@@ -1,7 +1,8 @@
 "use server";
 
 import { pastikanBoleh } from "./akses";
-import { muatanKeFail, type MuatanFail } from "@/data/fail-base64";
+import type { MuatanFail } from "@/data/fail-base64";
+import { bacaMuatan, adaMuatan } from "./muatan";
 import { pilihBacaan, type Calon } from "@/data/pilih-bacaan";
 import { calonDariFail } from "./baca-murid-fail";
 import { importMuridKelas, type HasilImportKelas } from "./import-murid";
@@ -45,7 +46,7 @@ export async function importFailMurid(
 
   let fail: File;
   try {
-    fail = muatanKeFail(muatan);
+    fail = await bacaMuatan(muatan);
   } catch {
     return { ok: false, kering: true, mesej: "Fail tidak dapat dibaca." };
   }

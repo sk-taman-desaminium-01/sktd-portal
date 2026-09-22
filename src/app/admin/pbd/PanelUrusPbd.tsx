@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { importMuridKelas, type HasilImportKelas } from "@/lib/import-murid";
 import { importFailMurid, type HasilFail } from "@/lib/fail-murid";
-import { failKeMuatan } from "@/data/fail-base64";
+import { sediaMuatan } from "@/data/muatan-pelayar";
 import { bacaImbasan } from "@/data/ocr-pelayar";
 import {
   tugaskanGuruSubjek, buangTugasanGuruSubjek, naikTahunTindakan, cubaNaikTahun,
@@ -182,7 +182,7 @@ export default function PanelUrusPbd({
     setSibukFail(true);
     setKemajuanFail("");
     try {
-      let r = await importFailMurid(tahun, k, await failKeMuatan(fail), simpan);
+      let r = await importFailMurid(tahun, k, await sediaMuatan(fail), simpan);
       if ((/\.pdf$/i.test(fail.name) || fail.type.startsWith("image/")) && !r.ok && /Tiada No\. KP|imbasan|gambar/i.test(r.mesej)) {
         const teksOcr = await bacaImbasan(fail, setKemajuanFail);
         if (!teksOcr) throw new Error("OCR selesai tetapi tiada teks dapat dikenal pasti.");

@@ -4,7 +4,8 @@ import { revalidatePath } from "next/cache";
 import { pastikanBoleh } from "./akses";
 import { semakFail } from "./storan";
 import { bacaDokumen } from "./baca-dokumen";
-import { muatanKeFail, type MuatanFail } from "@/data/fail-base64";
+import type { MuatanFail } from "@/data/fail-base64";
+import { bacaMuatan, adaMuatan } from "./muatan";
 import { kesanSeksyen, type SeksyenDikesan, type MukaDokumen } from "./pengurusan-huraian";
 import { JENIS_SEKSYEN, type KodSeksyen } from "@/data/seksyen-pengurusan";
 import { bacaPenunjukKod } from "@/data/carta";
@@ -157,8 +158,8 @@ export async function huraiFail(muatan: MuatanFail): Promise<HasilHurai> {
     return { ok: false, mesej: "Tiada kebenaran." };
   }
   try {
-    if (!muatan?.data) return { ok: false, mesej: "Tiada fail dipilih." };
-    const fail = muatanKeFail(muatan);
+    if (!adaMuatan(muatan)) return { ok: false, mesej: "Tiada fail dipilih." };
+    const fail = await bacaMuatan(muatan);
     const tolak = semakFail(fail);
     if (tolak) return { ok: false, mesej: tolak };
 
