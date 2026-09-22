@@ -28,6 +28,38 @@ function mesejRalatModul(e: unknown) {
  return mesej.startsWith("[supabase]") ? "Borang tidak dapat disimpan buat masa ini. Cuba lagi atau hubungi pengurus." : mesej;
 }
 
+/**
+ * `tarikh_tamat` ditambah 22 Sep 2026. Sehingga SQL dijalankan, lajur itu
+ * tiada: bacaan/tulisan dicuba semula TANPA lajur itu, supaya borang yang
+ * sedang dibuka kepada ibu bapa tidak tiba-tiba hilang.
+ */
+function tiadaLajurTamat(e: unknown): boolean {
+  const m = e instanceof Error ? e.message : String(e);
+  return /tarikh_tamat/.test(m) && /42703|PGRST204|column|schema cache/i.test(m);
+}
+const LAJUR_AWAM = "id,nama,tarikh,tarikh_tamat,masa,tempat,anjuran,tutup";
+async function denganTamat<T>(cuba: (lajur: string) => Promise<T>): Promise<T> {
+  try { return await cuba(LAJUR_AWAM); }
+  catch (e) { if (tiadaLajurTamat(e)) return cuba(LAJUR_AWAM.replace(",tarikh_tamat", "")); throw e; }
+}
+function sahTamat(mula: string, tamat: string | null | undefined): string | null {
+  if (!tamat) return null;
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(tamat)) throw new Error("Tarikh tamat tidak sah.");
+  if (tamat < mula) throw new Error("Tarikh tamat mesti sama atau selepas tarikh mula.");
+  return tamat === mula ? null : tamat;
+}
+async function tulisDenganTamat(laluan: string, kaedah: "POST" | "PATCH", data: Record<string, unknown>) {
+  const db = klienTulis();
+  try {
+    return await db.minta(laluan, { method: kaedah, body: JSON.stringify(data) });
+  } catch (e) {
+    if (!tiadaLajurTamat(e)) throw e;
+    const { tarikh_tamat: _abai, ...tanpa } = data;
+    void _abai;
+    return db.minta(laluan, { method: kaedah, body: JSON.stringify(tanpa) });
+  }
+}
+
 /** Semakan ringan untuk mengelakkan skrin pengurus gagal putih jika SQL belum dipasang. */
 export async function modulAktivitiSedia() {
  try {
@@ -68,7 +100,7 @@ export async function ciptaAktiviti(input: Omit<AktivitiBorang,"id"|"pengurus_em
   for (const k of ["nama","masa","tempat","anjuran","skop"] as const) if (!input[k]?.trim() || input[k].length>500) throw new Error("Lengkapkan butiran aktiviti.");
   if (!/^\d{4}-\d{2}-\d{2}$/.test(input.tarikh) || !/^\d{4}-\d{2}-\d{2}$/.test(input.tutup) || input.tutup<hariIniMY() || input.tutup>input.tarikh) throw new Error("Tarikh tutup mesti hari ini atau kemudian dan tidak melebihi tarikh aktiviti.");
   if (!admin && !(await skopAktivitiSaya()).includes(input.skop)) throw new Error("Skop bukan tugasan anda.");
-  const rows = await klienTulis().minta("borang_aktiviti", {method:"POST",body:JSON.stringify({nama:input.nama.trim(),tarikh:input.tarikh,masa:input.masa.trim(),tempat:input.tempat.trim(),anjuran:input.anjuran.trim(),skop:input.skop,pengurus_emel:saya.emel,tutup:input.tutup})}) as AktivitiBorang[];
+  const rows = await tulisDenganTamat("borang_aktiviti", "POST", {nama:input.nama.trim(),tarikh:input.tarikh,tarikh_tamat:sahTamat(input.tarikh,input.tarikh_tamat),masa:input.masa.trim(),tempat:input.tempat.trim(),anjuran:input.anjuran.trim(),skop:input.skop,pengurus_emel:saya.emel,tutup:input.tutup}) as AktivitiBorang[];
   segarAktiviti(); return {ok:true,mesej:"Aktiviti dicipta. Tambah peserta sebelum berkongsi pautan.",rekod:rows[0]};
  } catch(e) {return {ok:false,mesej:e instanceof Error?e.message:"Gagal menyimpan."};}
 }
@@ -94,13 +126,13 @@ export async function jawapanAktiviti(id:string):Promise<JawapanAktiviti[]> {
 export async function tutupAktiviti(id:string) {
  await urus(id); await klienTulis().minta(`borang_aktiviti?id=eq.${id}`,{method:"PATCH",body:JSON.stringify({aktif:false})}); segarAktiviti();
 }
-export async function suntingAktiviti(id: string, input: Pick<AktivitiBorang,"nama"|"tarikh"|"masa"|"tempat"|"anjuran"|"tutup">) {
+export async function suntingAktiviti(id: string, input: Pick<AktivitiBorang,"nama"|"tarikh"|"tarikh_tamat"|"masa"|"tempat"|"anjuran"|"tutup">) {
  try {
   const asal = await urus(id);
   for (const k of ["nama","masa","tempat","anjuran"] as const) if (!input[k]?.trim() || input[k].length > 500) throw new Error("Lengkapkan butiran aktiviti.");
   if (!/^\d{4}-\d{2}-\d{2}$/.test(input.tarikh) || !/^\d{4}-\d{2}-\d{2}$/.test(input.tutup) || input.tutup > input.tarikh) throw new Error("Tarikh aktiviti atau tarikh tutup tidak sah.");
-  const data = { nama: input.nama.trim(), tarikh: input.tarikh, masa: input.masa.trim(), tempat: input.tempat.trim(), anjuran: input.anjuran.trim(), tutup: input.tutup };
-  await klienTulis().minta(`borang_aktiviti?id=eq.${asal.id}`, { method: "PATCH", body: JSON.stringify(data) });
+  const data = { nama: input.nama.trim(), tarikh: input.tarikh, tarikh_tamat: sahTamat(input.tarikh, input.tarikh_tamat), masa: input.masa.trim(), tempat: input.tempat.trim(), anjuran: input.anjuran.trim(), tutup: input.tutup };
+  await tulisDenganTamat(`borang_aktiviti?id=eq.${asal.id}`, "PATCH", data);
   segarAktiviti(); return { ok: true, mesej: "Butiran aktiviti dikemas kini.", rekod: { ...asal, ...data } };
  } catch (e) { return { ok: false, mesej: e instanceof Error ? e.message : "Gagal menyunting aktiviti." }; }
 }
@@ -119,7 +151,7 @@ export async function padamJawapanAktiviti(aktivitiId: string, jawapanId: string
 export async function aktivitiAwam(id?:string) {
  if(id && !uuid(id)) return [];
  try {
-   return await bacaSemua<Pick<AktivitiBorang,"id"|"nama"|"tarikh"|"masa"|"tempat"|"anjuran"|"tutup">>(`borang_aktiviti?select=id,nama,tarikh,masa,tempat,anjuran,tutup&aktif=eq.true&tutup=gte.${hariIniMY()}&order=tarikh.asc,id.asc${id?`&id=eq.${id}`:""}`);
+   return await denganTamat((lajur) => bacaSemua<Pick<AktivitiBorang,"id"|"nama"|"tarikh"|"tarikh_tamat"|"masa"|"tempat"|"anjuran"|"tutup">>(`borang_aktiviti?select=${lajur}&aktif=eq.true&tutup=gte.${hariIniMY()}&order=tarikh.asc,id.asc${id?`&id=eq.${id}`:""}`));
  } catch {
    // Laluan ini awam. Tiada skema DB atau ralat dalaman boleh dipaparkan
    // kepada penjaga; mereka hanya melihat tiada borang dibuka.
@@ -165,7 +197,7 @@ export async function resitAkuan(token:string) {
  try {
    const rows=await klienTulis().minta(`borang_jawapan?select=id,aktiviti_id,data,dicipta&resit_hash=eq.${hash(token)}&limit=1`) as JawapanAktiviti[];
    const r=rows[0]; if(!r || Date.now()-new Date(r.dicipta).getTime()>90*86400000) return null;
-   const aktiviti=await klienTulis().minta(`borang_aktiviti?select=id,nama,tarikh,masa,tempat,anjuran,tutup&id=eq.${r.aktiviti_id}&limit=1`) as AktivitiBorang[];
+   const aktiviti=await denganTamat((lajur)=>klienTulis().minta(`borang_aktiviti?select=${lajur}&id=eq.${r.aktiviti_id}&limit=1`)) as AktivitiBorang[];
    return aktiviti[0]?{jawapan:r,aktiviti:aktiviti[0]}:null;
  } catch {
    return null;

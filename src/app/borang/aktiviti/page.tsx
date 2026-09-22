@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { aktivitiAwam } from "@/lib/borang-aktiviti";
+import { julatTarikh } from "@/data/borang-aktiviti";
 
 export const metadata = {
   title: "Surat Akuan Penyertaan Aktiviti",
@@ -27,7 +28,7 @@ export default async function AktivitiAwam() {
               <Link href={`/kebenaran/${aktiviti.id}`} className="block rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:border-navy-700 hover:shadow-md">
                 <h2 className="font-bold leading-snug text-navy-800">{aktiviti.nama}</h2>
                 <dl className="mt-3 grid gap-1 text-sm text-slate-600 sm:grid-cols-[7rem_1fr]">
-                  <dt className="font-semibold">Tarikh</dt><dd>{tarikhMY(aktiviti.tarikh)}</dd>
+                  <dt className="font-semibold">Tarikh</dt><dd>{julatTarikh(aktiviti.tarikh, aktiviti.tarikh_tamat, false)}</dd>
                   <dt className="font-semibold">Masa</dt><dd>{aktiviti.masa}</dd>
                   <dt className="font-semibold">Tempat</dt><dd>{aktiviti.tempat}</dd>
                   <dt className="font-semibold">Anjuran</dt><dd>{aktiviti.anjuran}</dd>

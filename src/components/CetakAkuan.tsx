@@ -1,11 +1,11 @@
 "use client";
 
-import { PENYAKIT, type AkuanAktiviti, type AktivitiBorang } from "@/data/borang-aktiviti";
+import { PENYAKIT, julatTarikh, type AkuanAktiviti, type AktivitiBorang } from "@/data/borang-aktiviti";
 import { SEKOLAH } from "@/data/sekolah";
 import { aset } from "@/lib/laluan";
 import { mulaCetak } from "./cetak-mudah-alih";
 
-type Program = Pick<AktivitiBorang, "nama" | "tarikh" | "masa" | "tempat" | "anjuran">;
+type Program = Pick<AktivitiBorang, "nama" | "tarikh" | "tarikh_tamat" | "masa" | "tempat" | "anjuran">;
 
 const BULAN = ["JANUARI", "FEBRUARI", "MAC", "APRIL", "MEI", "JUN", "JULAI", "OGOS", "SEPTEMBER", "OKTOBER", "NOVEMBER", "DISEMBER"];
 
@@ -140,7 +140,7 @@ export default function CetakAkuan({
         <p style={{ marginTop: "3.4mm" }}>Saya dengan ini memberi kebenaran bertulis kepada anak / jagaan untuk menyertai :-</p>
         <div className="prog">
           <span>Nama Program</span><span>:</span><span className="u">{a.nama.toUpperCase()}</span>
-          <span>Tarikh Program</span><span>:</span><span className="u">{tarikhBorang(a.tarikh)}</span>
+          <span>Tarikh Program</span><span>:</span><span className="u">{julatTarikh(a.tarikh, a.tarikh_tamat)}</span>
           <span>Masa</span><span>:</span><span className="u">{a.masa.toUpperCase()}</span>
           <span>Tempat</span><span>:</span><span className="u">{a.tempat.toUpperCase()}</span>
           <span>Anjuran</span><span>:</span><span className="u">{a.anjuran.toUpperCase()}</span>
@@ -192,7 +192,7 @@ export default function CetakAkuan({
         <div className="blok"><span>A.</span><span>NAMA SEKOLAH</span><span>: SK TAMAN DESAMINIUM</span></div>
         <div className="blok"><span>B.</span><span>MAKLUMAT PROGRAM :</span><span /></div>
         <div className="sub"><span /><span>1.</span><span>NAMA PROGRAM</span><span>:</span><span>{a.nama.toUpperCase()}</span></div>
-        <div className="sub"><span /><span>2.</span><span>TARIKH</span><span>:</span><span>{tarikhBorang(a.tarikh)}</span></div>
+        <div className="sub"><span /><span>2.</span><span>TARIKH</span><span>:</span><span>{julatTarikh(a.tarikh, a.tarikh_tamat)}</span></div>
         <div className="sub"><span /><span>3.</span><span>TEMPAT</span><span>:</span><span>{a.tempat.toUpperCase()}</span></div>
         <div className="blok" style={{ gridTemplateColumns: "1fr" }}><span>C. MAKLUMAT MURID :</span></div>
         <div className="sub" style={{ marginTop: "2mm" }}><span /><span>1.</span><span>NAMA PENUH MURID</span><span>:</span><span>{d.muridNama.toUpperCase()}</span></div>

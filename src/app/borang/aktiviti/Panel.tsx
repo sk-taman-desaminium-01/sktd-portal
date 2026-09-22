@@ -7,14 +7,20 @@ import {
   suntingAktiviti, padamAktiviti, padamJawapanAktiviti, cariMuridAktiviti, tambahPesertaPilih,
   buangPesertaAktiviti,
 } from "@/lib/borang-aktiviti";
-import type { AktivitiBorang, JawapanAktiviti } from "@/data/borang-aktiviti";
+import { julatTarikh, type AktivitiBorang, type JawapanAktiviti } from "@/data/borang-aktiviti";
 import CetakAkuan from "@/components/CetakAkuan";
 
 type Peserta = { murid_id: string; nama: string; no_kp: string; kelas: string };
 
-const MEDAN: [keyof AktivitiBorang, string, string][] = [
-  ["nama", "Nama program", "text"], ["tarikh", "Tarikh program", "date"], ["masa", "Masa (cth: 7.30 PAGI HINGGA 5.00 PETANG)", "text"],
-  ["tempat", "Tempat", "text"], ["anjuran", "Anjuran", "text"], ["tutup", "Tarikh tutup jawapan", "date"],
+/** [medan, label, jenis, wajib, lebar penuh] — tarikh mula & tamat bersebelahan. */
+const MEDAN: [keyof AktivitiBorang, string, string, boolean, boolean][] = [
+  ["nama", "Nama program", "text", true, true],
+  ["tarikh", "Tarikh mula", "date", true, false],
+  ["tarikh_tamat", "Tarikh tamat (jika lebih sehari)", "date", false, false],
+  ["masa", "Masa (cth: 7.30 PAGI HINGGA 5.00 PETANG)", "text", true, true],
+  ["tempat", "Tempat", "text", true, false],
+  ["anjuran", "Anjuran", "text", true, false],
+  ["tutup", "Tarikh tutup jawapan ibu bapa", "date", true, false],
 ];
 
 const kelasInput = "mt-1 block w-full min-w-0 rounded-lg border border-slate-300 px-3 py-2 text-sm";
@@ -40,7 +46,8 @@ export default function Panel({ senarai, skop }: { senarai: AktivitiBorang[]; sk
 
   const cipta = (fd: FormData) => laksana(async () => {
     const r = await ciptaAktiviti({
-      nama: nilai(fd, "nama"), tarikh: nilai(fd, "tarikh"), masa: nilai(fd, "masa"), tempat: nilai(fd, "tempat"),
+      nama: nilai(fd, "nama"), tarikh: nilai(fd, "tarikh"), tarikh_tamat: nilai(fd, "tarikh_tamat") || null,
+      masa: nilai(fd, "masa"), tempat: nilai(fd, "tempat"),
       anjuran: nilai(fd, "anjuran"), tutup: nilai(fd, "tutup"), skop: nilai(fd, "skop"),
     });
     setNota(r.mesej);
@@ -79,8 +86,8 @@ export default function Panel({ senarai, skop }: { senarai: AktivitiBorang[]; sk
   const sunting = (fd: FormData) => laksana(async () => {
     if (!pilih) return;
     const r = await suntingAktiviti(pilih.id, {
-      nama: nilai(fd, "nama"), tarikh: nilai(fd, "tarikh"), masa: nilai(fd, "masa"),
-      tempat: nilai(fd, "tempat"), anjuran: nilai(fd, "anjuran"), tutup: nilai(fd, "tutup"),
+      nama: nilai(fd, "nama"), tarikh: nilai(fd, "tarikh"), tarikh_tamat: nilai(fd, "tarikh_tamat") || null,
+      masa: nilai(fd, "masa"), tempat: nilai(fd, "tempat"), anjuran: nilai(fd, "anjuran"), tutup: nilai(fd, "tutup"),
     });
     setNota(r.mesej);
     if (r.ok && r.rekod) { setPilih(r.rekod); setSemua((s) => s.map((a) => (a.id === r.rekod!.id ? r.rekod! : a))); }
@@ -123,9 +130,9 @@ export default function Panel({ senarai, skop }: { senarai: AktivitiBorang[]; sk
         <summary className="cursor-pointer font-bold text-navy-800">+ Cipta aktiviti baharu</summary>
         <form action={cipta} className="mt-4 grid gap-3 sm:grid-cols-2">
           <fieldset disabled={sibuk} className="contents">
-            {MEDAN.map(([k, l, t]) => (
-              <label key={k} className="min-w-0 text-sm font-semibold text-navy-800">{l}
-                <input required type={t} name={k} maxLength={500} className={kelasInput} />
+            {MEDAN.map(([k, l, t, wajib, penuh]) => (
+              <label key={k} className={`min-w-0 text-sm font-semibold text-navy-800${penuh ? " sm:col-span-2" : ""}`}>{l}
+                <input required={wajib} type={t} name={k} maxLength={500} className={kelasInput} />
               </label>
             ))}
             <label className="min-w-0 text-sm font-semibold text-navy-800">Pasukan / skop
@@ -144,7 +151,7 @@ export default function Panel({ senarai, skop }: { senarai: AktivitiBorang[]; sk
             <button disabled={sibuk} onClick={() => void buka(a)}
               className={`w-full rounded-xl border bg-white p-4 text-left transition hover:border-navy-700 ${pilih?.id === a.id ? "border-navy-700 ring-1 ring-navy-700" : "border-slate-200"}`}>
               <b className="text-navy-800">{a.nama}</b>
-              <span className="mt-0.5 block text-sm text-slate-500">{a.tarikh} · {a.skop} · {a.aktif ? "Dibuka" : "Ditutup"}</span>
+              <span className="mt-0.5 block text-sm text-slate-500">{julatTarikh(a.tarikh, a.tarikh_tamat, false)} · {a.skop} · {a.aktif ? "Dibuka" : "Ditutup"}</span>
             </button>
           </li>
         ))}
@@ -166,9 +173,9 @@ export default function Panel({ senarai, skop }: { senarai: AktivitiBorang[]; sk
           <details>
             <summary className="cursor-pointer text-sm font-semibold text-navy-800">Sunting butiran aktiviti</summary>
             <form onSubmit={(e) => { e.preventDefault(); void sunting(new FormData(e.currentTarget)); }} className="mt-3 grid gap-3 sm:grid-cols-2">
-              {MEDAN.map(([k, l, t]) => (
-                <label key={k} className="min-w-0 text-xs font-semibold text-slate-600">{l}
-                  <input required name={k} type={t} defaultValue={String(pilih[k] ?? "")} className={kelasInput} />
+              {MEDAN.map(([k, l, t, wajib, penuh]) => (
+                <label key={k} className={`min-w-0 text-xs font-semibold text-slate-600${penuh ? " sm:col-span-2" : ""}`}>{l}
+                  <input required={wajib} name={k} type={t} defaultValue={String(pilih[k] ?? "")} className={kelasInput} />
                 </label>
               ))}
               <button disabled={sibuk} className="min-h-11 self-end rounded-lg bg-navy-800 px-4 py-2 text-sm font-semibold text-white">Simpan pindaan</button>
