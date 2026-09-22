@@ -157,3 +157,9 @@ yang sudah dimuktamadkan tidak diperkenalkan semula sebagai pepijat.
   hormatnya perkara di atas adalah dirujuk." dicetak oleh templat. Surat
   lama (sebelum 22 Sep, tanpa `formatIsi: 2`) kekal bernombor automatik
   bermula 2. Logik: `src/data/isi-surat.ts`, paparan: `src/components/IsiSurat.tsx`.
+- **Tandatangan (22 Sep 2026):** foto telefon diproses di pelayar dengan
+  ambang SETEMPAT (latar kertas per blok) — ambang tetap RGB>235 lama gagal
+  pada kertas kelabu/cahaya tidak sekata dan menghasilkan PNG 1–3 MB yang
+  ditolak. Output: dakwat biru tua lut sinar ≤ 600×200 px (±10–20 KB).
+  Butang muat naik = kotak besar berbingkai `[ Tekan di sini … ]`, bukan
+  "Choose File" pelayar. Kod: `src/data/tandatangan-imej.ts`.
