@@ -5,6 +5,7 @@ import { msMY } from "@clerk/localizations";
 import TarikSegar from "@/components/TarikSegar";
 import BarBawahPortal from "@/components/BarBawahPortal";
 import DaftarSW from "@/components/DaftarSW";
+import PautanDalamApp from "@/components/PautanDalamApp";
 import { pengguna } from "@/lib/akses";
 import { boleh } from "@/lib/peranan";
 import { AWALAN, aset } from "@/lib/laluan";
@@ -72,6 +73,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
           {children}
           <BarBawahPortal bolehAdmin={bolehAdmin} />
           <DaftarSW />
+          <PautanDalamApp />
           <Laju />
           <Peralihan />
       </body>
