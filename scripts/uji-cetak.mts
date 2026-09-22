@@ -29,8 +29,10 @@ perlu("Pratonton tidak menggunakan popup atau blob", !enjin.includes("window.ope
 perlu("Pratonton menetapkan margin A4 terakhir", /@page \{ size: A4/.test(pratonton));
 perlu("Enjin menghidupkan kandungan print:block", enjin.includes('kelas.startsWith("print:")'));
 perlu("Surat rasmi isytihar A4 potret", surat.includes('data-cetak-kertas="portrait"'));
-perlu("Surat rasmi menormalkan perenggan", surat.includes('.split(/\\n+/)'));
-perlu("Surat rasmi menghadkan satu muka", /HAD_ISI_SATU_MUKA = 1_200/.test(surat));
+const isiSurat = baca("src/data/isi-surat.ts");
+perlu("Surat rasmi menormalkan perenggan", surat.includes("susunIsiSurat(") && isiSurat.includes(".split(/\\n[ \\t]*\\n+/)"));
+perlu("Surat rasmi menghadkan satu muka", /HAD_ISI_SATU_MUKA = 1_200/.test(isiSurat) && /HAD_BARIS = \d+/.test(isiSurat));
+perlu("Nombor perenggan tidak dijana untuk surat baharu", !/counter-reset/.test(surat));
 perlu("Surat rasmi panjang dipadatkan dalam satu A4", surat.includes("surat-padat") && surat.includes("data.isi.replace"));
 perlu("Surat rasmi memakai Jata Negara, SKTD dan TS25", surat.includes("logo-jata-negara.png") && surat.includes("logo-sktd.png") && surat.includes("logo-ts25.png"));
 perlu("Surat rasmi meninggalkan tandatangan hidup kosong", surat.includes("Ruang tandatangan hidup Guru Besar") && !surat.includes("surat.tandatangan_url"));
@@ -44,4 +46,4 @@ if (gagal.length) {
   console.error(`Kontrak cetakan gagal:\n${gagal.map((x) => `- ${x}`).join("\n")}`);
   process.exit(1);
 }
-console.log("Kontrak cetakan: 19 semakan lulus.");
+console.log("Kontrak cetakan: 20 semakan lulus.");
