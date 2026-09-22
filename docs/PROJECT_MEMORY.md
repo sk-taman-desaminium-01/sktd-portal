@@ -173,3 +173,27 @@ yang sudah dimuktamadkan tidak diperkenalkan semula sebagai pepijat.
   `sktd-web` (`src/lib/jumlah-murid.ts`). Borang aktiviti ada
   `tarikh_tamat` (migrasi `20260922_aktiviti_tarikh_tamat.sql`), paparan
   `julatTarikh()`.
+- **Pautan luar dalam app (22 Sep):** bila portal/laman dipasang sebagai
+  app di laptop, pautan `target="_blank"` (portal KPM, eRPM) dibuka dalam
+  tetingkap app yang sama — `src/components/PautanDalamApp.tsx` (kedua-dua
+  repo). Pelayar biasa tidak berubah. Safari macOS mungkin tetap membuka
+  pelayar (had sistem, bukan pepijat).
+
+## Arahan untuk SEMUA AI (22 Sep 2026)
+
+Pengguna menggunakan Claude Code, Codex, GitHub Copilot dan Gemini Code
+secara bergilir. Fail ini ialah SATU sumber memori bersama. Setiap repo
+(`sktd`, `sktd-portal`, `sktd-web`) ada:
+`CLAUDE.md` (Claude) · `AGENTS.md` (Codex) · `.github/copilot-instructions.md`
+(Copilot) · `GEMINI.md` (Gemini). Bila keputusan baharu dibuat, kemas kini
+FAIL INI dahulu, kemudian peraturan ringkas dalam fail arahan jika ia
+peraturan keras.
+
+## Tindakan tertunggak (pengguna)
+
+- Clerk → Configure → Sessions → Customize session token: tambah
+  `{"emel": "{{user.primary_email_address}}", "nama": "{{user.full_name}}"}`
+  (belum disahkan dibuat).
+- Uji pada telefon sebenar: tandatangan dari foto, jadual waktu > 4 MB dari
+  telefon (laluan storan terus), PDF cetakan, push iPhone (app dipasang).
+- Web Push perlu `NEXT_PUBLIC_VAPID_PUBLIC_KEY` + `VAPID_PRIVATE_KEY` di Vercel.
