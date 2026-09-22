@@ -163,3 +163,13 @@ yang sudah dimuktamadkan tidak diperkenalkan semula sebagai pepijat.
   ditolak. Output: dakwat biru tua lut sinar ≤ 600×200 px (±10–20 KB).
   Butang muat naik = kotak besar berbingkai `[ Tekan di sini … ]`, bukan
   "Choose File" pelayar. Kod: `src/data/tandatangan-imej.ts`.
+- **Carian pepijat 22 Sep (lewat malam):** tarikh "hari ini" WAJIB
+  `hariIniMY()` (`src/data/tarikh-my.ts`) — UTC memberi semalam sebelum
+  8 pagi. Naik tahun membawa status `ulang`; setiap bacaan berhalaman
+  mesti ada `order=`; patah balik membaca sesi sasaran berhalaman.
+  Server Action yang memasukkan nombor/tarikh/ID ke URL PostgREST guna
+  `sahInt/sahTarikh/sahUuid` (`src/lib/sah.ts`). Jumlah murid awam:
+  `count=exact`, dicache Worker 5 minit, dibakar ke HTML semasa binaan
+  `sktd-web` (`src/lib/jumlah-murid.ts`). Borang aktiviti ada
+  `tarikh_tamat` (migrasi `20260922_aktiviti_tarikh_tamat.sql`), paparan
+  `julatTarikh()`.
