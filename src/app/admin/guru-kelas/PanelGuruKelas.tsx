@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { tetapGuruKelas, buangGuruKelas, type TugasanKelas } from "@/lib/guru-kelas";
 import Carian, { padan } from "@/components/Carian";
+import PilihCari from "@/components/PilihCari";
 
 /**
  * Senarai semua kelas, satu baris satu kelas, dengan pemilih guru.
@@ -18,6 +19,10 @@ export default function PanelGuruKelas({
   awal: Record<string, TugasanKelas>;
   orang: { id: string; nama: string; emel: string | null }[];
 }) {
+  const pilihanOrang = [
+    { nilai: "", label: "— belum ditetapkan —" },
+    ...orang.map((o) => ({ nilai: o.id, label: o.nama, nota: o.emel ?? undefined })),
+  ];
   const [petaan, setPetaan] = useState(awal);
   const [hasil, setHasil] = useState<{ ok: boolean; mesej: string } | null>(null);
   const [sibukKelas, setSibukKelas] = useState<string | null>(null);
@@ -95,19 +100,14 @@ export default function PanelGuruKelas({
             <li key={k} className="flex flex-wrap items-center gap-3 p-4">
               <span className="w-24 shrink-0 font-semibold text-navy-800">{k}</span>
 
-              <select
-                value={ada?.guru_id ?? ""}
-                disabled={sibukKelas === k}
-                onChange={(e) => ubah(k, e.target.value)}
-                className="min-w-0 flex-1 rounded-lg border border-garis px-3 py-2 text-sm disabled:opacity-60"
-              >
-                <option value="">— belum ditetapkan —</option>
-                {orang.map((o) => (
-                  <option key={o.id} value={o.id}>
-                    {o.nama}
-                  </option>
-                ))}
-              </select>
+              <div className="min-w-[12rem] flex-1">
+                <PilihCari
+                  id={`guru-kelas-${k}`} label={`Guru kelas ${k}`} sembunyiLabel
+                  nilai={ada?.guru_id ?? ""} disabled={sibukKelas === k}
+                  tukar={(v) => ubah(k, v)} placeholder="Taip nama guru…"
+                  pilihan={pilihanOrang}
+                />
+              </div>
 
               <span className="w-24 shrink-0 text-right text-xs">
                 {sibukKelas === k ? (

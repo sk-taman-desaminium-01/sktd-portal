@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { PENYAKIT, type AkuanAktiviti } from "@/data/borang-aktiviti";
 import { hantarAkuan } from "@/lib/borang-aktiviti";
+import TandaTangan from "@/components/TandaTangan";
 
 function Teks({ nama, label, jenis = "text", panjang = 150, lengkap = "off" }: { nama: string; label: string; jenis?: string; panjang?: number; lengkap?: string }) {
   const kadPengenalan = nama === "muridKp" || nama === "penjagaKp";
@@ -14,6 +15,7 @@ export default function Borang({ aktivitiId }: { aktivitiId: string }) {
   const [nota, setNota] = useState("");
   const [sibuk, setSibuk] = useState(false);
   const [resit, setResit] = useState<string>();
+  const [tandatangan, setTandatangan] = useState<string | null>(null);
 
   async function hantar(formData: FormData) {
     setSibuk(true);
@@ -21,11 +23,13 @@ export default function Borang({ aktivitiId }: { aktivitiId: string }) {
     try {
       const teks = (kunci: string) => String(formData.get(kunci) ?? "").trim();
       const data: AkuanAktiviti = {
-        muridNama: teks("muridNama"), muridKp: teks("muridKp").replace(/[- ]/g, ""), kelas: teks("kelas"),
+        muridNama: teks("muridNama"), muridKp: teks("muridKp").replace(/[- ]/g, ""), kelas: "",
         penjagaNama: teks("penjagaNama"), penjagaKp: teks("penjagaKp").replace(/[- ]/g, ""),
         alamat: teks("alamat"), telefon: teks("telefon"), bersetuju: teks("izin") === "ya",
         penyakit: PENYAKIT.map((_, indeks) => ({ ada: teks(`ada-${indeks}`) === "ya", catatan: teks(`catatan-${indeks}`) })),
+        ...(tandatangan ? { tandatangan } : {}),
       };
+      if (!tandatangan) { setNota("Sila turunkan tandatangan ibu bapa/penjaga dahulu."); return; }
       const hasil = await hantarAkuan(aktivitiId, data, teks("laman"));
       setNota(hasil.mesej);
       if (hasil.ok) setResit(hasil.resit);
@@ -46,9 +50,8 @@ export default function Borang({ aktivitiId }: { aktivitiId: string }) {
         <section>
           <h2 className="text-lg font-bold text-navy-800">Maklumat murid dan penjaga</h2>
           <div className="mt-4 grid min-w-0 gap-4 sm:grid-cols-2">
-            <Teks nama="muridNama" label="Nama penuh murid" />
-            <Teks nama="muridKp" label="No. MyKid/KP murid" />
-            <Teks nama="kelas" label="Kelas (contoh: 4 BESTARI)" />
+            <Teks nama="muridNama" label="Nama penuh murid (seperti dalam MyKid)" />
+            <Teks nama="muridKp" label="No. MyKid / Surat Beranak murid" />
             <Teks nama="penjagaNama" label="Nama ibu bapa atau penjaga" lengkap="name" />
             <Teks nama="penjagaKp" label="No. KP penjaga" />
             <Teks nama="telefon" label="No. telefon" jenis="tel" lengkap="tel" />
@@ -81,9 +84,15 @@ export default function Borang({ aktivitiId }: { aktivitiId: string }) {
           </div>
         </fieldset>
 
+        <section className="border-t border-slate-200 pt-5">
+          <h2 className="text-lg font-bold text-navy-800">Tandatangan ibu bapa / penjaga</h2>
+          <p className="mt-1 text-sm text-slate-600">Lukis dengan jari, atau muat naik gambar tandatangan. Ia dicetak pada kedua-dua muka borang.</p>
+          <div className="mt-3"><TandaTangan nilai={tandatangan} tetap={setTandatangan} tempatan /></div>
+        </section>
+
         <label className="flex items-start gap-3 text-sm leading-relaxed text-slate-700"><input type="checkbox" required className="mt-1 shrink-0" /><span>Saya ialah ibu bapa atau penjaga murid ini dan mengesahkan semua maklumat adalah benar. Saya memahami perakuan rawatan perubatan dan perlindungan Takaful dalam borang cetakan.</span></label>
         <label className="sr-only" aria-hidden="true">Laman web<input name="laman" tabIndex={-1} autoComplete="off" /></label>
-        <p className="text-xs leading-relaxed text-slate-500">Maklumat digunakan oleh sekolah untuk pengurusan penyertaan dan keselamatan murid. Tandatangan, saksi dan cop dilengkapkan pada cetakan.</p>
+        <p className="text-xs leading-relaxed text-slate-500">Maklumat digunakan oleh sekolah untuk pengurusan penyertaan dan keselamatan murid. Hanya murid yang dipilih oleh jurulatih/pengurus pasukan boleh didaftarkan. Saksi dan cop sekolah dilengkapkan pada cetakan.</p>
         <button className="min-h-11 w-full rounded-lg bg-navy-800 px-5 py-2.5 text-sm font-semibold text-white disabled:opacity-50 sm:w-auto" disabled={sibuk}>{sibuk ? "Menghantar…" : "Hantar akuan"}</button>
       </fieldset>
       {nota && <p role="status" className="mt-4 rounded-xl border border-[#edc2c2] bg-[#fff1f1] p-3 text-sm text-[#842525]">{nota}</p>}

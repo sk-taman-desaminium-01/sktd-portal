@@ -8,6 +8,7 @@ import { mulaCetak } from "@/components/cetak-mudah-alih";
 import type { KepalaSurat } from "@/components/CetakSurat";
 import type { BarisSurat, DataSuratGambar } from "@/lib/surat";
 import { hantarKebenaranGambarAwam, namaGuruKelasBorangAwam } from "@/lib/surat-awam";
+import PilihCari from "@/components/PilihCari";
 
 type Nilai = {
   penjagaNama: string;
@@ -30,7 +31,7 @@ function Medan({ label, children, kelas = "" }: { label: string; children: React
 }
 
 export default function BorangKebenaranGambar({ kelas, kepala }: { kelas: string[]; kepala: KepalaSurat }) {
-  const [nilai, setNilai] = useState<Nilai>({ ...NILAI_AWAL, muridKelas: kelas[0] ?? "" });
+  const [nilai, setNilai] = useState<Nilai>({ ...NILAI_AWAL });
   const [bersetuju, setBersetuju] = useState<boolean | null>(null);
   const [tandatangan, setTandatangan] = useState<string | null>(null);
   const [rekodCetak, setRekodCetak] = useState<BarisSurat | null>(null);
@@ -45,6 +46,12 @@ export default function BorangKebenaranGambar({ kelas, kepala }: { kelas: string
 
   function dataCetak(): DataSuratGambar | null {
     if (!borangRef.current?.reportValidity()) return null;
+    // Kelas bermula KOSONG: lalai "kelas pertama" pernah membuat borang
+    // masuk ke guru kelas yang salah bila ibu bapa terlepas medan ini.
+    if (!nilai.muridKelas) {
+      setMesej({ ok: false, teks: "Pilih kelas anak anda." });
+      return null;
+    }
     if (bersetuju === null) {
       setMesej({ ok: false, teks: "Pilih Bersetuju atau Tidak bersetuju." });
       return null;
@@ -136,9 +143,7 @@ export default function BorangKebenaranGambar({ kelas, kepala }: { kelas: string
                 <input required inputMode="numeric" autoComplete="off" pattern="[0-9 -]{12,14}" maxLength={14} value={nilai.muridKp} onChange={(e) => ubah("muridKp", e.target.value)} className="mt-1 block w-full min-w-0 max-w-full rounded-lg border border-slate-300 px-3 py-2 font-normal" />
               </Medan>
               <Medan label="Kelas">
-                <select required value={nilai.muridKelas} onChange={(e) => ubah("muridKelas", e.target.value)} className="mt-1 block w-full min-w-0 max-w-full rounded-lg border border-slate-300 bg-white px-3 py-2 font-normal">
-                  {kelas.map((nama) => <option key={nama} value={nama}>{nama}</option>)}
-                </select>
+                <div className="mt-1 font-normal"><PilihCari id="gambar-kelas" label="Kelas" sembunyiLabel nilai={nilai.muridKelas} tukar={(v) => ubah("muridKelas", v)} placeholder="Taip kelas, cth: 4 bes" pilihan={kelas.map((k) => ({ nilai: k, label: k }))} /></div>
               </Medan>
             </div>
           </section>

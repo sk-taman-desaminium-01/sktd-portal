@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { hadirRmtTarikh, naikRosterRmt, buangRosterRmt, simpanHadirRmt, type MuridRmt } from "@/lib/rmt";
+import PilihCari from "@/components/PilihCari";
 
 export default function PanelRmt({
   tahunSesi, kelas, bolehRoster, senarai, rosterUrus, tarikhAwal, hadirAwal,
@@ -164,10 +165,7 @@ function PanelRoster({ tahunSesi, kelas, roster }: {
         Tampal senarai (nama + No. KP, apa cara pun) satu kelas pada satu masa — sistem akan bacanya sendiri.
       </p>
       <div className="mt-4 flex min-w-0 flex-wrap gap-3">
-        <select value={kelasPilih} disabled={sibuk} onChange={(e) => { setKelasPilih(e.target.value); setSemakan(null); }}
-          className="block w-full min-w-0 max-w-full rounded-lg border border-garis px-3 py-2 text-sm sm:w-auto">
-          {kelas.map((k) => <option key={k} value={k}>{k}</option>)}
-        </select>
+        <div className="w-full min-w-0 sm:w-64"><PilihCari id="rmt-kelas" label="Kelas" sembunyiLabel disabled={sibuk} nilai={kelasPilih} tukar={(v) => { setKelasPilih(v); setSemakan(null); }} placeholder="Taip kelas, cth: 4 bes" pilihan={kelas.map((k) => ({ nilai: k, label: k }))} /></div>
       </div>
       <textarea value={teks} disabled={sibuk} onChange={(e) => { setTeks(e.target.value); setSemakan(null); }} rows={6}
         placeholder={"Ahmad Bin Ali 060101101234\nNur Aisyah Binti Omar, 070202-10-5678"}

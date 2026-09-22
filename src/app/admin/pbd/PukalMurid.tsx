@@ -5,7 +5,7 @@ import { bacaMuridPukal, bacaTeksMuridPukal, type HasilPukalMurid } from "@/lib/
 import { importMuridKelas } from "@/lib/import-murid";
 import { failKeMuatan } from "@/data/fail-base64";
 import { semakSaiz } from "@/data/had-fail";
-import { ciptaPembacaImbasan, type PembacaImbasan } from "@/data/ocr-pelayar";
+import { ciptaPembacaImbasan, pdfTanpaTeks, kunciSkrin, type PembacaImbasan } from "@/data/ocr-pelayar";
 import PilihCari from "@/components/PilihCari";
 
 /**
@@ -87,6 +87,7 @@ export default function PukalMurid({ semuaKelas }: { semuaKelas: string[] }) {
     setBuka(new Set());
 
     let pembacaOcr: PembacaImbasan | null = null;
+    const lepasSkrin = await kunciSkrin();
     try {
       const senarai = await kembangkan(dipilih);
       if (senarai.length === 0) {
@@ -111,7 +112,13 @@ export default function PukalMurid({ semuaKelas }: { semuaKelas: string[] }) {
           continue;
         }
         try {
-          let r = await bacaMuridPukal(await failKeMuatan(fail));
+          // Imbasan (gambar, atau PDF tanpa lapisan teks) terus ke OCR peranti —
+          // tiada muat naik fail. Hanya fail berteks dihantar ke pelayan.
+          const imbasan = fail.type.startsWith("image/") ||
+            (/\.pdf$/i.test(fail.name) && await pdfTanpaTeks(fail));
+          let r = imbasan
+            ? { nama, kelas: null, ok: false, mesej: "Tiada No. KP — imbasan" } as Awaited<ReturnType<typeof bacaMuridPukal>>
+            : await bacaMuridPukal(await failKeMuatan(fail));
           if ((/\.pdf$/i.test(fail.name) || fail.type.startsWith("image/")) && !r.ok && /Tiada No\. KP|imbasan|gambar/i.test(r.mesej)) {
             pembacaOcr ??= await ciptaPembacaImbasan();
             const teksOcr = await pembacaOcr.baca(fail, (teks) =>
@@ -138,6 +145,7 @@ export default function PukalMurid({ semuaKelas }: { semuaKelas: string[] }) {
       setNota({ ok: false, teks: e instanceof Error ? e.message : "Proses gagal. Cuba semula." });
     } finally {
       await pembacaOcr?.tutup();
+      lepasSkrin();
       setKemajuan(null);
       setSibuk(false);
       borang.reset();
@@ -304,6 +312,10 @@ export default function PukalMurid({ semuaKelas }: { semuaKelas: string[] }) {
               style={{ width: `${(kemajuan.kini / kemajuan.jumlah) * 100}%` }}
             />
           </div>
+          <p className="mt-1.5 text-xs text-slate-500">
+            Biarkan halaman ini terbuka sehingga selesai. Fail imbasan dibaca di peranti ini
+            (±10–40 saat setiap fail); bertukar app atau mengunci telefon akan menghentikannya.
+          </p>
         </div>
       )}
 

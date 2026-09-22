@@ -12,6 +12,7 @@ import {
   HARI, NAMA_HARI, NAMA_SESI, SESI, jamPapar, setUntukKelas, tahunKelas,
   type Hari, type Jadual, type Sesi, type SetWaktu, type Waktu,
 } from "@/data/jadual-jenis";
+import PilihCari from "@/components/PilihCari";
 
 /**
  * Penyunting jadual waktu.
@@ -191,18 +192,7 @@ export default function PanelJadual({
     <>
       {/* ---------- Pilih kelas ---------- */}
       <div className="mt-6 flex flex-wrap items-end gap-3 rounded-xl border border-garis bg-white p-4">
-        <label className="text-[11px] font-bold uppercase tracking-wide text-slate-500">
-          Kelas
-          <select
-            value={pilih}
-            onChange={(e) => setPilih(e.target.value)}
-            className="mt-1 block w-44 rounded-lg border border-garis px-3 py-2 text-sm font-normal normal-case tracking-normal text-slate-800"
-          >
-            {kelas.map((k) => (
-              <option key={k} value={k}>{k}</option>
-            ))}
-          </select>
-        </label>
+        <div className="w-52"><PilihCari id="jadual-kelas" label="Kelas" nilai={pilih} tukar={setPilih} placeholder="Taip kelas, cth: 4 bes" pilihan={kelas.map((k) => ({ nilai: k, label: k }))} /></div>
 
         <p className="text-sm text-slate-600">
           Waktu &amp; rehat:{" "}

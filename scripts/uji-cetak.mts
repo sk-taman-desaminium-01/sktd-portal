@@ -35,7 +35,7 @@ perlu("Surat rasmi panjang dipadatkan dalam satu A4", surat.includes("surat-pada
 perlu("Surat rasmi memakai Jata Negara, SKTD dan TS25", surat.includes("logo-jata-negara.png") && surat.includes("logo-sktd.png") && surat.includes("logo-ts25.png"));
 perlu("Surat rasmi meninggalkan tandatangan hidup kosong", surat.includes("Ruang tandatangan hidup Guru Besar") && !surat.includes("surat.tandatangan_url"));
 perlu("Akuan waris isytihar A4 landskap", akuan.includes('data-cetak-kertas="landscape"'));
-perlu("Akuan waris kekal dua panel semasa cetak", /grid-template-columns: repeat\(2/.test(akuan));
+perlu("Akuan waris kekal dua panel semasa cetak", /grid-template-columns: (repeat\(2|1fr 1fr)/.test(akuan));
 for (const [nama, fail] of [["Media", media], ["Disiplin", disiplin], ["Slip PBD", slip], ["Carta", carta]] as const) {
   perlu(`${nama} isytihar A4 potret`, fail.includes('data-cetak-kertas="portrait"'));
 }

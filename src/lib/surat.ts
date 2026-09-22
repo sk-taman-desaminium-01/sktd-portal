@@ -405,13 +405,19 @@ export async function padamSurat(id: string): Promise<HasilSurat> {
 }
 
 /** Nama & kod rasmi sekolah — untuk letterhead cetakan. */
+/**
+ * Kepala surat RASMI — disalin daripada surat sekolah bertarikh 09.09.2026
+ * (`rujukan-borang/Surat Kebenaran Padang Hoki.pdf`). Alamat tiga baris
+ * huruf besar dan talian pejabat seperti yang dicetak pada surat sebenar,
+ * BUKAN alamat laman web (yang lebih panjang untuk peta).
+ */
 export async function kepalaSurat() {
   return {
     nama: SEKOLAH.namaPenuh,
     kod: SEKOLAH.kod,
-    alamat: SEKOLAH.hubungi.alamat,
-    telefon: SEKOLAH.hubungi.telefon,
+    alamat: "LESTARI PERDANA,\n43300 SERI KEMBANGAN\nSELANGOR DARUL EHSAN",
+    telefon: "011-3181 6558",
     faks: SEKOLAH.hubungi.faks,
-    emel: SEKOLAH.hubungi.emel,
+    emel: "BBA8284@moe.edu.my",
   };
 }

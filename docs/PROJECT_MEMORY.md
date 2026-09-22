@@ -1,6 +1,6 @@
 # Memori kesinambungan SKTD
 
-Kemas kini terakhir: **20 September 2026**. Fail ini ialah rekod bersama untuk
+Kemas kini terakhir: **22 September 2026** (audit Claude selepas sesi Codex/Copilot/Gemini). Fail ini ialah rekod bersama untuk
 Claude dan Codex. Baca sebelum mengubah portal atau laman awam supaya keputusan
 yang sudah dimuktamadkan tidak diperkenalkan semula sebagai pepijat.
 
@@ -114,3 +114,38 @@ yang sudah dimuktamadkan tidak diperkenalkan semula sebagai pepijat.
   yang betul. Jangan tambah teks teknikal ke UI pengguna.
 - Simpan laporan ringkas dan kemas kini fail ini selepas perubahan besar.
 
+
+## Audit 22 Sep 2026 (Claude) — keputusan yang JANGAN diregresikan
+
+- **Cetakan borang meniru PDF asal sebijik** (`rujukan-borang/`):
+  `CetakAkuan` = Surat Akuan Waris + Perakuan Kesihatan, A4 landskap satu
+  helaian (Jata kiri, lencana kanan, logo MSS Selangor `public/logo-msss.png`
+  dipotong daripada PDF asal; ayat & ejaan asal termasuk "mengidap",
+  "Insuran", "Hemophillia"; ADA/TIDAK ADA dan membenarkan/tidak dicoret).
+  `CetakMedia` = lampiran SS KPM 9/2024 dua muka bernombor 4 & 5, garis
+  isian berasingan. `CetakSurat` = format surat 09.09.2026: tarikh
+  `dd.mm.yyyy`, "Dengan hormatnya…" + perenggan bernombor, "Sekian.",
+  nama GB tidak tebal. Kepala surat: `kepalaSurat()` (alamat 3 baris,
+  011-3181 6558, BBA8284@moe.edu.my).
+- **Borang Aktiviti:** jurulatih/pengurus memilih peserta melalui carian
+  murid di pelayan (`cariMuridAktiviti`, nama/kelas/MyKid) — MyKid diisi
+  automatik. Ibu bapa hanya menaip nama + MyKid; kelas diambil daripada
+  senarai peserta. Murid yang tidak dipilih ditolak. Padanan nama longgar
+  (`namaSepadan`: BT/BINTI, A/L). Tandatangan penjaga wajib, dicetak pada
+  kedua-dua muka. Had cubaan dikunci **IP + MyKid** (CGNAT telco).
+- **Senarai panjang = `PilihCari`** (carian berbilang perkataan, anak
+  panah + Enter): guru kelas (57×130), tugasan lain, kelas di Borang,
+  Kebenaran Gambar, Disiplin (nama murid juga — `<datalist>` tidak
+  berfungsi di iPhone), Kawalan Kelas, RMT, Jadual, bilik subjek.
+  Borang awam: kelas bermula KOSONG dan wajib dipilih.
+- **Notifikasi:** push TTL 24 jam + `urgency: high` (TTL 300 dahulu
+  membuang push bila telefon tidur). Halaman Notifikasi mengikat semula
+  langganan peranti kepada akaun yang sedang log masuk setiap kali dibuka
+  (dua akaun satu pelayar). iPhone dalam Safari biasa mendapat arahan
+  "Tambah ke Skrin Utama" (push iOS hanya untuk app dipasang). Kunci VAPID
+  bertukar → langganan lama dibuang & dilanggan semula. Butang "Matikan".
+- **ZIP ePBD:** PDF imbasan dikesan DI PELAYAR (`pdfTanpaTeks`) dan terus
+  ke OCR — tiada muat naik 30 MB ke pelayan. Wake Lock menahan skrin
+  hidup; arah fail sebelumnya dicuba dahulu. Diuji pada ZIP sebenar:
+  Tahap 1 30 fail/1,166 murid, Tahap 2 27 fail, 0 ditolak, ±8–10 s/fail
+  (desktop). `betulkanNamaOcr`: "ZZ…"→"IZZ…", "BINT"→"BINTI".

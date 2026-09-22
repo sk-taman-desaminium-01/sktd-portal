@@ -92,7 +92,7 @@ export default function PratontonCetak() {
       const marginBawah = landskap ? 9 : 17;
       const lebarIsi = lebarKertas - marginX * 2;
       const tinggiIsi = tinggiKertas - marginAtas - marginBawah;
-      const helaian = [...akar.querySelectorAll<HTMLElement>(".satu-slip")];
+      const helaian = [...akar.querySelectorAll<HTMLElement>(".satu-slip, .media-muka")];
       const akarDokumen = akar.querySelector<HTMLElement>(":scope > [id]");
       const sasaran = helaian.length > 0 ? helaian : [akarDokumen ?? akar];
 

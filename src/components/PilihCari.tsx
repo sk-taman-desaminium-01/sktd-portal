@@ -22,8 +22,13 @@ export interface PilihanCari {
   nota?: string;
 }
 
+/** Huruf kecil tanpa tanda/ruang berganda — "4bestari" sepadan "4 BESTARI". */
+function norm(t: string): string {
+  return t.normalize("NFKD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/\s+/g, " ").trim();
+}
+
 export default function PilihCari({
-  pilihan, nilai, tukar, label, placeholder = "Cari…", id,
+  pilihan, nilai, tukar, label, placeholder = "Taip untuk cari…", id, disabled = false, sembunyiLabel = false,
 }: {
   pilihan: PilihanCari[];
   nilai: string;
@@ -31,21 +36,29 @@ export default function PilihCari({
   label: string;
   placeholder?: string;
   id: string;
+  disabled?: boolean;
+  /** Label hanya untuk pembaca skrin (medan dalam jadual/baris padat). */
+  sembunyiLabel?: boolean;
 }) {
   const [buka, setBuka] = useState(false);
   const [cari, setCari] = useState("");
+  const [aktif, setAktif] = useState(0);
   const kotak = useRef<HTMLDivElement>(null);
   const medan = useRef<HTMLInputElement>(null);
 
   const dipilih = pilihan.find((p) => p.nilai === nilai);
 
+  // SETIAP perkataan yang ditaip mesti ada (mana-mana susunan): "ros aini"
+  // menjumpai "NOR AINI BINTI ROSLAN". Ruang juga diabaikan supaya "4b"
+  // menjumpai "4 BESTARI".
   const ditapis = useMemo(() => {
-    const t = cari.trim().toLowerCase();
-    if (!t) return pilihan;
-    return pilihan.filter(
-      (p) =>
-        p.label.toLowerCase().includes(t) || (p.nota ?? "").toLowerCase().includes(t),
-    );
+    const kata = norm(cari).split(" ").filter(Boolean);
+    if (kata.length === 0) return pilihan;
+    return pilihan.filter((p) => {
+      const teks = norm(`${p.label} ${p.nota ?? ""}`);
+      const rapat = teks.replace(/ /g, "");
+      return kata.every((k) => teks.includes(k) || rapat.includes(k));
+    });
   }, [pilihan, cari]);
 
   useEffect(() => {
@@ -57,6 +70,7 @@ export default function PilihCari({
     const kunci = (e: KeyboardEvent) => {
       if (e.key === "Escape") setBuka(false);
     };
+    if (pilihan.length <= 8) kotak.current?.querySelector<HTMLButtonElement>("[role=option]")?.focus();
     document.addEventListener("pointerdown", luar);
     document.addEventListener("keydown", kunci);
     return () => {
@@ -69,20 +83,28 @@ export default function PilihCari({
     tukar(v);
     setBuka(false);
     setCari("");
+    setAktif(0);
+  }
+
+  function kekunci(e: React.KeyboardEvent<HTMLInputElement>) {
+    if (e.key === "ArrowDown") { e.preventDefault(); setAktif((a) => Math.min(a + 1, ditapis.length - 1)); }
+    else if (e.key === "ArrowUp") { e.preventDefault(); setAktif((a) => Math.max(a - 1, 0)); }
+    else if (e.key === "Enter") { e.preventDefault(); const p = ditapis[aktif]; if (p) pilih(p.nilai); }
   }
 
   return (
     <div ref={kotak} className="relative min-w-0">
-      <label htmlFor={id} className="block text-xs font-semibold text-slate-500">
+      <label htmlFor={id} className={sembunyiLabel ? "sr-only" : "block text-xs font-semibold text-slate-500"}>
         {label}
       </label>
       <button
         id={id}
         type="button"
+        disabled={disabled}
         onClick={() => setBuka((b) => !b)}
         aria-haspopup="listbox"
         aria-expanded={buka}
-        className="mt-1 flex w-full items-center justify-between gap-2 rounded-lg border border-garis bg-white px-3 py-2 text-left text-sm text-navy-800 hover:border-navy-700"
+        className={`${sembunyiLabel ? "" : "mt-1 "}flex min-h-10 w-full items-center justify-between gap-2 rounded-lg border border-garis bg-white px-3 py-2 text-left text-sm text-navy-800 hover:border-navy-700 disabled:opacity-60`}
       >
         <span className="min-w-0 truncate">
           {dipilih?.label ?? <span className="text-slate-400">Pilih…</span>}
@@ -98,22 +120,26 @@ export default function PilihCari({
             <input
               ref={medan}
               value={cari}
-              onChange={(e) => setCari(e.target.value)}
+              onChange={(e) => { setCari(e.target.value); setAktif(0); }}
+              onKeyDown={kekunci}
+              enterKeyHint="search"
+              autoComplete="off"
               placeholder={placeholder}
               aria-label={`Cari ${label}`}
               className="w-full border-b border-garis px-3 py-2 text-sm outline-none"
             />
           )}
           <ul role="listbox" className="max-h-64 overflow-y-auto">
-            {ditapis.map((p) => (
+            {ditapis.map((p, i) => (
               <li key={p.nilai}>
                 <button
                   type="button"
                   role="option"
                   aria-selected={p.nilai === nilai}
                   onClick={() => pilih(p.nilai)}
+                  onMouseEnter={() => setAktif(i)}
                   className={`block w-full px-3 py-2 text-left text-sm hover:bg-navy-50 ${
-                    p.nilai === nilai ? "bg-navy-50 font-semibold text-navy-800" : "text-slate-700"
+                    p.nilai === nilai ? "bg-navy-50 font-semibold text-navy-800" : i === aktif && cari ? "bg-slate-100 text-slate-800" : "text-slate-700"
                   }`}
                 >
                   {p.label}
@@ -121,6 +147,9 @@ export default function PilihCari({
                 </button>
               </li>
             ))}
+            {cari && ditapis.length > 0 && (
+              <li className="sticky bottom-0 border-t border-garis bg-white px-3 py-1 text-[11px] text-slate-400">{ditapis.length} padanan · Enter untuk pilih</li>
+            )}
             {ditapis.length === 0 && (
               <li className="px-3 py-3 text-sm text-slate-500">Tiada yang sepadan.</li>
             )}

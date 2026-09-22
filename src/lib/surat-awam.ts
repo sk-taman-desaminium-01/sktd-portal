@@ -8,6 +8,7 @@ import { klienTulis } from "./supabase-pelayan";
 import { tahunSesiAktif } from "./sesi-aktif";
 import { hantar, emelIkutPeranan } from "./notifikasi";
 import type { DataSuratGambar } from "./surat";
+import { namaSepadan } from "@/data/borang-aktiviti";
 
 export interface InputKebenaranGambarAwam {
   penjagaNama: string;
@@ -105,7 +106,10 @@ export async function hantarKebenaranGambarAwam(input: InputKebenaranGambarAwam)
     const db = klienTulis();
     const dibenar = await db.minta("rpc/borang_ambil_giliran", {
       method: "POST",
-      body: JSON.stringify({ p_kunci: hash(`${ip}:kebenaran-gambar`) }),
+      // Kunci IP + MyKid, bukan IP sahaja: telco Malaysia (CGNAT) dan wifi
+      // sekolah berkongsi SATU IP untuk ramai ibu bapa — had 12 per IP
+      // menyekat penjaga ke-13 dan seterusnya pada hari yang sama.
+      body: JSON.stringify({ p_kunci: hash(`${ip}:kebenaran-gambar:${muridKp}`) }),
     });
     if (!dibenar) gagal("Had penghantaran hari ini dicapai. Hubungi pihak sekolah jika anda perlu membuat pembetulan.");
 
@@ -116,7 +120,7 @@ export async function hantarKebenaranGambarAwam(input: InputKebenaranGambarAwam)
     )) as { murid_id: string; tahun: number; kelas: string; pbd_murid: { nama: string; no_kp: string } }[];
     const murid = pendaftaran.find((baris) => {
       const label = baris.tahun === 0 ? baris.kelas : `${baris.tahun} ${baris.kelas}`;
-      return sama(baris.pbd_murid.nama) === sama(muridNama) && sama(label) === sama(muridKelas);
+      return namaSepadan(baris.pbd_murid.nama, muridNama) && sama(label) === sama(muridKelas);
     });
     if (!murid) gagal("Butiran murid tidak sepadan dengan daftar sekolah. Semak nama, kelas dan MyKid atau hubungi guru kelas.");
 
