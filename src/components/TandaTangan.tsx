@@ -80,7 +80,9 @@ export default function TandaTangan({
     try {
       if (blob.size > 260_000) throw new Error("Tandatangan terlalu besar. Cuba lukis semula atau guna gambar yang lebih ringkas.");
       if (tempatan) {
-        const dataUrl = await blobKeDataUrl(blob);
+        // Disimpan dalam pangkalan data (500 MB percuma) — kecilkan dahulu.
+        // 600×200 px masih tajam pada cetakan A4; saiz turun dari ±200 KB ke ±15 KB.
+        const dataUrl = await blobKeDataUrl(await kecilkanTandatangan(blob));
         if (dataUrl.length > 350_000) throw new Error("Tandatangan terlalu besar untuk disimpan.");
         tetap(dataUrl);
         return;
@@ -264,4 +266,24 @@ function blobKeDataUrl(blob: Blob): Promise<string> {
     pembaca.onerror = () => reject(new Error("Tandatangan tidak dapat dibaca."));
     pembaca.readAsDataURL(blob);
   });
+}
+
+/** Kecilkan imej tandatangan ke maksimum 600×200 px, PNG. */
+async function kecilkanTandatangan(blob: Blob): Promise<Blob> {
+  try {
+    const bmp = await createImageBitmap(blob);
+    const skala = Math.min(1, 600 / bmp.width, 200 / bmp.height);
+    if (skala === 1) { bmp.close(); return blob; }
+    const kv = document.createElement("canvas");
+    kv.width = Math.max(1, Math.round(bmp.width * skala));
+    kv.height = Math.max(1, Math.round(bmp.height * skala));
+    const ctx = kv.getContext("2d");
+    if (!ctx) { bmp.close(); return blob; }
+    ctx.imageSmoothingQuality = "high";
+    ctx.drawImage(bmp, 0, 0, kv.width, kv.height);
+    bmp.close();
+    return await new Promise<Blob>((ok) => kv.toBlob((b) => ok(b ?? blob), "image/png"));
+  } catch {
+    return blob;
+  }
 }

@@ -9,6 +9,7 @@ import CetakSurat, { type KepalaSurat } from "@/components/CetakSurat";
 import {
   hantarSuratRasmi, hantarSuratGambar, suntingSuratRasmi, tetapkanRujukan, padamSurat,
   type BarisSurat, type DataSuratRasmi, type DataSuratGambar,
+  tandatanganSurat,
 } from "@/lib/surat";
 import PilihCari from "@/components/PilihCari";
 
@@ -44,9 +45,14 @@ export default function PanelBorang({
    * mudah alih. `flushSync` memastikan surat baharu sudah berada dalam DOM
    * sebelum dialog dibuka tanpa menangguhkan panggilan melalui setTimeout.
    */
-  function bukaCetak(baris: BarisSurat) {
-    flushSync(() => setCetak(baris));
-    mulaCetak("surat-cetak", baris.tajuk);
+  async function bukaCetak(baris: BarisSurat) {
+    // Senarai tidak membawa imej tandatangan (jimat egress); ambil untuk
+    // rekod yang dicetak sahaja.
+    const lengkap = baris.jenis === "gambar" && !baris.tandatangan_url
+      ? { ...baris, tandatangan_url: await tandatanganSurat(baris.id).catch(() => null) }
+      : baris;
+    flushSync(() => setCetak(lengkap));
+    mulaCetak("surat-cetak", lengkap.tajuk);
   }
 
   async function buangSurat(id: string) {
@@ -341,7 +347,7 @@ function SenaraiSaya({
                 {labelStatus}
               </span>
               {(b.jenis === "rasmi" || b.jenis === "gambar") && (
-                <button type="button" onClick={() => bukaCetak(b)} className="min-h-11 touch-manipulation px-1 text-xs font-semibold text-navy-700 underline">
+                <button type="button" onClick={() => void bukaCetak(b)} className="min-h-11 touch-manipulation px-1 text-xs font-semibold text-navy-700 underline">
                   Cetak PDF
                 </button>
               )}

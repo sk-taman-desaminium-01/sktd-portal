@@ -245,6 +245,34 @@ export async function hantarSuratGambar(input: {
   return { ok: true, id, mesej: "Direkod." };
 }
 
+/**
+ * Lajur SENARAI — TANPA `tandatangan_url`. Tandatangan ialah imej base64
+ * (sehingga 350 KB). Memuatkannya untuk setiap baris bermakna satu paparan
+ * kad Guru Kelas atau Borang boleh menarik puluhan MB, dan pada 2,000+
+ * rekod ia menghabiskan kuota egress Supabase percuma. Imej diambil hanya
+ * bila satu rekod dicetak — `tandatanganSurat(id)`.
+ */
+const LAJUR_SENARAI = "id,jenis,status,tajuk,rujukan_kami,pemohon_nama,pemohon_emel,data,dicipta";
+
+/** Tandatangan satu surat, untuk cetakan. Kuasa sama seperti melihat rekod itu. */
+export async function tandatanganSurat(id: string): Promise<string | null> {
+  const saya = await pengguna();
+  if (!saya?.peranan || !/^[0-9a-f-]{36}$/i.test(id)) return null;
+  const baris = (await klienTulis().minta(
+    `pbd_surat?select=jenis,pemohon_emel,data,tandatangan_url&id=eq.${id}&limit=1`,
+  )) as { jenis: string; pemohon_emel: string; data: DataSuratGambar; tandatangan_url: string | null }[];
+  const b = baris[0];
+  if (!b) return null;
+  if (b.pemohon_emel?.toLowerCase() === saya.emel || await bolehBuat("lihat_data_murid") || await bolehBuat("urus_pejabat")) {
+    return b.tandatangan_url;
+  }
+  if (b.jenis === "gambar") {
+    const skop = await kelasBolehSunting();
+    if (skop === null || skop.map((k) => k.toUpperCase()).includes(b.data?.muridKelas?.trim().toUpperCase())) return b.tandatangan_url;
+  }
+  return null;
+}
+
 /** Surat yang SAYA hantar (bukan skrin pejabat). */
 export async function senaraiSuratSaya(): Promise<{ belumSedia: boolean; senarai: BarisSurat[] }> {
   const saya = await pengguna();
@@ -253,7 +281,7 @@ export async function senaraiSuratSaya(): Promise<{ belumSedia: boolean; senarai
   try {
     const lihatSemua = await bolehBuat("lihat_data_murid");
     const dibaca = (await db.minta(
-      `pbd_surat?select=id,jenis,status,tajuk,rujukan_kami,pemohon_nama,pemohon_emel,tandatangan_url,data,dicipta` +
+      `pbd_surat?select=${LAJUR_SENARAI}` +
         `${lihatSemua ? "" : `&pemohon_emel=eq.${encodeURIComponent(saya.emel)}`}&order=dicipta.desc&limit=${lihatSemua ? 300 : 100}`,
     )) as BarisSurat[];
     // Borang awam dihantar oleh ibu bapa. Walaupun emel guru kelas disimpan
@@ -281,8 +309,10 @@ export async function senaraiKebenaranGambarKelas(
   if (kelas?.size === 0) return { belumSedia: false, senarai: [] };
   try {
     const semua = await bacaSemua<BarisSurat>(
-      "pbd_surat?select=id,jenis,status,tajuk,rujukan_kami,pemohon_nama,pemohon_emel,tandatangan_url,data,dicipta" +
-        "&jenis=eq.gambar&order=dicipta.desc,id.asc",
+      `pbd_surat?select=${LAJUR_SENARAI}&jenis=eq.gambar` +
+        // Tapis kelas DI PANGKALAN DATA — bukan baca semua sekolah kemudian tapis.
+        (kelas === null ? "" : `&or=(${[...kelas].map((k) => `data->>muridKelas.ilike.${encodeURIComponent(`"${k}"`)}`).join(",")})`) +
+        "&order=dicipta.desc,id.asc",
     );
     const senarai = kelas === null
       ? semua
@@ -300,7 +330,7 @@ export async function senaraiSuratPejabat(): Promise<{ belumSedia: boolean; sena
   const db = klienTulis();
   try {
     const senarai = (await db.minta(
-      `pbd_surat?select=id,jenis,status,tajuk,rujukan_kami,pemohon_nama,pemohon_emel,tandatangan_url,data,dicipta` +
+      `pbd_surat?select=${LAJUR_SENARAI}` +
         `&jenis=eq.rasmi&order=dicipta.desc&limit=200`,
     )) as BarisSurat[];
     return { belumSedia: false, senarai };
