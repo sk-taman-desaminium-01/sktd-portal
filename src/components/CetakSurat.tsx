@@ -56,8 +56,9 @@ export default function CetakSurat({
   sayaNama?: string;
 }) {
   const isi = isiSatuMukaSurat(data.isi);
-  // Surat sekolah SENTIASA dibuka dengan ayat rujukan tanpa nombor, dan
-  // perenggan isi dinomborkan 1., 2., 3. dengan inden tergantung.
+  // Surat sekolah SENTIASA dibuka dengan ayat rujukan tanpa nombor — itulah
+  // perenggan 1 — jadi perenggan isi bermula dengan 2., 3., 4. (format
+  // surat rasmi kerajaan; ditetapkan pengguna 22 Sep 2026).
   const perenggan = isi.perenggan.filter((p) => !RUJUK.test(p)).map(tanpaNombor);
   const padat = data.isi.replace(/\s+/g, " ").trim().length > 700 || isi.perenggan.length > 5;
   return (
@@ -81,7 +82,7 @@ export default function CetakSurat({
         #surat-cetak .surat-tajuk { margin: 7mm 0 0; font-weight: 700; text-transform: uppercase; }
         #surat-cetak .surat-isi { margin: 5mm 0 0; text-align: justify; }
         #surat-cetak .surat-isi p { margin: 0 0 3.5mm; }
-        #surat-cetak .surat-isi ol { margin: 0; padding: 0; list-style: none; counter-reset: p; }
+        #surat-cetak .surat-isi ol { margin: 0; padding: 0; list-style: none; counter-reset: p 1; }
         #surat-cetak .surat-isi li { position: relative; margin: 0 0 3.5mm; padding-left: 7mm; counter-increment: p; }
         #surat-cetak .surat-isi li::before { content: counter(p) "."; position: absolute; left: 0; }
         #surat-cetak .surat-penutup { margin: 7mm 0 0; }
