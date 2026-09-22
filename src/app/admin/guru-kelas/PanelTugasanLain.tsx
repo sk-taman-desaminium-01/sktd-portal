@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { tetapTugasan, buangTugasan, type BarisTugasan, type JenisTugasan } from "@/lib/tugasan";
+import PilihCari from "@/components/PilihCari";
 
 /**
  * Tugasan yang BUKAN guru kelas — guru RMT, guru disiplin, pengurus pasukan.
@@ -80,15 +81,13 @@ export default function PanelTugasanLain({
       )}
 
       <div className="mt-4 flex flex-wrap gap-2">
-        <select
-          value={guruId} onChange={(e) => setGuruId(e.target.value)}
-          className="min-w-0 flex-1 rounded-lg border border-garis px-3 py-2 text-sm"
-        >
-          <option value="">Pilih orang…</option>
-          {orang.map((o) => (
-            <option key={o.id} value={o.id}>{o.nama}</option>
-          ))}
-        </select>
+        <div className="min-w-[12rem] flex-1">
+          <PilihCari
+            id={`tugasan-${jenis}`} label="Pilih orang" sembunyiLabel
+            nilai={guruId} tukar={setGuruId} placeholder="Taip nama guru…"
+            pilihan={orang.map((o) => ({ nilai: o.id, label: o.nama }))}
+          />
+        </div>
         {!skopTunggal && (
           <input
             value={skop} onChange={(e) => setSkop(e.target.value)}

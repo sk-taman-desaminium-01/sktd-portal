@@ -7,6 +7,7 @@ import {
   type BarisKawalanKelas,
 } from "@/lib/kawalan-kelas";
 import { cartaKehadiranHarian } from "@/lib/kawalan-kelas-carta";
+import PilihCari from "@/components/PilihCari";
 
 export default function PanelKawalanKelas({
   tahunSesi, kelas, namaGuruKelas, senarai, tarikhAwal,
@@ -89,10 +90,7 @@ export default function PanelKawalanKelas({
               className="block w-full min-w-0 max-w-full rounded-lg border border-garis px-3 py-2 text-sm" />
           </Medan>
           <Medan label="Kelas">
-            <select value={kelasPilih} onChange={(e) => setKelasPilih(e.target.value)}
-              className="block w-full min-w-0 max-w-full rounded-lg border border-garis px-3 py-2 text-sm">
-              {kelas.map((k) => <option key={k} value={k}>{k}</option>)}
-            </select>
+            <PilihCari id="kawalan-kelas" label="Kelas" sembunyiLabel nilai={kelasPilih} tukar={setKelasPilih} placeholder="Taip kelas, cth: 4 bes" pilihan={kelas.map((k) => ({ nilai: k, label: k }))} />
             {namaGuruKelas[kelasPilih] && (
               <p className="mt-1 text-xs text-slate-400">Guru kelas semasa: {namaGuruKelas[kelasPilih]}</p>
             )}

@@ -10,6 +10,7 @@ import {
   hantarSuratRasmi, hantarSuratGambar, suntingSuratRasmi, tetapkanRujukan, padamSurat,
   type BarisSurat, type DataSuratRasmi, type DataSuratGambar,
 } from "@/lib/surat";
+import PilihCari from "@/components/PilihCari";
 
 type Kepala = KepalaSurat;
 
@@ -218,10 +219,7 @@ function FormGambar({ kelas, selesai }: { kelas: string[]; selesai: (b: BarisSur
           className="block w-full min-w-0 max-w-full rounded-lg border border-garis px-3 py-2 text-sm" />
       </Medan>
       <Medan label="Kelas">
-        <select value={muridKelas} onChange={(e) => setMuridKelas(e.target.value)}
-          className="block w-full min-w-0 max-w-full rounded-lg border border-garis px-3 py-2 text-sm">
-          {kelas.map((k) => <option key={k} value={k}>{k}</option>)}
-        </select>
+        <PilihCari id="borang-kelas" label="Kelas" sembunyiLabel nilai={muridKelas} tukar={setMuridKelas} placeholder="Taip kelas, cth: 4 bes" pilihan={kelas.map((k) => ({ nilai: k, label: k }))} />
       </Medan>
       <fieldset>
         <legend className="mb-1 block text-sm font-semibold text-navy-800">Keputusan kebenaran ibu bapa</legend>

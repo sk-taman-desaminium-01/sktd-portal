@@ -9,6 +9,7 @@ import {
   type BarisDisiplin,
 } from "@/lib/disiplin";
 import { SEKOLAH } from "@/data/sekolah";
+import PilihCari from "@/components/PilihCari";
 
 const HARI_INI = new Date().toISOString().slice(0, 10);
 
@@ -38,6 +39,7 @@ function BorangRekod({ tahunSesi, kelas, cadangan }: {
   const [tarikh, setTarikh] = useState(HARI_INI);
   const [muridNama, setMuridNama] = useState("");
   const [muridKelas, setMuridKelas] = useState("");
+  const [manual, setManual] = useState(false);
   const [kesalahan, setKesalahan] = useState("");
   const [tindakan, setTindakan] = useState("");
   const [saksi, setSaksi] = useState("");
@@ -68,18 +70,27 @@ function BorangRekod({ tahunSesi, kelas, cadangan }: {
             className="block w-full min-w-0 max-w-full rounded-lg border border-garis px-3 py-2 text-sm" />
         </Medan>
         <Medan label="Kelas">
-          <select value={muridKelas} onChange={(e) => setMuridKelas(e.target.value)}
-            className="block w-full min-w-0 max-w-full rounded-lg border border-garis px-3 py-2 text-sm">
-            <option value="">Pilih kelas…</option>
-            {kelas.map((k) => <option key={k} value={k}>{k}</option>)}
-          </select>
+          <PilihCari id="disiplin-kelas" label="Kelas" sembunyiLabel nilai={muridKelas} tukar={(v) => { setMuridKelas(v); setManual(false); }} placeholder="Taip kelas, cth: 4 bes" pilihan={kelas.map((k) => ({ nilai: k, label: k }))} />
         </Medan>
         <Medan label="Nama Murid">
-          <input list="cadangan-murid-disiplin" value={muridNama} onChange={(e) => setMuridNama(e.target.value)}
-            placeholder="Taip nama — cadangan akan keluar" className="block w-full min-w-0 max-w-full rounded-lg border border-garis px-3 py-2 text-sm" />
-          <datalist id="cadangan-murid-disiplin">
-            {cadangan.map((m) => <option key={`${m.nama}-${m.kelas}`} value={m.nama} label={m.kelas} />)}
-          </datalist>
+          {/* <datalist> tidak berfungsi dengan baik pada iPhone; pemilih boleh
+              cari digunakan, ditapis mengikut kelas yang dipilih. */}
+          {manual ? (
+            <>
+              <input value={muridNama} onChange={(e) => setMuridNama(e.target.value)} autoFocus
+                placeholder="Taip nama penuh murid" className="block w-full min-w-0 max-w-full rounded-lg border border-garis px-3 py-2 text-sm" />
+              <button type="button" onClick={() => setManual(false)} className="mt-1 text-xs text-navy-700 underline">← Pilih daripada senarai</button>
+            </>
+          ) : (
+            <>
+              <PilihCari id="disiplin-murid" label="Nama murid" sembunyiLabel placeholder="Taip nama murid…"
+                nilai={muridNama ? `${muridNama}|${muridKelas}` : ""}
+                tukar={(v) => { const [n, k] = v.split("|"); setMuridNama(n ?? ""); if (k) setMuridKelas(k); }}
+                pilihan={cadangan.filter((m) => !muridKelas || m.kelas === muridKelas)
+                  .map((m) => ({ nilai: `${m.nama}|${m.kelas}`, label: m.nama, nota: m.kelas }))} />
+              <button type="button" onClick={() => setManual(true)} className="mt-1 text-xs text-slate-500 underline">Nama tiada dalam senarai? Taip sendiri</button>
+            </>
+          )}
         </Medan>
         <Medan label="Saksi (jika ada)">
           <input value={saksi} onChange={(e) => setSaksi(e.target.value)}

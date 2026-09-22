@@ -480,18 +480,11 @@ function WaktuTetap({ papan, setNota }: {
               {SUBJEK.filter((x) => x.panitia).map((x) => (
                 <li key={x.kod} className="flex flex-wrap items-center gap-2">
                   <span className="min-w-0 flex-1 text-sm text-navy-800">{x.nama}</span>
-                  <select
-                    value={peta[x.kod] ?? ""}
-                    onChange={(e) => void petakan(x.kod, e.target.value)}
-                    disabled={sibuk}
-                    aria-label={`Bilik untuk ${x.nama}`}
-                    className="shrink-0 rounded-lg border border-garis px-2 py-1.5 text-xs"
-                  >
-                    <option value="">— tiada bilik tetap —</option>
-                    {papan.bilik.map((b) => (
-                      <option key={b.id} value={b.id}>{b.nama}</option>
-                    ))}
-                  </select>
+                  <div className="w-full min-w-0 sm:w-60">
+                    <PilihCari id={`bilik-${x.kod}`} label={`Bilik untuk ${x.nama}`} sembunyiLabel disabled={sibuk}
+                      nilai={peta[x.kod] ?? ""} tukar={(v) => void petakan(x.kod, v)} placeholder="Taip nama bilik…"
+                      pilihan={[{ nilai: "", label: "— tiada bilik tetap —" }, ...papan.bilik.map((b) => ({ nilai: b.id, label: b.nama }))]} />
+                  </div>
                 </li>
               ))}
             </ul>

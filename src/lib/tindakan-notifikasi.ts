@@ -95,6 +95,9 @@ export async function daftarPush(
 ): Promise<{ ok: boolean; mesej: string }> {
   const saya = await pengguna();
   if (!saya?.emel) return { ok: false, mesej: "Tiada kebenaran." };
+  if (!langganan.endpoint || !langganan.p256dh || !langganan.auth) {
+    return { ok: false, mesej: "Pelayar tidak memberi langganan yang lengkap. Cuba sekali lagi." };
+  }
   try {
     await simpanLanggananPush(saya.emel, langganan);
     const uji = await hantarPush([saya.emel], {
@@ -117,6 +120,33 @@ export async function daftarPush(
       return { ok: false, mesej: "Notifikasi belum dipasang. Admin perlu menjalankan SQLnya dahulu." };
     }
     return { ok: false, mesej: "Peranti ini gagal didaftarkan." };
+  }
+}
+
+/**
+ * Ikat semula langganan peranti ini kepada akaun yang SEDANG log masuk,
+ * tanpa menghantar ujian.
+ *
+ * Dipanggil setiap kali halaman Notifikasi dibuka pada peranti yang sudah
+ * melanggan. Tanpanya, dua keadaan menyebabkan notifikasi "tak naik"
+ * walaupun skrin berkata aktif:
+ *  · dua akaun berkongsi satu pelayar — langganan kekal milik akaun pertama;
+ *  · baris langganan dibuang pelayan (410) tetapi pelayar masih memegangnya.
+ */
+export async function segerakPush(
+  langganan: { endpoint: string; p256dh: string; auth: string },
+): Promise<{ ok: boolean; mesej: string }> {
+  const saya = await pengguna();
+  if (!saya?.emel) return { ok: false, mesej: "Tiada kebenaran." };
+  if (!langganan.endpoint || !langganan.p256dh || !langganan.auth) {
+    return { ok: false, mesej: "Langganan peranti tidak lengkap." };
+  }
+  try {
+    await simpanLanggananPush(saya.emel, langganan);
+    return { ok: true, mesej: "" };
+  } catch (e) {
+    if (belumPasang(e)) return { ok: false, mesej: "Notifikasi belum dipasang." };
+    return { ok: false, mesej: "Peranti gagal disegerakkan." };
   }
 }
 

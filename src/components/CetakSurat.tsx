@@ -28,11 +28,17 @@ function isiSatuMukaSurat(isi: string) {
   };
 }
 
-function tarikhBahasaMelayu(tarikh: string) {
-  const nilai = new Date(`${tarikh}T12:00:00`);
-  return Number.isNaN(nilai.getTime())
-    ? tarikh
-    : nilai.toLocaleDateString("ms-MY", { day: "numeric", month: "long", year: "numeric" });
+/** "2026-09-09" → "09.09.2026" — format tarikh surat sekolah. */
+function tarikhSurat(tarikh: string) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(tarikh);
+  return m ? `${m[3]}.${m[2]}.${m[1]}` : tarikh;
+}
+
+const RUJUK = /^dengan hormatnya,? perkara di atas (adalah )?dirujuk\.?$/i;
+
+/** Buang nombor yang ditaip pengguna ("1.", "2)") — nombor dijana seragam. */
+function tanpaNombor(p: string) {
+  return p.replace(/^\(?\d{1,2}[.)]\s*/, "");
 }
 
 /**
@@ -50,20 +56,23 @@ export default function CetakSurat({
   sayaNama?: string;
 }) {
   const isi = isiSatuMukaSurat(data.isi);
+  // Surat sekolah SENTIASA dibuka dengan ayat rujukan tanpa nombor, dan
+  // perenggan isi dinomborkan 1., 2., 3. dengan inden tergantung.
+  const perenggan = isi.perenggan.filter((p) => !RUJUK.test(p)).map(tanpaNombor);
   const padat = data.isi.replace(/\s+/g, " ").trim().length > 700 || isi.perenggan.length > 5;
   return (
     <div id="surat-cetak" data-cetak-kertas="portrait" className="hidden text-black print:block">
       <style>{`
-        #surat-cetak .surat-dokumen { background: #fff; color: #000; font-family: "Times New Roman", Times, serif; font-size: 10.5pt; line-height: 1.32; }
+        #surat-cetak .surat-dokumen { background: #fff; color: #000; font-family: "Times New Roman", Times, serif; font-size: 11.5pt; line-height: 1.3; }
         #surat-cetak .surat-kepala { display: grid; grid-template-columns: 30mm minmax(0, 1fr) 43mm; column-gap: 3.5mm; align-items: start; border-bottom: 1px solid #000; padding: 0 0 3.5mm; font-family: Arial, Helvetica, sans-serif; }
         #surat-cetak .surat-logo-jata { width: 29mm; height: 23mm; object-fit: contain; object-position: left top; }
         #surat-cetak .surat-logo-kumpulan { display: flex; justify-content: flex-end; align-items: flex-start; gap: 1.5mm; min-height: 20mm; }
         #surat-cetak .surat-logo-sktd { width: 16mm; height: 19mm; object-fit: contain; object-position: center top; }
         #surat-cetak .surat-logo-ts25 { width: 22mm; height: 19mm; object-fit: contain; object-position: center top; }
-        #surat-cetak .surat-kepala-kpm { margin: 0; font-size: 10.5pt; font-weight: 700; line-height: 1.1; }
-        #surat-cetak .surat-kepala-nama { margin: 0.6mm 0 0; font-size: 10.5pt; font-weight: 700; line-height: 1.1; }
-        #surat-cetak .surat-kepala-alamat { margin: 0.6mm 0 0; white-space: pre-line; font-size: 9.5pt; line-height: 1.14; }
-        #surat-cetak .surat-hubungi { margin: 1mm 0 0; text-align: left; font-size: 7.8pt; line-height: 1.2; white-space: nowrap; }
+        #surat-cetak .surat-kepala-kpm { margin: 0; font-size: 11.5pt; font-weight: 700; line-height: 1.1; }
+        #surat-cetak .surat-kepala-nama { margin: 0.4mm 0 0; font-size: 11.5pt; font-weight: 700; line-height: 1.1; }
+        #surat-cetak .surat-kepala-alamat { margin: 0.6mm 0 0; white-space: pre-line; font-size: 11pt; line-height: 1.2; }
+        #surat-cetak .surat-hubungi { margin: 1mm 0 0; text-align: left; font-size: 8.5pt; line-height: 1.2; white-space: nowrap; }
         #surat-cetak .surat-rujukan { display: flex; justify-content: flex-end; margin: 4mm 10mm 0; font-size: 11pt; line-height: 1.25; }
         #surat-cetak .surat-rujukan p { min-width: 57mm; margin: 0; }
         #surat-cetak .surat-kandungan { padding: 0 11mm; }
@@ -72,12 +81,16 @@ export default function CetakSurat({
         #surat-cetak .surat-tajuk { margin: 7mm 0 0; font-weight: 700; text-transform: uppercase; }
         #surat-cetak .surat-isi { margin: 5mm 0 0; text-align: justify; }
         #surat-cetak .surat-isi p { margin: 0 0 3.5mm; }
+        #surat-cetak .surat-isi ol { margin: 0; padding: 0; list-style: none; counter-reset: p; }
+        #surat-cetak .surat-isi li { position: relative; margin: 0 0 3.5mm; padding-left: 7mm; counter-increment: p; }
+        #surat-cetak .surat-isi li::before { content: counter(p) "."; position: absolute; left: 0; }
         #surat-cetak .surat-penutup { margin: 7mm 0 0; }
         #surat-cetak .surat-cogan { margin: 12mm 0 0; font-weight: 700; line-height: 1.75; }
         #surat-cetak .surat-tandatangan { margin: 5mm 0 0; }
         #surat-cetak .surat-ruang-tandatangan { height: 19mm; }
         #surat-cetak .surat-penandatangan { margin: 0; line-height: 1.32; }
-        #surat-cetak .surat-dokumen.surat-padat { font-size: 9.5pt; line-height: 1.22; }
+        #surat-cetak .surat-dokumen.surat-padat { font-size: 10.5pt; line-height: 1.22; }
+        #surat-cetak .surat-padat .surat-isi li { margin-bottom: 2.2mm; }
         #surat-cetak .surat-padat .surat-alamat { margin-top: 8mm; }
         #surat-cetak .surat-padat .surat-sapaan { margin-top: 7mm; }
         #surat-cetak .surat-padat .surat-tajuk { margin-top: 5mm; }
@@ -117,7 +130,7 @@ export default function CetakSurat({
         </header>
 
         <div className="surat-rujukan">
-          <p>{surat.rujukan_kami && <>Ruj Kami : {surat.rujukan_kami}<br /></>}Tarikh : {tarikhBahasaMelayu(data.tarikh)}</p>
+          <p>{surat.rujukan_kami && <>Ruj Kami : {surat.rujukan_kami}<br /></>}Tarikh : {tarikhSurat(data.tarikh)}</p>
         </div>
 
         <div className="surat-kandungan">
@@ -126,16 +139,18 @@ export default function CetakSurat({
           <p className="surat-tajuk">{surat.tajuk}</p>
 
           <div className="surat-isi">
-            {isi.perenggan.map((perenggan, indeks) => <p key={indeks}>{perenggan}</p>)}
+            <p>Dengan hormatnya perkara di atas adalah dirujuk.</p>
+            <ol>{perenggan.map((p, indeks) => <li key={indeks}>{p}</li>)}</ol>
           </div>
           {isi.dipendekkan && <p className="m-0 text-[8pt] italic">Isi melebihi ruang satu halaman dan dipendekkan pada penghujung ayat.</p>}
 
-          <p className="surat-penutup">Sekian, terima kasih.</p>
-          <p className="surat-cogan">“MALAYSIA MADANI”<br />“BERKHIDMAT UNTUK NEGARA”</p>
+          <p className="surat-penutup">Sekian.</p>
+          <p className="surat-cogan">“MALAYSIA MADANI”</p>
+          <p className="surat-cogan" style={{ marginTop: "3.5mm" }}>“BERKHIDMAT UNTUK NEGARA”</p>
           <div className="surat-tandatangan">
             <p className="m-0">Saya yang menjalankan amanah</p>
             <div className="surat-ruang-tandatangan" aria-label="Ruang tandatangan hidup Guru Besar" />
-            <p className="surat-penandatangan"><b>({data.wakilGbNama.toUpperCase()})</b><br />{data.wakilGbJawatan}<br />{kepala.nama}</p>
+            <p className="surat-penandatangan">({data.wakilGbNama.toUpperCase()})<br />{data.wakilGbJawatan}<br />{kepala.nama}</p>
           </div>
         </div>
       </article>

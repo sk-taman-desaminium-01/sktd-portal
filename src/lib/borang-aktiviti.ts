@@ -9,7 +9,7 @@ import { tahunSesiAktif } from "./sesi-aktif";
 import { bacaSemua } from "./baca-semua";
 import { bacaSenaraiMurid } from "./kenal-murid";
 import { hariIniMY } from "./bilik";
-import { semakAkuan, type AktivitiBorang, type AkuanAktiviti, type JawapanAktiviti } from "@/data/borang-aktiviti";
+import { semakAkuan, namaSepadan, type AktivitiBorang, type AkuanAktiviti, type JawapanAktiviti } from "@/data/borang-aktiviti";
 import { hantar } from "./notifikasi";
 const uuid = (s: string) => /^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(s);
 const hash = (s: string) => createHash("sha256").update(s).digest("hex");
@@ -133,17 +133,21 @@ export async function hantarAkuan(id:string, data: AkuanAktiviti, lamanPerangkap
   // Header platform dipercayai; jangan menerima IP daripada badan borang.
   const ip=h.get("x-vercel-forwarded-for")?.split(",")[0]?.trim() || h.get("x-real-ip") || "tidak-diketahui";
   const db=klienTulis();
-  const dibenar=await db.minta("rpc/borang_ambil_giliran",{method:"POST",body:JSON.stringify({p_kunci:hash(`${ip}:${id}`)})});
+  const dibenar=await db.minta("rpc/borang_ambil_giliran",{method:"POST",body:JSON.stringify({p_kunci:hash(`${ip}:${id}:${data.muridKp}`)})});
   if(!dibenar) throw new Error("Had cubaan hari ini dicapai. Hubungi pengurus aktiviti.");
   const aktiviti = await db.minta(
     `borang_aktiviti?select=id,nama,pengurus_emel&aktif=eq.true&tutup=gte.${hariIniMY()}&id=eq.${id}&limit=1`,
   ) as { id: string; nama: string; pengurus_emel: string }[];
   if(!aktiviti[0]) throw new Error("Borang telah ditutup atau tidak ditemui.");
   const p=await db.minta(`borang_peserta?select=murid_id,nama,kelas&aktiviti_id=eq.${id}&no_kp=eq.${data.muridKp}&limit=1`) as {murid_id:string;nama:string;kelas:string}[];
-  const sama=(s:string)=>s.toUpperCase().replace(/[^A-Z0-9]/g,"");
-  if(!p[0] || sama(p[0].nama)!==sama(data.muridNama) || sama(p[0].kelas)!==sama(data.kelas)) throw new Error("Butiran peserta tidak sepadan. Semak nama, kelas dan No. MyKid dengan pengurus.");
+  // Hanya murid yang DIPILIH pengurus boleh diisi. No. MyKid mesti tepat;
+  // nama diterima dengan ejaan biasa ibu bapa (BT/BINTI, huruf kecil, nama
+  // pendek) supaya salah taip kecil tidak menolak penjaga yang sah.
+  if(!p[0] || !namaSepadan(p[0].nama, data.muridNama)) throw new Error("Murid ini tiada dalam senarai peserta yang dipilih jurulatih/pengurus, atau nama dan No. MyKid tidak sepadan. Semak dengan pengurus pasukan.");
+  // Nama dan kelas rasmi daripada daftar ePBD — bukan taipan penjaga.
+  const rekod: AkuanAktiviti = { ...data, muridNama: p[0].nama, kelas: p[0].kelas };
   const resit=randomBytes(32).toString("hex");
-  await db.minta("borang_jawapan",{method:"POST",headers:{Prefer:"return=minimal"},body:JSON.stringify({aktiviti_id:id,murid_id:p[0].murid_id,data,resit_hash:hash(resit)})});
+  await db.minta("borang_jawapan",{method:"POST",headers:{Prefer:"return=minimal"},body:JSON.stringify({aktiviti_id:id,murid_id:p[0].murid_id,data:rekod,resit_hash:hash(resit)})});
   await hantar({
     penerima: [aktiviti[0].pengurus_emel], jenis: "borang",
     tajuk: `Akuan penyertaan diterima · ${aktiviti[0].nama}`,
@@ -166,4 +170,64 @@ export async function resitAkuan(token:string) {
  } catch {
    return null;
  }
+}
+
+/**
+ * CARIAN MURID untuk pengurus/jurulatih — pilih peserta tanpa menaip.
+ *
+ * Carian di PELAYAN (bukan senarai 2,000 murid dihantar ke pelayar): hanya
+ * 20 padanan teratas bagi huruf yang ditaip sampai ke skrin, dan hanya
+ * kepada orang yang memang mengurus aktiviti ini. No. MyKid disertakan
+ * kerana ia diisi automatik ke dalam senarai peserta.
+ */
+export async function cariMuridAktiviti(id: string, q: string): Promise<{ ok: boolean; mesej: string; murid: { murid_id: string; nama: string; no_kp: string; kelas: string }[] }> {
+ try {
+  await urus(id);
+  const t = q.trim().replace(/[%*,()"\\]/g, " ").replace(/\s+/g, " ");
+  if (t.length < 2) return { ok: true, mesej: "", murid: [] };
+  const sesi = await tahunSesiAktif();
+  const kp = /^\d{4,12}$/.test(t.replace(/[- ]/g, ""));
+  const kelas = /^([1-6])\s*([A-Za-z][A-Za-z ]*)?$/.exec(t);
+  const tapis = kp
+    ? `&pbd_murid.no_kp=like.${encodeURIComponent(t.replace(/[- ]/g, ""))}*`
+    : kelas
+    ? `&tahun=eq.${kelas[1]}${kelas[2] ? `&kelas=ilike.${encodeURIComponent(kelas[2].trim())}*` : ""}`
+    : t.split(" ").map((w) => `&pbd_murid.nama=ilike.*${encodeURIComponent(w)}*`).join("");
+  const rows = await klienTulis().minta(
+   `pbd_pendaftaran?select=murid_id,tahun,kelas,pbd_murid!inner(nama,no_kp)&tahun_sesi=eq.${sesi}` +
+   `&status=in.(aktif,pindah_masuk,ulang)${tapis}&order=tahun.asc,kelas.asc&limit=${kelas ? 60 : 20}`,
+  ) as { murid_id: string; tahun: number; kelas: string; pbd_murid: { nama: string; no_kp: string | null } }[];
+  return { ok: true, mesej: "", murid: rows.map((r) => ({
+   murid_id: r.murid_id, nama: r.pbd_murid.nama, no_kp: r.pbd_murid.no_kp ?? "",
+   kelas: r.tahun ? `${r.tahun} ${r.kelas}` : r.kelas,
+  })) };
+ } catch (e) { return { ok: false, mesej: e instanceof Error ? e.message : "Carian gagal.", murid: [] }; }
+}
+
+/** Tambah murid yang dipilih daripada carian. Nama/KP/kelas dibaca semula dari daftar — bukan dipercayai dari pelayar. */
+export async function tambahPesertaPilih(id: string, muridIds: string[]) {
+ try {
+  await urus(id);
+  const ids = [...new Set(muridIds)].filter(uuid);
+  if (ids.length === 0 || ids.length > 200) throw new Error("Pilih 1–200 murid.");
+  const sesi = await tahunSesiAktif();
+  const db = klienTulis();
+  const rows = await db.minta(`pbd_pendaftaran?select=murid_id,tahun,kelas,pbd_murid!inner(nama,no_kp)&tahun_sesi=eq.${sesi}&status=in.(aktif,pindah_masuk,ulang)&murid_id=in.(${ids.join(",")})`) as {murid_id:string;tahun:number;kelas:string;pbd_murid:{nama:string;no_kp:string|null}}[];
+  const tanpaKp = rows.filter((r) => !/^\d{12}$/.test(r.pbd_murid.no_kp ?? ""));
+  if (tanpaKp.length) throw new Error(`No. MyKid belum ada dalam daftar untuk: ${tanpaKp.map((r) => r.pbd_murid.nama).join(", ")}. Lengkapkan di kad Guru Kelas dahulu.`);
+  if (rows.length !== ids.length) throw new Error("Sebahagian murid tiada dalam daftar aktif sesi ini.");
+  const peserta = rows.map((r) => ({ aktiviti_id: id, murid_id: r.murid_id, nama: r.pbd_murid.nama, no_kp: r.pbd_murid.no_kp!, kelas: r.tahun ? `${r.tahun} ${r.kelas}` : r.kelas }));
+  await db.minta("borang_peserta?on_conflict=aktiviti_id,murid_id", { method: "POST", headers: { Prefer: "resolution=merge-duplicates,return=minimal" }, body: JSON.stringify(peserta) });
+  return { ok: true, mesej: `${peserta.length} peserta ditambah.` };
+ } catch (e) { return { ok: false, mesej: e instanceof Error ? e.message : "Gagal menambah peserta." }; }
+}
+
+/** Buang seorang peserta. Jawapan yang sudah dihantar kekal (tidak dipadam senyap). */
+export async function buangPesertaAktiviti(id: string, muridId: string) {
+ try {
+  await urus(id);
+  if (!uuid(muridId)) throw new Error("Murid tidak sah.");
+  await klienTulis().minta(`borang_peserta?aktiviti_id=eq.${id}&murid_id=eq.${muridId}`, { method: "DELETE", headers: { Prefer: "return=minimal" } });
+  return { ok: true, mesej: "Peserta dibuang daripada senarai." };
+ } catch (e) { return { ok: false, mesej: e instanceof Error ? e.message : "Gagal membuang peserta." }; }
 }

@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import {
   notifikasiSaya, tandaDibacaTindakan, padamNotifikasiTindakan,
   kosongkanTindakan, daftarPush, kunciPush,
+  segerakPush, buangPush,
 } from "@/lib/tindakan-notifikasi";
 import { IKON_JENIS, NAMA_JENIS, masaLalu, ikutHari, type Notifikasi } from "@/data/notifikasi";
 
@@ -155,11 +156,58 @@ export default function PanelNotifikasi({ hariIni }: { hariIni: string }) {
  *
  * Kebenaran DIMINTA, tidak pernah diandaikan — dan diminta hanya selepas
  * pengguna menekan butang, kerana pelayar menolak permintaan yang datang
- * tanpa ketukan manusia. Ayatnya menerangkan apa yang akan sampai dan bila,
- * supaya "Benarkan" ialah keputusan dan bukan tekaan.
+ * tanpa ketukan manusia.
+ *
+ * Tiga punca "admin lain tak dapat hidupkan / notifikasi tak naik" yang
+ * ditutup di sini:
+ *  1. iPhone/iPad hanya menyokong push dari app yang DIPASANG ke Skrin
+ *     Utama (iOS 16.4+). Dalam tab Safari `Notification` tidak wujud, dan
+ *     dahulu komponen ini memulangkan `null` — tiada butang, tiada sebab.
+ *  2. Langganan pelayar kekal milik akaun PERTAMA yang melanggan pada
+ *     pelayar itu. Akaun kedua melihat "aktif" tetapi tidak menerima
+ *     apa-apa. Kini setiap kali halaman dibuka, langganan diikat semula
+ *     kepada akaun semasa.
+ *  3. Kunci VAPID bertukar → `subscribe()` melontar InvalidStateError.
+ *     Langganan lama dibuang dan dicuba sekali lagi.
  */
+type KeadaanPush = "memuat" | "tiada" | "ios-pasang" | "boleh" | "hidup" | "ditolak";
+
+function perantiIos(): boolean {
+  const ua = navigator.userAgent;
+  return /iPad|iPhone|iPod/.test(ua) || (ua.includes("Macintosh") && navigator.maxTouchPoints > 1);
+}
+
+function dipasangSebagaiApp(): boolean {
+  return window.matchMedia("(display-mode: standalone)").matches ||
+    (navigator as Navigator & { standalone?: boolean }).standalone === true;
+}
+
+/** `serviceWorker.ready` tidak pernah selesai jika pendaftaran gagal — hadkan masa. */
+async function swSedia(): Promise<ServiceWorkerRegistration> {
+  const sedia = await navigator.serviceWorker.getRegistration("/portal/");
+  if (!sedia) await navigator.serviceWorker.register("/portal/sw.js", { scope: "/portal/" });
+  return Promise.race([
+    navigator.serviceWorker.ready,
+    new Promise<never>((_, tolak) =>
+      setTimeout(() => tolak(new Error("Service worker portal tidak aktif. Muat semula halaman dan cuba lagi.")), 10000)),
+  ]);
+}
+
+function jsonLanggan(l: PushSubscription) {
+  const j = l.toJSON() as { endpoint?: string; keys?: { p256dh?: string; auth?: string } };
+  return { endpoint: j.endpoint ?? "", p256dh: j.keys?.p256dh ?? "", auth: j.keys?.auth ?? "" };
+}
+
+function samaKunci(l: PushSubscription, kunci: string): boolean {
+  const ada = l.options?.applicationServerKey;
+  if (!ada) return true;
+  const a = new Uint8Array(ada);
+  const b = kunciKeBait(kunci);
+  return a.length === b.length && a.every((x, i) => x === b[i]);
+}
+
 function Push() {
-  const [keadaan, setKeadaan] = useState<"memuat" | "tiada" | "boleh" | "hidup" | "ditolak">("memuat");
+  const [keadaan, setKeadaan] = useState<KeadaanPush>("memuat");
   const [nota, setNota] = useState<string | null>(null);
   const [sibuk, setSibuk] = useState(false);
 
@@ -168,12 +216,26 @@ function Push() {
     void (async () => {
       await Promise.resolve();
       if (!hidup) return;
-      if (!("Notification" in window) || !("serviceWorker" in navigator)) { setKeadaan("tiada"); return; }
+      const sokong = "Notification" in window && "serviceWorker" in navigator && "PushManager" in window;
+      if (!sokong) {
+        setKeadaan(perantiIos() && !dipasangSebagaiApp() ? "ios-pasang" : "tiada");
+        return;
+      }
       if (Notification.permission === "denied") { setKeadaan("ditolak"); return; }
       try {
-        const r = await navigator.serviceWorker.ready;
+        const r = await swSedia();
         const langganan = await r.pushManager.getSubscription();
-        if (hidup) setKeadaan(langganan ? "hidup" : "boleh");
+        if (!hidup) return;
+        if (!langganan || Notification.permission !== "granted") { setKeadaan("boleh"); return; }
+        const kunci = await kunciPush();
+        if (kunci && !samaKunci(langganan, kunci)) {
+          // Kunci pelayan sudah bertukar — langganan lama tidak akan menerima apa-apa.
+          await langganan.unsubscribe().catch(() => {});
+          if (hidup) setKeadaan("boleh");
+          return;
+        }
+        const r2 = await segerakPush(jsonLanggan(langganan));
+        if (hidup) setKeadaan(r2.ok ? "hidup" : "boleh");
       } catch { if (hidup) setKeadaan("boleh"); }
     })();
     return () => { hidup = false; };
@@ -197,17 +259,20 @@ function Push() {
         setNota("Kebenaran tidak diberi. Anda boleh menghidupkannya bila-bila masa.");
         return;
       }
-      const sw = await navigator.serviceWorker.ready;
-      const langganan = await sw.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey: kunciKeBait(kunci),
-      });
-      const json = langganan.toJSON() as { endpoint?: string; keys?: { p256dh?: string; auth?: string } };
-      const r = await daftarPush({
-        endpoint: json.endpoint ?? "",
-        p256dh: json.keys?.p256dh ?? "",
-        auth: json.keys?.auth ?? "",
-      });
+      const sw = await swSedia();
+      const kunciBait = kunciKeBait(kunci);
+      let langganan: PushSubscription;
+      try {
+        const lama = await sw.pushManager.getSubscription();
+        if (lama && !samaKunci(lama, kunci)) await lama.unsubscribe();
+        langganan = await sw.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: kunciBait });
+      } catch {
+        // Langganan tersangkut (kunci lama / keadaan pelayar) — buang dan cuba sekali lagi.
+        const lama = await sw.pushManager.getSubscription();
+        await lama?.unsubscribe().catch(() => {});
+        langganan = await sw.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: kunciBait });
+      }
+      const r = await daftarPush(jsonLanggan(langganan));
       setNota(r.mesej);
       if (r.ok) setKeadaan("hidup");
     } catch (e) {
@@ -217,12 +282,58 @@ function Push() {
     }
   }
 
-  if (keadaan === "memuat" || keadaan === "tiada") {
-    return nota ? <p className="mt-4 text-xs text-[#167a4b]">{nota}</p> : null;
+  async function matikan() {
+    setSibuk(true);
+    setNota(null);
+    try {
+      const sw = await swSedia();
+      const l = await sw.pushManager.getSubscription();
+      if (l) {
+        await buangPush(l.endpoint);
+        await l.unsubscribe().catch(() => {});
+      }
+      setKeadaan("boleh");
+      setNota("Peranti ini tidak lagi menerima pemberitahuan.");
+    } catch (e) {
+      setNota(e instanceof Error ? e.message : "Gagal mematikan.");
+    } finally { setSibuk(false); }
+  }
+
+  if (keadaan === "memuat") return null;
+
+  if (keadaan === "ios-pasang") {
+    return (
+      <div className="mt-4 rounded-xl border border-[#e9d9ae] bg-[#fdf9f0] p-4 text-sm leading-relaxed text-[#7a5a12]">
+        <p className="font-semibold">Pasang portal ke Skrin Utama untuk menerima pemberitahuan</p>
+        <p className="mt-1">
+          iPhone dan iPad hanya membenarkan pemberitahuan daripada app yang dipasang.
+          Dalam Safari: tekan butang <b>Kongsi</b> → <b>Tambah ke Skrin Utama</b>, kemudian
+          buka Portal SKTD dari ikon itu dan kembali ke halaman ini. (Perlu iOS 16.4 atau lebih baharu.)
+        </p>
+      </div>
+    );
+  }
+
+  if (keadaan === "tiada") {
+    return (
+      <p className="mt-4 rounded-xl border border-garis bg-white p-3 text-xs leading-relaxed text-slate-500">
+        Pelayar ini tidak menyokong pemberitahuan telefon. Guna Chrome, Edge, Firefox
+        atau Safari terkini. Loceng dalam portal tetap berfungsi.
+      </p>
+    );
   }
 
   if (keadaan === "hidup") {
-    return <p className="mt-4 text-xs font-semibold text-[#14603c]">✓ Pemberitahuan peranti aktif</p>;
+    return (
+      <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-2 text-xs">
+        <span className="font-semibold text-[#14603c]">✓ Pemberitahuan peranti aktif</span>
+        <button onClick={() => void matikan()} disabled={sibuk}
+          className="text-slate-500 underline hover:text-[#8f2b2b] disabled:opacity-50">
+          Matikan di peranti ini
+        </button>
+        {nota && <p className="w-full leading-relaxed text-slate-500">{nota}</p>}
+      </div>
+    );
   }
 
   return (
@@ -236,14 +347,15 @@ function Push() {
         tempahan, borang, ICT dan pengumuman sekolah.
       </p>
       <p className="mt-1 text-xs leading-relaxed text-slate-400">
-        Anda boleh mematikannya bila-bila masa dalam tetapan pelayar.
+        Hidupkan pada setiap peranti yang anda guna. Anda boleh mematikannya bila-bila masa.
       </p>
 
       {keadaan === "ditolak" ? (
         <p className="mt-3 rounded-lg bg-[#fdf9f0] p-2.5 text-xs leading-relaxed text-[#7a5a12]">
-          Pelayar ini sudah menolak pemberitahuan untuk portal. Untuk
-          menghidupkannya, buka tetapan tapak dalam pelayar dan benarkan
-          Pemberitahuan.
+          Pelayar ini sudah menyekat pemberitahuan untuk portal. Tekan ikon 🔒 atau ⓘ
+          di sebelah alamat laman → <b>Pemberitahuan</b> → <b>Benarkan</b>, kemudian muat
+          semula halaman ini. Pada app yang dipasang: Tetapan telefon → Pemberitahuan →
+          Portal SKTD.
         </p>
       ) : (
         <button
@@ -251,7 +363,7 @@ function Push() {
           disabled={sibuk}
           className="mt-3 rounded-lg bg-navy-700 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
         >
-          {sibuk ? "…" : "Benarkan pemberitahuan"}
+          {sibuk ? "Sedang menghidupkan…" : "Benarkan pemberitahuan"}
         </button>
       )}
 

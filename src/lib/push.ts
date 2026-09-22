@@ -117,7 +117,13 @@ export async function hantarPush(emel: string[], muatan: MuatanPush): Promise<Ha
       await webpush.sendNotification({
         endpoint: l.endpoint,
         keys: { p256dh: l.p256dh, auth: l.auth },
-      }, payload, { TTL: 300, urgency: "normal" });
+      }, payload, {
+        // 24 jam, bukan 5 minit. Telefon Android dalam mod tidur (Doze) atau
+        // tanpa talian lebih 5 minit menyebabkan push dengan TTL 300 dibuang
+        // oleh pelayan push sebelum sempat dihantar — itulah "notifikasi
+        // tak naik". "high" membangunkan peranti; "normal" boleh ditangguh.
+        TTL: 86400, urgency: "high",
+      });
       return true;
     } catch (e) {
       const status = (e as { statusCode?: number }).statusCode;

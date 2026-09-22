@@ -94,9 +94,21 @@ export function susunJadualOcr(tsv: string | null): string {
       .join(" ")
       .replace(/\s+/g, " ")
       .trim();
-    if (nama.length >= 3) baris.push(`${nama} ${semasa.kp}`);
+    if (nama.length >= 3) baris.push(`${betulkanNamaOcr(nama)} ${semasa.kp}`);
   }
   return baris.join("\n");
+}
+
+/**
+ * Dua salah baca Tesseract yang berulang pada senarai iDMe (diukur pada
+ * 30 fail Tahap 1): huruf "I" di awal perkataan hilang sebelum "ZZ"
+ * ("ZZUDDIN", "ZZAT"), dan "BINTI" terpotong menjadi "BINT". Tiada nama
+ * Melayu bermula dengan "ZZ", jadi pembetulan ini selamat.
+ */
+export function betulkanNamaOcr(nama: string): string {
+  return nama
+    .replace(/(^|\s)ZZ(?=[A-Z])/g, "$1IZZ")
+    .replace(/(^|\s)BINT(?=\s|$)/g, "$1BINTI");
 }
 
 function darjah(sudut: number): number {
@@ -202,10 +214,15 @@ async function pilihOrientasi(
   worker: PekerjaOcr,
   imej: File | Blob | HTMLCanvasElement,
   kemajuan?: (teks: string) => void,
+  petunjuk?: number,
 ): Promise<HasilKenalOcr> {
   // 0° dahulu: PDF.js sudah menghormati metadata /Rotate. Bagi fail yang
   // menyimpan imej mengiring tanpa metadata, cuba kedua-dua arah dan 180°.
-  const sudut = [0, Math.PI / 2, -Math.PI / 2, Math.PI];
+  // Dalam satu ZIP, semua fail biasanya diimbas dengan arah yang SAMA —
+  // arah fail sebelumnya dicuba dahulu, menjimatkan sehingga tiga bacaan
+  // OCR penuh bagi setiap fail pada telefon.
+  const asas = [0, Math.PI / 2, -Math.PI / 2, Math.PI];
+  const sudut = petunjuk === undefined ? asas : [petunjuk, ...asas.filter((x) => x !== petunjuk)];
   let terbaik: HasilKenalOcr | null = null;
   for (const s of sudut) {
     kemajuan?.(`Mengesan arah ${darjah(s)}°…`);
@@ -246,9 +263,11 @@ async function bacaDenganWorker(
   fail: File,
   kemajuan?: (teks: string) => void,
   hadMuka = 20,
+  ingat: { sudut?: number } = {},
 ): Promise<string> {
   if (!/\.pdf$/i.test(fail.name) && fail.type !== "application/pdf") {
-    const arah = await pilihOrientasi(worker, fail, kemajuan);
+    const arah = await pilihOrientasi(worker, fail, kemajuan, ingat.sudut);
+    if (arah.skor > 0) ingat.sudut = arah.sudut;
     const canvas = await kanvasImej(fail);
     let hasil = arah;
     try {
@@ -284,8 +303,9 @@ async function bacaDenganWorker(
       const canvas = await kanvasMuka(pdf, nombor);
       try {
         if (nombor === 1) {
-          const arah = await pilihOrientasi(worker, canvas, kemajuan);
+          const arah = await pilihOrientasi(worker, canvas, kemajuan, ingat.sudut);
           sudut = arah.sudut;
+          if (arah.skor > 0) ingat.sudut = sudut;
           const potong = putarDanPotongMurid(canvas, sudut);
           try {
             const jadual = await kenalSatu(worker, potong, 0);
@@ -345,11 +365,12 @@ export async function ciptaPembacaImbasan(
     user_defined_dpi: "240",
   });
 
+  const ingat: { sudut?: number } = {};
   return {
     async baca(fail, kemajuan = kemajuanAsal, hadMuka = 20) {
       if (sudahTutup) throw new Error("Sesi OCR sudah ditutup.");
       kemajuanAktif = kemajuan;
-      return bacaDenganWorker(worker, fail, kemajuan, hadMuka);
+      return bacaDenganWorker(worker, fail, kemajuan, hadMuka, ingat);
     },
     async tutup() {
       if (sudahTutup) return;
@@ -377,4 +398,38 @@ export async function bacaImbasan(
 export function failTeksOcr(fail: File, teks: string): File {
   const nama = fail.name.replace(/\.[^.]+$/, "") || "imbasan";
   return new File([teks], `${nama}.ocr.txt`, { type: "text/plain" });
+}
+
+/**
+ * PDF imbasan? Semak lapisan teks DI PELAYAR sebelum memuat naik.
+ *
+ * Dahulu setiap PDF dihantar ke pelayan dahulu (≈1 MB setiap satu, 30 MB
+ * bagi satu ZIP Tahap 1) hanya untuk mendapat jawapan "tiada No. KP", baru
+ * OCR dijalankan di peranti. Pada data mudah alih itu minit-minit yang
+ * sia-sia dan punca utama ZIP "tidak dapat dibaca" di telefon.
+ */
+export async function pdfTanpaTeks(fail: File): Promise<boolean> {
+  try {
+    const { getDocumentProxy, extractText } = await import("unpdf");
+    const pdf = await getDocumentProxy(new Uint8Array(await fail.arrayBuffer()));
+    try {
+      const { text } = await extractText(pdf, { mergePages: true });
+      return kiraKpOcr(text) === 0 && text.replace(/\s+/g, "").length < 200 * Math.max(1, pdf.numPages);
+    } finally {
+      await pdf.loadingTask.destroy();
+    }
+  } catch {
+    return false; // biar pelayan yang memutuskan
+  }
+}
+
+/** Kekalkan skrin telefon hidup semasa OCR panjang; gagal secara senyap jika tidak disokong. */
+export async function kunciSkrin(): Promise<() => void> {
+  try {
+    const nav = navigator as Navigator & { wakeLock?: { request(j: "screen"): Promise<{ release(): Promise<void> }> } };
+    const kunci = await nav.wakeLock?.request("screen");
+    return () => { void kunci?.release().catch(() => {}); };
+  } catch {
+    return () => {};
+  }
 }
