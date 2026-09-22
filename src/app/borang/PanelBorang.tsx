@@ -245,7 +245,7 @@ function FormGambar({ kelas, selesai }: { kelas: string[]; selesai: (b: BarisSur
           className="block w-full min-w-0 max-w-full rounded-lg border border-garis px-3 py-2 text-sm" />
       </Medan>
       <Medan label="Tandatangan ibu bapa/penjaga">
-        <TandaTangan nilai={tandatangan} tetap={setTandatangan} />
+        <TandaTangan nilai={tandatangan} tetap={setTandatangan} tempatan />
       </Medan>
 
       {mesej && <Mesej mesej={mesej} />}
