@@ -6,6 +6,8 @@ import { mulaCetak } from "@/components/cetak-mudah-alih";
 import CetakMedia from "@/components/CetakMedia";
 import TandaTangan from "@/components/TandaTangan";
 import CetakSurat, { type KepalaSurat } from "@/components/CetakSurat";
+import EditorIsiSurat from "@/components/EditorIsiSurat";
+import { gayaLama } from "@/data/isi-surat";
 import {
   hantarSuratRasmi, hantarSuratGambar, suntingSuratRasmi, tetapkanRujukan, padamSurat,
   type BarisSurat, type DataSuratRasmi, type DataSuratGambar,
@@ -148,10 +150,7 @@ function FormRasmi({
           className="block w-full min-w-0 max-w-full rounded-lg border border-garis px-3 py-2 text-sm" />
       </Medan>
       <Medan label="Isi surat">
-        <textarea value={isi} onChange={(e) => setIsi(e.target.value)} rows={8} maxLength={1200}
-          placeholder="Tulis isi surat di sini…"
-          className="block w-full min-w-0 max-w-full rounded-lg border border-garis px-3 py-2 text-sm" />
-        <p className="mt-1 text-xs text-slate-500">{isi.length}/1,200 aksara · cetakan dikunci kepada satu halaman A4.</p>
+        <EditorIsiSurat nilai={isi} ubah={setIsi} />
       </Medan>
       <Medan label="Ditandatangani bagi pihak Guru Besar oleh">
         <select value={wakil} onChange={(e) => setWakil(e.target.value)}
@@ -297,7 +296,10 @@ function SenaraiSaya({
   function mulaSunting(b: BarisSurat) {
     if (b.jenis !== "rasmi") return;
     const d = b.data as DataSuratRasmi;
-    setSunting({ id: b.id, tajuk: b.tajuk, alamat: d.alamat, tarikh: d.tarikh, isi: d.isi, wakil: `${d.wakilGbNama}|${d.wakilGbJawatan}` });
+    // Surat lama: satu Enter = satu perenggan. Tukar kepada baris kosong
+    // supaya susunannya kekal bila disimpan dengan format baharu.
+    const isi = d.formatIsi !== 2 && gayaLama(b.dicipta) ? d.isi.replace(/\r/g, "").replace(/\n+/g, "\n\n") : d.isi;
+    setSunting({ id: b.id, tajuk: b.tajuk, alamat: d.alamat, tarikh: d.tarikh, isi, wakil: `${d.wakilGbNama}|${d.wakilGbJawatan}` });
     setMenuId(null);
   }
 
@@ -388,8 +390,9 @@ function SenaraiSaya({
                   {pentadbir.map((p) => <option key={`${p.nama}-${p.jawatan}`} value={`${p.nama}|${p.jawatan}`}>{p.nama} — {p.jawatan}</option>)}
                 </select>
               </div>
-              <textarea aria-label="Isi surat" value={sunting.isi} maxLength={1200} rows={7} onChange={(e) => setSunting({ ...sunting, isi: e.target.value })}
-                className="block w-full min-w-0 max-w-full rounded-lg border border-garis bg-white px-3 py-2 text-sm sm:col-span-2" />
+              <div className="min-w-0 sm:col-span-2">
+                <EditorIsiSurat nilai={sunting.isi} rows={7} ubah={(v) => setSunting({ ...sunting, isi: v })} />
+              </div>
               <div className="flex flex-wrap gap-2 sm:col-span-2">
                 <button type="button" disabled={sibuk === b.id} onClick={() => void simpanSunting()} className="min-h-11 touch-manipulation rounded-lg bg-navy-800 px-3 py-2 text-xs font-semibold text-white disabled:opacity-50">Simpan dan hantar semula</button>
                 <button type="button" onClick={() => setSunting(null)} className="min-h-11 touch-manipulation rounded-lg border border-garis px-3 py-2 text-xs font-semibold text-navy-700">Batal</button>

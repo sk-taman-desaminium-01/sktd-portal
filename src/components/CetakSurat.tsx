@@ -1,40 +1,15 @@
 import { aset } from "@/lib/laluan";
 import type { BarisSurat, DataSuratRasmi } from "@/lib/surat";
+import { susunIsiSurat, gayaLama } from "@/data/isi-surat";
+import IsiSurat from "./IsiSurat";
 
 export type KepalaSurat = { nama: string; kod: string; alamat: string; telefon: string; faks: string; emel: string };
-
-const HAD_ISI_SATU_MUKA = 1_200;
-const HAD_PERENGGAN = 8;
-
-/**
- * Surat rasmi ialah SATU halaman. Selain had aksara, baris kosong dan ruang
- * berganda dinormalkan kerana seribu aksara yang berupa baris baharu masih
- * boleh menjadi puluhan halaman ketika dicetak.
- */
-function isiSatuMukaSurat(isi: string) {
-  const perenggan = isi
-    .replace(/\r/g, "")
-    .split(/\n+/)
-    .map((baris) => baris.replace(/\s+/g, " ").trim())
-    .filter(Boolean)
-    .slice(0, HAD_PERENGGAN);
-  const bersih = perenggan.join("\n\n");
-  if (bersih.length <= HAD_ISI_SATU_MUKA) return { perenggan, dipendekkan: false };
-  const potong = bersih.slice(0, HAD_ISI_SATU_MUKA);
-  const akhir = potong.lastIndexOf(" ");
-  return {
-    perenggan: [`${potong.slice(0, akhir > 0 ? akhir : potong.length)}…`],
-    dipendekkan: true,
-  };
-}
 
 /** "2026-09-09" → "09.09.2026" — format tarikh surat sekolah. */
 function tarikhSurat(tarikh: string) {
   const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(tarikh);
   return m ? `${m[3]}.${m[2]}.${m[1]}` : tarikh;
 }
-
-const RUJUK = /^dengan hormatnya,? perkara di atas (adalah )?dirujuk\.?$/i;
 
 /** Buang nombor yang ditaip pengguna ("1.", "2)") — nombor dijana seragam. */
 function tanpaNombor(p: string) {
@@ -55,12 +30,12 @@ export default function CetakSurat({
   kepala: KepalaSurat;
   sayaNama?: string;
 }) {
-  const isi = isiSatuMukaSurat(data.isi);
-  // Surat sekolah SENTIASA dibuka dengan ayat rujukan tanpa nombor — itulah
-  // perenggan 1 — jadi perenggan isi bermula dengan 2., 3., 4. (format
-  // surat rasmi kerajaan; ditetapkan pengguna 22 Sep 2026).
-  const perenggan = isi.perenggan.filter((p) => !RUJUK.test(p)).map(tanpaNombor);
-  const padat = data.isi.replace(/\s+/g, " ").trim().length > 700 || isi.perenggan.length > 5;
+  // Ayat rujukan dicetak oleh templat; nombor perenggan DITAIP guru
+  // (ditetapkan pengguna 22 Sep 2026). Peraturan: src/data/isi-surat.ts.
+  const isi = susunIsiSurat(data.isi, data.formatIsi !== 2 && gayaLama(surat.dicipta));
+  const perenggan = isi.perenggan;
+  const barisSemua = perenggan.reduce((n, p) => n + p.length, 0);
+  const padat = data.isi.replace(/\s+/g, " ").trim().length > 700 || barisSemua > 7;
   return (
     <div id="surat-cetak" data-cetak-kertas="portrait" className="hidden text-black print:block">
       <style>{`
@@ -82,16 +57,12 @@ export default function CetakSurat({
         #surat-cetak .surat-tajuk { margin: 7mm 0 0; font-weight: 700; text-transform: uppercase; }
         #surat-cetak .surat-isi { margin: 5mm 0 0; text-align: justify; }
         #surat-cetak .surat-isi p { margin: 0 0 3.5mm; }
-        #surat-cetak .surat-isi ol { margin: 0; padding: 0; list-style: none; counter-reset: p 1; }
-        #surat-cetak .surat-isi li { position: relative; margin: 0 0 3.5mm; padding-left: 7mm; counter-increment: p; }
-        #surat-cetak .surat-isi li::before { content: counter(p) "."; position: absolute; left: 0; }
         #surat-cetak .surat-penutup { margin: 7mm 0 0; }
         #surat-cetak .surat-cogan { margin: 12mm 0 0; font-weight: 700; line-height: 1.75; }
         #surat-cetak .surat-tandatangan { margin: 5mm 0 0; }
         #surat-cetak .surat-ruang-tandatangan { height: 19mm; }
         #surat-cetak .surat-penandatangan { margin: 0; line-height: 1.32; }
         #surat-cetak .surat-dokumen.surat-padat { font-size: 10.5pt; line-height: 1.22; }
-        #surat-cetak .surat-padat .surat-isi li { margin-bottom: 2.2mm; }
         #surat-cetak .surat-padat .surat-alamat { margin-top: 8mm; }
         #surat-cetak .surat-padat .surat-sapaan { margin-top: 7mm; }
         #surat-cetak .surat-padat .surat-tajuk { margin-top: 5mm; }
@@ -141,7 +112,7 @@ export default function CetakSurat({
 
           <div className="surat-isi">
             <p>Dengan hormatnya perkara di atas adalah dirujuk.</p>
-            <ol>{perenggan.map((p, indeks) => <li key={indeks}>{p}</li>)}</ol>
+            <IsiSurat perenggan={perenggan} jarak={padat ? "2.2mm" : "3.5mm"} inden="7mm" />
           </div>
           {isi.dipendekkan && <p className="m-0 text-[8pt] italic">Isi melebihi ruang satu halaman dan dipendekkan pada penghujung ayat.</p>}
 
