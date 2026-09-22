@@ -35,6 +35,8 @@ export interface DataSuratRasmi {
   isi: string;
   wakilGbNama: string;
   wakilGbJawatan: string;
+  /** 2 = Enter sekali baris tanpa nombor, baris kosong perenggan baharu, **tebal** (src/data/isi-surat.ts). */
+  formatIsi?: 2;
   keputusanPejabat?: "diluluskan" | "ditolak";
   komenPejabat?: string;
   diprosesOleh?: string;
@@ -111,6 +113,7 @@ export async function hantarSuratRasmi(input: {
           alamat, tarikh: input.tarikh, isi,
           wakilGbNama: input.wakilGbNama.trim(),
           wakilGbJawatan: input.wakilGbJawatan.trim(),
+          formatIsi: 2,
         },
       }),
     })) as { id: string }[];
@@ -165,6 +168,7 @@ export async function suntingSuratRasmi(id: string, input: {
         data: {
           alamat, tarikh: input.tarikh, isi,
           wakilGbNama: input.wakilGbNama.trim(), wakilGbJawatan: input.wakilGbJawatan.trim(),
+          formatIsi: 2,
         } satisfies DataSuratRasmi,
       }),
     });

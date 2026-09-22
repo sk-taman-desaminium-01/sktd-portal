@@ -149,3 +149,11 @@ yang sudah dimuktamadkan tidak diperkenalkan semula sebagai pepijat.
   hidup; arah fail sebelumnya dicuba dahulu. Diuji pada ZIP sebenar:
   Tahap 1 30 fail/1,166 murid, Tahap 2 27 fail, 0 ditolak, ±8–10 s/fail
   (desktop). `betulkanNamaOcr`: "ZZ…"→"IZZ…", "BINT"→"BINTI".
+- **Isi Surat Rasmi (keputusan pengguna 22 Sep 2026):** format gaya WhatsApp
+  `*tebal*` `_italik_` `~coret~` (butang B/I/S di `EditorIsiSurat`, mesra
+  telefon). **Nombor perenggan DITAIP guru** — sistem tidak menomborkan;
+  baris bernombor diberi inden tergantung, baris di bawahnya sejajar teks,
+  baris "Label : nilai" berturutan dijajar titik bertindihnya. "Dengan
+  hormatnya perkara di atas adalah dirujuk." dicetak oleh templat. Surat
+  lama (sebelum 22 Sep, tanpa `formatIsi: 2`) kekal bernombor automatik
+  bermula 2. Logik: `src/data/isi-surat.ts`, paparan: `src/components/IsiSurat.tsx`.
