@@ -4,6 +4,7 @@ import { pengguna } from "./akses";
 import { boleh } from "./peranan";
 import { kelasBolehSunting } from "./guru-kelas";
 import { rancangNaik, type Pendaftaran, type RancanganNaik } from "@/data/naik-tahun";
+import { bacaSemua } from "./baca-semua";
 
 /**
  * ePBD — pentaksiran bilik darjah.
@@ -206,7 +207,7 @@ export async function muridKelas(
         `&tahun_sesi=eq.${tahunSesi}&tahun=eq.${tahun}` +
         `&kelas=eq.${encodeURIComponent(kelas)}` +
         `&status=in.(aktif,pindah_masuk,ulang)` +
-        `&offset=${mula}&limit=${KEPING}`,
+        `&order=id.asc&offset=${mula}&limit=${KEPING}`,
     )) as {
       id: string; murid_id: string; tahun: number; kelas: string; status: string;
       pbd_murid: { nama: string; no_kp: string | null } | null;
@@ -313,7 +314,7 @@ export async function kelasBerisi(
   for (let mula = 0; ; mula += KEPING) {
     const keping = (await db.minta(
       `pbd_pendaftaran?select=tahun,kelas&tahun_sesi=eq.${tahunSesi}` +
-        `&status=in.(aktif,pindah_masuk,ulang)&offset=${mula}&limit=${KEPING}`,
+        `&status=in.(aktif,pindah_masuk,ulang)&order=id.asc&offset=${mula}&limit=${KEPING}`,
     )) as { tahun: number; kelas: string }[];
     for (const b of keping) {
       const kunci = `${b.tahun}|${b.kelas}`;
@@ -495,8 +496,12 @@ async function pendaftaranSesi(tahunSesi: number): Promise<Pendaftaran[]> {
   const keluar: Pendaftaran[] = [];
   for (let mula = 0; ; mula += KEPING) {
     const keping = (await db.minta(
+      // `ulang` DIMASUKKAN: murid yang mengulang tahun sesi ini tetap naik
+      // tahun pada sesi baharu. Tanpanya mereka hilang daripada daftar pada
+      // 1 Januari. Susunan tetap wajib — offset tanpa `order` boleh
+      // bertindih/melangkau baris antara halaman.
       `pbd_pendaftaran?select=murid_id,tahun,kelas,aliran&tahun_sesi=eq.${tahunSesi}` +
-        `&status=in.(aktif,pindah_masuk)&offset=${mula}&limit=${KEPING}`,
+        `&status=in.(aktif,pindah_masuk,ulang)&order=murid_id.asc&offset=${mula}&limit=${KEPING}`,
     )) as Pendaftaran[];
     keluar.push(...keping);
     if (keping.length < KEPING) return keluar;
@@ -610,9 +615,11 @@ export async function undoNaikTahun(
   const asal = await pendaftaranSesi(dariSesi);
   const dariSini = new Set(asal.map((x) => x.murid_id));
 
-  const sasaran = (await db.minta(
-    `pbd_pendaftaran?select=id,murid_id&tahun_sesi=eq.${keSesi}`,
-  )) as { id: string; murid_id: string }[];
+  // Berhalaman: satu permintaan dihadkan 1,000 baris oleh Supabase —
+  // dengan ±2,250 murid, patah balik dahulu hanya membuang 1,000.
+  const sasaran = await bacaSemua<{ id: string; murid_id: string }>(
+    `pbd_pendaftaran?select=id,murid_id&tahun_sesi=eq.${keSesi}&order=id.asc`,
+  );
 
   // Bila sumber masih ada pendaftarannya, hanya murid yang BOLEH DIJEJAK
   // kembali ke sana dibuang — murid yang didaftarkan terus ke sesi sasaran
@@ -624,10 +631,15 @@ export async function undoNaikTahun(
   if (calon.length === 0) return { dibuang: 0, dipulih: 0 };
 
   // PAGAR 2. Nilai dalam sesi sasaran bermakna kerja sebenar sudah bermula.
-  const ada = (await db.minta(
-    `pbd_nilai?select=subjek&pendaftaran_id=in.(${calon.slice(0, 500).map((x) => x.id).join(",")})&limit=1`,
-  )) as { subjek: string }[];
-  if (ada.length > 0) {
+  // SEMUA calon disemak (berkeping 150), bukan 500 pertama sahaja.
+  let ada = false;
+  for (let i = 0; i < calon.length && !ada; i += 150) {
+    const r = (await db.minta(
+      `pbd_nilai?select=subjek&pendaftaran_id=in.(${calon.slice(i, i + 150).map((x) => x.id).join(",")})&limit=1`,
+    )) as { subjek: string }[];
+    ada = r.length > 0;
+  }
+  if (ada) {
     throw new Error(
       `Sesi ${keSesi} sudah mengandungi nilai PBD yang diisi guru. ` +
         "Patah balik dihentikan — membuang pendaftaran akan meninggalkan markah tanpa murid.",
@@ -651,7 +663,7 @@ export async function undoNaikTahun(
   // ialah naik tahun yang sedang dipatahkan balik.
   const tamat = asal.length > 0
     ? asal.filter((x) => x.tahun === 6).map((x) => x.murid_id)
-    : ((await db.minta("pbd_murid?select=id&status=eq.tamat")) as { id: string }[])
+    : (await bacaSemua<{ id: string }>("pbd_murid?select=id&status=eq.tamat&order=id.asc"))
         .map((x) => x.id);
   for (let i = 0; i < tamat.length; i += 100) {
     const senarai = tamat.slice(i, i + 100).join(",");

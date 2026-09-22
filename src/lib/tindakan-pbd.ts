@@ -15,6 +15,7 @@ import {
 } from "./pbd";
 import { gerakKelas, type RancanganNaik } from "@/data/naik-tahun";
 import { hantar } from "./notifikasi";
+import { sahInt } from "./sah";
 
 /**
  * Tindakan pelayan ePBD.
@@ -58,6 +59,7 @@ export interface HasilSenaraiIsi extends HasilPbd {
 export async function senaraiIsi(
   tahun: number, kelas: string, subjek: string,
 ): Promise<HasilSenaraiIsi> {
+  sahInt(tahun, "tahun", 0, 6);
   try {
     const k = await kuasaPbd();
     if (!k) return { ok: false, mesej: "Tiada kebenaran." };
@@ -117,6 +119,7 @@ export async function simpanIsi(
   tahun: number, kelas: string, subjek: string,
   masuk: { pendaftaran_id: string; tp: number | null; sumatif: string | null; uasa?: string | null }[],
 ): Promise<HasilPbd> {
+  sahInt(tahun, "tahun", 0, 6);
   try {
     const k = await kuasaPbd();
     if (!k) return { ok: false, mesej: "Tiada kebenaran." };
@@ -199,6 +202,7 @@ export interface HasilSlip extends HasilPbd {
  * skrin isi.
  */
 export async function slipKelas(tahun: number, kelas: string): Promise<HasilSlip> {
+  sahInt(tahun, "tahun", 0, 6);
   try {
     const k = await kuasaPbd();
     if (!k) return { ok: false, mesej: "Tiada kebenaran." };
@@ -272,6 +276,7 @@ export async function tetapUasaTindakan(aktif: boolean): Promise<HasilPbd> {
 export async function simpanUlasanMurid(
   tahun: number, kelas: string, pendaftaranId: string, ulasan: string,
 ): Promise<HasilPbd> {
+  sahInt(tahun, "tahun", 0, 6);
   try {
     const k = await kuasaPbd();
     if (!k) return { ok: false, mesej: "Tiada kebenaran." };
@@ -301,6 +306,7 @@ export async function simpanUlasanMurid(
 export async function tugaskanGuruSubjek(
   emel: string, subjek: string, tahun: number, kelas: string,
 ): Promise<HasilPbd> {
+  sahInt(tahun, "tahun", 0, 6);
   try {
     await pastikanBoleh("urus_guru_kelas");
     const sesi = await sesiSemasa();
@@ -456,6 +462,7 @@ function segarSemulaMurid() {
 export async function senaraiUrusMuridKelasTindakan(
   tahun: number, kelas: string,
 ): Promise<{ ok: boolean; mesej: string; murid?: MuridUrusKelas[] }> {
+  sahInt(tahun, "tahun", 0, 6);
   try {
     const sesi = await pastikanKelasSendiri(tahun, kelas);
     const db = klienTulis();
@@ -483,6 +490,7 @@ export async function senaraiUrusMuridKelasTindakan(
 export async function tambahMuridKelasTindakan(
   tahun: number, kelas: string, nama: string, noKp: string,
 ): Promise<HasilPbd> {
+  sahInt(tahun, "tahun", 0, 6);
   try {
     const sesi = await pastikanKelasSendiri(tahun, kelas);
     const namaBersih = nama.trim().replace(/\s+/g, " ").toUpperCase();
@@ -590,6 +598,7 @@ export async function ubahKeadaanMuridTindakan(
 export async function muridKelasTindakan(
   tahun: number, kelas: string,
 ): Promise<{ ok: boolean; mesej: string; murid?: MuridRingkas[] }> {
+  sahInt(tahun, "tahun", 0, 6);
   try {
     await pastikanBoleh("urus_guru_kelas");
     const sesi = await sesiSemasa();
@@ -637,6 +646,7 @@ export async function buangMuridTindakan(pendaftaranId: string): Promise<HasilPb
 export async function tukarKelasTindakan(
   pendaftaranId: string, tahun: number, kelas: string,
 ): Promise<HasilPbd> {
+  sahInt(tahun, "tahun", 0, 6);
   try {
     await pastikanBoleh("urus_guru_kelas");
     await tukarKelasMurid(pendaftaranId, tahun, kelas);
@@ -712,6 +722,7 @@ export async function senaraiSesiTindakan(): Promise<{
  * dan itu kerosakan yang hanya ditemui berbulan kemudian.
  */
 export async function jadikanSesiAktif(tahunSesi: number): Promise<HasilPbd> {
+  sahInt(tahunSesi, "sesi", 2000, 2100);
   try {
     await pastikanBoleh("urus_guru_kelas");
     const semua = await senaraiSesi();
@@ -737,6 +748,7 @@ export async function jadikanSesiAktif(tahunSesi: number): Promise<HasilPbd> {
 export async function tukarStatusSesi(
   tahunSesi: number, status: "aktif" | "tutup",
 ): Promise<HasilPbd> {
+  sahInt(tahunSesi, "sesi", 2000, 2100);
   try {
     await pastikanBoleh("urus_guru_kelas");
     await tetapSesi(tahunSesi, status);

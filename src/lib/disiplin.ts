@@ -10,6 +10,7 @@ import { sayaBertugas } from "./tugasan";
 import { belumDipasang } from "./db-belum-sedia";
 import { hantar } from "./notifikasi";
 import { kelasBolehSunting } from "./guru-kelas";
+import { sahInt } from "./sah";
 
 /**
  * Disiplin & Sahsiah (permintaan pengguna F).
@@ -140,6 +141,7 @@ export async function hantarDisiplin(input: {
 export async function senaraiDisiplin(
   tahun_sesi: number,
 ): Promise<{ belumSedia: boolean; boleh: boolean; urusSemua: boolean; senarai: BarisDisiplin[]; berulang: string[] }> {
+  sahInt(tahun_sesi, "sesi", 2000, 2100);
   const saya = await pengguna();
   if (!saya?.peranan) return { belumSedia: false, boleh: false, urusSemua: false, senarai: [], berulang: [] };
   const urusSemua = await bolehBacaSemua();
@@ -161,6 +163,7 @@ export async function senaraiDisiplin(
 export async function senaraiDisiplinKelas(
   tahun_sesi: number, kelasDiminta: string[],
 ): Promise<{ belumSedia: boolean; senarai: BarisDisiplin[] }> {
+  sahInt(tahun_sesi, "sesi", 2000, 2100);
   const skop = await kelasBolehSunting();
   const diminta = new Set(kelasDiminta.map((k) => k.trim().toUpperCase()).filter(Boolean));
   const kelas = skop === null

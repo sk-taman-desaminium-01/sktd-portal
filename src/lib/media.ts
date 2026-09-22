@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { pastikanBoleh } from "./akses";
 import { klienTulis } from "./supabase-pelayan";
 import { muatNaik, buangFail } from "./storan";
+import { sahUuid } from "./sah";
 
 /**
  * Pustaka media — gambar dan PDF yang admin muat naik untuk laman sekolah.
@@ -72,6 +73,7 @@ export async function naikMedia(data: FormData): Promise<HasilMedia> {
  * audit. Rekod DB dibuang bersama supaya tiada URL mati dalam pustaka.
  */
 export async function buangMedia(id: string, url: string): Promise<HasilMedia> {
+  sahUuid(id);
   await pastikanBoleh("terbit_kandungan");
   try {
     // Kembalikan laluan dalam bucket daripada URL awam.

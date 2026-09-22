@@ -6,6 +6,7 @@ import { bacaMuatan, adaMuatan } from "./muatan";
 import { pilihBacaan, type Calon } from "@/data/pilih-bacaan";
 import { calonDariFail } from "./baca-murid-fail";
 import { importMuridKelas, type HasilImportKelas } from "./import-murid";
+import { sahInt } from "./sah";
 
 /**
  * IMPORT SENARAI MURID DARI FAIL.
@@ -38,6 +39,7 @@ const HAD_BAIT = 25 * 1024 * 1024;
 export async function importFailMurid(
   tahun: number, kelas: string, muatan: MuatanFail, simpan = false,
 ): Promise<HasilFail> {
+  sahInt(tahun, "tahun", 0, 6);
   try {
     await pastikanBoleh("urus_guru_kelas");
   } catch {

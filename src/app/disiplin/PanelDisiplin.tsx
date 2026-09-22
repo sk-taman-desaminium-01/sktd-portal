@@ -10,8 +10,8 @@ import {
 } from "@/lib/disiplin";
 import { SEKOLAH } from "@/data/sekolah";
 import PilihCari from "@/components/PilihCari";
+import { hariIniMY } from "@/data/tarikh-my";
 
-const HARI_INI = new Date().toISOString().slice(0, 10);
 
 export default function PanelDisiplin({
   tahunSesi, kelas, cadangan, boleh, urusSemua, senarai, berulang,
@@ -36,7 +36,7 @@ function BorangRekod({ tahunSesi, kelas, cadangan }: {
   tahunSesi: number; kelas: string[]; cadangan: { nama: string; kelas: string }[];
 }) {
   const router = useRouter();
-  const [tarikh, setTarikh] = useState(HARI_INI);
+  const [tarikh, setTarikh] = useState(hariIniMY);
   const [muridNama, setMuridNama] = useState("");
   const [muridKelas, setMuridKelas] = useState("");
   const [manual, setManual] = useState(false);

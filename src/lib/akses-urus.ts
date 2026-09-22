@@ -5,6 +5,7 @@ import { pastikanBoleh, domainRasmi } from "./akses";
 import { klienTulis } from "./supabase-pelayan";
 import { PERANAN, perananBolehDiberi, sembunyiBaris, type Peranan } from "./peranan";
 import { hantar, emelIkutPeranan } from "./notifikasi";
+import { sahUuid } from "./sah";
 
 export interface BarisAkses {
   id: string;
@@ -116,6 +117,7 @@ export async function tambahAkses(data: FormData): Promise<Hasil> {
 }
 
 export async function tukarPeranan(id: string, peranan: Peranan): Promise<Hasil> {
+  sahUuid(id);
   const saya = await pastikanBoleh("urus_akses");
   if (!perananBolehDiberi(saya.peranan).includes(peranan)) {
     return { ok: false, mesej: "Peranan tidak sah." };
@@ -164,6 +166,7 @@ export async function tukarPeranan(id: string, peranan: Peranan): Promise<Hasil>
  * yang kekal, jadual perlu satu lajur status, iaitu perubahan skema.
  */
 export async function tolakAkses(id: string): Promise<Hasil> {
+  sahUuid(id);
   const saya = await pastikanBoleh("urus_akses");
   try {
     const db = klienTulis();
@@ -191,6 +194,7 @@ export async function tolakAkses(id: string): Promise<Hasil> {
 }
 
 export async function tarikAkses(id: string, dibenarkan: boolean): Promise<Hasil> {
+  sahUuid(id);
   const saya = await pastikanBoleh("urus_akses");
   try {
     const db = klienTulis();
