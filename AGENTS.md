@@ -13,3 +13,6 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 Before changing this portal, read `docs/PROJECT_MEMORY.md`. It records current
 production behavior, user decisions, fixed regressions, access rules, deploy
 ownership, and the remaining operational risks shared by Claude and Codex.
+
+Rules shared by every AI assistant (Claude, Codex, Copilot, Gemini): `GEMINI.md` and
+`.github/copilot-instructions.md` in this repo — keep them in sync with PROJECT_MEMORY.md.
