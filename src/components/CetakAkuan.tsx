@@ -37,8 +37,9 @@ function Potong({ ya, a, b }: { ya: boolean; a: string; b: string }) {
  *
  * Tiruan SEBIJIK borang sekolah `rujukan-borang/SURAT KEBENARAN WARIS.pdf`:
  * satu helaian A4 landskap, dua muka bersebelahan. Susunan baris, ayat,
- * ejaan (termasuk "mengidap", "Insuran", "Hemophillia") dan logo MSSS
- * dikekalkan seperti dokumen asal — jangan "betulkan" teksnya, kerana
+ * ejaan (termasuk "mengidap", "Insuran", "Hemophillia") dikekalkan
+ * seperti dokumen asal. Logo MSS Selangor SENGAJA dibuang (arahan
+ * pengguna 22 Sep 2026) — kepala kanan hanya Jata + KPM/JPN Selangor — jangan "betulkan" teksnya, kerana
  * borang ini disemak bersama salinan kertas oleh urus setia kejohanan.
  *
  * Yang dipotong ("ADA / TIDAK ADA*", "membenarkan / tidak membenarkan*")
@@ -91,12 +92,11 @@ export default function CetakAkuan({
         #akuan-cetak .cop { display: flex; justify-content: space-between; align-items: flex-end; }
         /* ---------- muka kanan: Borang Perakuan Kesihatan ---------- */
         #akuan-cetak .kanan { font-family: Calibri, Carlito, "Segoe UI", Arial, sans-serif; font-size: 7.9pt; }
-        #akuan-cetak .kepala-k { display: flex; justify-content: flex-end; align-items: flex-start; gap: 5mm; padding-right: 13mm; }
-        #akuan-cetak .jata-k { text-align: center; font-family: Arial, sans-serif; font-size: 4.9pt; line-height: 1.2; }
-        #akuan-cetak .jata-k img { display: block; margin: 0 auto; height: 12mm; }
-        #akuan-cetak .msss { height: 12.5mm; margin-top: 1mm; }
+        #akuan-cetak .kepala-k { display: flex; justify-content: center; align-items: flex-start; min-height: 20mm; }
+        #akuan-cetak .jata-k { text-align: center; font-family: Arial, sans-serif; font-size: 5.6pt; font-weight: 700; line-height: 1.3; letter-spacing: .02em; }
+        #akuan-cetak .jata-k img { display: block; margin: 0 auto 1mm; height: 14mm; }
         #akuan-cetak .tajuk-k { margin-top: 2.6mm; text-align: center; font-weight: 700; font-size: 8.2pt; line-height: 1.35; }
-        #akuan-cetak .blok { display: grid; grid-template-columns: 8mm 45mm 1fr; margin-top: 3.4mm; font-weight: 700; }
+        #akuan-cetak .blok { display: grid; grid-template-columns: 8mm 51mm 1fr; margin-top: 3.4mm; font-weight: 700; }
         #akuan-cetak .sub { display: grid; grid-template-columns: 13mm 6mm 40mm 3mm 1fr; margin-top: .7mm; }
         #akuan-cetak .jadual { width: 100%; border-collapse: collapse; margin-top: 3.2mm; font-size: 7.6pt; }
         #akuan-cetak .jadual th, #akuan-cetak .jadual td { border: .8pt solid #000; height: 5.1mm; padding: 0 1.4mm; }
@@ -186,8 +186,6 @@ export default function CetakAkuan({
             <img src={aset("/logo-jata-negara.png")} alt="Jata Negara" />
             KEMENTERIAN PENDIDIKAN<br />JABATAN PENDIDIKAN NEGERI SELANGOR
           </div>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={aset("/logo-msss.png")} alt="MSS Selangor" className="msss" />
         </header>
         <p className="tajuk-k">BORANG PERAKUAN KESIHATAN<br />UNTUK MENYERTAI SUKAN DAN AKTIVITI KECERGASAN</p>
 

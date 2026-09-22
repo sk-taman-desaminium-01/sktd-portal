@@ -119,8 +119,8 @@ yang sudah dimuktamadkan tidak diperkenalkan semula sebagai pepijat.
 
 - **Cetakan borang meniru PDF asal sebijik** (`rujukan-borang/`):
   `CetakAkuan` = Surat Akuan Waris + Perakuan Kesihatan, A4 landskap satu
-  helaian (Jata kiri, lencana kanan, logo MSS Selangor `public/logo-msss.png`
-  dipotong daripada PDF asal; ayat & ejaan asal termasuk "mengidap",
+  helaian (Jata kiri, lencana kanan; logo MSS Selangor DIBUANG atas arahan
+  pengguna 22 Sep — kepala kanan Jata + KPM/JPN Selangor sahaja; ayat & ejaan asal termasuk "mengidap",
   "Insuran", "Hemophillia"; ADA/TIDAK ADA dan membenarkan/tidak dicoret).
   `CetakMedia` = lampiran SS KPM 9/2024 dua muka bernombor 4 & 5, garis
   isian berasingan. `CetakSurat` = format surat 09.09.2026: tarikh
