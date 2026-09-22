@@ -1,5 +1,5 @@
 /** Pengecaman jenis fail yang tulen dan boleh diuji tanpa pelayan. */
-export type JenisDokumen = "pdf" | "docx" | "xlsx" | "csv" | "teks" | "imbasan" | "lain";
+export type JenisDokumen = "pdf" | "docx" | "xlsx" | "csv" | "teks" | "ocr" | "imbasan" | "lain";
 
 export function jenisDokumen(nama: string, mime: string): JenisDokumen {
   const n = nama.toLowerCase();
@@ -7,6 +7,8 @@ export function jenisDokumen(nama: string, mime: string): JenisDokumen {
   if (mime.includes("wordprocessingml") || n.endsWith(".docx")) return "docx";
   if (mime.includes("spreadsheetml") || n.endsWith(".xlsx") || n.endsWith(".xlsm")) return "xlsx";
   if (mime === "text/csv" || n.endsWith(".csv")) return "csv";
+  // OCR jadual berkoordinat dari pelayar: `nama.ocrjadual.txt` (JSON).
+  if (n.endsWith(".ocrjadual.txt")) return "ocr";
   // Teks OCR dari pelayar dinamakan `nama-asal.ocr.txt`.
   if (mime === "text/plain" || n.endsWith(".txt")) return "teks";
   if (mime.startsWith("image/")) return "imbasan";

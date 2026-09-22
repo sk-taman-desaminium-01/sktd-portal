@@ -1,7 +1,8 @@
 "use server";
 
 import { pastikanBoleh } from "./akses";
-import { muatanKeFail, type MuatanFail } from "@/data/fail-base64";
+import type { MuatanFail } from "@/data/fail-base64";
+import { bacaMuatan, adaMuatan } from "./muatan";
 import { semakFail } from "./storan";
 import { calonDariFail } from "./baca-murid-fail";
 import { pilihBacaan } from "@/data/pilih-bacaan";
@@ -110,7 +111,7 @@ export async function bacaMuridPukal(muatan: MuatanFail): Promise<HasilPukalMuri
   }
 
   try {
-    const fail = muatanKeFail(muatan);
+    const fail = await bacaMuatan(muatan);
     const tolak = semakFail(fail);
     if (tolak) return { nama, kelas: null, ok: false, mesej: tolak };
 

@@ -89,7 +89,11 @@ export function namaSelamat(asal: string): string {
  * Pulangkan mesej ralat, atau null jika fail itu diterima.
  */
 export function semakFail(fail: File): string | null {
-  if (!JENIS_DIBENARKAN.includes(fail.type) && fail.type !== "") {
+  // Android (WhatsApp/Drive) kerap melabel fail sebagai octet-stream; nama
+  // bersambungan yang disokong sudah cukup untuk pembaca memilih laluan.
+  const sambunganSah = /\.(pdf|docx|xlsx|xlsm|csv|txt|png|jpe?g|webp)$/i.test(fail.name);
+  if (!JENIS_DIBENARKAN.includes(fail.type) && fail.type !== "" &&
+      !(fail.type === "application/octet-stream" && sambunganSah)) {
     return `Jenis fail tidak dibenarkan: ${fail.type}.`;
   }
   if (fail.size > HAD_SAIZ) {

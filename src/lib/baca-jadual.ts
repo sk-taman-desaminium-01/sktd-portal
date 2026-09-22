@@ -3,7 +3,8 @@
 import { pengguna, pastikanBoleh } from "./akses";
 import { kelasBolehSunting } from "./guru-kelas";
 import { semakFail } from "./storan";
-import { muatanKeFail, type MuatanFail } from "@/data/fail-base64";
+import type { MuatanFail } from "@/data/fail-base64";
+import { bacaMuatan, adaMuatan } from "./muatan";
 import { setUntukKelas, type KelasJadual, type Waktu } from "@/data/jadual-jenis";
 import { kesanKelas } from "@/data/kesan-kelas";
 import { binaDraf, binaDrafDariGrid, binaDrafDariKedudukan } from "./jadual-huraian";
@@ -80,8 +81,8 @@ async function jalankan(kelas: string, muatan: MuatanFail): Promise<HasilBaca> {
   if (!saya?.peranan) return { ok: false, mesej: "Tidak dibenarkan." };
 
   const label = kelas.trim();
-  if (!muatan?.data) return { ok: false, mesej: "Tiada fail dipilih." };
-  const fail = muatanKeFail(muatan);
+  if (!adaMuatan(muatan)) return { ok: false, mesej: "Tiada fail dipilih." };
+  const fail = await bacaMuatan(muatan);
 
   const dibenar = await kelasBolehSunting();
   if (dibenar !== null && !dibenar.includes(label)) {
@@ -224,10 +225,11 @@ export async function bacaJadualPukal(muatan: MuatanFail): Promise<HasilPukal> {
 
   const nama = muatan?.nama ?? "(fail)";
   try {
-    const tolak = semakFail(muatanKeFail(muatan));
+    const failPukal = await bacaMuatan(muatan);
+    const tolak = semakFail(failPukal);
     if (tolak) return { nama, kelas: null, ok: false, mesej: tolak };
 
-    const dok = await bacaDokumen(muatanKeFail(muatan));
+    const dok = await bacaDokumen(failPukal);
     if (dok.jenis === "imbasan" || dok.jenis === "lain") {
       return { nama, kelas: null, ok: false, mesej: dok.amaran[0] ?? "Fail ini tidak boleh dibaca." };
     }
