@@ -197,3 +197,13 @@ peraturan keras.
 - Uji pada telefon sebenar: tandatangan dari foto, jadual waktu > 4 MB dari
   telefon (laluan storan terus), PDF cetakan, push iPhone (app dipasang).
 - Web Push perlu `NEXT_PUBLIC_VAPID_PUBLIC_KEY` + `VAPID_PRIVATE_KEY` di Vercel.
+- **Tandatangan LUT SINAR (23 Sep):** kanvas Lukis tidak lagi diisi putih
+  (latar putih yang dilihat datang dari CSS). Cetakan guna
+  `mix-blend-mode: multiply` supaya tandatangan LAMA yang tersimpan
+  berlatar putih tidak menutup garisan borang.
+- **Notifikasi akses (23 Sep):** mesej "Akses portal diluluskan" ialah
+  `peribadi: true` — pentadbir TIDAK lagi menerimanya. Sebaliknya, log
+  masuk pertama pengguna baharu menghantar "Pengguna baharu menunggu
+  kelulusan — NAMA (emel)" kepada pentadbir, berpaut ke `/admin/akses`.
+  Halaman Notifikasi: tab Semua/Belum dibaca, penapis jenis, ikon bulat,
+  titik merah belum dibaca, rangka semasa memuat.

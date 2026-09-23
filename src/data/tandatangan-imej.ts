@@ -66,7 +66,7 @@ function muatKotak(kv: HTMLCanvasElement, maksL: number, maksT: number): HTMLCan
   const k = document.createElement("canvas");
   k.width = Math.max(1, Math.round(kv.width * skala));
   k.height = Math.max(1, Math.round(kv.height * skala));
-  const ctx = k.getContext("2d")!;
+  const ctx = k.getContext("2d")!; // kekal lut sinar — tiada isian putih
   ctx.imageSmoothingQuality = "high";
   ctx.drawImage(kv, 0, 0, k.width, k.height);
   return k;

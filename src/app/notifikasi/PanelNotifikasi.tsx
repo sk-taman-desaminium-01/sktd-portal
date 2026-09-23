@@ -13,6 +13,8 @@ export default function PanelNotifikasi({ hariIni }: { hariIni: string }) {
   const [senarai, setSenarai] = useState<Notifikasi[] | null>(null);
   const [nota, setNota] = useState<{ ok: boolean; teks: string } | null>(null);
   const [sibuk, setSibuk] = useState(false);
+  const [tab, setTab] = useState<"semua" | "belum">("semua");
+  const [jenis, setJenis] = useState<Notifikasi["jenis"] | "semua">("semua");
 
   useEffect(() => {
     void notifikasiSaya().then((r) => {
@@ -51,7 +53,10 @@ export default function PanelNotifikasi({ hariIni }: { hariIni: string }) {
   }
 
   const belumBaca = (senarai ?? []).filter((n) => !n.dibaca).length;
-  const kumpulan = ikutHari(senarai ?? [], hariIni);
+  const jenisAda = [...new Set((senarai ?? []).map((n) => n.jenis))];
+  const ditapis = (senarai ?? []).filter((n) =>
+    (tab === "semua" || !n.dibaca) && (jenis === "semua" || n.jenis === jenis));
+  const kumpulan = ikutHari(ditapis, hariIni);
 
   return (
     <>
@@ -69,25 +74,65 @@ export default function PanelNotifikasi({ hariIni }: { hariIni: string }) {
         </p>
       )}
 
-      {senarai !== null && senarai.length > 0 && (
-        <div className="mt-4 flex flex-wrap items-center gap-3 text-xs">
-          {belumBaca > 0 && (
-            <button
-              onClick={() => void semuaDibaca()}
-              disabled={sibuk}
-              className="rounded-lg border border-navy-700 px-3 py-1.5 font-semibold text-navy-700 disabled:opacity-50"
-            >
-              Tandakan semua dibaca
-            </button>
-          )}
-          <button
-            onClick={() => void kosong()}
-            disabled={sibuk}
-            className="text-slate-500 underline hover:text-[#8f2b2b] disabled:opacity-50"
-          >
-            Buang yang sudah dibaca
-          </button>
+      {/* Memuat: rangka, bukan skrin kosong — pengguna tahu ia sedang bekerja. */}
+      {senarai === null && (
+        <div className="mt-5 space-y-2" aria-hidden="true">
+          {[0, 1, 2].map((i) => (
+            <div key={i} className="flex items-start gap-3 rounded-xl border border-garis bg-white p-3">
+              <div className="h-9 w-9 shrink-0 animate-pulse rounded-full bg-slate-100" />
+              <div className="flex-1 space-y-2 py-1">
+                <div className="h-3 w-2/3 animate-pulse rounded bg-slate-100" />
+                <div className="h-3 w-1/3 animate-pulse rounded bg-slate-100" />
+              </div>
+            </div>
+          ))}
         </div>
+      )}
+
+      {senarai !== null && senarai.length > 0 && (
+        <>
+          {/* Tab + tindakan: susunan biasa app lain — Semua / Belum dibaca. */}
+          <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-b border-garis pb-2">
+            <div className="flex gap-1" role="tablist" aria-label="Tapis notifikasi">
+              {([["semua", "Semua"], ["belum", "Belum dibaca"]] as const).map(([k, l]) => (
+                <button
+                  key={k} role="tab" aria-selected={tab === k} onClick={() => setTab(k)}
+                  className={`min-h-9 rounded-lg px-3 text-sm font-semibold ${
+                    tab === k ? "bg-navy-800 text-white" : "text-slate-600 hover:bg-slate-100"}`}
+                >
+                  {l}{k === "belum" && belumBaca > 0 ? ` (${belumBaca})` : ""}
+                </button>
+              ))}
+            </div>
+            <div className="flex flex-wrap items-center gap-3 text-xs">
+              {belumBaca > 0 && (
+                <button onClick={() => void semuaDibaca()} disabled={sibuk}
+                  className="font-semibold text-navy-700 underline disabled:opacity-50">
+                  Tandakan semua dibaca
+                </button>
+              )}
+              <button onClick={() => void kosong()} disabled={sibuk}
+                className="text-slate-500 underline hover:text-[#8f2b2b] disabled:opacity-50">
+                Buang yang sudah dibaca
+              </button>
+            </div>
+          </div>
+
+          {/* Penapis jenis — hanya jenis yang memang ada dalam senarai. */}
+          {jenisAda.length > 1 && (
+            <div className="mt-3 flex flex-wrap gap-1.5">
+              {(["semua", ...jenisAda] as const).map((j) => (
+                <button
+                  key={j} onClick={() => setJenis(j as typeof jenis)}
+                  className={`min-h-8 rounded-full border px-3 text-xs font-semibold ${
+                    jenis === j ? "border-navy-700 bg-navy-50 text-navy-800" : "border-garis text-slate-500 hover:bg-slate-50"}`}
+                >
+                  {j === "semua" ? "Semua jenis" : `${IKON_JENIS[j] ?? "🔔"} ${NAMA_JENIS[j] ?? j}`}
+                </button>
+              ))}
+            </div>
+          )}
+        </>
       )}
 
       {senarai !== null && senarai.length === 0 && (
@@ -97,14 +142,22 @@ export default function PanelNotifikasi({ hariIni }: { hariIni: string }) {
         </p>
       )}
 
+      {senarai !== null && senarai.length > 0 && ditapis.length === 0 && (
+        <p className="mt-5 rounded-xl border border-dashed border-slate-300 p-5 text-center text-sm text-slate-500">
+          {tab === "belum" ? "Semua sudah dibaca. ✓" : "Tiada notifikasi jenis itu."}
+        </p>
+      )}
+
       {kumpulan.map((k) => (
-        <section key={k.label} className="mt-6">
+        <section key={k.label} className="mt-5">
           <h2 className="text-[11px] font-bold uppercase tracking-widest text-emas">{k.label}</h2>
           <ul className="mt-2 space-y-1.5">
             {k.senarai.map((n) => {
               const isi = (
                 <>
-                  <span aria-hidden="true" className="shrink-0 text-base leading-none">
+                  <span aria-hidden="true"
+                    className={`grid h-9 w-9 shrink-0 place-items-center rounded-full text-base ${
+                      n.dibaca ? "bg-slate-100" : "bg-navy-50"}`}>
                     {IKON_JENIS[n.jenis] ?? "🔔"}
                   </span>
                   <span className="min-w-0 flex-1">
@@ -116,12 +169,16 @@ export default function PanelNotifikasi({ hariIni }: { hariIni: string }) {
                       {NAMA_JENIS[n.jenis] ?? "Umum"} · {masaLalu(n.dicipta)}
                     </span>
                   </span>
+                  {!n.dibaca && (
+                    <span aria-label="Belum dibaca" title="Belum dibaca"
+                      className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-[#c2410c]" />
+                  )}
                 </>
               );
               return (
                 <li
                   key={n.id}
-                  className={`flex items-start gap-3 rounded-xl border p-3 ${
+                  className={`flex items-start gap-3 rounded-xl border p-3 transition hover:border-navy-700/40 ${
                     n.dibaca ? "border-garis bg-white" : "border-navy-700/25 bg-navy-50/40"
                   }`}
                 >
@@ -137,7 +194,8 @@ export default function PanelNotifikasi({ hariIni }: { hariIni: string }) {
                   <button
                     onClick={() => void padam(n.id)}
                     aria-label={`Buang notifikasi: ${n.tajuk}`}
-                    className="shrink-0 rounded-full px-2 py-1 text-xs text-slate-300 hover:text-[#8f2b2b]"
+                    title="Buang"
+                    className="shrink-0 rounded-full px-2 py-1 text-sm text-slate-300 hover:bg-slate-100 hover:text-[#8f2b2b]"
                   >
                     ✕
                   </button>

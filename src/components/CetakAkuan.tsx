@@ -87,7 +87,7 @@ export default function CetakAkuan({
         #akuan-cetak .kecil { font-size: 5.6pt; }
         #akuan-cetak .ttd { display: grid; grid-template-columns: 1fr 42mm; align-items: end; margin-top: 2.5mm; }
         #akuan-cetak .ttd-ruang { position: relative; width: 44mm; height: 7mm; }
-        #akuan-cetak .ttd-ruang img { position: absolute; left: 2mm; bottom: -1.2mm; height: 11mm; max-width: 40mm; object-fit: contain; }
+        #akuan-cetak .ttd-ruang img { position: absolute; left: 2mm; bottom: -1.2mm; height: 11mm; max-width: 40mm; object-fit: contain; mix-blend-mode: multiply; }
         #akuan-cetak .saksi-tajuk { margin-top: 2.6mm; font-weight: 700; text-decoration: underline; }
         #akuan-cetak .cop { display: flex; justify-content: space-between; align-items: flex-end; }
         /* ---------- muka kanan: Borang Perakuan Kesihatan ---------- */
@@ -224,7 +224,7 @@ export default function CetakAkuan({
           <span className="titik" style={{ position: "relative", width: "45mm", height: "7mm" }}>
             {d.tandatangan && (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={d.tandatangan} alt="" style={{ position: "absolute", left: "2mm", bottom: "-1mm", height: "9mm", maxWidth: "40mm", objectFit: "contain" }} />
+              <img src={d.tandatangan} alt="" style={{ position: "absolute", left: "2mm", bottom: "-1mm", height: "9mm", maxWidth: "40mm", objectFit: "contain", mixBlendMode: "multiply" }} />
             )}
           </span>
         </div>

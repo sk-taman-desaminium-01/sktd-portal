@@ -74,7 +74,9 @@ export default function CetakMedia({ surat, data: d, kepala }: { surat: BarisSur
       #surat-cetak .m-nota { display: grid; grid-template-columns: 6mm 1fr; font-weight: 700; }
       #surat-cetak .m-ttd { display: grid; grid-template-columns: 1fr 72mm; align-items: end; row-gap: 3mm; margin: 0 4mm 0 2mm; }
       #surat-cetak .m-ttd-img { position: relative; }
-      #surat-cetak .m-ttd-img img { position: absolute; left: 6mm; bottom: -1mm; height: 13mm; max-width: 60mm; object-fit: contain; }
+      /* multiply: tandatangan LAMA yang tersimpan dengan latar putih tidak
+         lagi menutup garisan borang. Yang baharu sudah lut sinar. */
+      #surat-cetak .m-ttd-img img { position: absolute; left: 6mm; bottom: -1mm; height: 13mm; max-width: 60mm; object-fit: contain; mix-blend-mode: multiply; }
       @media print { @page { size: A4 portrait; margin: 18mm 19mm 17mm; } }
     `}</style>
 

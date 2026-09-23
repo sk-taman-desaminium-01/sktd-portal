@@ -226,6 +226,9 @@ export async function tarikAkses(id: string, dibenarkan: boolean): Promise<Hasil
         teks: "Anda kini boleh menggunakan Portal Kakitangan SKTD.",
         pautan: "/",
         oleh: null,
+        // Mesej untuk ORANG ITU sahaja — pentadbir tidak perlu membaca
+        // "Anda telah diluluskan" tentang akaun orang lain.
+        peribadi: true,
       });
     }
 

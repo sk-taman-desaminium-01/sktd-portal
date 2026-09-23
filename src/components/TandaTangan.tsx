@@ -35,8 +35,10 @@ export default function TandaTangan({
     if (!kv) return;
     const ctx = kv.getContext("2d");
     if (!ctx) return;
-    ctx.fillStyle = "#fff";
-    ctx.fillRect(0, 0, kv.width, kv.height);
+    // KANVAS KEKAL LUT SINAR. Mengisi putih menjadikan PNG membawa kotak
+    // putih, dan kotak itu kelihatan di atas borang bercetak. Latar putih
+    // yang dilihat pengguna datang daripada CSS kanvas, bukan piksel.
+    ctx.clearRect(0, 0, kv.width, kv.height);
     ctx.lineWidth = 2.5;
     ctx.lineCap = "round";
     ctx.strokeStyle = "#0a1e3c";
@@ -69,9 +71,7 @@ export default function TandaTangan({
   function kosongkan() {
     const kv = kanvasRef.current;
     if (!kv) return;
-    const ctx = kv.getContext("2d")!;
-    ctx.fillStyle = "#fff";
-    ctx.fillRect(0, 0, kv.width, kv.height);
+    kv.getContext("2d")!.clearRect(0, 0, kv.width, kv.height);
     kosongRef.current = true;
   }
 
