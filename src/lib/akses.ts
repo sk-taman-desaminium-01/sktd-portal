@@ -3,6 +3,7 @@ import { cache } from "react";
 import { auth, currentUser } from "@clerk/nextjs/server";
 import { klienTulis } from "./supabase-pelayan";
 import { boleh, type Keupayaan, type Peranan, type PerananBerkesan } from "./peranan";
+import { hantar } from "./notifikasi";
 
 /**
  * Siapa pengguna semasa, dan apa kuasanya.
@@ -222,6 +223,15 @@ async function rekodPermohonan(
         dibenarkan: false,   // SIFAR akses sehingga manusia meluluskannya
       }),
     });
+    // Pentadbir diberitahu ada orang MENUNGGU — bukan mesej kelulusan.
+    await hantar({
+      penerima: [],
+      jenis: "akses",
+      tajuk: "Pengguna baharu menunggu kelulusan",
+      teks: `${nama?.trim() || emel.split("@")[0]} (${emel}) baru log masuk buat kali pertama. Beri peranan atau tolak dalam Senarai Akses.`,
+      pautan: "/admin/akses",
+      oleh: null,
+    }).catch(() => {});
     return { keadaan: "direkod" };
   } catch (e) {
     // Jangan halang log masuk kerana catatan gagal — TETAPI jangan telan.

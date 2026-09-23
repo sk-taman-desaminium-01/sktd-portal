@@ -26,6 +26,16 @@ export interface Hantaran {
   tugasan?: { peranan: TugasanNotifikasi; skop?: string }[];
   /** Pengumuman kepada semua akaun portal yang dibenarkan. */
   semuaWarga?: boolean;
+  /**
+   * Mesej PERIBADI — pentadbir TIDAK ditambah.
+   *
+   * Lalai, setiap kejadian turut sampai kepada pentadbir/admin. Itu betul
+   * untuk kejadian sistem, tetapi salah untuk mesej yang berbunyi "Anda
+   * telah diluluskan": admin membacanya seolah-olah akaun mereka sendiri
+   * baru diluluskan. Untuk kejadian itu, admin menerima notifikasi
+   * berasingan yang ditulis untuk mereka ("Pengguna baharu menunggu…").
+   */
+  peribadi?: boolean;
   jenis: JenisNotifikasi;
   tajuk: string;
   teks: string;
@@ -57,7 +67,7 @@ export async function hantar(h: Hantaran): Promise<boolean> {
 
 async function hantarSekarang(h: Hantaran): Promise<boolean> {
   const carian = await Promise.allSettled([
-    emelPentadbirSemua(),
+    h.peribadi ? Promise.resolve([] as string[]) : emelPentadbirSemua(),
     h.peranan?.length ? emelIkutPeranan(h.peranan) : Promise.resolve([]),
     h.semuaWarga ? emelSemuaWarga() : Promise.resolve([]),
     ...(h.tugasan ?? []).map((t) => emelTugasanNotifikasi(t.peranan, t.skop)),
