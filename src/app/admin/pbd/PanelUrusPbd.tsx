@@ -360,7 +360,7 @@ export default function PanelUrusPbd({
         {sesi && sesi.length > 1 && (
           <div className="mt-4 rounded-xl border border-garis bg-navy-50/40 p-3">
             <p className="text-xs font-semibold text-slate-500">Sesi persekolahan</p>
-            <p className="mt-0.5 text-[11px] leading-relaxed text-slate-400">
+            <p className="mt-0.5 text-[11px] leading-relaxed text-slate-500">
               Satu sesi aktif pada satu masa. Menukarnya <b>tidak memadam apa-apa</b> —
               pendaftaran dan nilai setiap sesi kekal seperti sedia ada.
             </p>
@@ -450,13 +450,13 @@ export default function PanelUrusPbd({
               onClick={() => setSahNaik(true)}
               disabled={!cuba}
               title={cuba ? undefined : "Tekan Semak dahulu."}
-              className="rounded-lg border border-navy-700 px-4 py-2 text-sm font-semibold text-navy-700 disabled:border-garis disabled:text-slate-400"
+              className="rounded-lg border border-navy-700 px-4 py-2 text-sm font-semibold text-navy-700 disabled:border-garis disabled:text-slate-500"
             >
               Tutup sesi {tahunSesi} &amp; naik tahun
             </button>
           )}
           {!cuba && (
-            <p className="mt-2 text-xs text-slate-400">
+            <p className="mt-2 text-xs text-slate-500">
 Tekan <b>Semak dahulu</b> sebelum ini boleh digunakan.
             </p>
           )}
@@ -506,7 +506,7 @@ Tekan <b>Semak dahulu</b> sebelum ini boleh digunakan.
             <p className="text-xs font-semibold text-slate-500">
               Atau muat naik fail senarai kelas
             </p>
-            <p className="mt-1 text-[11px] leading-relaxed text-slate-400">
+            <p className="mt-1 text-[11px] leading-relaxed text-slate-500">
               PDF dari iDMe, gambar, Excel, Word atau CSV. PDF imbasan dan gambar
               dibaca dengan OCR terus pada peranti, kemudian fail dibaca beberapa cara —
               baris, lajur menegak, jadual — dan cara yang menghasilkan No. KP
@@ -543,7 +543,7 @@ Tekan <b>Semak dahulu</b> sebelum ini boleh digunakan.
               <div className="mt-2">
                 <Mesej ok={hasilFail.ok} teks={hasilFail.mesej} />
                 {hasilFail.calon && hasilFail.calon.length > 1 && (
-                  <p className="mt-1.5 text-[11px] text-slate-400">
+                  <p className="mt-1.5 text-[11px] text-slate-500">
                     Skor setiap cara:{" "}
                     {hasilFail.calon
                       .map((c) => `${c.cara} ${c.skor}`)
@@ -606,7 +606,7 @@ Tekan <b>Semak dahulu</b> sebelum ini boleh digunakan.
                   <tbody className="divide-y divide-garis">
                     {hasil.murid.map((m, i) => (
                       <tr key={i} className={m.amaran.length ? "bg-[#fffdf5]" : undefined}>
-                        <td className="px-3 py-1.5 text-slate-400">{i + 1}</td>
+                        <td className="px-3 py-1.5 text-slate-500">{i + 1}</td>
                         <td className="px-3 py-1.5 font-medium text-navy-800">{m.nama}</td>
                         <td className="px-3 py-1.5 font-mono text-slate-600">{m.no_kp ?? "—"}</td>
                         <td className="px-3 py-1.5">{m.jantina ?? "—"}</td>
@@ -716,7 +716,7 @@ Tekan <b>Semak dahulu</b> sebelum ini boleh digunakan.
                           onClick={() => void buang(t)}
                           disabled={sibukTugas === t.id}
                           aria-label={`Buang ${namaSubjek(t.subjek)} ${t.tahun} ${t.kelas}`}
-                          className="text-slate-400 hover:text-[#8f2b2b] disabled:opacity-50"
+                          className="text-slate-500 hover:text-[#8f2b2b] disabled:opacity-50"
                         >
                           ×
                         </button>
@@ -830,7 +830,7 @@ function Berbilang({
           );
         })}
         {papar.length === 0 && (
-          <li className="py-1 text-xs text-slate-400">Tiada yang sepadan.</li>
+          <li className="py-1 text-xs text-slate-500">Tiada yang sepadan.</li>
         )}
       </ul>
     </>
@@ -1092,10 +1092,10 @@ function SemakMurid({ senaraiKelas }: {
               {papar.map((m, i) => (
                 <li key={m.pendaftaran_id} className="py-2">
                   <div className="flex items-start gap-2">
-                    <span className="w-6 shrink-0 pt-0.5 text-xs text-slate-400">{i + 1}</span>
+                    <span className="w-6 shrink-0 pt-0.5 text-xs text-slate-500">{i + 1}</span>
                     <span className="min-w-0 flex-1">
                       <span className="block text-sm font-medium text-navy-800">{m.nama}</span>
-                      <span className="mt-0.5 block font-mono text-xs text-slate-400">
+                      <span className="mt-0.5 block font-mono text-xs text-slate-500">
                         {m.no_kp ?? "tiada No. KP"}
                       </span>
                     </span>
@@ -1219,7 +1219,7 @@ function SemakMurid({ senaraiKelas }: {
                 </li>
               ))}
               {papar.length === 0 && (
-                <li className="py-3 text-sm text-slate-400">Tiada murid sepadan.</li>
+                <li className="py-3 text-sm text-slate-500">Tiada murid sepadan.</li>
               )}
             </ul>
           </>

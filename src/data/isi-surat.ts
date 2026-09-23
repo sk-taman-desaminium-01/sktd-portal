@@ -89,14 +89,29 @@ const TANDA = { "*": "tebal", "_": "italik", "~": "coret" } as const;
  * Boleh bersarang: `*_tebal italik_*`.
  */
 export function pecahFormat(teks: string, asas: Omit<KepingTeks, "teks"> = { tebal: false, italik: false, coret: false }): KepingTeks[] {
+  // BERULANG, bukan rekursif: satu perenggan dengan beratus penanda pernah
+  // bermakna beratus bingkai tindanan. Pelayar telefon mempunyai tindanan
+  // lebih kecil daripada Node, dan "tindanan penuh" bermakna skrin putih.
+  const keluar: KepingTeks[] = [];
+  const timbunan: { teks: string; gaya: Omit<KepingTeks, "teks"> }[] = [{ teks: typeof teks === "string" ? teks : "", gaya: asas }];
   const corak = /(^|[^\p{L}\p{N}*_~])([*_~])(?!\s)(.+?)(?<!\s)\2(?=$|[^\p{L}\p{N}*_~])/u;
-  const m = corak.exec(teks);
-  if (!m) return teks ? [{ teks, ...asas }] : [];
-  const mula = m.index + m[1].length;
-  const kunci = TANDA[m[2] as keyof typeof TANDA];
-  return [
-    ...(teks.slice(0, mula) ? [{ teks: teks.slice(0, mula), ...asas }] : []),
-    ...pecahFormat(m[3], { ...asas, [kunci]: true }),
-    ...pecahFormat(teks.slice(mula + m[2].length * 2 + m[3].length), asas),
-  ];
+  let pusingan = 0;
+  while (timbunan.length && pusingan++ < 5000) {
+    const { teks: t, gaya } = timbunan.shift()!;
+    if (!t) continue;
+    const m = corak.exec(t);
+    if (!m) { keluar.push({ teks: t, ...gaya }); continue; }
+    const mula = m.index + m[1].length;
+    const kunci = TANDA[m[2] as keyof typeof TANDA];
+    const selepas = t.slice(mula + m[2].length * 2 + m[3].length);
+    // Susunan dikekalkan: bahagian kiri, kandungan bergaya, kemudian baki.
+    timbunan.unshift({ teks: selepas, gaya });
+    timbunan.unshift({ teks: m[3], gaya: { ...gaya, [kunci]: true } });
+    if (t.slice(0, mula)) timbunan.unshift({ teks: t.slice(0, mula), gaya });
+  }
+  // Had pusingan dicapai (teks luar biasa): baki dikeluarkan sebagai teks
+  // biasa — dipapar tanpa gaya, TIDAK hilang.
+  for (const baki of timbunan) if (baki.teks) keluar.push({ teks: baki.teks, ...baki.gaya });
+  return keluar;
 }
+

@@ -337,7 +337,7 @@ function Kenal({ b, padanan }: {
   const p = padanan[b.nama];
   if (!p) {
     return (
-      <span className="mt-0.5 block text-xs text-slate-400">
+      <span className="mt-0.5 block text-xs text-slate-500">
         Tiada nama sepadan dalam Buku Pengurusan
       </span>
     );
@@ -347,7 +347,7 @@ function Kenal({ b, padanan }: {
       {p.jawatan || "Warga sekolah"}
       {p.opsyen ? ` · ${p.opsyen}` : ""}
       {p.skor < 100 && (
-        <span className="ml-1 text-slate-400">· padanan {p.skor}%</span>
+        <span className="ml-1 text-slate-500">· padanan {p.skor}%</span>
       )}
     </span>
   );

@@ -199,7 +199,7 @@ export default function Panel({ senarai, skop }: { senarai: AktivitiBorang[]; sk
             <ol className="mt-3 max-h-80 divide-y divide-slate-100 overflow-auto rounded-lg border border-slate-100">
               {peserta.map((p, i) => (
                 <li key={p.murid_id} className="flex items-center gap-2 px-3 py-2 text-sm">
-                  <span className="w-6 shrink-0 text-right text-xs text-slate-400">{i + 1}.</span>
+                  <span className="w-6 shrink-0 text-right text-xs text-slate-500">{i + 1}.</span>
                   <span className="min-w-0 flex-1">
                     <span className="block truncate font-semibold text-navy-800">{p.nama}</span>
                     <span className="block text-xs text-slate-500">{p.kelas} · {p.no_kp}</span>
@@ -207,7 +207,7 @@ export default function Panel({ senarai, skop }: { senarai: AktivitiBorang[]; sk
                   {sudahHantar.has(p.no_kp)
                     ? <span className="shrink-0 rounded-full bg-[#eef8f2] px-2 py-0.5 text-[11px] font-semibold text-[#167a4b]">Diterima</span>
                     : <span className="shrink-0 rounded-full bg-slate-100 px-2 py-0.5 text-[11px] text-slate-500">Menunggu</span>}
-                  <button disabled={sibuk} onClick={() => buangPeserta(p)} aria-label={`Buang ${p.nama}`} className="shrink-0 px-1 text-slate-300 hover:text-[#8f2424]">✕</button>
+                  <button disabled={sibuk} onClick={() => buangPeserta(p)} aria-label={`Buang ${p.nama}`} className="shrink-0 px-1 text-slate-500 hover:text-[#8f2424]">✕</button>
                 </li>
               ))}
               {peserta.length === 0 && <li className="px-3 py-3 text-sm text-slate-500">Belum ada peserta.</li>}
@@ -321,7 +321,7 @@ function CariMurid({ aktivitiId, sudah, sibuk, tambah }: {
           {[...dipilih.values()].map((p) => (
             <span key={p.murid_id} className="inline-flex max-w-full items-center gap-1 rounded-full bg-navy-50 px-2.5 py-1 text-xs text-navy-800">
               <span className="truncate">{p.nama}</span>
-              <button type="button" onClick={() => togol(p)} aria-label={`Batal pilih ${p.nama}`} className="text-slate-400">✕</button>
+              <button type="button" onClick={() => togol(p)} aria-label={`Batal pilih ${p.nama}`} className="text-slate-500">✕</button>
             </span>
           ))}
           <button type="button" disabled={sibuk}

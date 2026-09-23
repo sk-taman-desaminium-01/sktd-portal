@@ -129,7 +129,7 @@ export default function PanelIsi({
           <tbody className="divide-y divide-garis">
             {baris.map((b, i) => (
               <tr key={b.pendaftaran_id} className={diubah.has(b.pendaftaran_id) ? "bg-[#fffdf5]" : undefined}>
-                <td className="p-2 text-xs text-slate-400">{i + 1}</td>
+                <td className="p-2 text-xs text-slate-500">{i + 1}</td>
                 <td className="p-2 font-medium text-navy-800">{b.nama}</td>
                 <td className="p-2">
                   <select
@@ -137,7 +137,7 @@ export default function PanelIsi({
                     disabled={!bolehTulis}
                     onChange={(e) => ubah(b.pendaftaran_id, "tp", e.target.value)}
                     aria-label={`TP untuk ${b.nama}`}
-                    className="w-16 rounded border border-garis px-2 py-1.5 text-sm disabled:bg-slate-50 disabled:text-slate-400"
+                    className="w-16 rounded border border-garis px-2 py-1.5 text-sm disabled:bg-slate-50 disabled:text-slate-500"
                   >
                     <option value="">—</option>
                     {[1, 2, 3, 4, 5, 6].map((n) => (
@@ -151,7 +151,7 @@ export default function PanelIsi({
                     disabled={!bolehTulis}
                     onChange={(e) => ubah(b.pendaftaran_id, "sumatif", e.target.value)}
                     aria-label={`Gred sumatif untuk ${b.nama}`}
-                    className="w-16 rounded border border-garis px-2 py-1.5 text-sm disabled:bg-slate-50 disabled:text-slate-400"
+                    className="w-16 rounded border border-garis px-2 py-1.5 text-sm disabled:bg-slate-50 disabled:text-slate-500"
                   >
                     {GRED_SUMATIF.map((g) => (
                       <option key={g || "kosong"} value={g}>{g || "—"}</option>
@@ -165,7 +165,7 @@ export default function PanelIsi({
                       disabled={!bolehTulis}
                       onChange={(e) => ubah(b.pendaftaran_id, "uasa", e.target.value)}
                       aria-label={`Gred UASA untuk ${b.nama}`}
-                      className="w-16 rounded border border-[#e9d9ae] px-2 py-1.5 text-sm disabled:bg-slate-50 disabled:text-slate-400"
+                      className="w-16 rounded border border-[#e9d9ae] px-2 py-1.5 text-sm disabled:bg-slate-50 disabled:text-slate-500"
                     >
                       {GRED_UASA.map((g) => <option key={g || "kosong"} value={g}>{g || "—"}</option>)}
                     </select>

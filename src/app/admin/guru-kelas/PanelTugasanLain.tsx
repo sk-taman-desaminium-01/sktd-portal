@@ -32,28 +32,40 @@ export default function PanelTugasanLain({
 
   async function tambah() {
     if (!guruId) return;
-    setSibuk(true);
-    setMesej(null);
-    const r = await tetapTugasan(jenis, guruId, skopTunggal ? "SEKOLAH" : skop);
-    if (r.ok) {
-      const g = orang.find((o) => o.id === guruId);
-      setSenarai((s) => [
-        ...s.filter((b) => b.skop !== (skopTunggal ? "SEKOLAH" : skop.trim() || "SEKOLAH")),
-        { guru_id: guruId, nama: g?.nama ?? "", emel: g?.emel ?? null, skop: skopTunggal ? "SEKOLAH" : (skop.trim() || "SEKOLAH") },
-      ]);
-      setGuruId("");
-      setSkop("");
+    try {
+      setSibuk(true);
+      setMesej(null);
+      const r = await tetapTugasan(jenis, guruId, skopTunggal ? "SEKOLAH" : skop);
+      if (r.ok) {
+        const g = orang.find((o) => o.id === guruId);
+        setSenarai((s) => [
+          ...s.filter((b) => b.skop !== (skopTunggal ? "SEKOLAH" : skop.trim() || "SEKOLAH")),
+          { guru_id: guruId, nama: g?.nama ?? "", emel: g?.emel ?? null, skop: skopTunggal ? "SEKOLAH" : (skop.trim() || "SEKOLAH") },
+        ]);
+        setGuruId("");
+        setSkop("");
+      }
+      setMesej(r.mesej);
+      setSibuk(false);
+    } catch {
+      setMesej("Sambungan terputus atau pelayan tidak menjawab. Cuba lagi.");
+    } finally {
+      setSibuk(false);
     }
-    setMesej(r.mesej);
-    setSibuk(false);
   }
 
   async function buang(s: string) {
-    setSibuk(true);
-    const r = await buangTugasan(jenis, s);
-    if (r.ok) setSenarai((sn) => sn.filter((b) => b.skop !== s));
-    setMesej(r.mesej);
-    setSibuk(false);
+    try {
+      setSibuk(true);
+      const r = await buangTugasan(jenis, s);
+      if (r.ok) setSenarai((sn) => sn.filter((b) => b.skop !== s));
+      setMesej(r.mesej);
+      setSibuk(false);
+    } catch {
+      setMesej("Sambungan terputus atau pelayan tidak menjawab. Cuba lagi.");
+    } finally {
+      setSibuk(false);
+    }
   }
 
   return (

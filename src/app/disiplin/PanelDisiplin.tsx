@@ -47,18 +47,24 @@ function BorangRekod({ tahunSesi, kelas, cadangan }: {
   const [nota, setNota] = useState<{ ok: boolean; teks: string } | null>(null);
 
   async function hantar() {
-    setSibuk(true);
-    setNota(null);
-    const r = await hantarDisiplin({
-      tahun_sesi: tahunSesi, tarikh, murid_nama: muridNama, kelas: muridKelas,
-      kesalahan, tindakan, saksi,
-    });
-    setNota({ ok: r.ok, teks: r.mesej });
-    if (r.ok) {
-      setMuridNama(""); setKesalahan(""); setTindakan(""); setSaksi("");
-      router.refresh();
+    try {
+      setSibuk(true);
+      setNota(null);
+      const r = await hantarDisiplin({
+        tahun_sesi: tahunSesi, tarikh, murid_nama: muridNama, kelas: muridKelas,
+        kesalahan, tindakan, saksi,
+      });
+      setNota({ ok: r.ok, teks: r.mesej });
+      if (r.ok) {
+        setMuridNama(""); setKesalahan(""); setTindakan(""); setSaksi("");
+        router.refresh();
+      }
+      setSibuk(false);
+    } catch {
+      setNota({ ok: false, teks: "Sambungan terputus atau pelayan tidak menjawab. Cuba lagi." });
+    } finally {
+      setSibuk(false);
     }
-    setSibuk(false);
   }
 
   return (
@@ -139,8 +145,13 @@ function SenaraiPenuh({ senarai, berulang, urusSemua }: { senarai: BarisDisiplin
   const untukLembaga = useMemo(() => urusSemua ? data.filter((d) => d.laporan_lembaga) : [], [data, urusSemua]);
 
   async function tanda(id: string, nilai: boolean) {
-    const r = await tandaLaporanLembaga(id, nilai, rujukan[id]);
-    if (r.ok) setData((d) => d.map((b) => (b.id === id ? { ...b, laporan_lembaga: nilai, rujukan_kami: rujukan[id]?.trim() || b.rujukan_kami } : b)));
+    try {
+      const r = await tandaLaporanLembaga(id, nilai, rujukan[id]);
+      if (r.ok) setData((d) => d.map((b) => (b.id === id ? { ...b, laporan_lembaga: nilai, rujukan_kami: rujukan[id]?.trim() || b.rujukan_kami } : b)));
+      else setNota({ ok: false, teks: r.mesej });
+    } catch {
+      setNota({ ok: false, teks: "Sambungan terputus atau pelayan tidak menjawab. Cuba lagi." });
+    }
   }
 
   function mulaSunting(b: BarisDisiplin) {
@@ -151,23 +162,35 @@ function SenaraiPenuh({ senarai, berulang, urusSemua }: { senarai: BarisDisiplin
 
   async function simpanSunting(b: BarisDisiplin) {
     if (!draf) return;
-    setSibuk(b.id); setNota(null);
-    const r = await suntingDisiplin(b.id, { tahun_sesi: b.tahun_sesi, ...draf, saksi: draf.saksi ?? undefined });
-    setNota({ ok: r.ok, teks: r.mesej });
-    if (r.ok) {
-      setData((lama) => lama.map((x) => x.id === b.id ? { ...x, ...draf } : x));
-      setSunting(null); setDraf(null);
+    try {
+      setSibuk(b.id); setNota(null);
+      const r = await suntingDisiplin(b.id, { tahun_sesi: b.tahun_sesi, ...draf, saksi: draf.saksi ?? undefined });
+      setNota({ ok: r.ok, teks: r.mesej });
+      if (r.ok) {
+        setData((lama) => lama.map((x) => x.id === b.id ? { ...x, ...draf } : x));
+        setSunting(null); setDraf(null);
+      }
+      setSibuk(null);
+    } catch {
+      setNota({ ok: false, teks: "Sambungan terputus atau pelayan tidak menjawab. Cuba lagi." });
+    } finally {
+      setSibuk(null);
     }
-    setSibuk(null);
   }
 
   async function padam(b: BarisDisiplin) {
     if (!window.confirm(`Padam rekod disiplin ${b.murid_nama}?`)) return;
-    setSibuk(b.id); setNota(null);
-    const r = await padamDisiplin(b.id);
-    setNota({ ok: r.ok, teks: r.mesej });
-    if (r.ok) setData((lama) => lama.filter((x) => x.id !== b.id));
-    setSibuk(null);
+    try {
+      setSibuk(b.id); setNota(null);
+      const r = await padamDisiplin(b.id);
+      setNota({ ok: r.ok, teks: r.mesej });
+      if (r.ok) setData((lama) => lama.filter((x) => x.id !== b.id));
+      setSibuk(null);
+    } catch {
+      setNota({ ok: false, teks: "Sambungan terputus atau pelayan tidak menjawab. Cuba lagi." });
+    } finally {
+      setSibuk(null);
+    }
   }
 
   return (
@@ -190,6 +213,13 @@ function SenaraiPenuh({ senarai, berulang, urusSemua }: { senarai: BarisDisiplin
 
       {nota && <p className={`mt-3 rounded-lg px-3 py-2 text-sm ${nota.ok ? "bg-[#eef8f2] text-[#167a4b]" : "bg-[#fdecec] text-red-700"}`}>{nota.teks}</p>}
 
+      {data.length === 0 && (
+        <p className="mt-4 rounded-xl border border-dashed border-slate-300 bg-white p-5 text-center text-sm text-slate-500">
+          Belum ada rekod disiplin atau sahsiah untuk sesi ini. Rekod yang anda hantar akan
+          muncul di sini.
+        </p>
+      )}
+
       <ul className="mt-4 space-y-3">
         {data.map((b) => (
           <li key={b.id} className="rounded-xl border border-garis bg-white p-4 text-sm">
@@ -200,7 +230,7 @@ function SenaraiPenuh({ senarai, berulang, urusSemua }: { senarai: BarisDisiplin
             <p className="mt-1.5 text-slate-600">{b.kesalahan}</p>
             {b.tindakan && <p className="mt-1 text-xs text-slate-500">Tindakan: {b.tindakan}</p>}
             {b.saksi && <p className="text-xs text-slate-500">Saksi: {b.saksi}</p>}
-            <p className="mt-1 text-xs text-slate-400">Direkod oleh {b.guru_nama}</p>
+            <p className="mt-1 text-xs text-slate-500">Direkod oleh {b.guru_nama}</p>
 
             {sunting === b.id && draf && (
               <div className="mt-3 grid min-w-0 gap-3 rounded-lg bg-slate-50 p-3 sm:grid-cols-2">

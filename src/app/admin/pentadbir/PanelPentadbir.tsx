@@ -42,19 +42,28 @@ export default function PanelPentadbir({ awal }: { awal: Pentadbir[] }) {
    * puluhan kilobait — jadi ia tidak pernah menghampiri had muat naik.
    */
   async function hantar(i: number, fail: File) {
-    setNaik(i);
-    const fd = new FormData();
-    fd.set("fail", fail);
-    const r = await naikGambarPentadbir(fd);
-    setNaik(null);
-    if (r.ok && r.url) ubah(i, "gambar", r.url);
-    else setHasil({ ok: false, mesej: r.mesej });
+    try {
+      setNaik(i);
+      const fd = new FormData();
+      fd.set("fail", fail);
+      const r = await naikGambarPentadbir(fd);
+      setNaik(null);
+      if (r.ok && r.url) ubah(i, "gambar", r.url);
+      else setHasil({ ok: false, mesej: r.mesej });
+    } catch {
+      setHasil({ ok: false, mesej: "Sambungan terputus atau pelayan tidak menjawab. Cuba lagi." });
+    }
   }
 
   async function simpan() {
-    setSibuk(true);
-    setHasil(await simpanPentadbir(senarai));
-    setSibuk(false);
+    try {
+      setSibuk(true);
+      setHasil(await simpanPentadbir(senarai));
+      setSibuk(false);
+    } catch {
+    } finally {
+      setSibuk(false);
+    }
   }
 
   return (

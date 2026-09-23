@@ -8,6 +8,9 @@
   --color-navy-800: #123561;
   --color-navy-900: #0b2545;
   --color-emas:     #c9a24b;
+  /* Emas di atas LATAR CERAH: #c9a24b hanya 2.4:1 pada putih — gagal WCAG AA
+     untuk tajuk kecil. Versi gelap ini 5.05:1. Emas asal kekal untuk latar navy. */
+  --color-emas-gelap:#8a6a1f;
   --color-emas-muda:#e6cf92;
   --color-garis:    #d9e0ea;
 }

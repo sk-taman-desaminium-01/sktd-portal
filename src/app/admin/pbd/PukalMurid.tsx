@@ -288,7 +288,7 @@ export default function PukalMurid({ semuaKelas }: { semuaKelas: string[] }) {
         </button>
       </form>
 
-      <p className="mt-2 text-[11px] leading-relaxed text-slate-400">
+      <p className="mt-2 text-[11px] leading-relaxed text-slate-500">
         PDF berteks dibaca terus. PDF imbasan dan gambar menjalankan OCR automatik
         dalam portal, termasuk fail yang mengiring atau terbalik. Satu enjin OCR
         digunakan semula untuk seluruh ZIP supaya lebih pantas pada telefon.
@@ -381,7 +381,7 @@ export default function PukalMurid({ semuaKelas }: { semuaKelas: string[] }) {
                     aria-expanded={buka.has(k.kunci)}
                     className="flex min-w-0 flex-1 items-center gap-2 text-left disabled:cursor-default"
                   >
-                    <span className="w-5 shrink-0 text-xs text-slate-400">
+                    <span className="w-5 shrink-0 text-xs text-slate-500">
                       {k.murid?.length ? (buka.has(k.kunci) ? "▾" : "▸") : ""}
                     </span>
                     <span className="min-w-0 flex-1">
@@ -393,7 +393,7 @@ export default function PukalMurid({ semuaKelas }: { semuaKelas: string[] }) {
                           </span>
                         ) : null}
                       </span>
-                      <span className="mt-0.5 block truncate text-[11px] text-slate-400">
+                      <span className="mt-0.5 block truncate text-[11px] text-slate-500">
                         {k.nama}
                         {k.cara ? ` · dibaca sebagai “${k.cara}”` : ""}
                       </span>
@@ -456,7 +456,7 @@ export default function PukalMurid({ semuaKelas }: { semuaKelas: string[] }) {
                         <tbody className="divide-y divide-garis">
                           {k.murid.map((m, i) => (
                             <tr key={i} className={m.amaran.length ? "bg-[#fffdf5]" : undefined}>
-                              <td className="px-2 py-1 text-slate-400">{i + 1}</td>
+                              <td className="px-2 py-1 text-slate-500">{i + 1}</td>
                               <td className="px-2 py-1 font-medium text-navy-800">{m.nama}</td>
                               <td className="px-2 py-1 font-mono text-slate-600">
                                 {m.no_kp ?? "—"}

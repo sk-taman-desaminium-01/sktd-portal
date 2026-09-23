@@ -231,12 +231,12 @@ export default function PanelJadual({
               <tr key={w.id} className={w.rehat ? "bg-slate-50" : undefined}>
                 <th className="border-b border-garis p-2 text-left align-top font-mono text-[11px] font-normal text-slate-500">
                   {jamPapar(w.mula)}
-                  <span className="block text-slate-400">{jamPapar(w.tamat)}</span>
+                  <span className="block text-slate-500">{jamPapar(w.tamat)}</span>
                 </th>
                 {HARI.map((h) => (
                   <td key={h} className="border-b border-l border-garis p-1.5 align-top">
                     {w.rehat ? (
-                      <span className="block px-1 py-2 text-xs text-slate-400">
+                      <span className="block px-1 py-2 text-xs text-slate-500">
                         {w.label ?? "Rehat"}
                       </span>
                     ) : (
@@ -391,7 +391,7 @@ export default function PanelJadual({
                 SEMUA kelas dalam kumpulan itu.
               </span>
             </span>
-            <span aria-hidden="true" className="text-slate-400">{bukaWaktu ? "▾" : "▸"}</span>
+            <span aria-hidden="true" className="text-slate-500">{bukaWaktu ? "▾" : "▸"}</span>
           </button>
 
           {bukaWaktu && (
@@ -452,7 +452,7 @@ export default function PanelJadual({
                           onChange={(e) => ubahSet(s.id, i, "mula", e.target.value)}
                           className="rounded-lg border border-garis px-2 py-1.5 text-sm"
                         />
-                        <span className="text-slate-400">–</span>
+                        <span className="text-slate-500">–</span>
                         <input
                           type="time" value={w.tamat}
                           onChange={(e) => ubahSet(s.id, i, "tamat", e.target.value)}

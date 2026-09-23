@@ -107,9 +107,9 @@ export default function PilihCari({
         className={`${sembunyiLabel ? "" : "mt-1 "}flex min-h-10 w-full items-center justify-between gap-2 rounded-lg border border-garis bg-white px-3 py-2 text-left text-sm text-navy-800 hover:border-navy-700 disabled:opacity-60`}
       >
         <span className="min-w-0 truncate">
-          {dipilih?.label ?? <span className="text-slate-400">Pilih…</span>}
+          {dipilih?.label ?? <span className="text-slate-500">Pilih…</span>}
         </span>
-        <span aria-hidden="true" className="shrink-0 text-xs text-slate-400">▾</span>
+        <span aria-hidden="true" className="shrink-0 text-xs text-slate-500">▾</span>
       </button>
 
       {buka && (
@@ -143,12 +143,12 @@ export default function PilihCari({
                   }`}
                 >
                   {p.label}
-                  {p.nota && <span className="mt-0.5 block text-xs text-slate-400">{p.nota}</span>}
+                  {p.nota && <span className="mt-0.5 block text-xs text-slate-500">{p.nota}</span>}
                 </button>
               </li>
             ))}
             {cari && ditapis.length > 0 && (
-              <li className="sticky bottom-0 border-t border-garis bg-white px-3 py-1 text-[11px] text-slate-400">{ditapis.length} padanan · Enter untuk pilih</li>
+              <li className="sticky bottom-0 border-t border-garis bg-white px-3 py-1 text-[11px] text-slate-500">{ditapis.length} padanan · Enter untuk pilih</li>
             )}
             {ditapis.length === 0 && (
               <li className="px-3 py-3 text-sm text-slate-500">Tiada yang sepadan.</li>

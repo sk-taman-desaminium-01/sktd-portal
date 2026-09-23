@@ -22,58 +22,70 @@ export default function PanelMedia({ awal }: { awal: Media[] }) {
   const [nota, setNota] = useState<string | null>(null);
 
   async function naik(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    const borang = e.currentTarget;
-    const fd = new FormData(borang);
+    try {
+      e.preventDefault();
+      const borang = e.currentTarget;
+      const fd = new FormData(borang);
 
-    // GAMBAR DIKECILKAN DALAM PELAYAR DAHULU.
-    //
-    // Had 10 MB dikenakan pada apa yang DIHANTAR, bukan pada apa yang
-    // dipilih. Telefon menghasilkan gambar 8–15 MB dan kamera sekolah lebih
-    // besar lagi; menolaknya bermakna guru perlu mengecilkannya sendiri
-    // dengan alat luar sebelum boleh memuat naik. Sebaliknya pelayar
-    // mengecilkannya di sini, dan yang menyeberang rangkaian ialah
-    // kira-kira 200–400 KB.
-    const fail = fd.get("fail");
-    if (fail instanceof File && fail.size > 0) {
-      if (bolehDikecilkan(fail)) {
-        if (fail.size > HAD_GAMBAR_BAIT) {
-          setHasil({ ok: false, mesej: `Gambar ini ${bait(fail.size)} — had 1 GB.` });
-          return;
-        }
-        setSibuk(true);
-        setHasil({ ok: true, mesej: "Mengecilkan gambar…" });
-        const kecil = await kecilkanGambar(fail);
-        setSibuk(false);
-        if (kecil.kekalAsal) {
-          const ralat = semakSaiz(kecil.fail);
+      // GAMBAR DIKECILKAN DALAM PELAYAR DAHULU.
+      //
+      // Had 10 MB dikenakan pada apa yang DIHANTAR, bukan pada apa yang
+      // dipilih. Telefon menghasilkan gambar 8–15 MB dan kamera sekolah lebih
+      // besar lagi; menolaknya bermakna guru perlu mengecilkannya sendiri
+      // dengan alat luar sebelum boleh memuat naik. Sebaliknya pelayar
+      // mengecilkannya di sini, dan yang menyeberang rangkaian ialah
+      // kira-kira 200–400 KB.
+      const fail = fd.get("fail");
+      if (fail instanceof File && fail.size > 0) {
+        if (bolehDikecilkan(fail)) {
+          if (fail.size > HAD_GAMBAR_BAIT) {
+            setHasil({ ok: false, mesej: `Gambar ini ${bait(fail.size)} — had 1 GB.` });
+            return;
+          }
+          setSibuk(true);
+          setHasil({ ok: true, mesej: "Mengecilkan gambar…" });
+          const kecil = await kecilkanGambar(fail);
+          setSibuk(false);
+          if (kecil.kekalAsal) {
+            const ralat = semakSaiz(kecil.fail);
+            if (ralat) { setHasil({ ok: false, mesej: ralat }); return; }
+          }
+          fd.set("fail", kecil.fail, kecil.fail.name);
+          setNota(ceritaKecil(kecil));
+        } else {
+          const ralat = semakSaiz(fail);
           if (ralat) { setHasil({ ok: false, mesej: ralat }); return; }
         }
-        fd.set("fail", kecil.fail, kecil.fail.name);
-        setNota(ceritaKecil(kecil));
-      } else {
-        const ralat = semakSaiz(fail);
-        if (ralat) { setHasil({ ok: false, mesej: ralat }); return; }
       }
-    }
 
-    setSibuk(true);
-    const r = await naikMedia(fd);
-    setSibuk(false);
-    setHasil(r.ok && nota ? { ok: true, mesej: `${r.mesej} ${nota}` } : r);
-    if (r.ok) {
-      borang.reset();
-      // Muat semula senarai dari pelayan supaya id dan cap masa betul.
-      location.reload();
+      setSibuk(true);
+      const r = await naikMedia(fd);
+      setSibuk(false);
+      setHasil(r.ok && nota ? { ok: true, mesej: `${r.mesej} ${nota}` } : r);
+      if (r.ok) {
+        borang.reset();
+        // Muat semula senarai dari pelayan supaya id dan cap masa betul.
+        location.reload();
+      }
+    } catch {
+      setHasil({ ok: false, mesej: "Sambungan terputus atau pelayan tidak menjawab. Cuba lagi." });
+    } finally {
+      setSibuk(false);
     }
   }
 
   async function buang(m: Media) {
-    setSibuk(true);
-    const r = await buangMedia(m.id, m.url);
-    setSibuk(false);
-    setHasil(r);
-    if (r.ok) setMedia((s) => s.filter((x) => x.id !== m.id));
+    try {
+      setSibuk(true);
+      const r = await buangMedia(m.id, m.url);
+      setSibuk(false);
+      setHasil(r);
+      if (r.ok) setMedia((s) => s.filter((x) => x.id !== m.id));
+    } catch {
+      setHasil({ ok: false, mesej: "Sambungan terputus atau pelayan tidak menjawab. Cuba lagi." });
+    } finally {
+      setSibuk(false);
+    }
   }
 
   async function salin(url: string) {

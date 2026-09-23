@@ -34,13 +34,21 @@ export default function PanelNotifikasi({ hariIni }: { hariIni: string }) {
   async function buka(n: Notifikasi) {
     if (!n.dibaca) {
       setSenarai((l) => (l ?? []).map((x) => (x.id === n.id ? { ...x, dibaca: true } : x)));
-      void tandaDibacaTindakan(n.id);
+      // Kegagalan tidak boleh senyap: tanda dikembalikan supaya kiraan
+      // "belum dibaca" kekal jujur.
+      void tandaDibacaTindakan(n.id).catch(() => {
+        setSenarai((l) => (l ?? []).map((x) => (x.id === n.id ? { ...x, dibaca: false } : x)));
+      });
     }
   }
 
   async function padam(id: string) {
+    const sebelum = senarai;
     setSenarai((l) => (l ?? []).filter((n) => n.id !== id));
-    void padamNotifikasiTindakan(id);
+    void padamNotifikasiTindakan(id).catch(() => {
+      setSenarai(sebelum);
+      setNota({ ok: false, teks: "Sambungan terputus — notifikasi itu tidak dibuang." });
+    });
   }
 
   async function kosong() {
@@ -150,7 +158,7 @@ export default function PanelNotifikasi({ hariIni }: { hariIni: string }) {
 
       {kumpulan.map((k) => (
         <section key={k.label} className="mt-5">
-          <h2 className="text-[11px] font-bold uppercase tracking-widest text-emas">{k.label}</h2>
+          <h2 className="text-[11px] font-bold uppercase tracking-widest text-emas-gelap">{k.label}</h2>
           <ul className="mt-2 space-y-1.5">
             {k.senarai.map((n) => {
               const isi = (
@@ -165,7 +173,7 @@ export default function PanelNotifikasi({ hariIni }: { hariIni: string }) {
                       {n.tajuk}
                     </span>
                     <span className="mt-0.5 block text-xs leading-relaxed text-slate-500">{n.teks}</span>
-                    <span className="mt-1 block text-[11px] text-slate-400">
+                    <span className="mt-1 block text-[11px] text-slate-500">
                       {NAMA_JENIS[n.jenis] ?? "Umum"} · {masaLalu(n.dicipta)}
                     </span>
                   </span>
@@ -195,7 +203,7 @@ export default function PanelNotifikasi({ hariIni }: { hariIni: string }) {
                     onClick={() => void padam(n.id)}
                     aria-label={`Buang notifikasi: ${n.tajuk}`}
                     title="Buang"
-                    className="shrink-0 rounded-full px-2 py-1 text-sm text-slate-300 hover:bg-slate-100 hover:text-[#8f2b2b]"
+                    className="shrink-0 rounded-full px-2 py-1 text-sm text-slate-500 hover:bg-slate-100 hover:text-[#8f2b2b]"
                   >
                     ✕
                   </button>
@@ -404,7 +412,7 @@ function Push() {
         untuk perkara mengikut tugas anda, termasuk kelas, disiplin, RMT,
         tempahan, borang, ICT dan pengumuman sekolah.
       </p>
-      <p className="mt-1 text-xs leading-relaxed text-slate-400">
+      <p className="mt-1 text-xs leading-relaxed text-slate-500">
         Hidupkan pada setiap peranti yang anda guna. Anda boleh mematikannya bila-bila masa.
       </p>
 

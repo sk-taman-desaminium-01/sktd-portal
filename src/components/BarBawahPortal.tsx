@@ -81,7 +81,7 @@ export default function BarBawahPortal({ bolehAdmin }: { bolehAdmin: boolean }) 
           href={t.href}
           aria-current={aktif ? "page" : undefined}
           className={`flex h-[60px] flex-col items-center justify-center gap-1 text-[10px] font-semibold ${
-            aktif ? "text-emas-muda" : "text-white/45"
+            aktif ? "text-emas-muda" : "text-white/70"
           }`}
         >
           <svg

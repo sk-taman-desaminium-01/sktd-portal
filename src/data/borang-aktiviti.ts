@@ -52,13 +52,15 @@ const BULAN_BORANG = ["JANUARI", "FEBRUARI", "MAC", "APRIL", "MEI", "JUN", "JULA
  *   · "30 DISEMBER 2026 HINGGA 2 JANUARI 2027".
  */
 export function julatTarikh(mula: string | null | undefined, tamat?: string | null, besar = true): string {
-  const p = (iso: string | null | undefined) => {
-    const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso ?? "");
+  // Nilai dari pangkalan data/JSON tidak semestinya teks — jangan hempas.
+  const teks = (v: unknown) => (typeof v === "string" ? v : "");
+  const p = (iso: unknown) => {
+    const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(teks(iso));
     return m ? { y: m[1], b: BULAN_BORANG[Number(m[2]) - 1] ?? "", h: String(Number(m[3])) } : null;
   };
   const a = p(mula), z = p(tamat);
   const ke = (t: string) => (besar ? t : t.toLowerCase().replace(/\b\p{L}/gu, (c) => c.toUpperCase()).replace(/Hingga/g, "hingga"));
-  if (!a) return (mula ?? "").toUpperCase();
+  if (!a) return teks(mula).toUpperCase();
   if (!z || tamat === mula) return ke(`${a.h} ${a.b} ${a.y}`);
   if (a.y !== z.y) return ke(`${a.h} ${a.b} ${a.y} HINGGA ${z.h} ${z.b} ${z.y}`);
   if (a.b !== z.b) return ke(`${a.h} ${a.b} HINGGA ${z.h} ${z.b} ${z.y}`);

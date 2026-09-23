@@ -35,24 +35,30 @@ export default function PanelKawalanKelas({
   const carta = useMemo(() => cartaKehadiranHarian(senarai, kelasPilih), [senarai, kelasPilih]);
 
   async function hantar() {
-    setSibuk(true);
-    setNota(null);
-    const input = {
-      tahun_sesi: tahunSesi, tarikh, kelas: kelasPilih, subjek,
-      masa_masuk: masaMasuk, relief, guru_relief_untuk: reliefUntuk,
-      masalah_disiplin: masalah,
-      bil_hadir: bilHadir ? Number(bilHadir) : undefined,
-      bil_murid: bilMurid ? Number(bilMurid) : undefined,
-    };
-    const r = sunting
-      ? await suntingKawalanKelas(sunting, input)
-      : await hantarKawalanKelas(input);
-    setNota({ ok: r.ok, teks: r.mesej });
-    if (r.ok) {
-      setSubjek(""); setMasaMasuk(""); setRelief(false); setReliefUntuk("");
-      setMasalah(""); setBilHadir(""); setBilMurid(""); setSunting(null); router.refresh();
+    try {
+      setSibuk(true);
+      setNota(null);
+      const input = {
+        tahun_sesi: tahunSesi, tarikh, kelas: kelasPilih, subjek,
+        masa_masuk: masaMasuk, relief, guru_relief_untuk: reliefUntuk,
+        masalah_disiplin: masalah,
+        bil_hadir: bilHadir ? Number(bilHadir) : undefined,
+        bil_murid: bilMurid ? Number(bilMurid) : undefined,
+      };
+      const r = sunting
+        ? await suntingKawalanKelas(sunting, input)
+        : await hantarKawalanKelas(input);
+      setNota({ ok: r.ok, teks: r.mesej });
+      if (r.ok) {
+        setSubjek(""); setMasaMasuk(""); setRelief(false); setReliefUntuk("");
+        setMasalah(""); setBilHadir(""); setBilMurid(""); setSunting(null); router.refresh();
+      }
+      setSibuk(false);
+    } catch {
+      setNota({ ok: false, teks: "Sambungan terputus atau pelayan tidak menjawab. Cuba lagi." });
+    } finally {
+      setSibuk(false);
     }
-    setSibuk(false);
   }
 
   function mulaSunting(b: BarisKawalanKelas) {
@@ -70,11 +76,17 @@ export default function PanelKawalanKelas({
 
   async function padam(b: BarisKawalanKelas) {
     if (!window.confirm(`Padam rekod ${b.subjek} untuk ${b.kelas}?`)) return;
-    setSibuk(true); setNota(null);
-    const r = await padamKawalanKelas(b.id);
-    setNota({ ok: r.ok, teks: r.mesej });
-    if (r.ok) { if (sunting === b.id) batalSunting(); router.refresh(); }
-    setSibuk(false);
+    try {
+      setSibuk(true); setNota(null);
+      const r = await padamKawalanKelas(b.id);
+      setNota({ ok: r.ok, teks: r.mesej });
+      if (r.ok) { if (sunting === b.id) batalSunting(); router.refresh(); }
+      setSibuk(false);
+    } catch {
+      setNota({ ok: false, teks: "Sambungan terputus atau pelayan tidak menjawab. Cuba lagi." });
+    } finally {
+      setSibuk(false);
+    }
   }
 
   return (
@@ -92,7 +104,7 @@ export default function PanelKawalanKelas({
           <Medan label="Kelas">
             <PilihCari id="kawalan-kelas" label="Kelas" sembunyiLabel nilai={kelasPilih} tukar={setKelasPilih} placeholder="Taip kelas, cth: 4 bes" pilihan={kelas.map((k) => ({ nilai: k, label: k }))} />
             {namaGuruKelas[kelasPilih] && (
-              <p className="mt-1 text-xs text-slate-400">Guru kelas semasa: {namaGuruKelas[kelasPilih]}</p>
+              <p className="mt-1 text-xs text-slate-500">Guru kelas semasa: {namaGuruKelas[kelasPilih]}</p>
             )}
           </Medan>
           <Medan label="Subjek">
@@ -155,6 +167,11 @@ export default function PanelKawalanKelas({
 
       <section className="border-t border-garis pt-8">
         <h2 className="text-lg font-bold text-navy-800">Log Terkini ({senarai.length})</h2>
+        {senarai.length === 0 && (
+          <p className="mt-4 rounded-xl border border-dashed border-slate-300 bg-white p-5 text-center text-sm text-slate-500">
+            Belum ada rekod kawalan kelas. Rekod pertama anda akan muncul di sini sebaik dihantar.
+          </p>
+        )}
         <ul className="mt-4 space-y-2">
           {senarai.slice(0, 40).map((b) => (
             <li key={b.id} className="rounded-lg border border-garis bg-white p-3 text-xs">

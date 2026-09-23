@@ -82,7 +82,7 @@ export default function PanelTakwim({
 
       {bulan.map((b) => (
         <section key={b.bulan} className="mt-7">
-          <h2 className="text-[11px] font-bold uppercase tracking-widest text-emas">
+          <h2 className="text-[11px] font-bold uppercase tracking-widest text-emas-gelap">
             {b.bulan}
           </h2>
 
@@ -118,7 +118,7 @@ export default function PanelTakwim({
                         {a.program}
                       </span>
                       {a.unit && (
-                        <span className="mt-0.5 block text-[11px] text-slate-400">{a.unit}</span>
+                        <span className="mt-0.5 block text-[11px] text-slate-500">{a.unit}</span>
                       )}
                       {kini && (
                         <span className="mt-0.5 block text-[11px] font-semibold text-[#7a5a12]">

@@ -61,7 +61,7 @@ export default function EditorIsiSurat({
       </p>
       {pratonton.length > 0 && (
         <div className="mt-2 rounded-lg border border-dashed border-slate-300 bg-slate-50 p-3 font-serif text-[13px] leading-relaxed text-black">
-          <p className="mb-1 font-sans text-[10px] font-bold uppercase tracking-wider text-slate-400">Pratonton susunan</p>
+          <p className="mb-1 font-sans text-[10px] font-bold uppercase tracking-wider text-slate-500">Pratonton susunan</p>
           <p>Dengan hormatnya perkara di atas adalah dirujuk.</p>
           <div className="mt-2"><IsiSurat perenggan={pratonton} jarak="0.5rem" inden="1.6rem" /></div>
         </div>

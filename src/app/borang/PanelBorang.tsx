@@ -119,20 +119,26 @@ function FormRasmi({
   const [mesej, setMesej] = useState<{ ok: boolean; teks: string } | null>(null);
 
   async function hantar() {
-    setSibuk(true);
-    setMesej(null);
-    const [wakilGbNama, wakilGbJawatan] = wakil.split("|");
-    const r = await hantarSuratRasmi({ tajuk, alamat, tarikh, isi, wakilGbNama, wakilGbJawatan });
-    setMesej({ ok: r.ok, teks: r.mesej });
-    if (r.ok && r.id) {
-      selesai({
-        id: r.id, jenis: "rasmi", status: "baharu", tajuk, rujukan_kami: null,
-        pemohon_nama: "", pemohon_emel: "", tandatangan_url: null,
-        data: { alamat, tarikh, isi, wakilGbNama, wakilGbJawatan }, dicipta: new Date().toISOString(),
-      });
-      setTajuk(""); setAlamat(""); setIsi("");
+    try {
+      setSibuk(true);
+      setMesej(null);
+      const [wakilGbNama, wakilGbJawatan] = wakil.split("|");
+      const r = await hantarSuratRasmi({ tajuk, alamat, tarikh, isi, wakilGbNama, wakilGbJawatan });
+      setMesej({ ok: r.ok, teks: r.mesej });
+      if (r.ok && r.id) {
+        selesai({
+          id: r.id, jenis: "rasmi", status: "baharu", tajuk, rujukan_kami: null,
+          pemohon_nama: "", pemohon_emel: "", tandatangan_url: null,
+          data: { alamat, tarikh, isi, wakilGbNama, wakilGbJawatan }, dicipta: new Date().toISOString(),
+        });
+        setTajuk(""); setAlamat(""); setIsi("");
+      }
+      setSibuk(false);
+    } catch {
+      setMesej({ ok: false, teks: "Sambungan terputus atau pelayan tidak menjawab. Cuba lagi." });
+    } finally {
+      setSibuk(false);
     }
-    setSibuk(false);
   }
 
   return (
@@ -188,23 +194,29 @@ function FormGambar({ kelas, selesai }: { kelas: string[]; selesai: (b: BarisSur
   const [mesej, setMesej] = useState<{ ok: boolean; teks: string } | null>(null);
 
   async function hantar() {
-    if (bersetuju === null) {
-      setMesej({ ok: false, teks: "Pilih Bersetuju atau Tidak bersetuju." });
-      return;
+    try {
+      if (bersetuju === null) {
+        setMesej({ ok: false, teks: "Pilih Bersetuju atau Tidak bersetuju." });
+        return;
+      }
+      setSibuk(true);
+      setMesej(null);
+      const r = await hantarSuratGambar({ ...penjaga, muridNama, muridKelas, bersetuju, catatan, tandatangan_url: tandatangan });
+      setMesej({ ok: r.ok, teks: r.mesej });
+      if (r.ok && r.id) {
+        selesai({
+          id: r.id, jenis: "gambar", status: "selesai", tajuk: `Kebenaran Gambar — ${muridNama}`,
+          rujukan_kami: null, pemohon_nama: "", pemohon_emel: "", tandatangan_url: tandatangan,
+          data: { ...penjaga, muridNama, muridKelas, bersetuju, catatan }, dicipta: new Date().toISOString(),
+        });
+        setMuridNama(""); setBersetuju(null); setCatatan(""); setTandatangan(null);
+      }
+      setSibuk(false);
+    } catch {
+      setMesej({ ok: false, teks: "Sambungan terputus atau pelayan tidak menjawab. Cuba lagi." });
+    } finally {
+      setSibuk(false);
     }
-    setSibuk(true);
-    setMesej(null);
-    const r = await hantarSuratGambar({ ...penjaga, muridNama, muridKelas, bersetuju, catatan, tandatangan_url: tandatangan });
-    setMesej({ ok: r.ok, teks: r.mesej });
-    if (r.ok && r.id) {
-      selesai({
-        id: r.id, jenis: "gambar", status: "selesai", tajuk: `Kebenaran Gambar — ${muridNama}`,
-        rujukan_kami: null, pemohon_nama: "", pemohon_emel: "", tandatangan_url: tandatangan,
-        data: { ...penjaga, muridNama, muridKelas, bersetuju, catatan }, dicipta: new Date().toISOString(),
-      });
-      setMuridNama(""); setBersetuju(null); setCatatan(""); setTandatangan(null);
-    }
-    setSibuk(false);
   }
 
   return (
@@ -276,13 +288,19 @@ function SenaraiSaya({
   const [maklum, setMaklum] = useState<{ ok: boolean; teks: string } | null>(null);
 
   async function simpanRujukan(id: string) {
-    const nilai = rujukan[id]?.trim();
-    if (!nilai) return;
-    setSibuk(id);
-    const r = await tetapkanRujukan(id, nilai);
-    setMaklum({ ok: r.ok, teks: r.mesej });
-    if (r.ok) kemaskini(id, { rujukan_kami: nilai, status: "selesai" });
-    setSibuk(null);
+    try {
+      const nilai = rujukan[id]?.trim();
+      if (!nilai) return;
+      setSibuk(id);
+      const r = await tetapkanRujukan(id, nilai);
+      setMaklum({ ok: r.ok, teks: r.mesej });
+      if (r.ok) kemaskini(id, { rujukan_kami: nilai, status: "selesai" });
+      setSibuk(null);
+    } catch {
+      setMaklum({ ok: false, teks: "Sambungan terputus atau pelayan tidak menjawab. Cuba lagi." });
+    } finally {
+      setSibuk(null);
+    }
   }
 
   async function padam(id: string, tajuk: string) {
@@ -306,21 +324,27 @@ function SenaraiSaya({
 
   async function simpanSunting() {
     if (!sunting) return;
-    const [wakilGbNama, wakilGbJawatan] = sunting.wakil.split("|");
-    setSibuk(sunting.id);
-    const r = await suntingSuratRasmi(sunting.id, {
-      tajuk: sunting.tajuk, alamat: sunting.alamat, tarikh: sunting.tarikh,
-      isi: sunting.isi, wakilGbNama, wakilGbJawatan,
-    });
-    setMaklum({ ok: r.ok, teks: r.mesej });
-    if (r.ok) {
-      kemaskini(sunting.id, {
-        tajuk: sunting.tajuk, status: "baharu", rujukan_kami: null, tandatangan_url: null,
-        data: { alamat: sunting.alamat, tarikh: sunting.tarikh, isi: sunting.isi, wakilGbNama, wakilGbJawatan },
+    try {
+      const [wakilGbNama, wakilGbJawatan] = sunting.wakil.split("|");
+      setSibuk(sunting.id);
+      const r = await suntingSuratRasmi(sunting.id, {
+        tajuk: sunting.tajuk, alamat: sunting.alamat, tarikh: sunting.tarikh,
+        isi: sunting.isi, wakilGbNama, wakilGbJawatan,
       });
-      setSunting(null);
+      setMaklum({ ok: r.ok, teks: r.mesej });
+      if (r.ok) {
+        kemaskini(sunting.id, {
+          tajuk: sunting.tajuk, status: "baharu", rujukan_kami: null, tandatangan_url: null,
+          data: { alamat: sunting.alamat, tarikh: sunting.tarikh, isi: sunting.isi, wakilGbNama, wakilGbJawatan },
+        });
+        setSunting(null);
+      }
+      setSibuk(null);
+    } catch {
+      setMaklum({ ok: false, teks: "Sambungan terputus atau pelayan tidak menjawab. Cuba lagi." });
+    } finally {
+      setSibuk(null);
     }
-    setSibuk(null);
   }
 
   if (senarai.length === 0) {

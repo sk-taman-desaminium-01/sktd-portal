@@ -111,13 +111,13 @@ export default function PanelGuruKelas({
 
               <span className="w-24 shrink-0 text-right text-xs">
                 {sibukKelas === k ? (
-                  <span className="text-slate-400">Menyimpan…</span>
+                  <span className="text-slate-500">Menyimpan…</span>
                 ) : ada ? (
                   <span className="rounded bg-[#e5f4ec] px-2 py-1 font-bold uppercase tracking-wide text-[#167a4b]">
                     Ditetapkan
                   </span>
                 ) : (
-                  <span className="text-slate-400">Kosong</span>
+                  <span className="text-slate-500">Kosong</span>
                 )}
               </span>
             </li>

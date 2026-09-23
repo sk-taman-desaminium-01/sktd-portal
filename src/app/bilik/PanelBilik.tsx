@@ -250,7 +250,7 @@ function UrusBilik({ bilik }: { bilik: PapanBilik["bilik"] }) {
         <span className="text-sm font-bold text-navy-800">
           Senarai bilik ({senarai.length})
         </span>
-        <span className="text-xs text-slate-400">{buka ? "▴" : "▾"}</span>
+        <span className="text-xs text-slate-500">{buka ? "▴" : "▾"}</span>
       </button>
 
       {buka && (
@@ -282,10 +282,10 @@ function UrusBilik({ bilik }: { bilik: PapanBilik["bilik"] }) {
                 <li key={b.id} className="py-2">
                   <div className="flex items-start gap-2">
                     <span className="min-w-0 flex-1">
-                      <span className={`block text-sm ${b.aktif ? "text-navy-800" : "text-slate-400 line-through"}`}>
+                      <span className={`block text-sm ${b.aktif ? "text-navy-800" : "text-slate-500 line-through"}`}>
                         {b.nama}
                       </span>
-                      <span className="mt-0.5 block text-xs text-slate-400">
+                      <span className="mt-0.5 block text-xs text-slate-500">
                         {[
                           b.muatan ? `${b.muatan} orang` : "",
                           b.nota ?? "",
@@ -459,14 +459,14 @@ function WaktuTetap({ papan, setNota }: {
             jadual waktu, dan waktu yang anda tutup sendiri.
           </span>
         </span>
-        <span className="shrink-0 text-xs text-slate-400">{buka ? "▴" : "▾"}</span>
+        <span className="shrink-0 text-xs text-slate-500">{buka ? "▴" : "▾"}</span>
       </button>
 
       {buka && (
         <div className="mt-3 space-y-6 border-t border-garis pt-4">
           {/* ---- Pemetaan subjek ---- */}
           <div>
-            <h3 className="text-[11px] font-bold uppercase tracking-widest text-emas">
+            <h3 className="text-[11px] font-bold uppercase tracking-widest text-emas-gelap">
               Subjek yang menggunakan bilik tetap
             </h3>
             <p className="mt-1 text-xs leading-relaxed text-slate-500">
@@ -494,7 +494,7 @@ function WaktuTetap({ papan, setNota }: {
                 className="rounded-lg border border-garis px-3 py-1.5 text-xs font-semibold text-navy-700 hover:border-navy-700 disabled:opacity-50">
                 Segarkan dari jadual waktu
               </button>
-              <span className="text-[11px] text-slate-400">
+              <span className="text-[11px] text-slate-500">
                 {dariJadual.length} waktu ditutup mengikut jadual.
               </span>
             </div>
@@ -502,7 +502,7 @@ function WaktuTetap({ papan, setNota }: {
 
           {/* ---- Tutup waktu secara pukal ---- */}
           <div className="border-t border-garis pt-4">
-            <h3 className="text-[11px] font-bold uppercase tracking-widest text-emas">
+            <h3 className="text-[11px] font-bold uppercase tracking-widest text-emas-gelap">
               Tutup waktu secara pukal
             </h3>
             <div className="mt-2 grid gap-2 sm:grid-cols-2">
@@ -529,14 +529,14 @@ function WaktuTetap({ papan, setNota }: {
               </label>
               <label>
                 <span className="block text-xs font-semibold text-slate-500">
-                  Dari tarikh <span className="font-normal text-slate-400">(pilihan)</span>
+                  Dari tarikh <span className="font-normal text-slate-500">(pilihan)</span>
                 </span>
                 <input type="date" value={dari} onChange={(e) => setDari(e.target.value)}
                   className="mt-1 w-full rounded-lg border border-garis bg-white px-3 py-2 text-sm text-navy-800" />
               </label>
               <label>
                 <span className="block text-xs font-semibold text-slate-500">
-                  Hingga tarikh <span className="font-normal text-slate-400">(pilihan)</span>
+                  Hingga tarikh <span className="font-normal text-slate-500">(pilihan)</span>
                 </span>
                 <input type="date" value={hingga} onChange={(e) => setHingga(e.target.value)}
                   className="mt-1 w-full rounded-lg border border-garis bg-white px-3 py-2 text-sm text-navy-800" />
@@ -565,7 +565,7 @@ function WaktuTetap({ papan, setNota }: {
                   </li>
                 ))}
               </ul>
-              <p className="mt-1.5 text-[11px] text-slate-400">
+              <p className="mt-1.5 text-[11px] text-slate-500">
                 Tarikh kosong bermakna sepanjang tahun.
               </p>
             </div>
@@ -584,7 +584,7 @@ function WaktuTetap({ papan, setNota }: {
                       <span className="block text-navy-800">
                         {nama.get(t.bilik_id) ?? "Bilik"} · {NAMA_HARI[t.hari]} {t.mula}–{t.tamat}
                       </span>
-                      <span className="mt-0.5 block text-xs text-slate-400">
+                      <span className="mt-0.5 block text-xs text-slate-500">
                         {t.sebab}
                         {(t.dari_tarikh || t.hingga_tarikh) &&
                           ` · ${t.dari_tarikh ?? "mula"} → ${t.hingga_tarikh ?? "akhir"}`}
@@ -602,10 +602,10 @@ function WaktuTetap({ papan, setNota }: {
 
           {dariJadual.length > 0 && (
             <div className="border-t border-garis pt-4">
-              <h3 className="text-[11px] font-bold uppercase tracking-widest text-emas">
+              <h3 className="text-[11px] font-bold uppercase tracking-widest text-emas-gelap">
                 Dari jadual waktu ({dariJadual.length})
               </h3>
-              <p className="mt-1 text-[11px] text-slate-400">
+              <p className="mt-1 text-[11px] text-slate-500">
                 Dijana semula setiap kali jadual waktu dimuat naik. Untuk
                 mengubahnya, tukar pemetaan subjek di atas.
               </p>
@@ -613,7 +613,7 @@ function WaktuTetap({ papan, setNota }: {
                 {dariJadual.map((t) => (
                   <li key={t.id}>
                     {nama.get(t.bilik_id) ?? "Bilik"} · {NAMA_HARI[t.hari]} {t.mula}–{t.tamat}
-                    <span className="text-slate-400"> · {t.sebab}</span>
+                    <span className="text-slate-500"> · {t.sebab}</span>
                   </li>
                 ))}
               </ul>
