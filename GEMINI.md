@@ -41,3 +41,14 @@ Repo `gpi`/`erpm` (eGPI) TIDAK BOLEH disentuh. `sktd-mockup` dibekukan.
 - Ujian: `npx tsc --noEmit && npx eslint src --quiet` dan semua `npm run uji:*` (16 suite) — kesemuanya mesti lulus.
 - Build: `npm run build`. Push ke `main` = deploy Vercel.
 - Lalai TERTUTUP: laluan baharu dilindungi `src/proxy.ts` kecuali disenaraikan awam.
+
+### Geran Data API (Supabase, berkuat kuasa 30 Okt 2026)
+Setiap migrasi yang MENCIPTA jadual dalam `public` MESTI menyertakan geran
+dalam migrasi yang sama, jika tidak jadual itu tidak dapat dibaca melalui
+Data API (termasuk oleh kunci rahsia portal):
+
+    grant select, insert, update, delete on public.nama_jadual to service_role;
+    -- anon hanya untuk kandungan awam (web_*), dan RLS tetap menapis baris:
+    -- grant select on public.web_sesuatu to anon;
+
+Jaring keselamatan sedia ada: `supabase/geran-data-api.sql` (repo `sktd`).
