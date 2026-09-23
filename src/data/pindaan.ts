@@ -95,6 +95,60 @@ export interface KesanPindaan {
  * digantikan bukan seseorang yang dibuang, dan memeriksa buangan dahulu
  * akan menggugurkan baris yang sepatutnya hanya bertukar nama.
  */
+/**
+ * Pemisah BAHAGIAN dalam satu sel.
+ *
+ * Nama ditukar hanya bila ia MENGISI satu bahagian penuh — bukan sebagai
+ * subrentetan. Itu yang mengekalkan peraturan keras #22: "BILIK i-SHABARIAH"
+ * ialah satu bahagian dan bukan nama "SHABARIAH", jadi ia tidak disentuh,
+ * sementara "PKP : EN. SHABARIAH BINTI X" mempunyai bahagian kedua yang
+ * memang nama itu. `/` TIDAK dipisahkan kerana ia sebahagian nama (A/L, A/P).
+ */
+const PEMISAH_SEL = /([:;,|•\n\r]|\s+[-–—]\s+|\s+&\s+)/;
+
+/**
+ * Perkataan yang menandakan sel itu bercakap tentang PERISTIWA atau TEMPAT,
+ * bukan memberi jawatan kepada seseorang. "MAJLIS PERSARAAN (PN SHABARIAH)"
+ * ialah rekod sejarah — menukar namanya menulis semula sejarah itu.
+ */
+const KATA_PERISTIWA = /\b(MAJLIS|PROGRAM|SAMBUTAN|HARI|KURSUS|BENGKEL|MESYUARAT|ANUGERAH|BILIK|DEWAN|MAKMAL|PADANG|SURAU|PERPUSTAKAAN|PERSARAAN|JAMUAN|LAWATAN)\b/i;
+
+/** "PK2", "PKP", "GPK 1", "SU" — label jawatan pendek sebelum kurungan. */
+function labelJawatanPendek(t: string): boolean {
+  const b = t.trim();
+  return b.length > 0 && b.length <= 12 && b.split(/\s+/).length <= 2 && !KATA_PERISTIWA.test(b);
+}
+
+/**
+ * Pecahkan sel kepada bahagian yang boleh MENGISI nama seorang.
+ *
+ * Kurungan hanya dikira pemisah bila teks sebelumnya ialah label jawatan
+ * pendek ("PK2 (RAFLI BIN SALLEH)"). Kalau tidak, kurungan dibiarkan utuh
+ * supaya "MAJLIS PERSARAAN (PN SHABARIAH BINTI ISMAIL)" tidak tersentuh.
+ */
+function bahagianSel(sel: string): string[] {
+  const kurungan = /^([^()]*)\(([^()]+)\)\s*$/.exec(sel);
+  const asas = kurungan && labelJawatanPendek(kurungan[1])
+    ? [kurungan[1], "(", kurungan[2], ")"]
+    : [sel];
+  return asas.flatMap((b, i) => (i % 2 === 1 ? [b] : b.split(PEMISAH_SEL)));
+}
+
+function gantiNamaDalamSel(sel: string, kunciDari: string, kepada: string): { teks: string; ubah: boolean } {
+  if (kunciNama(sel) === kunciDari) return { teks: kepada, ubah: true };
+  const bahagian = bahagianSel(sel);
+  let ubah = false;
+  const keluar = bahagian.map((b) => {
+    if (!b.trim() || PEMISAH_SEL.test(b) && b.trim().length <= 1) return b;
+    if (kunciNama(b) !== kunciDari) return b;
+    ubah = true;
+    const kiri = b.match(/^\s*/)?.[0] ?? "";
+    const kanan = b.match(/\s*$/)?.[0] ?? "";
+    return `${kiri}${kepada}${kanan}`;
+  });
+  return { teks: keluar.join(""), ubah };
+}
+
 export function kenakanPindaan(sel: string[], pindaan: Pindaan[]): KesanPindaan {
   const aktif = pindaan.filter((p) => p.aktif);
   if (aktif.length === 0) return { sel, gugur: false, kena: [] };
@@ -121,10 +175,19 @@ export function kenakanPindaan(sel: string[], pindaan: Pindaan[]): KesanPindaan 
 
     let sentuh = false;
     const baharu = keluar.map((c) => {
-      const k = p.jenis === "ganti_nama" ? kunciNama(c ?? "") : kunciTeks(c ?? "");
-      if (k !== kunciDari) return c;
+      if (p.jenis !== "ganti_nama") {
+        if (kunciTeks(c ?? "") !== kunciDari) return c;
+        sentuh = true;
+        return p.kepada ?? "";
+      }
+      // Nama dalam SEL BERCAMPUR juga ditukar — "PKP : EN. YUSRI BIN OMAR",
+      // "AHMAD, SITI, YUSRI", "YUSRI (Ketua)". Sebelum ini hanya sel yang
+      // SELURUHNYA nama itu bertukar, jadi kad atas carta dikemas kini
+      // sementara baris unit di bawah kekal memaparkan nama lama.
+      const { teks, ubah } = gantiNamaDalamSel(c ?? "", kunciDari, p.kepada ?? "");
+      if (!ubah) return c;
       sentuh = true;
-      return p.kepada ?? "";
+      return teks;
     });
     if (sentuh) {
       keluar = baharu;
@@ -148,7 +211,8 @@ export function kenakanPindaan(sel: string[], pindaan: Pindaan[]): KesanPindaan 
     if (p.jenis !== "buang_nama") continue;
     const kunciDari = kunciNama(p.dari);
     if (kunciDari === "") continue;
-    if (keluar.some((c) => kunciNama(c ?? "") === kunciDari)) {
+    if (keluar.some((c) => kunciNama(c ?? "") === kunciDari ||
+        bahagianSel(c ?? "").some((b) => b.trim().length > 1 && kunciNama(b) === kunciDari))) {
       if (!kena.includes(p.id)) kena.push(p.id);
       return { sel: keluar, gugur: true, kena };
     }
