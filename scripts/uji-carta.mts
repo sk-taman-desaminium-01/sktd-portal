@@ -14,6 +14,7 @@
  */
 import { bacaWarga, binaCarta, padanWarga, type SeksyenCarta } from "../src/lib/carta.ts";
 import { arasKod, ara, kelihatanNama, bacaPenunjukKod, type NodCarta } from "../src/data/carta.ts";
+import { kenakanPindaan } from "../src/data/pindaan.ts";
 
 let lulus = 0;
 const gagal: string[] = [];
@@ -194,6 +195,27 @@ uji("tajuk ditolak", !kelihatanNama("MATLAMAT STRATEGIK"));
 uji("opsyen ditolak", !kelihatanNama("PENDIDIKAN AWAL KANAK-KANAK"));
 uji("nama dengan perkataan tersenarai tetap diterima kerana nasab",
   kelihatanNama("NUR SAINS BINTI ALI"));
+
+/* ---- Pindaan nama dalam SEL BERCAMPUR (pepijat 24 Sep: PKP/PK2 tidak sync) ---- */
+const pin = (dari: string, kepada: string) => [{
+  id: "p1", jenis: "ganti_nama" as const, dari, kepada,
+  sebab: "", oleh: null, aktif: true, dicipta: "2026-09-24",
+}];
+const kena = (sel: string[], dari: string, kepada: string) =>
+  JSON.stringify(kenakanPindaan(sel, pin(dari, kepada)).sel);
+
+uji("nama penuh sel bertukar",
+  kena(["YUSRI BIN OMAR"], "YUSRI BIN OMAR", "NAZRULLAH BIN HASHIM") === JSON.stringify(["NAZRULLAH BIN HASHIM"]));
+uji("nama selepas titik bertindih bertukar",
+  kena(["PKP : EN. YUSRI BIN OMAR"], "YUSRI BIN OMAR", "NAZRULLAH BIN HASHIM") === JSON.stringify(["PKP : NAZRULLAH BIN HASHIM"]));
+uji("nama dalam kurungan bertukar",
+  kena(["PK2 (RAFLI BIN SALLEH)"], "RAFLI BIN SALLEH", "LOKMAN BIN HAKIM") === JSON.stringify(["PK2 (LOKMAN BIN HAKIM)"]));
+uji("nama dalam senarai berkoma bertukar",
+  kena(["AHMAD, SITI, RAFLI BIN SALLEH"], "RAFLI BIN SALLEH", "LOKMAN BIN HAKIM") === JSON.stringify(["AHMAD, SITI, LOKMAN BIN HAKIM"]));
+uji("bilik bernama orang kekal (peraturan #22)",
+  kena(["BILIK i-SHABARIAH"], "SHABARIAH", "SITI BINTI ALI") === JSON.stringify(["BILIK i-SHABARIAH"]));
+uji("nama serupa separa tidak disentuh",
+  kena(["YUSRI BIN OMAR ALI"], "YUSRI BIN OMAR", "NAZRULLAH") === JSON.stringify(["YUSRI BIN OMAR ALI"]));
 
 console.log(`\n${lulus} lulus, ${gagal.length} gagal`);
 for (const g of gagal) console.log(`  ✗ ${g}`);

@@ -7,12 +7,15 @@ import {
   dokumenTerkini, seksyenDokumen, barisSeksyen,
   tambahBaris, padamBaris,
 } from "./pengurusan";
-import { pindaBarisKekal } from "./pindaan";
+import { pindaBarisKekal, tambahPindaan, senaraiPindaan } from "./pindaan";
+import { kenakanPindaan } from "@/data/pindaan";
 import {
   binaCarta, kiraOrang, kiraPenempatan, type SeksyenCarta,
 } from "./carta";
 import { senaraiPentadbir } from "./pentadbir";
 import type { NodCarta } from "@/data/carta";
+import { kunciNama } from "./nama";
+import { kenakanPindaanEdisi } from "./tindakan-pengurusan";
 
 /**
  * Carta organisasi — dibina dari Buku Pengurusan yang tersimpan.
@@ -56,8 +59,28 @@ export async function ambilCarta(): Promise<HasilCarta> {
     const untuk: SeksyenCarta[] = [];
     const penunjuk: Record<string, string> = {};
 
+    // PINDAAN AKTIF DIKENAKAN SEMASA BACA.
+    //
+    // Baris dalam pangkalan data ialah apa yang TERCETAK dalam buku. Pindaan
+    // (pertukaran PKP, PK, guru) hanya ditulis ke dalam baris semasa muat
+    // naik edisi baharu atau bila admin menekan "Kenakan pindaan". Tanpa
+    // langkah ini, kad atas carta memaparkan nama terkini sementara setiap
+    // jawatankuasa di bawah kekal memaparkan nama lama — tepat seperti yang
+    // dilaporkan (Yusri/Nazrullah, Rafli/Lokman). Ini bacaan sahaja: tiada
+    // tulisan, jadi rekod asal buku kekal utuh.
+    let pindaanAktif: Awaited<ReturnType<typeof senaraiPindaan>> = [];
+    try {
+      pindaanAktif = (await senaraiPindaan()).filter((p) => p.aktif);
+    } catch {
+      // Modul pindaan belum dipasang — carta tetap dibina dari buku.
+    }
+
     for (const s of seksyen) {
-      const baris = await barisSeksyen(s.id);
+      const asalBaris = await barisSeksyen(s.id);
+      const baris = pindaanAktif.length === 0 ? asalBaris : asalBaris.flatMap((b) => {
+        const kesan = kenakanPindaan(b.sel, pindaanAktif);
+        return kesan.gugur ? [] : [{ ...b, sel: kesan.sel }];
+      });
       if (s.tajuk.toUpperCase().includes("PENUNJUK KOD")) {
         for (const b of baris) {
           const [kod, nama] = b.sel;
@@ -107,7 +130,7 @@ export async function ambilCarta(): Promise<HasilCarta> {
 /* -------------------------------------------------------------- suntingan */
 
 export async function suntingNod(
-  barisId: string, sel: string[],
+  barisId: string, sel: string[], namaLama?: string,
 ): Promise<{ ok: boolean; mesej: string }> {
   try {
     await pastikanBoleh("urus_pengurusan");
@@ -121,11 +144,53 @@ export async function suntingNod(
     }
     const saya = await pastikanBoleh("urus_pengurusan");
     await pindaBarisKekal(barisId, bersih, saya.emel ?? null);
+
+    // NAMA DITUKAR = TUKAR DI SETIAP TEMPAT, bukan pada baris ini sahaja.
+    //
+    // Seorang PKP muncul dalam belasan jawatankuasa. Menyunting kad carta
+    // hanya menulis semula SATU baris, jadi kad atas memaparkan nama baharu
+    // sementara unit di bawah kekal memaparkan nama buku — persis yang
+    // dilaporkan pengguna (Yusri/Nazrullah, Rafli/Lokman). Maka: satu
+    // pindaan `ganti_nama` dicipta DAN dikenakan pada edisi semasa serta-merta.
+    const namaBaharu = namaSelDalamBaris(bersih, namaLama);
+    let merebak = "";
+    if (namaLama && namaBaharu && kunciNama(namaLama) !== kunciNama(namaBaharu)) {
+      await tambahPindaan({
+        jenis: "ganti_nama", dari: namaLama, kepada: namaBaharu,
+        sebab: "Kemas kini nama dari Carta Organisasi", oleh: saya.emel ?? null,
+      });
+      const dok = await dokumenTerkini();
+      if (dok) {
+        const hasil = await kenakanPindaanEdisi(dok.id);
+        merebak = hasil.ok ? ` ${hasil.mesej}` : " Pindaan disimpan, tetapi edisi semasa belum dikemas kini — jalankan 'Kenakan pindaan' dalam Buku Pengurusan.";
+      }
+    }
     revalidatePath("/admin/carta");
-    return { ok: true, mesej: "Disimpan bersama pindaan untuk muat naik akan datang." };
+    revalidatePath("/admin/pengurusan");
+    return { ok: true, mesej: `Disimpan.${merebak || " Pindaan disimpan untuk muat naik akan datang."}` };
   } catch (e) {
     return { ok: false, mesej: ralat(e) };
   }
+}
+
+/**
+ * Sel mana dalam baris yang membawa NAMA orang itu?
+ *
+ * Baris jawatankuasa ialah [unit, jawatan, nama]; senarai guru pula
+ * [bil, nama, kod, opsyen]. Daripada meneka kedudukan, sel dipilih
+ * mengikut sel yang PALING hampir dengan nama lama — dan bila nama lama
+ * tiada, sel terpanjang yang berupa nama digunakan.
+ */
+function namaSelDalamBaris(sel: string[], namaLama?: string): string {
+  const calon = sel.filter((c) => c.trim().length > 3 && kunciNama(c).split(" ").length >= 2);
+  if (calon.length === 0) return "";
+  if (!namaLama) return calon[0];
+  const kunciL = kunciNama(namaLama);
+  const sama = calon.find((c) => kunciNama(c) === kunciL);
+  if (sama) return sama;
+  // Nama bertukar: ambil calon yang BUKAN sel jawatan/unit — iaitu sel pada
+  // kedudukan yang sama seperti nama lama dalam baris asal, jika ada.
+  return calon[calon.length - 1];
 }
 
 /** Pemadaman dan pindaan kekal mesti berjaya serentak. */

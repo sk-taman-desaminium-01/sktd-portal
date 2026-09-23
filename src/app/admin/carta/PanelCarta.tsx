@@ -60,7 +60,9 @@ export default function PanelCarta({ punca, tahun, namaSekolah, semuaDisahkan }:
   async function simpan(nod: NodCarta, sel: string[]) {
     if (!nod.barisId) return;
     try {
-      const hasil = await suntingNod(nod.barisId, sel);
+      // `nod.label` = nama lama; pelayan menggunakannya untuk menukar nama
+      // itu di SETIAP jawatankuasa, bukan pada baris ini sahaja.
+      const hasil = await suntingNod(nod.barisId, sel, nod.jenis === "orang" ? nod.label : undefined);
       setMesej({ ok: hasil.ok, teks: hasil.mesej });
       if (hasil.ok) {
         const carta = await ambilCarta();
