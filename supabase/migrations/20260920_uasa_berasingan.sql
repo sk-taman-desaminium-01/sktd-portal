@@ -18,3 +18,7 @@ create table if not exists public.pbd_uasa_tetapan (
 );
 
 alter table public.pbd_uasa_tetapan enable row level security;
+
+-- GERAN WAJIB (Supabase, 30 Okt 2026): jadual baharu tidak lagi
+-- mendapat akses Data API secara automatik.
+grant select, insert, update, delete on public.pbd_uasa_tetapan to service_role;

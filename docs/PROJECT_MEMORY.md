@@ -224,3 +224,13 @@ peraturan keras.
 - `pecahFormat` kini BERULANG, bukan rekursif (tindanan pelayar telefon).
 - `julatTarikh` tidak lagi menghempas bila nilai bukan teks.
 - Keadaan KOSONG ditambah: Disiplin, Kawalan Kelas, Pindaan Buku Pengurusan.
+
+## Supabase: geran Data API (30 Okt 2026)
+
+Supabase berhenti memberi akses Data API secara automatik kepada jadual
+BAHARU dalam `public`. Jadual sedia ada tidak terjejas — tiada apa yang
+rosak pada 30 Okt. Tetapi setiap migrasi baharu MESTI menyertakan
+`grant ... to service_role` (dan `grant select ... to anon` hanya untuk
+jadual `web_*` awam), jika tidak modul baharu akan gagal dengan
+"permission denied" walaupun SQL berjaya dijalankan. Jaring keselamatan
+untuk pembinaan semula projek: `sktd/supabase/geran-data-api.sql`.
