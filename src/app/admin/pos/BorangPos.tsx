@@ -41,15 +41,19 @@ export default function BorangPos({
 
   async function pilihGambar(fail: File) {
     if (!bolehDikecilkan(fail)) { setNaik("Fail itu bukan gambar."); return; }
-    if (fail.size > HAD_GAMBAR_BAIT) { setNaik(`Gambar ini ${bait(fail.size)} — had 1 GB.`); return; }
-    setNaik("Mengecilkan…");
-    const kecil = await kecilkanGambar(fail);
-    setNaik("Memuat naik…");
-    const fd = new FormData();
-    fd.set("fail", kecil.fail, kecil.fail.name);
-    const r = await naikMedia(fd);
-    if (r.ok && r.url) { setGambar(r.url); setNaik(ceritaKecil(kecil)); }
-    else setNaik(r.mesej);
+    try {
+      if (fail.size > HAD_GAMBAR_BAIT) { setNaik(`Gambar ini ${bait(fail.size)} — had 1 GB.`); return; }
+      setNaik("Mengecilkan…");
+      const kecil = await kecilkanGambar(fail);
+      setNaik("Memuat naik…");
+      const fd = new FormData();
+      fd.set("fail", kecil.fail, kecil.fail.name);
+      const r = await naikMedia(fd);
+      if (r.ok && r.url) { setGambar(r.url); setNaik(ceritaKecil(kecil)); }
+      else setNaik(r.mesej);
+    } catch {
+      setNaik("Sambungan terputus atau pelayan tidak menjawab. Cuba lagi.");
+    }
   }
 
   function auto200(): string {
@@ -58,26 +62,32 @@ export default function BorangPos({
   }
 
   async function hantarStatus(status: "draf" | "terbit", tajukAkhir: string) {
-    setSibuk(true);
-    const fd = new FormData();
-    if (pos?.id) fd.set("id", pos.id);
-    fd.set("kandungan", kandungan);
-    fd.set("ringkasan", auto200());
-    fd.set("gambar_utama", gambar);
-    fd.set("tajuk", tajukAkhir);
-    fd.set("jenis", jenis);
-    fd.set("keutamaan", keutamaan);
-    fd.set("status", status);
-    const r = await simpanPos(fd);
-    setHasil(r);
-    setSibuk(false);
-    if (r.ok) {
-      setPopup(false);
-      router.refresh();
-      if (!pos && status === "terbit") {
-        // Pos baharu berjaya terbit — bersihkan borang untuk pos seterusnya.
-        setKandungan(""); setGambar(""); setTajuk(""); setNaik(null);
+    try {
+      setSibuk(true);
+      const fd = new FormData();
+      if (pos?.id) fd.set("id", pos.id);
+      fd.set("kandungan", kandungan);
+      fd.set("ringkasan", auto200());
+      fd.set("gambar_utama", gambar);
+      fd.set("tajuk", tajukAkhir);
+      fd.set("jenis", jenis);
+      fd.set("keutamaan", keutamaan);
+      fd.set("status", status);
+      const r = await simpanPos(fd);
+      setHasil(r);
+      setSibuk(false);
+      if (r.ok) {
+        setPopup(false);
+        router.refresh();
+        if (!pos && status === "terbit") {
+          // Pos baharu berjaya terbit — bersihkan borang untuk pos seterusnya.
+          setKandungan(""); setGambar(""); setTajuk(""); setNaik(null);
+        }
       }
+    } catch {
+      setHasil({ ok: false, mesej: "Sambungan terputus atau pelayan tidak menjawab. Cuba lagi." });
+    } finally {
+      setSibuk(false);
     }
   }
 
@@ -90,11 +100,17 @@ export default function BorangPos({
 
   async function padam() {
     if (!pos || !window.confirm(`Padam pos “${pos.tajuk}”?`)) return;
-    setSibuk(true);
-    const r = await padamPos(pos.id);
-    setHasil(r);
-    setSibuk(false);
-    if (r.ok) router.push("/admin/pos");
+    try {
+      setSibuk(true);
+      const r = await padamPos(pos.id);
+      setHasil(r);
+      setSibuk(false);
+      if (r.ok) router.push("/admin/pos");
+    } catch {
+      setHasil({ ok: false, mesej: "Sambungan terputus atau pelayan tidak menjawab. Cuba lagi." });
+    } finally {
+      setSibuk(false);
+    }
   }
 
   return (

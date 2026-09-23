@@ -66,7 +66,7 @@ export default async function Erpm() {
 
         {/* --- Yang sudah hidup --- */}
         <section className="mt-9">
-          <h2 className="text-[11px] font-bold uppercase tracking-widest text-emas">
+          <h2 className="text-[11px] font-bold uppercase tracking-widest text-emas-gelap">
             {tapisAktif ? "Panitia saya" : "Semua panitia"} · {hidup.length}
           </h2>
           <ul className="mt-3 space-y-3">
@@ -86,14 +86,14 @@ export default async function Erpm() {
                   </span>
                   <span className="min-w-0 flex-1">
                     <span className="block text-lg font-bold text-navy-900">
-                      {p.nama} <span className="text-slate-400">↗</span>
+                      {p.nama} <span className="text-slate-500">↗</span>
                     </span>
                     {p.catatan && (
                       <span className="mt-1 block text-sm leading-relaxed text-slate-600">
                         {p.catatan}
                       </span>
                     )}
-                    <span className="mt-2 block text-xs text-slate-400">
+                    <span className="mt-2 block text-xs text-slate-500">
                       {new URL(p.pautan!).host}
                     </span>
                   </span>

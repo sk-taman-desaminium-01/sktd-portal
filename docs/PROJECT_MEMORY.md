@@ -207,3 +207,20 @@ peraturan keras.
   kelulusan — NAMA (emel)" kepada pentadbir, berpaut ke `/admin/akses`.
   Halaman Notifikasi: tab Semua/Belum dibaca, penapis jenis, ikon bulat,
   titik merah belum dibaca, rangka semasa memuat.
+
+## Audit forensik 24 Sep 2026 (Claude) — pembaikan yang JANGAN diregresikan
+
+- `src/app/error.tsx` + `global-error.tsx` + `not-found.tsx`: sebelum ini hanya
+  `/admin` ada sempadan ralat; kegagalan di laluan lain memberi skrin
+  "Application error" kosong.
+- `loading.tsx` untuk 25 laluan tambahan (`RangkaMuat`), peraturan keras #32.
+- 25 pengendali klien dibungkus try/catch/finally + 4 kemas kini optimistik
+  (Pindaan, Notifikasi, Disiplin) kini BERPATAH BALIK bila pelayan gagal.
+  Sebelum ini butang kekal "Menyimpan…" selama-lamanya tanpa mesej.
+- Kontras WCAG: `text-slate-400` (2.56:1, 100 tempat) dan `text-slate-300`
+  → `text-slate-500` (4.76:1); tajuk kecil `text-emas` pada latar cerah
+  (2.4:1) → `text-emas-gelap` #8a6a1f (5.05:1); bar bawah `text-white/45`
+  (3.76:1) → `white/70` (6.83:1).
+- `pecahFormat` kini BERULANG, bukan rekursif (tindanan pelayar telefon).
+- `julatTarikh` tidak lagi menghempas bila nilai bukan teks.
+- Keadaan KOSONG ditambah: Disiplin, Kawalan Kelas, Pindaan Buku Pengurusan.

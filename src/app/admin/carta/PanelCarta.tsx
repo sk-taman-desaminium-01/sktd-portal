@@ -59,13 +59,17 @@ export default function PanelCarta({ punca, tahun, namaSekolah, semuaDisahkan }:
    */
   async function simpan(nod: NodCarta, sel: string[]) {
     if (!nod.barisId) return;
-    const hasil = await suntingNod(nod.barisId, sel);
-    setMesej({ ok: hasil.ok, teks: hasil.mesej });
-    if (hasil.ok) {
-      const carta = await ambilCarta();
-      if (carta.punca) setPokok(carta.punca);
-      else setMesej({ ok: false, teks: "Suntingan disimpan tetapi carta gagal dimuat semula. " + carta.mesej });
-      setSunting(null);
+    try {
+      const hasil = await suntingNod(nod.barisId, sel);
+      setMesej({ ok: hasil.ok, teks: hasil.mesej });
+      if (hasil.ok) {
+        const carta = await ambilCarta();
+        if (carta.punca) setPokok(carta.punca);
+        else setMesej({ ok: false, teks: "Suntingan disimpan tetapi carta gagal dimuat semula. " + carta.mesej });
+        setSunting(null);
+      }
+    } catch {
+      setMesej({ ok: false, teks: "Sambungan terputus atau pelayan tidak menjawab. Cuba lagi." });
     }
   }
 
@@ -79,10 +83,14 @@ export default function PanelCarta({ punca, tahun, namaSekolah, semuaDisahkan }:
    */
   async function buang(nod: NodCarta) {
     if (!nod.barisId) return;
-    const hasil = await padamNod(nod.barisId);
-    setMesej({ ok: hasil.ok, teks: hasil.mesej });
-    if (hasil.ok) setPokok((p) => buangNod(p, nod.id));
-    setSahBuang(null);
+    try {
+      const hasil = await padamNod(nod.barisId);
+      setMesej({ ok: hasil.ok, teks: hasil.mesej });
+      if (hasil.ok) setPokok((p) => buangNod(p, nod.id));
+      setSahBuang(null);
+    } catch {
+      setMesej({ ok: false, teks: "Sambungan terputus atau pelayan tidak menjawab. Cuba lagi." });
+    }
   }
 
   const turun = [
@@ -217,7 +225,7 @@ function Cabang({
             onClick={() => togol(nod.id)}
             aria-label={dibuka ? `Tutup ${nod.label}` : `Buka ${nod.label}`}
             className={`tiada-cetak grid h-5 w-5 shrink-0 place-items-center rounded text-xs ${
-              aras === 0 ? "text-white/70" : "text-slate-400"
+              aras === 0 ? "text-white/70" : "text-slate-500"
             }`}
           >
             {dibuka ? "▾" : "▸"}
@@ -246,12 +254,12 @@ function Cabang({
               </span>
             )}
             {nod.rujukan && (
-              <span className="text-[10px] italic text-slate-400">rujukan kumpulan</span>
+              <span className="text-[10px] italic text-slate-500">rujukan kumpulan</span>
             )}
-            {unit && adaAnak && <span className="text-[11px] text-slate-400">{nod.anak.length}</span>}
+            {unit && adaAnak && <span className="text-[11px] text-slate-500">{nod.anak.length}</span>}
 
             {nod.ejaanBuku && (
-              <span className="text-[10px] italic text-slate-400" title="Ejaan dalam Buku Pengurusan berbeza; dipadankan kepada senarai nama guru">
+              <span className="text-[10px] italic text-slate-500" title="Ejaan dalam Buku Pengurusan berbeza; dipadankan kepada senarai nama guru">
                 buku: {nod.ejaanBuku}
               </span>
             )}
@@ -281,14 +289,14 @@ function Cabang({
                     <button
                       type="button"
                       onClick={() => setSunting(nod.id)}
-                      className="rounded px-1.5 py-0.5 text-[11px] text-slate-400 hover:bg-navy-50 hover:text-navy-700"
+                      className="rounded px-1.5 py-0.5 text-[11px] text-slate-500 hover:bg-navy-50 hover:text-navy-700"
                     >
                       Sunting
                     </button>
                     <button
                       type="button"
                       onClick={() => setSahBuang(nod.id)}
-                      className="rounded px-1.5 py-0.5 text-[11px] text-slate-300 hover:bg-[#fdf1f1] hover:text-[#8f2b2b]"
+                      className="rounded px-1.5 py-0.5 text-[11px] text-slate-500 hover:bg-[#fdf1f1] hover:text-[#8f2b2b]"
                     >
                       Buang
                     </button>
@@ -356,7 +364,7 @@ function BorangSunting({
       >
         {sibuk ? "…" : "Simpan"}
       </button>
-      <button type="button" onClick={batal} className="text-xs text-slate-400 underline">
+      <button type="button" onClick={batal} className="text-xs text-slate-500 underline">
         Batal
       </button>
     </span>

@@ -128,7 +128,7 @@ function Pilihan({
       <span className="mt-1.5 block text-sm leading-relaxed text-slate-600">{ringkasan}</span>
       {/* Bahagian yang kosong berkata KENAPA ia kosong. Kad kosong tanpa
           sebab menjadikan guru menyangka sistem rosak. */}
-      {!ada && <span className="mt-2 block text-xs leading-relaxed text-slate-400">{kosong}</span>}
+      {!ada && <span className="mt-2 block text-xs leading-relaxed text-slate-500">{kosong}</span>}
       <span aria-hidden="true" className="mt-3 block text-sm font-semibold text-navy-700">
         Buka →
       </span>

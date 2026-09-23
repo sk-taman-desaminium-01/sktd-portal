@@ -214,7 +214,7 @@ export default function PokokCarta({
             <option value={3}>Hingga jawatankuasa</option>
           </select>
         </label>
-        <p className="min-w-0 flex-1 text-xs text-slate-400">
+        <p className="min-w-0 flex-1 text-xs text-slate-500">
           Leret ke sisi untuk melihat carta penuh.
         </p>
         <MuatTurun pilihan={pilihan} tajuk="Muat turun carta" />
@@ -314,7 +314,7 @@ export default function PokokCarta({
             <button
               type="button"
               onClick={() => setDibuka(null)}
-              className="text-xs text-slate-400 underline hover:text-navy-700"
+              className="text-xs text-slate-500 underline hover:text-navy-700"
             >
               Tutup
             </button>
@@ -355,7 +355,7 @@ function SenaraiNod({ nod }: { nod: NodCarta }) {
               <li key={o.id} className="text-sm text-navy-800">
                 {o.label}
                 {o.jawatan && (
-                  <span className="ml-1.5 text-xs text-slate-400">{o.jawatan}</span>
+                  <span className="ml-1.5 text-xs text-slate-500">{o.jawatan}</span>
                 )}
               </li>
             ))}

@@ -83,7 +83,7 @@ export default function DrafTakwim() {
             yang terbit sehingga anda menerbitkannya.
           </span>
         </span>
-        <span className="shrink-0 text-xs text-slate-400">{buka ? "▴" : "▾"}</span>
+        <span className="shrink-0 text-xs text-slate-500">{buka ? "▴" : "▾"}</span>
       </button>
 
       {buka && (
@@ -121,7 +121,7 @@ export default function DrafTakwim() {
 
           {kumpulan?.map((k) => (
             <div key={k.masa} className="mt-5">
-              <h3 className="text-[11px] font-bold uppercase tracking-widest text-emas">
+              <h3 className="text-[11px] font-bold uppercase tracking-widest text-emas-gelap">
                 {k.label} · {k.draf.length}
               </h3>
               <p className="mt-0.5 text-xs text-slate-500">{k.nota}</p>
@@ -184,11 +184,11 @@ function Baris({ d, lalu, dipilih, wujud, togol }: {
               {NAMA_KATEGORI[d.kategori]}
             </span>
             {wujud ? (
-              <span className="text-slate-400">Sudah ada sebagai pos</span>
+              <span className="text-slate-500">Sudah ada sebagai pos</span>
             ) : d.disyorkan ? (
               <span className="text-[#167a4b]">Disyorkan · {d.sebab}</span>
             ) : (
-              <span className="text-slate-400">{d.sebab}</span>
+              <span className="text-slate-500">{d.sebab}</span>
             )}
           </span>
         </span>

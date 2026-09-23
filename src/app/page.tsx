@@ -213,7 +213,7 @@ export default async function Hab() {
           — jadi menambah peranan baharu tidak memerlukan perubahan di sini. */}
       {(boleh(saya.peranan, "terbit_kandungan") || boleh(saya.peranan, "urus_akses")) && (
         <section className="mx-auto mt-9 max-w-4xl">
-          <h2 className="text-[11px] font-bold uppercase tracking-widest text-emas">
+          <h2 className="text-[11px] font-bold uppercase tracking-widest text-emas-gelap">
             Pentadbiran
           </h2>
           <ul className="mt-3 grid gap-3 sm:grid-cols-2">
@@ -255,7 +255,7 @@ export default async function Hab() {
           dikekalkan dalam `bahagian.ts` untuk rujukan kita. */}
       {kadIkutBahagian(saya.peranan).map(({ bahagian, kad }) => (
         <section key={bahagian.kod} className="mx-auto mt-10 max-w-4xl">
-          <h2 className="text-[11px] font-bold uppercase tracking-widest text-emas">
+          <h2 className="text-[11px] font-bold uppercase tracking-widest text-emas-gelap">
             {bahagian.nama}
           </h2>
           {bahagian.ringkas && (
@@ -284,7 +284,7 @@ export default async function Hab() {
         <div className="mt-7 grid gap-7 text-left sm:grid-cols-2">
           {SEKOLAH.pautanKpm.map((k) => (
             <div key={k.kumpulan}>
-              <h3 className="text-[11px] font-bold uppercase tracking-widest text-emas">
+              <h3 className="text-[11px] font-bold uppercase tracking-widest text-emas-gelap">
                 {k.kumpulan}
               </h3>
               <ul className="mt-2.5 space-y-2">

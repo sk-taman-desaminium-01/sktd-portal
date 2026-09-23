@@ -44,11 +44,15 @@ export default function PanelSlip({
   const uasa = subjekUasa.slice().sort();
 
   async function simpanUlasan(id: string, teks: string) {
-    const hasil = await simpanUlasanMurid(tahun, kelas, id, teks);
-    setMesej({ ok: hasil.ok, teks: hasil.mesej });
-    if (hasil.ok) {
-      setData((lama) => lama.map((b) => (b.pendaftaran_id === id ? { ...b, ulasan: teks } : b)));
-      setSunting(null);
+    try {
+      const hasil = await simpanUlasanMurid(tahun, kelas, id, teks);
+      setMesej({ ok: hasil.ok, teks: hasil.mesej });
+      if (hasil.ok) {
+        setData((lama) => lama.map((b) => (b.pendaftaran_id === id ? { ...b, ulasan: teks } : b)));
+        setSunting(null);
+      }
+    } catch {
+      setMesej({ ok: false, teks: "Sambungan terputus atau pelayan tidak menjawab. Cuba lagi." });
     }
   }
 
@@ -321,7 +325,7 @@ function BorangUlasan({
       >
         {sibuk ? "…" : "Simpan"}
       </button>
-      <button type="button" onClick={batal} className="text-xs text-slate-400 underline">
+      <button type="button" onClick={batal} className="text-xs text-slate-500 underline">
         Batal
       </button>
     </span>

@@ -293,7 +293,7 @@ export default function SeksyenTersimpan({
                       ? "bg-[#e5f4ec] text-[#167a4b]"
                       : dilihat.has(b.id)
                         ? "bg-navy-700 text-white"
-                        : "border border-garis text-slate-400"
+                        : "border border-garis text-slate-500"
                   }`}
                 >
                   {sibuk === b.id ? "…" : b.status === "disahkan" ? "✓ Disahkan" : "Sahkan"}
@@ -312,7 +312,7 @@ export default function SeksyenTersimpan({
                     className="min-w-0 flex-1 rounded-lg border border-garis px-3 py-1.5 text-xs"
                   />
                   <span className="text-xs text-slate-500">{isi[b.id].mesej}</span>
-                  <span className="w-full text-[11px] text-slate-400">
+                  <span className="w-full text-[11px] text-slate-500">
                     Klik mana-mana baris untuk membetulkannya. Bacaan asal PDF disimpan.
                   </span>
                 </div>
@@ -358,7 +358,7 @@ export default function SeksyenTersimpan({
                                         .join(" · ")}
                                     </span>
                                   )}
-                                  <span className="mt-0.5 block text-[11px] text-slate-400">
+                                  <span className="mt-0.5 block text-[11px] text-slate-500">
                                     Padanan ialah seluruh sel, bukan sebahagian perkataan — nama
                                     khas seperti <i>Bilik i-Shabariah</i> tidak akan tersentuh.
                                     Menekan <i>Padam baris ini</i> dengan kotak ini bertanda
@@ -445,7 +445,7 @@ export default function SeksyenTersimpan({
             <button onClick={() => setSahPadam(false)} className="text-slate-500 underline">Batal</button>
           </span>
         ) : (
-          <button onClick={() => setSahPadam(true)} className="text-xs text-slate-400 underline hover:text-[#8f2b2b]">
+          <button onClick={() => setSahPadam(true)} className="text-xs text-slate-500 underline hover:text-[#8f2b2b]">
             Padam edisi ini
           </button>
         )}

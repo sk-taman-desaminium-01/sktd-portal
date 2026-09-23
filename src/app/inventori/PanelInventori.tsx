@@ -124,14 +124,14 @@ export default function PanelInventori({ papan }: { papan: PapanInventori }) {
                 placeholder="Kelas TMK Tahun 5 — sesi PdP berkumpulan"
                 className="mt-1 w-full rounded-lg border border-garis px-3 py-2 text-sm"
               />
-              <span className="mt-1 block text-[11px] text-slate-400">
+              <span className="mt-1 block text-[11px] text-slate-500">
                 Unit membacanya sebelum memutuskan.
               </span>
             </label>
 
             <label>
               <span className="block text-xs font-semibold text-slate-500">
-                Diperlukan pada <span className="font-normal text-slate-400">(pilihan)</span>
+                Diperlukan pada <span className="font-normal text-slate-500">(pilihan)</span>
               </span>
               <input
                 type="date" value={perluPada} onChange={(e) => setPerluPada(e.target.value)}
@@ -243,11 +243,11 @@ function Permohonanku({ papan, mohon, setMohon, namaBarang, setNota }: {
               <span className={`rounded px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ${WARNA_STATUS[p.status]}`}>
                 {NAMA_STATUS[p.status]}
               </span>
-              <span className="ml-auto text-[11px] text-slate-400">{masaLalu(p.dicipta)}</span>
+              <span className="ml-auto text-[11px] text-slate-500">{masaLalu(p.dicipta)}</span>
             </div>
 
             <p className="mt-1 text-xs leading-relaxed text-slate-600">{p.tujuan}</p>
-            <p className="mt-0.5 text-[11px] text-slate-400">
+            <p className="mt-0.5 text-[11px] text-slate-500">
               {papan.bolehUrus ? p.nama : "Anda"}
               {p.perlu_pada && ` · diperlukan ${p.perlu_pada}`}
             </p>
@@ -319,7 +319,7 @@ function Permohonanku({ papan, mohon, setMohon, namaBarang, setNota }: {
           </li>
         ))}
         {papar.length === 0 && (
-          <li className="py-3 text-sm text-slate-400">Tiada permohonan dengan status itu.</li>
+          <li className="py-3 text-sm text-slate-500">Tiada permohonan dengan status itu.</li>
         )}
       </ul>
     </section>
@@ -466,7 +466,7 @@ function SenaraiBarang({ papan, barang, setBarang, setNota }: {
             Apa yang unit miliki, berapa banyak, dan berapa yang masih ada.
           </span>
         </span>
-        <span className="shrink-0 text-xs text-slate-400">{buka ? "▴" : "▾"}</span>
+        <span className="shrink-0 text-xs text-slate-500">{buka ? "▴" : "▾"}</span>
       </button>
 
       {buka && (
@@ -480,16 +480,16 @@ function SenaraiBarang({ papan, barang, setBarang, setNota }: {
 
           {kategoriBarang.map((k) => (
             <div key={k.kategori} className="mt-4">
-              <h3 className="text-[11px] font-bold uppercase tracking-widest text-emas">{k.kategori}</h3>
+              <h3 className="text-[11px] font-bold uppercase tracking-widest text-emas-gelap">{k.kategori}</h3>
               <ul className="mt-1.5 divide-y divide-garis border-t border-garis">
                 {k.barang.map((b) => (
                   <li key={b.id} className="py-2">
                     <div className="flex items-start gap-2">
                       <span className="min-w-0 flex-1">
-                        <span className={`block text-sm ${b.aktif ? "text-navy-800" : "text-slate-400 line-through"}`}>
+                        <span className={`block text-sm ${b.aktif ? "text-navy-800" : "text-slate-500 line-through"}`}>
                           {b.nama}
                         </span>
-                        <span className="mt-0.5 block text-xs text-slate-400">
+                        <span className="mt-0.5 block text-xs text-slate-500">
                           {baki(b)} daripada {b.kuantiti} masih ada
                           {b.lokasi && ` · ${b.lokasi}`}
                           {b.nota && ` · ${b.nota}`}

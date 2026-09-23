@@ -141,7 +141,7 @@ export default function PanelMuridKelas({ kelasGuru }: { kelasGuru: KelasGuru[] 
                 )}
 
                 {sibuk === k.label && !senarai[k.label] ? (
-                  <p className="py-5 text-center text-sm text-slate-400">Memuatkan…</p>
+                  <p className="py-5 text-center text-sm text-slate-500">Memuatkan…</p>
                 ) : (
                   <>
                     <Senarai
@@ -190,14 +190,14 @@ function Senarai({ tajuk, kosong, murid, sibuk, tindakan, warna = "putih" }: {
   return (
     <div className="mt-4">
       <p className="text-xs font-bold uppercase tracking-wide text-slate-500">{tajuk} · {murid.length}</p>
-      {murid.length === 0 ? <p className="mt-2 text-sm text-slate-400">{kosong}</p> : (
+      {murid.length === 0 ? <p className="mt-2 text-sm text-slate-500">{kosong}</p> : (
         <ul className="mt-2 space-y-2">
           {murid.map((m, i) => (
             <li key={m.pendaftaran_id} className={`rounded-xl border p-3 ${warna === "kuning" ? "border-[#e9d9ae] bg-[#fdf9f0]" : "border-garis"}`}>
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
                 <span className="min-w-0 flex-1">
                   <span className="block text-sm font-semibold text-navy-800">{i + 1}. {m.nama}</span>
-                  <span className="block font-mono text-xs text-slate-400">{m.no_kp ?? "Tiada No. KP"}</span>
+                  <span className="block font-mono text-xs text-slate-500">{m.no_kp ?? "Tiada No. KP"}</span>
                 </span>
                 <span className="flex flex-wrap gap-2 [&>button]:min-h-10 [&>button]:disabled:opacity-40">
                   <span className={sibuk === m.pendaftaran_id ? "pointer-events-none opacity-40" : "contents"}>{tindakan(m)}</span>

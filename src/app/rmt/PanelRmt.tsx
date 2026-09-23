@@ -97,7 +97,7 @@ function PanelKehadiran({ tahunSesi, roster, tarikhAwal, hadirAwal }: {
                   <label className="flex min-w-0 items-start gap-2 text-sm">
                     <input type="checkbox" disabled={sibuk} checked={hadir[m.id] ?? false}
                       onChange={(e) => setHadir((h) => ({ ...h, [m.id]: e.target.checked }))} className="mt-0.5 shrink-0" />
-                    <span className="min-w-0"><span className="block break-words">{m.nama}</span>{m.no_kp && <span className="block text-[11px] text-slate-400">{m.no_kp}</span>}</span>
+                    <span className="min-w-0"><span className="block break-words">{m.nama}</span>{m.no_kp && <span className="block text-[11px] text-slate-500">{m.no_kp}</span>}</span>
                   </label>
                 </li>
               ))}
@@ -135,27 +135,39 @@ function PanelRoster({ tahunSesi, kelas, roster }: {
   }, [roster]);
 
   async function naik(simpan = false) {
-    const m = /^(\d+|PPKI)\s+(.+)$/.exec(kelasPilih);
-    const tahun = m && m[1] !== "PPKI" ? Number(m[1]) : 0;
-    const namaKelas = m ? (m[1] === "PPKI" ? `PPKI ${m[2]}` : m[2]) : kelasPilih;
+    try {
+      const m = /^(\d+|PPKI)\s+(.+)$/.exec(kelasPilih);
+      const tahun = m && m[1] !== "PPKI" ? Number(m[1]) : 0;
+      const namaKelas = m ? (m[1] === "PPKI" ? `PPKI ${m[2]}` : m[2]) : kelasPilih;
 
-    setSibuk(true);
-    setNota(null);
-    const r = await naikRosterRmt(tahunSesi, tahun, namaKelas, teks, simpan);
-    if (!simpan) setSemakan(r.ok ? r.semakan ?? null : null);
-    setNota({ ok: r.ok, teks: r.mesej });
-    if (r.ok && simpan) { setTeks(""); setSemakan(null); router.refresh(); }
-    setSibuk(false);
+      setSibuk(true);
+      setNota(null);
+      const r = await naikRosterRmt(tahunSesi, tahun, namaKelas, teks, simpan);
+      if (!simpan) setSemakan(r.ok ? r.semakan ?? null : null);
+      setNota({ ok: r.ok, teks: r.mesej });
+      if (r.ok && simpan) { setTeks(""); setSemakan(null); router.refresh(); }
+      setSibuk(false);
+    } catch {
+      setNota({ ok: false, teks: "Sambungan terputus atau pelayan tidak menjawab. Cuba lagi." });
+    } finally {
+      setSibuk(false);
+    }
   }
 
   async function buang(id: string) {
-    const murid = roster.find((m) => m.id === id);
-    if (!murid || !window.confirm(`Buang ${murid.nama} daripada senarai RMT?`)) return;
-    setSibuk(true); setNota(null);
-    const r = await buangRosterRmt(id);
-    setNota({ ok: r.ok, teks: r.mesej });
-    if (r.ok) router.refresh();
-    setSibuk(false);
+    try {
+      const murid = roster.find((m) => m.id === id);
+      if (!murid || !window.confirm(`Buang ${murid.nama} daripada senarai RMT?`)) return;
+      setSibuk(true); setNota(null);
+      const r = await buangRosterRmt(id);
+      setNota({ ok: r.ok, teks: r.mesej });
+      if (r.ok) router.refresh();
+      setSibuk(false);
+    } catch {
+      setNota({ ok: false, teks: "Sambungan terputus atau pelayan tidak menjawab. Cuba lagi." });
+    } finally {
+      setSibuk(false);
+    }
   }
 
   return (
@@ -190,7 +202,7 @@ function PanelRoster({ tahunSesi, kelas, roster }: {
             <ul className="divide-y divide-garis border-t border-garis">
               {murid.map((m) => (
                 <li key={m.id} className="flex min-w-0 items-start justify-between gap-3 px-4 py-3 text-sm">
-                  <span className="min-w-0"><span className="block break-words">{m.nama}</span><span className="block text-xs text-slate-400">No. KP: {m.no_kp ?? "—"}</span></span>
+                  <span className="min-w-0"><span className="block break-words">{m.nama}</span><span className="block text-xs text-slate-500">No. KP: {m.no_kp ?? "—"}</span></span>
                   <button type="button" disabled={sibuk} onClick={() => void buang(m.id)} className="min-h-11 shrink-0 touch-manipulation px-1 text-xs font-semibold text-red-600 underline disabled:opacity-50">Buang</button>
                 </li>
               ))}

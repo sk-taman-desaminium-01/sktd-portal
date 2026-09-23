@@ -25,31 +25,41 @@ export default function PanelPejabat({ senarai, kepala }: { senarai: BarisSurat[
   }
 
   async function simpan(id: string) {
-    const nilai = rujukan[id]?.trim();
-    if (!nilai) return;
-    setSibuk(id);
-    const r = await tetapkanRujukan(id, nilai);
-    setNota((n) => ({ ...n, [id]: { ok: r.ok, teks: r.mesej } }));
-    if (r.ok) {
-      setData((d) => d.map((b) => b.id === id ? {
-        ...b, rujukan_kami: nilai, status: "selesai",
-        data: { ...(b.data as DataSuratRasmi), keputusanPejabat: "diluluskan", komenPejabat: undefined },
-      } : b));
+    try {
+      const nilai = rujukan[id]?.trim();
+      if (!nilai) return;
+      setSibuk(id);
+      const r = await tetapkanRujukan(id, nilai);
+      setNota((n) => ({ ...n, [id]: { ok: r.ok, teks: r.mesej } }));
+      if (r.ok) {
+        setData((d) => d.map((b) => b.id === id ? {
+          ...b, rujukan_kami: nilai, status: "selesai",
+          data: { ...(b.data as DataSuratRasmi), keputusanPejabat: "diluluskan", komenPejabat: undefined },
+        } : b));
+      }
+      setSibuk(null);
+    } catch {
+    } finally {
+      setSibuk(null);
     }
-    setSibuk(null);
   }
 
   async function tolak(id: string) {
-    setSibuk(id);
-    const r = await tolakSuratRasmi(id, komen[id] ?? "");
-    setNota((n) => ({ ...n, [id]: { ok: r.ok, teks: r.mesej } }));
-    if (r.ok) {
-      setData((d) => d.map((b) => b.id === id ? {
-        ...b, rujukan_kami: null, status: "selesai",
-        data: { ...(b.data as DataSuratRasmi), keputusanPejabat: "ditolak", komenPejabat: komen[id]?.trim() },
-      } : b));
+    try {
+      setSibuk(id);
+      const r = await tolakSuratRasmi(id, komen[id] ?? "");
+      setNota((n) => ({ ...n, [id]: { ok: r.ok, teks: r.mesej } }));
+      if (r.ok) {
+        setData((d) => d.map((b) => b.id === id ? {
+          ...b, rujukan_kami: null, status: "selesai",
+          data: { ...(b.data as DataSuratRasmi), keputusanPejabat: "ditolak", komenPejabat: komen[id]?.trim() },
+        } : b));
+      }
+      setSibuk(null);
+    } catch {
+    } finally {
+      setSibuk(null);
     }
-    setSibuk(null);
   }
 
   if (data.length === 0) {

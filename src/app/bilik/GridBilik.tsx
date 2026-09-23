@@ -345,7 +345,7 @@ export default function GridBilik({ papan, barangIct }: {
           />
           Tunjuk Sabtu &amp; Ahad
         </label>
-        {memuat && <span className="text-xs text-slate-400">memuat…</span>}
+        {memuat && <span className="text-xs text-slate-500">memuat…</span>}
       </div>
 
       {/* ------------------------------------------------ petunjuk --- */}
@@ -369,7 +369,7 @@ export default function GridBilik({ papan, barangIct }: {
       {/* ---------------------------------------------------- grid --- */}
       {sesi.map((s) => (
         <div key={s.sesi} className="mt-4">
-          <h3 className="text-[11px] font-bold uppercase tracking-widest text-emas">{s.nama}</h3>
+          <h3 className="text-[11px] font-bold uppercase tracking-widest text-emas-gelap">{s.nama}</h3>
           <div
             data-grid-bilik=""
             className="mt-1.5 overflow-x-auto rounded-xl border border-garis bg-white"
@@ -419,7 +419,7 @@ export default function GridBilik({ papan, barangIct }: {
                             aria-label={`${labelTarikh(t)} ${b.mula}–${b.tamat}: ${sel.kosong} daripada ${sel.jumlah} bilik kosong`}
                             className={`w-full rounded px-1 py-1.5 text-[11px] font-semibold tabular-nums transition-colors ${
                               sel.lalu
-                                ? "cursor-default bg-slate-50 text-slate-300"
+                                ? "cursor-default bg-slate-50 text-slate-500"
                                 : dipilih
                                   ? "bg-navy-700 text-white"
                                   : penuh
@@ -461,12 +461,12 @@ export default function GridBilik({ papan, barangIct }: {
             <button
               type="button"
               onClick={() => setPilih(new Set())}
-              className="ml-1 text-slate-400 underline"
+              className="ml-1 text-slate-500 underline"
             >
               kosongkan
             </button>
           </p>
-          <p className="mt-1 text-[11px] text-slate-400">
+          <p className="mt-1 text-[11px] text-slate-500">
             Waktu berturutan digabung menjadi satu tempahan — tiga waktu
             berturut ialah satu tempahan sejam setengah, bukan tiga baris.
           </p>
@@ -481,7 +481,7 @@ export default function GridBilik({ papan, barangIct }: {
           )}
 
           {/* HIJAU dan MERAH muncul DI SINI, bukan pada grid. */}
-          <h4 className="mt-4 text-[11px] font-bold uppercase tracking-widest text-emas">
+          <h4 className="mt-4 text-[11px] font-bold uppercase tracking-widest text-emas-gelap">
             Bilik pada waktu itu
           </h4>
           <ul className="mt-1.5 flex flex-wrap gap-2">
@@ -532,7 +532,7 @@ export default function GridBilik({ papan, barangIct }: {
               placeholder="Mesyuarat panitia Matematik"
               className="mt-1 w-full rounded-lg border border-garis px-3 py-2 text-sm"
             />
-            <p className="mt-1 text-[11px] text-slate-400">
+            <p className="mt-1 text-[11px] text-slate-500">
               Ini yang guru lain baca sebelum bertanya kepada anda.
             </p>
           </div>
@@ -566,7 +566,7 @@ export default function GridBilik({ papan, barangIct }: {
                         className="w-16 rounded border border-garis px-2 py-1"
                       />
                       <span className="min-w-0 flex-1 truncate text-slate-600">
-                        {b.nama} <span className="text-slate-400">· {b.baki} ada</span>
+                        {b.nama} <span className="text-slate-500">· {b.baki} ada</span>
                       </span>
                     </li>
                   ))}
@@ -734,7 +734,7 @@ function MingguIni({
           <li key={h.tarikh}>
             <p
               className={`text-xs font-bold ${
-                h.tarikh < hariIni ? "text-slate-400" : "text-navy-700"
+                h.tarikh < hariIni ? "text-slate-500" : "text-navy-700"
               }`}
             >
               {labelTarikh(h.tarikh)}
@@ -750,7 +750,7 @@ function MingguIni({
                     {namaBilik.get(t.bilik_id) ?? "Bilik"}
                   </span>
                   <span className="min-w-0 flex-1 truncate text-slate-600">
-                    {t.tujuan} <span className="text-slate-400">— {t.nama}</span>
+                    {t.tujuan} <span className="text-slate-500">— {t.nama}</span>
                   </span>
                   {(bolehUrus || t.oleh === sayaEmel) && t.tarikh >= hariIni && (
                     <button

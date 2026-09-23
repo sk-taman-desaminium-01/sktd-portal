@@ -78,14 +78,27 @@ export default function PanelPindaan({ dokumenId }: { dokumenId: string | null }
     }
   }
 
+  // Kemas kini optimistik: skrin berubah dahulu. Kalau pelayan gagal, skrin
+  // MESTI kembali — jika tidak, pengguna percaya ia tersimpan sedangkan tidak.
   async function togol(p: Pindaan) {
     setSenarai((l) => (l ?? []).map((x) => (x.id === p.id ? { ...x, aktif: !x.aktif } : x)));
-    await togolPindaanTindakan(p.id, !p.aktif);
+    try {
+      await togolPindaanTindakan(p.id, !p.aktif);
+    } catch {
+      setSenarai((l) => (l ?? []).map((x) => (x.id === p.id ? { ...x, aktif: p.aktif } : x)));
+      setNota({ ok: false, teks: "Sambungan terputus. Perubahan itu TIDAK disimpan — skrin dikembalikan." });
+    }
   }
 
   async function padam(id: string) {
+    const sebelum = senarai;
     setSenarai((l) => (l ?? []).filter((x) => x.id !== id));
-    await padamPindaanTindakan(id);
+    try {
+      await padamPindaanTindakan(id);
+    } catch {
+      setSenarai(sebelum);
+      setNota({ ok: false, teks: "Sambungan terputus. Perubahan itu TIDAK disimpan — skrin dikembalikan." });
+    }
   }
 
   async function kenakan() {
@@ -119,7 +132,7 @@ export default function PanelPindaan({ dokumenId }: { dokumenId: string | null }
             </b>
           </span>
         </span>
-        <span className="shrink-0 text-xs text-slate-400">
+        <span className="shrink-0 text-xs text-slate-500">
           {senarai ? `${aktif} aktif` : ""} {buka ? "▴" : "▾"}
         </span>
       </button>
@@ -148,7 +161,7 @@ export default function PanelPindaan({ dokumenId }: { dokumenId: string | null }
               >
                 {JENIS.map((j) => <option key={j.kod} value={j.kod}>{j.nama}</option>)}
               </select>
-              <span className="mt-1 block text-[11px] text-slate-400">
+              <span className="mt-1 block text-[11px] text-slate-500">
                 {JENIS.find((j) => j.kod === jenis)?.huraian}
               </span>
             </label>
@@ -178,7 +191,7 @@ export default function PanelPindaan({ dokumenId }: { dokumenId: string | null }
                     ? "— baris digugurkan —"
                     : "Nama Guru Besar baharu"
                 }
-                className="mt-1 w-full rounded-lg border border-garis px-3 py-2 text-sm disabled:bg-navy-50/50 disabled:text-slate-400"
+                className="mt-1 w-full rounded-lg border border-garis px-3 py-2 text-sm disabled:bg-navy-50/50 disabled:text-slate-500"
               />
             </label>
 
@@ -222,18 +235,27 @@ export default function PanelPindaan({ dokumenId }: { dokumenId: string | null }
             )}
           </div>
 
+          {senarai && senarai.length === 0 && (
+            <p className="mt-3 rounded-xl border border-dashed border-slate-300 bg-white p-4 text-center text-sm text-slate-500">
+              Tiada pindaan tersimpan. Pindaan yang anda tambah akan dikenakan pada setiap
+              edisi Buku Pengurusan yang dimuat naik selepas ini.
+            </p>
+          )}
+          {senarai === null && (
+            <p className="mt-3 text-sm text-slate-500">Memuat pindaan…</p>
+          )}
           {senarai && senarai.length > 0 && (
             <ul className="mt-4 divide-y divide-garis border-t border-garis">
               {senarai.map((p) => (
                 <li key={p.id} className="flex flex-wrap items-center gap-2 py-2.5 text-xs">
                   <span className="min-w-0 flex-1">
-                    <span className={p.aktif ? "text-navy-800" : "text-slate-400 line-through"}>
+                    <span className={p.aktif ? "text-navy-800" : "text-slate-500 line-through"}>
                       <b>{p.dari}</b>
                       {p.jenis === "buang_nama" || p.jenis === "buang_baris"
                         ? " → digugurkan"
                         : ` → ${p.kepada}`}
                     </span>
-                    {p.sebab && <span className="mt-0.5 block text-slate-400">{p.sebab}</span>}
+                    {p.sebab && <span className="mt-0.5 block text-slate-500">{p.sebab}</span>}
                   </span>
                   <button onClick={() => void togol(p)} className="text-slate-500 underline">
                     {p.aktif ? "Matikan" : "Hidupkan"}

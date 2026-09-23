@@ -66,7 +66,7 @@ export default function KadApp({ app }: { app: KadPortal }) {
 
       <h3 className="mt-3.5 text-lg font-bold text-navy-900">
         {app.nama}
-        {app.luaran && <span title="Laman luar" className="ml-1.5 text-slate-400">↗</span>}
+        {app.luaran && <span title="Laman luar" className="ml-1.5 text-slate-500">↗</span>}
       </h3>
       <p className="mt-1 text-sm leading-relaxed text-slate-600">{app.fungsi}</p>
       {app.catatan && <p className="mt-2 text-xs leading-relaxed text-slate-500">{app.catatan}</p>}
@@ -79,7 +79,7 @@ export default function KadApp({ app }: { app: KadPortal }) {
             dikelabukan sebaliknya — nampak belum hidup tanpa satu perkataan
             tambahan. */}
         <span
-          className={`min-w-0 truncate ${app.domainCadangan ? "text-slate-300" : "text-slate-400"}`}
+          className={`min-w-0 truncate ${app.domainCadangan ? "text-slate-500" : "text-slate-500"}`}
           title={app.domainCadangan ? "Alamat cadangan — modul ini belum hidup" : undefined}
         >
           {app.domain}

@@ -256,7 +256,7 @@ export default function PukalJadual() {
                     aria-expanded={buka.has(b.kunci)}
                     className="flex min-w-0 flex-1 items-center gap-2 text-left disabled:cursor-default"
                   >
-                    <span className="w-5 shrink-0 text-xs text-slate-400">
+                    <span className="w-5 shrink-0 text-xs text-slate-500">
                       {b.draf && b.waktu?.length ? (buka.has(b.kunci) ? "▾" : "▸") : ""}
                     </span>
                     <span className="min-w-0 flex-1">
@@ -268,7 +268,7 @@ export default function PukalJadual() {
                           </span>
                         )}
                       </span>
-                      <span className="mt-0.5 block truncate text-[11px] text-slate-400">
+                      <span className="mt-0.5 block truncate text-[11px] text-slate-500">
                         {b.nama}
                       </span>
                       <span
@@ -357,13 +357,13 @@ function GridDraf({ draf, waktu }: { draf: KelasJadual; waktu: Waktu[] }) {
                 return (
                   <td key={h} className="px-2 py-1">
                     {w.rehat ? (
-                      <span className="text-slate-400">{w.label ?? "Rehat"}</span>
+                      <span className="text-slate-500">{w.label ?? "Rehat"}</span>
                     ) : slot?.subjek ? (
                       <span className="font-semibold text-navy-800">
                         {namaSubjek(slot.subjek)}
                       </span>
                     ) : (
-                      <span className="text-slate-300">—</span>
+                      <span className="text-slate-500">—</span>
                     )}
                   </td>
                 );
