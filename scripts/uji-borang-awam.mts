@@ -31,7 +31,7 @@ perlu("Panel pengurus hanya di laluan urus", aktivitiUrus.includes('import Panel
 perlu("Tindakan awam mempunyai honeypot", tindakanGambar.includes("lamanPerangkap"));
 perlu("Tindakan awam mempunyai had kadar", tindakanGambar.includes('rpc/borang_ambil_giliran'));
 perlu("Tindakan awam memadan daftar murid", tindakanGambar.includes("pbd_pendaftaran") && tindakanGambar.includes("pbd_murid.no_kp"));
-perlu("Tindakan awam mengehadkan tandatangan", tindakanGambar.includes("350_000"));
+perlu("Tindakan awam mengehadkan tandatangan", tindakanGambar.includes("150_000"));
 perlu("Ralat pangkalan data tidak bocor kepada orang awam", tindakanGambar.includes("RalatBorangAwam") && !tindakanGambar.includes('return mesej.startsWith("[supabase]")'));
 perlu("Borang awam hanya dua keputusan", borangGambar.includes("Bersetuju") && borangGambar.includes("Tidak bersetuju") && !borangGambar.includes("Tidak pasti"));
 perlu("Tandatangan awam kekal dalam borang", tandatangan.includes("tempatan") && tandatangan.includes("blobKeDataUrl"));
