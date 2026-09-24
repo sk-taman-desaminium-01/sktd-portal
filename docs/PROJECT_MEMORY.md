@@ -243,3 +243,9 @@ untuk pembinaan semula projek: `sktd/supabase/geran-data-api.sql` —
   ke ATAS statistik pada laman utama. Kelajuan: Worker `/api/pos` dicache
   1 saat di tepi, jadi pos baharu kelihatan bawah 1 saat tanpa menunggu
   binaan semula; pos yang halamannya belum dibina tidak dipautkan (elak 404).
+- **Aktiviti = konsep sama dengan pengumuman (24 Sep):** satu jadual `web_pos`,
+  beza pada medan `jenis`. Kedua-duanya kini segar bawah 1 saat melalui
+  Worker `/api/pos?jenis=…`. Paparan: pengumuman ikut keutamaan (segera/utama
+  statik berwarna, biasa dalam jalur); aktiviti sentiasa jalur bila ≥3, kad
+  statik bila kurang. Gambar: `GambarPos` mengukur bentuk sebenar — poster
+  TEGAK dipapar penuh, gambar melintang dipotong 16:9.
