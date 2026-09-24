@@ -95,7 +95,7 @@ perlu("Amaran sampai kepada pentadbir melalui notifikasi",
 perlu("Amaran tidak berulang setiap hari", pantau.includes("interval '7 days'"));
 perlu("Pemantau dijadualkan dengan pg_cron", pantau.includes("sktd-semak-kuota"));
 perlu("kuota_sistem tidak terbuka kepada anon",
-  /revoke all on function public\.kuota_sistem\(\) from public, anon, authenticated/i.test(pantau));
+  /revoke all\s+on function public\.kuota_sistem\(\)\s+from public, anon, authenticated/i.test(pantau));
 
 const jaga = baca("../supabase/jaga-saiz.sql");
 perlu("Notifikasi lama dibersihkan automatik", /create or replace function public\.kemas_notifikasi/i.test(jaga));
