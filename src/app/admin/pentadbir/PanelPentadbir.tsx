@@ -6,6 +6,7 @@ import { simpanPentadbir, naikGambarPentadbir } from "@/lib/pentadbir";
 import PemotongWajah from "./PemotongWajah";
 import { bait, HAD_GAMBAR_BAIT } from "@/lib/kecilkan-gambar";
 import type { Pentadbir } from "@/data/sekolah";
+import { pautGambar } from "@/data/pautan-gambar";
 
 /** Huruf awal nama — dipapar bila tiada gambar. Sama logik dengan mockup. */
 function hurufAwal(nama: string): string {
@@ -98,7 +99,7 @@ export default function PanelPentadbir({ awal }: { awal: Pentadbir[] }) {
             <div className="shrink-0 text-center">
               {o.gambar ? (
                 <Image
-                  src={o.gambar}
+                  src={pautGambar(o.gambar)}
                   alt=""
                   width={72}
                   height={72}

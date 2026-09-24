@@ -28,6 +28,7 @@ export default async function Admin() {
   const bolehGuruKelas = boleh(p, "urus_guru_kelas");
   const bolehPengurusan = boleh(p, "urus_pengurusan");
   const bolehPejabat = boleh(p, "urus_pejabat");
+  const bolehDiagnostik = boleh(p, "lihat_diagnostik");
 
   type Alat = { href: string; nama: string; ringkas: string; ikon: string; bahagian: KodBahagian };
 
@@ -64,6 +65,12 @@ export default async function Admin() {
     ...(bolehAkses
       ? [{ href: "/admin/akses", nama: "Senarai Akses", ikon: "🔑", bahagian: "pentadbiran" as const,
            ringkas: "Siapa boleh masuk portal, dan apa peranan mereka." }]
+      : []),
+    // Kuota penuh bermakna sistem BERHENTI — borang tidak tersimpan, muat
+    // naik gagal. Ia tidak memberi amaran sendiri, jadi ia perlu ada tempat.
+    ...(bolehDiagnostik
+      ? [{ href: "/admin/kuota", nama: "Kuota Sistem", ikon: "📈", bahagian: "pentadbiran" as const,
+           ringkas: "Ruang pangkalan data dan storan fail. Amaran automatik pada 70%." }]
       : []),
   ];
 
