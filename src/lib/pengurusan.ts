@@ -255,6 +255,33 @@ export async function satuBaris(id: string): Promise<Baris | null> {
  * setiap suntingan bermakna selepas dua kali sunting, "asal" ialah suntingan
  * pertama dan bacaan sebenar PDF hilang selamanya.
  */
+/**
+ * Kemas kini BANYAK baris dengan satu permintaan setiap baris, lapan serentak.
+ *
+ * `suntingBaris()` membuat DUA permintaan bagi setiap baris (baca `asal`,
+ * kemudian tulis). Bila pindaan dikenakan pada seluruh edisi, itu ribuan
+ * perjalanan berturutan dan fungsi Vercel tamat masa di tengah jalan —
+ * pengguna melihat "sambungan terputus" sedangkan namanya memang tersimpan.
+ * Di sini `asal` sudah diketahui daripada bacaan, jadi satu tulisan cukup.
+ */
+export async function suntingBarisBanyak(
+  baris: { id: string; sel: string[]; asal: string[] | null }[],
+): Promise<number> {
+  const db = klienTulis();
+  let siap = 0;
+  const SERENTAK = 8;
+  for (let i = 0; i < baris.length; i += SERENTAK) {
+    const hasil = await Promise.allSettled(baris.slice(i, i + SERENTAK).map((b) =>
+      db.minta(`pengurusan_baris?id=eq.${encodeURIComponent(b.id)}`, {
+        method: "PATCH",
+        headers: { Prefer: "return=minimal" },
+        body: JSON.stringify({ sel: b.sel, asal: b.asal ?? b.sel, sumber: "sunting" }),
+      })));
+    siap += hasil.filter((h) => h.status === "fulfilled").length;
+  }
+  return siap;
+}
+
 export async function suntingBaris(id: string, sel: string[]): Promise<void> {
   const db = klienTulis();
   const sedia = (await db.minta(

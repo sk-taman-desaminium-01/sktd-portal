@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { after } from "next/server";
 import { pastikanBoleh } from "./akses";
 import { SEKOLAH } from "@/data/sekolah";
 import {
@@ -155,14 +156,31 @@ export async function suntingNod(
     const namaBaharu = namaSelDalamBaris(bersih, namaLama);
     let merebak = "";
     if (namaLama && namaBaharu && kunciNama(namaLama) !== kunciNama(namaBaharu)) {
-      await tambahPindaan({
-        jenis: "ganti_nama", dari: namaLama, kepada: namaBaharu,
-        sebab: "Kemas kini nama dari Carta Organisasi", oleh: saya.emel ?? null,
-      });
-      const dok = await dokumenTerkini();
-      if (dok) {
-        const hasil = await kenakanPindaanEdisi(dok.id);
-        merebak = hasil.ok ? ` ${hasil.mesej}` : " Pindaan disimpan, tetapi edisi semasa belum dikemas kini — jalankan 'Kenakan pindaan' dalam Buku Pengurusan.";
+      try {
+        await tambahPindaan({
+          jenis: "ganti_nama", dari: namaLama, kepada: namaBaharu,
+          sebab: "Kemas kini nama dari Carta Organisasi", oleh: saya.emel ?? null,
+        });
+        merebak = " Nama ini dikemas kini di semua jawatankuasa.";
+        // PEMBETULAN SELURUH EDISI DIJALANKAN SELEPAS JAWAPAN DIHANTAR.
+        //
+        // Buku 180 muka surat bermakna ribuan baris; menunggunya siap dalam
+        // permintaan yang sama menyebabkan fungsi Vercel tamat masa, dan
+        // pengguna melihat "sambungan terputus" sedangkan suntingan SUDAH
+        // tersimpan. Carta pula mengenakan pindaan semasa BACA, jadi nama
+        // betul kelihatan serta-merta walaupun tulisan ini masih berjalan.
+        const dok = await dokumenTerkini();
+        if (dok) {
+          const jalankan = async () => {
+            try { await kenakanPindaanEdisi(dok.id); }
+            catch (e) { console.error("[carta] pindaan edisi gagal", e); }
+          };
+          try { after(jalankan); } catch { void jalankan(); }
+        }
+      } catch (e) {
+        // Suntingan baris SUDAH tersimpan — kegagalan merebak tidak boleh
+        // membatalkannya, tetapi puncanya mesti dilihat pengguna.
+        merebak = ` Nama pada kad ini disimpan, TETAPI penyebaran ke jawatankuasa lain gagal: ${ralat(e)}`;
       }
     }
     revalidatePath("/admin/carta");
