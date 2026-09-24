@@ -343,13 +343,10 @@ export default function PanelUrusPbd({
       <section className="mt-8 rounded-xl border border-garis bg-white p-5">
         <h2 className="text-base font-bold text-navy-800">Hujung sesi</h2>
         <p className="mt-1 text-sm leading-relaxed text-slate-500">
-          Menutup sesi {tahunSesi}, membuka sesi {tahunSesi + 1}, dan menaikkan
-          semua murid satu tahun. Murid Tahun 6 ditandakan tamat.
+          Menaikkan semua murid satu tahun. Tahun 6 ditandakan tamat.
         </p>
         <p className="mt-2 text-sm leading-relaxed text-navy-800">
-          <b>Keputusan sesi {tahunSesi} tidak disentuh.</b> Murid mendapat
-          pendaftaran baharu; yang lama kekal, jadi slip sesi {tahunSesi} boleh
-          dicetak selamanya. Menekan dua kali tidak mencipta murid pendua.
+          <b>Keputusan sesi {tahunSesi} tidak disentuh.</b>
         </p>
 
         {mesejSesi && <div className="mt-3"><Mesej ok={mesejSesi.ok} teks={mesejSesi.teks} /></div>}
@@ -467,10 +464,7 @@ Tekan <b>Semak dahulu</b> sebelum ini boleh digunakan.
       <section className="mt-10">
         <h2 className="text-base font-bold text-navy-800">Masukkan murid</h2>
         <p className="mt-1 text-sm leading-relaxed text-slate-500">
-          Pilih kelas, kemudian tampal senarai nama dan No. KP — dalam apa jua
-          bentuk ia datang. Sistem mengenal No. KP walaupun ditulis dengan
-          sempang, ruang atau titik, dan mengira jantina dari digit terakhirnya.
-          Kelas tidak perlu ditaip.
+          Pilih kelas, tampal senarai nama dan No. KP dalam apa jua bentuk.
         </p>
 
         <div className="mt-3 rounded-xl border border-garis bg-white p-4">
@@ -633,9 +627,7 @@ Tekan <b>Semak dahulu</b> sebelum ini boleh digunakan.
       <section className="mt-10">
         <h2 className="text-base font-bold text-navy-800">Guru subjek</h2>
         <p className="mt-1 text-sm leading-relaxed text-slate-500">
-          Menentukan siapa boleh mengisi TP bagi subjek dan kelas mana. Seorang
-          guru selalunya mengajar beberapa subjek merentas beberapa kelas —
-          pilih semuanya sekali gus.
+          Siapa boleh mengisi TP bagi subjek dan kelas mana.
         </p>
 
         {senaraiKelas.length === 0 ? (
@@ -1055,9 +1047,8 @@ function SemakMurid({ senaraiKelas }: {
     <section className="mt-10">
       <h2 className="text-base font-bold text-navy-800">Betulkan murid</h2>
       <p className="mt-1 text-sm leading-relaxed text-slate-500">
-        Nama tersalah eja, No. KP tersalah taip, murid yang masuk kelas yang
-        salah. Betulkan di sini — tidak perlu memadam kelas dan mengimport
-        semula, yang akan memusnahkan nilai PBD yang sudah diisi.
+        Betulkan di sini — <b>jangan padam kelas dan import semula</b>, itu
+        memusnahkan nilai PBD yang sudah diisi.
       </p>
 
       <div className="mt-3 rounded-xl border border-garis bg-white p-4">

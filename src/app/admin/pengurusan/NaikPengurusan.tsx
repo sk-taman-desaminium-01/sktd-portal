@@ -161,9 +161,7 @@ export default function NaikPengurusan() {
             Fail Buku Pengurusan
           </label>
           <p className="mt-1 text-sm leading-relaxed text-slate-600">
-            PDF, DOCX, XLSX atau CSV. PDF dibaca terus dalam pelayar ini —
-            failnya tidak dimuat naik ke mana-mana, hanya teks yang sistem
-            baca dihantar. Jadi saiz PDF tidak menjadi masalah.
+            PDF, DOCX, XLSX atau CSV. <b>Saiz PDF tidak menjadi masalah.</b>
           </p>
           <input
             id="fail" name="fail" type="file" required

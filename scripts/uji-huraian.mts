@@ -9,6 +9,7 @@ import { SET_LALAI, TAHUN_SET_LALAI, naikTarafJadual, setUntukKelas } from "../s
 import { KOD_SUBJEK, namaSubjek } from "../src/data/subjek.ts";
 import { kadIkutBahagian } from "../src/data/bahagian.ts";
 import { semuaKelasDalam, kesanKelas } from "../src/data/kesan-kelas.ts";
+import { kodSlot, huraiKodSlot, namaSlot } from "../src/data/slot-jadual.ts";
 
 /** Waktu sebenar sekolah — sesi pagi, rehat pada waktu 5 (R4). */
 const WAKTU = SET_LALAI.find((s) => s.id === "pagi-r4")!.senarai;
@@ -332,6 +333,52 @@ semak("waktu lapang kekal kosong (lajur 9)", isn[pdp3[7].id], undefined);
 const sel3 = h3.draf.hari.selasa ?? {};
 semak("sel tunggal tidak melebar", sel3[pdp3[6].id]?.subjek, "SAINS");
 semak("jiran sel tunggal kekal kosong", sel3[pdp3[5].id], undefined);
+
+/* ------------------------------------------------------------------ *
+ * PENDIDIKAN ISLAM / MORAL — DUA SUBJEK, SATU WAKTU
+ *
+ * Kedua-duanya berjalan SERENTAK: murid Islam ke kelas PI, murid bukan Islam
+ * ke kelas Moral, guru berlainan. Jadual mencetaknya sebagai satu petak
+ * dibahagi dua tingkat. Koordinat di bawah diambil dari 1 EFEKTIF (muka 2).
+ *
+ * Dua kesilapan dikunci di sini:
+ *   1. tanpa pengasingan tingkat, MORAL hilang terus dan nama gurunya
+ *      bercantum ke dalam nama guru PI — terbaca "SAFFA' MORAL KALAIVANI"
+ *   2. label kumpulan ("QURAN") bukan nama guru; hurufnya dalam kurungan
+ *      ("P.ISLAM (Q)") pula BERMAKNA dan mesti dikekalkan
+ * ------------------------------------------------------------------ */
+const itemPM = [
+  ...P3.map((c, i) => ({ str: masa3[i], x: c - 27, y: 500, w: 54 })),
+  { str: "Mo", x: 40, y: 430, w: 14 },
+  { str: "QURAN", x: 560, y: 476, w: 32 },        // label kumpulan, bukan guru
+  { str: "P.ISLAM (Q)", x: 489, y: 457, w: 92 },
+  { str: "SAFFA' / NATRAH", x: 520, y: 444, w: 82 },
+  { str: "MORAL-Q", x: 551, y: 430, w: 46 },
+  { str: "MORAL", x: 493, y: 411, w: 60 },
+  { str: "KALAIVANI", x: 546, y: 398, w: 56 },
+  { str: "Tu", x: 40, y: 330, w: 14 },
+  { str: "BM", x: 267, y: 335, w: 22 },
+  { str: "AISYAH", x: 330, y: 315, w: 30 },
+  { str: "We", x: 40, y: 230, w: 14 },
+  { str: "MT", x: 267, y: 235, w: 22 },
+  { str: "AIN", x: 347, y: 215, w: 20 },
+];
+const hPM = binaDrafDariKedudukan([itemPM], r1)!;
+const isnPM = hPM.draf.hari.isnin ?? {};
+// Petak itu berpusat antara lajur 6 dan 7, jadi ia dua waktu.
+const slotPM = isnPM[pdp3[4].id];
+semak("PI dan Moral dalam SATU slot", slotPM?.subjek, "PAI");
+semak("Moral disimpan sebagai subjek seiring", slotPM?.seiring, "PM");
+semak("varian dalam kurungan dikekalkan", slotPM?.varian, "Q");
+semak("guru PI bersih daripada label kumpulan", hPM.draf.guruSubjek?.PAI, "SAFFA' / NATRAH");
+semak("guru Moral direkod berasingan", hPM.draf.guruSubjek?.PM, "KALAIVANI");
+semak("slot seiring dikira SEKALI, bukan dua", slotPM !== undefined && isnPM[pdp3[5].id]?.seiring, "PM");
+
+// Kod slot: satu nilai untuk satu <select>, bolak-balik tanpa kehilangan.
+semak("kod slot membawa varian dan pasangan", kodSlot({ subjek: "PAI", varian: "Q", seiring: "PM" }), "PAI:Q+PM");
+semak("kod slot dihurai semula", JSON.stringify(huraiKodSlot("PAI:Q+PM")), JSON.stringify({ subjek: "PAI", varian: "Q", seiring: "PM" }));
+semak("kod biasa tidak terjejas", kodSlot({ subjek: "BM" }), "BM");
+semak("nama dipapar penuh", namaSlot({ subjek: "PAI", varian: "Q", seiring: "PM" }), "Pendidikan Islam (Quran) / Pendidikan Moral");
 
 console.log(`\n${lulus} lulus, ${gagal} gagal`);
 process.exit(gagal > 0 ? 1 : 0);
