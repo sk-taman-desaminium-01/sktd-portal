@@ -42,8 +42,29 @@ export function klienTulis() {
         cache: "no-store",
       });
       if (!res.ok) {
+        const badan = await res.text();
+        // KUOTA PENUH ≠ RALAT MISTERI.
+        //
+        // Bila pangkalan data melebihi 500 MB, Supabase memasukkan projek ke
+        // READ-ONLY MODE. Bacaan terus berfungsi seperti biasa; tulisan
+        // gagal dengan "cannot execute INSERT in a read-only transaction"
+        // (SQLSTATE 25006). Tanpa terjemahan ini, seorang ibu yang menghantar
+        // borang melihat sekeping teks Postgres, dan seorang guru yang
+        // menyimpan gred melihat kegagalan yang kelihatan seperti pepijat —
+        // sedangkan yang perlu berlaku ialah seseorang membebaskan ruang.
+        //
+        // Ia membawa jalan keluar dalam mesej itu, kerana mesej ralat yang
+        // tidak memberitahu apa perlu dibuat sama nilainya dengan tiada mesej.
+        if (/read-only|read only transaction|25006/i.test(badan)) {
+          throw new Error(
+            "Pangkalan data sudah penuh, jadi sistem hanya boleh MEMBACA " +
+              "buat sementara — apa yang anda taip belum tersimpan. Jangan " +
+              "tutup halaman ini. Beritahu pentadbir supaya membuka " +
+              "/admin/kuota dan membebaskan ruang; selepas itu cuba hantar semula.",
+          );
+        }
         // Peraturan #4: jangan telan. Admin mesti nampak kegagalan sebenar.
-        throw new Error(`[supabase] ${res.status} ${await res.text()}`);
+        throw new Error(`[supabase] ${res.status} ${badan}`);
       }
       // BADAN KOSONG BUKAN JSON.
       //
