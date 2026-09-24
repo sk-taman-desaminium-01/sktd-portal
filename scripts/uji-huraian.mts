@@ -5,7 +5,7 @@
  * Tiada Supabase, tiada Clerk, tiada fail sebenar — hanya logik tulen.
  */
 import { padanSubjek, binaDraf, binaDrafDariGrid, binaDrafDariKedudukan, namaGuruDariSel, padanHari } from "../src/lib/jadual-huraian.ts";
-import { SET_LALAI } from "../src/data/jadual-jenis.ts";
+import { SET_LALAI, TAHUN_SET_LALAI, naikTarafJadual, setUntukKelas } from "../src/data/jadual-jenis.ts";
 import { KOD_SUBJEK, namaSubjek } from "../src/data/subjek.ts";
 import { kadIkutBahagian } from "../src/data/bahagian.ts";
 import { semuaKelasDalam, kesanKelas } from "../src/data/kesan-kelas.ts";
@@ -139,7 +139,10 @@ const item: { str: string; x: number; y: number; w: number }[] = [
   { str: "We", x: 40, y: 230, w: 14 },
   { str: "MT", x: pusat(1) - 11, y: 235, w: 22 },
 ];
-const petang = SET_LALAI.find((s) => s.id === "petang")!.senarai;
+// Set petang untuk ujian koordinat ini: rehat waktu 6, sama seperti id
+// "petang" yang lama. Id itu kini `petang-r2` kerana sesi petang mempunyai
+// tiga set berperingkat (lihat blok SESI PETANG di bawah).
+const petang = SET_LALAI.find((s) => s.id === "petang-r2")!.senarai;
 const k = binaDrafDariKedudukan([item], petang);
 semak("koordinat dibaca", k !== null, true);
 const isnin = k!.draf.hari.isnin ?? {};
@@ -225,6 +228,61 @@ semak("teks kosong tidak melontar", semuaKelasDalam("").length, 0);
 // Perlindungan asal MESTI kekal: kabur bermakna berhenti, bukan meneka.
 semak("kesanKelas kekal null bila kabur", kesanKelas("1 AMANAH 2 DEDIKASI", "x.pdf"), null);
 semak("kesanKelas kekal berfungsi bila satu", kesanKelas("1 AMANAH", "x.pdf"), "1 AMANAH");
+
+/* ------------------------------------------------------------------ *
+ * SESI PETANG — waktu sebenar sekolah, disahkan 24 Sep 2026
+ *
+ * Daripada "JW KELAS PETANG 31.7.2026.pdf" (30 kelas). Dua kesilapan lama
+ * dikunci di sini supaya ia tidak kembali:
+ *   1. blok 20 minit ialah waktu 7 (04:00–04:20), BUKAN waktu 6
+ *   2. rehat petang BERPERINGKAT seperti pagi: Tahun 1 waktu 5, Tahun 2
+ *      waktu 6, Tahun 3 waktu 7 — disahkan dengan melihat muka surat PDF
+ *
+ * Kesan kesilapan itu boleh diukur: dengan set lama, kelas Tahun 1 dibaca
+ * 39/45 slot; dengan set betul, 44/45 — dan baki satu itu memang kosong
+ * dalam cetakan (Jumaat waktu 1).
+ * ------------------------------------------------------------------ */
+const setPetang = (id: string) => SET_LALAI.find((s) => s.id === id)!;
+semak("tiga set petang wujud", SET_LALAI.filter((s) => s.sesi === "petang").length, 3);
+semak("waktu 6 penuh 30 minit", `${setPetang("petang-r2").senarai[5].mula}-${setPetang("petang-r2").senarai[5].tamat}`, "15:30-16:00");
+semak("waktu 7 pendek 20 minit", `${setPetang("petang-r2").senarai[6].mula}-${setPetang("petang-r2").senarai[6].tamat}`, "16:00-16:20");
+semak("Tahun 1 rehat waktu 5", setPetang("petang-r1").senarai.findIndex((w) => w.rehat) + 1, 5);
+semak("Tahun 2 rehat waktu 6", setPetang("petang-r2").senarai.findIndex((w) => w.rehat) + 1, 6);
+semak("Tahun 3 rehat waktu 7", setPetang("petang-r3").senarai.findIndex((w) => w.rehat) + 1, 7);
+semak("id waktu kekal sama merentas set", setPetang("petang-r1").senarai.map((w) => w.id).join(","), setPetang("petang-r3").senarai.map((w) => w.id).join(","));
+semak("Tahun 1 → petang-r1", TAHUN_SET_LALAI[1], "petang-r1");
+semak("Tahun 3 → petang-r3", TAHUN_SET_LALAI[3], "petang-r3");
+
+// Pembetulan jadual TERSIMPAN yang membawa set lama yang salah.
+const lamaSalah = {
+  set: [{
+    id: "petang", nama: "Sesi Petang — rehat waktu 6 (3:30)", sesi: "petang",
+    senarai: [["13:00","13:30"],["13:30","14:00"],["14:00","14:30"],["14:30","15:00"],
+      ["15:00","15:30"],["15:30","15:50"],["15:50","16:20"],["16:20","16:50"],
+      ["16:50","17:20"],["17:20","17:50"]].map(([mula, tamat], i) => ({
+        id: `t${i + 1}`, mula, tamat, ...(i === 5 ? { rehat: true, label: "Rehat" } : {}),
+      })),
+  }],
+  tahunSet: { 1: "petang", 2: "petang", 3: "petang" },
+  kelas: { "1 DEDIKASI": { hari: { isnin: { t1: { subjek: "BM" } } } } },
+};
+const dibetul = naikTarafJadual(lamaSalah);
+semak("set tersimpan yang salah dibetulkan", dibetul.set[0].senarai[6].tamat, "16:20");
+semak("waktu 6 tersimpan jadi 30 minit", dibetul.set[0].senarai[5].tamat, "16:00");
+semak("set berperingkat ditambah", dibetul.set.length >= 3, true);
+semak("Tahun 1 dialih ke petang-r1", dibetul.tahunSet[1], "petang-r1");
+semak("Tahun 3 dialih ke petang-r3", dibetul.tahunSet[3], "petang-r3");
+// PERATURAN #2: slot yang sudah tersimpan TIDAK BOLEH hilang.
+semak("slot tersimpan kekal", dibetul.kelas["1 DEDIKASI"].hari.isnin!.t1.subjek, "BM");
+semak("kelas Tahun 1 dapat set rehat waktu 5",
+  setUntukKelas(dibetul, "1 DEDIKASI")!.senarai.findIndex((w) => w.rehat) + 1, 5);
+// Jadual yang pentadbir sunting sendiri TIDAK disentuh.
+const disunting = naikTarafJadual({
+  set: [{ id: "petang", nama: "Ubah suai", sesi: "petang",
+    senarai: [{ id: "t1", mula: "13:15", tamat: "13:45" }] }],
+  tahunSet: { 1: "petang" }, kelas: {},
+});
+semak("set yang disunting pentadbir tidak disentuh", disunting.set[0].senarai[0].mula, "13:15");
 
 console.log(`\n${lulus} lulus, ${gagal} gagal`);
 process.exit(gagal > 0 ? 1 : 0);

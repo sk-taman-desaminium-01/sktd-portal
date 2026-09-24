@@ -106,9 +106,22 @@ const BLOK_PAGI: [string, string][] = [
   ["11:30", "12:00"], ["12:00", "12:30"], ["12:30", "13:00"],
 ];
 
+/**
+ * Sesi petang — DIBETULKAN 24 Sep 2026 daripada jadual rasmi sekolah
+ * ("JW KELAS PETANG 31.7.2026.pdf", 30 kelas, semuanya satu struktur).
+ *
+ * Yang salah sebelum ini: blok 20 minit diletakkan pada waktu 6 (15:30–15:50)
+ * dan waktu 7 dijadikan 30 minit. Jadual sebenar sekolah ialah sebaliknya —
+ * waktu 6 penuh 30 minit (03:30–04:00) dan waktu 7 yang pendek, 20 minit
+ * (04:00–04:20). Salah letak itu menganjakkan setiap waktu selepasnya, dan
+ * itulah sebab jadual petang menunjukkan petak kosong.
+ *
+ * PDF menulis waktu dalam format 12 jam tanpa AM/PM ("01:00 - 01:30"); di
+ * sini ia 24 jam.
+ */
 const BLOK_PETANG: [string, string][] = [
   ["13:00", "13:30"], ["13:30", "14:00"], ["14:00", "14:30"], ["14:30", "15:00"],
-  ["15:00", "15:30"], ["15:30", "15:50"], ["15:50", "16:20"], ["16:20", "16:50"],
+  ["15:00", "15:30"], ["15:30", "16:00"], ["16:00", "16:20"], ["16:20", "16:50"],
   ["16:50", "17:20"], ["17:20", "17:50"],
 ];
 
@@ -128,15 +141,32 @@ function bina(awalan: string, blok: [string, string][], rehatKe: number): Waktu[
  * REHAT BERPERINGKAT: jadual pagi sekolah melabelkan waktu 5, 6 dan 7 sebagai
  * "5/R4", "6/R5", "7/R6" — iaitu rehat Tahun 4 pada waktu 5, Tahun 5 pada
  * waktu 6, dan Tahun 6 pada waktu 7. Blok waktunya SAMA; yang berbeza hanya
- * blok mana yang menjadi rehat. Sesi petang pula berkongsi satu rehat pada
- * waktu 6 (15:30).
+ * blok mana yang menjadi rehat.
+ *
+ * SESI PETANG JUGA BERPERINGKAT — diperbetulkan 24 Sep 2026. Nota lama di
+ * sini berkata petang "berkongsi satu rehat pada waktu 6", kerana ia ditulis
+ * daripada SATU helaian kelas (2 MAJU). Jadual penuh 30 kelas menunjukkan
+ * corak yang sama seperti pagi: kepala jadual melabelkan "5/R1", "6/R2",
+ * "7/R3", dan lajur yang kosong setiap hari ialah:
+ *   · Tahun 1 → waktu 5 (03:00–03:30)   — disahkan pada 1 DEDIKASI
+ *   · Tahun 2 → waktu 6 (03:30–04:00)   — disahkan pada 2 DEDIKASI
+ *   · Tahun 3 → waktu 7 (04:00–04:20)   — disahkan pada 3 DEDIKASI
+ * Disahkan dengan melihat muka surat PDF itu sendiri, bukan daripada teksnya.
+ *
+ * Id waktu kekal `t1`..`t10` dalam ketiga-tiga set, jadi jadual yang sudah
+ * tersimpan tidak hilang apabila kelas berpindah antara set — yang berubah
+ * hanya waktu mana yang dikira rehat.
  *
  * ⚠️ Pemetaan tahun → set masih perlu disahkan pentadbir; sekolah boleh
  * menukar susunan tahun antara sesi bila-bila masa.
  */
 export const SET_LALAI: SetWaktu[] = [
-  { id: "petang", nama: "Sesi Petang — rehat waktu 6 (3:30)", sesi: "petang",
+  { id: "petang-r1", nama: "Sesi Petang — rehat waktu 5 (R1)", sesi: "petang",
+    senarai: bina("t", BLOK_PETANG, 5) },
+  { id: "petang-r2", nama: "Sesi Petang — rehat waktu 6 (R2)", sesi: "petang",
     senarai: bina("t", BLOK_PETANG, 6) },
+  { id: "petang-r3", nama: "Sesi Petang — rehat waktu 7 (R3)", sesi: "petang",
+    senarai: bina("t", BLOK_PETANG, 7) },
   { id: "pagi-r4", nama: "Sesi Pagi — rehat waktu 5 (R4)", sesi: "pagi",
     senarai: bina("p", BLOK_PAGI, 5) },
   { id: "pagi-r5", nama: "Sesi Pagi — rehat waktu 6 (R5)", sesi: "pagi",
@@ -147,15 +177,16 @@ export const SET_LALAI: SetWaktu[] = [
 
 /** Tetapan permulaan tahun → set. MESTI disahkan pentadbir. */
 export const TAHUN_SET_LALAI: Record<number, string> = {
-  1: "petang",
-  2: "petang",
-  3: "petang",
+  1: "petang-r1",
+  2: "petang-r2",
+  3: "petang-r3",
   4: "pagi-r4",
   5: "pagi-r5",
   6: "pagi-r6",
   // 0 = Pendidikan Khas (PPKI). Tetapan permulaan sahaja — sahkan dengan
-  // penyelaras PPKI, sama seperti tahun lain.
-  0: "petang",
+  // penyelaras PPKI, sama seperti tahun lain. PPKI tiada dalam jadual petang
+  // 31.7.2026, jadi waktu rehatnya masih belum disahkan.
+  0: "petang-r2",
 };
 
 export const JADUAL_KOSONG: Jadual = {
@@ -183,6 +214,58 @@ export function setUntukKelas(jadual: Jadual, label: string): SetWaktu | null {
 }
 
 /**
+ * BETULKAN SET PETANG YANG TERSIMPAN DENGAN WAKTU SALAH.
+ *
+ * Set petang asal ditulis daripada SATU helaian kelas dan membawa dua
+ * kesilapan: blok 20 minit diletakkan pada waktu 6 (15:30–15:50) sedangkan
+ * sekolah meletakkannya pada waktu 7, dan sesi petang dianggap berkongsi satu
+ * waktu rehat sedangkan ia berperingkat seperti sesi pagi. Kesannya setiap
+ * waktu selepas rehat teranjak, dan jadual petang memaparkan petak kosong.
+ *
+ * Jadual yang sudah tersimpan membawa salinan set itu, jadi membetulkan
+ * SET_LALAI sahaja tidak cukup — ia mesti dibetulkan semasa dibaca.
+ *
+ * Pembetulan ini SENGAJA sempit:
+ *  · ia hanya menyentuh set yang blok waktunya SAMA PERSIS dengan corak salah
+ *    itu (15:30–15:50 diikuti 15:50–16:20). Set yang pentadbir sunting sendiri
+ *    tidak dikenali oleh corak itu dan tidak disentuh.
+ *  · id waktu (`t1`..`t10`) tidak berubah, jadi TIADA slot jadual yang hilang.
+ *    Yang berubah hanya jam yang dipapar dan waktu mana dikira rehat.
+ *  · pemetaan tahun hanya dialih apabila ia masih menunjuk kepada id lama
+ *    `petang` — iaitu nilai permulaan, bukan pilihan pentadbir.
+ */
+function betulkanPetang(j: Jadual): Jadual {
+  const salah = (w: Waktu[]) =>
+    w.length === BLOK_PETANG.length &&
+    w[5]?.mula === "15:30" && w[5]?.tamat === "15:50" &&
+    w[6]?.mula === "15:50" && w[6]?.tamat === "16:20";
+
+  const adaSalah = j.set.some((s) => s.sesi === "petang" && salah(s.senarai));
+  if (!adaSalah) return j;
+
+  const set = j.set.map((s) => {
+    if (s.sesi !== "petang" || !salah(s.senarai)) return s;
+    // Kekalkan waktu mana yang ditanda rehat dalam set itu; hanya jamnya
+    // yang dibetulkan.
+    const rehatKe = s.senarai.findIndex((w) => w.rehat) + 1;
+    return { ...s, senarai: bina("t", BLOK_PETANG, rehatKe || 6) };
+  });
+
+  // Set petang berperingkat yang belum wujud ditambah, supaya pentadbir boleh
+  // memilihnya tanpa membinanya sendiri.
+  for (const lalai of SET_LALAI) {
+    if (lalai.sesi === "petang" && !set.some((s) => s.id === lalai.id)) set.push(lalai);
+  }
+
+  const tahunSet = { ...j.tahunSet };
+  for (const [tahun, id] of Object.entries(tahunSet)) {
+    if (id === "petang") tahunSet[Number(tahun)] = TAHUN_SET_LALAI[Number(tahun)] ?? "petang-r2";
+  }
+
+  return { ...j, set, tahunSet };
+}
+
+/**
  * Terima jadual dalam bentuk LAMA (satu senarai waktu per sesi) dan
  * tukarkannya kepada set. Dikekalkan supaya data yang sudah tersimpan tidak
  * hilang apabila bentuknya berubah — peraturan keras #2, dalam bentuk lain.
@@ -195,12 +278,12 @@ export function naikTarafJadual(data: unknown): Jadual {
   if (!d || typeof d !== "object") return JADUAL_KOSONG;
 
   if (Array.isArray(d.set) && d.set.length > 0) {
-    return {
+    return betulkanPetang({
       set: d.set,
       tahunSet: d.tahunSet ?? TAHUN_SET_LALAI,
       kelas: d.kelas ?? {},
       dikemaskini: d.dikemaskini,
-    };
+    });
   }
 
   // Bentuk lama: waktu.pagi / waktu.petang, dan setiap kelas menyimpan sesinya.
@@ -222,7 +305,8 @@ export function naikTarafJadual(data: unknown): Jadual {
     }
     const kelas: Record<string, KelasJadual> = {};
     for (const [k, v] of Object.entries(d.kelas ?? {})) kelas[k] = { hari: v.hari, guruSubjek: v.guruSubjek };
-    return { set: set.length ? set : SET_LALAI, tahunSet, kelas, dikemaskini: d.dikemaskini };
+    // Bentuk lama juga boleh membawa waktu petang yang salah itu.
+    return betulkanPetang({ set: set.length ? set : SET_LALAI, tahunSet, kelas, dikemaskini: d.dikemaskini });
   }
 
   return JADUAL_KOSONG;
