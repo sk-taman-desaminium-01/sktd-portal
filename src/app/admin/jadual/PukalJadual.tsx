@@ -165,11 +165,8 @@ export default function PukalJadual() {
     <section className="mt-5 rounded-xl border-2 border-navy-100 bg-white p-4">
       <h2 className="text-base font-bold text-navy-800">Muat naik pukal</h2>
       <p className="mt-1 text-sm leading-relaxed text-slate-600">
-        Tiga cara, semuanya berfungsi: <b>satu PDF yang mengandungi semua
-        kelas</b> (satu kelas satu muka surat), <b>banyak fail sekaligus</b>,
-        atau satu fail <b>.zip</b>. Sistem mengesan kelas dari isi setiap muka,
-        membacanya satu demi satu, dan menunjukkan hasilnya untuk anda semak
-        sebelum apa-apa disimpan. Muka tanpa nama kelas dilangkau.
+        <b>Satu PDF semua kelas</b> (satu kelas satu muka), banyak fail
+        sekaligus, atau satu <b>.zip</b>.
       </p>
 
       <form
@@ -311,8 +308,7 @@ export default function PukalJadual() {
               {sibuk ? "Menyimpan…" : `Simpan ${dipilihKira} jadual`}
             </button>
             <span className="text-xs leading-relaxed text-slate-500">
-              Hanya baris bertanda disimpan. Nama guru yang sudah ada dikekalkan
-              untuk subjek yang fail baharu tidak menyebutnya.
+              Hanya baris bertanda disimpan.
             </span>
           </div>
         </>

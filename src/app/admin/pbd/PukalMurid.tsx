@@ -265,10 +265,8 @@ export default function PukalMurid({ semuaKelas }: { semuaKelas: string[] }) {
     <section className="mt-5 rounded-xl border-2 border-navy-100 bg-white p-4">
       <h3 className="text-base font-bold text-navy-800">Muat naik pukal — semua kelas</h3>
       <p className="mt-1 text-sm leading-relaxed text-slate-600">
-        Pilih <b>banyak fail sekaligus</b>, atau satu fail <b>.zip</b> yang
-        mengandungi semuanya. Sistem mengesan kelas setiap fail dari isinya,
-        membacanya satu demi satu, dan menunjukkan senarai nama untuk anda semak
-        sebelum apa-apa disimpan.
+        <b>Banyak fail sekaligus</b>, atau satu <b>.zip</b>. Semak senarai
+        nama sebelum menyimpan.
       </p>
 
       <form

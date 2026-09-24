@@ -434,6 +434,18 @@ const RE_MASA = /(\d{1,2})[:.](\d{2})\s*[-–]\s*(\d{1,2})[:.](\d{2})/;
  * menduduki JALUR x. Sel ialah persilangan kedua-duanya — sama seperti yang
  * dilihat mata.
  */
+/**
+ * Huruf komponen Pendidikan Islam daripada teks petak.
+ *
+ * Jadual menulisnya dua cara pada petak yang sama: dalam kurungan pada
+ * subjek ("P.ISLAM (Q)") dan bersambung pada Moral ("MORAL-Q"). Kedua-duanya
+ * diterima; huruf itu sama kerana kedua-dua kumpulan berpecah serentak.
+ */
+function varianDariTeks(teks: string): string | null {
+  const m = /\((Q|J|U)\)/i.exec(teks) ?? /\bMORAL\s*-\s*(Q|J|U)\b/i.exec(teks);
+  return m ? m[1].toUpperCase() : null;
+}
+
 export function binaDrafDariKedudukan(
   halaman: Kedudukan[][],
   senaraiWaktu: Waktu[],
@@ -479,7 +491,7 @@ export function binaDrafDariKedudukan(
     // Jangan ambil apa-apa dari baris masa ke atas — itu kepala jadual.
     const hadAtas = Math.max(...lajurMasa.map((m) => m.y));
 
-    const sel = new Map<string, string[]>();
+    const sel = new Map<string, Kedudukan[]>();
 
     /** Lajur yang pusatnya berada dalam separuh lebar dari pusat teks. */
     const lajurDekat = (pusat: number): number[] => {
@@ -578,7 +590,7 @@ export function binaDrafDariKedudukan(
         if (milik.length === 0) continue;
         for (const idx of milik) {
           const kunci = `${namaHari}|${idx}`;
-          sel.set(kunci, [...(sel.get(kunci) ?? []), it.str.trim()]);
+          sel.set(kunci, [...(sel.get(kunci) ?? []), it]);
         }
       }
     }
@@ -597,7 +609,55 @@ export function binaDrafDariKedudukan(
       const w = senaraiWaktu[idx];
       if (!w || w.rehat) continue;
 
-      const teks = kepingan.join(" ");
+      /* LABEL VARIAN bukan nama guru.
+         aSc menulis label kumpulan kecil di atas setiap petak: "QURAN",
+         "JAWI", "ULUM". Ia bukan subjek (padanSubjek memulangkan null), jadi
+         ia jatuh ke dalam teks yang dibaca sebagai NAMA GURU — diukur pada
+         1 EFEKTIF, guru PAI terbaca "quran saffa natrah". Ia juga terbawa
+         merentasi sempadan baris kerana label duduk tinggi dalam petaknya. */
+      /* Perkataan penuh "QURAN"/"JAWI"/"ULUM" ialah SALINAN huruf dalam
+         kurungan yang aSc cetak di atas petak. Hurufnya diambil di bawah;
+         perkataan penuhnya dibuang kerana ia bukan subjek dan bukan nama
+         guru, dan ia terbawa merentasi sempadan baris (label duduk tinggi
+         dalam petaknya). */
+      const bersih = kepingan.filter((k) => !/^(quran|jawi|ulum)$/i.test(k.str.trim()));
+      if (bersih.length === 0) { tidakDikenali++; continue; }
+
+      const h = namaHari as Hari;
+
+      /* DUA SUBJEK SERENTAK DALAM SATU PETAK.
+         Pendidikan Islam dan Pendidikan Moral berjalan pada waktu yang SAMA:
+         murid Islam ke satu kelas, murid bukan Islam ke kelas lain. Jadual
+         sekolah mencetaknya sebagai satu petak dibahagi dua tingkat, PI di
+         atas dan MORAL di bawah, setiap satu dengan gurunya.
+         Diukur pada 1 EFEKTIF: tanpa pengasingan ini, MORAL hilang terus DAN
+         nama gurunya bercantum ke dalam nama guru PI. */
+      const tanda = bersih
+        .map((k) => ({ k, kod: padanSubjek(k.str) }))
+        .filter((a): a is { k: Kedudukan; kod: string } => a.kod !== null)
+        .sort((a, b) => b.k.y - a.k.y);
+      const kodAtas = tanda[0]?.kod ?? null;
+      const pemisah = tanda.find((a) => a.kod !== kodAtas);
+
+      if (kodAtas && pemisah) {
+        const atas = bersih.filter((p) => p.y > pemisah.k.y);
+        const bawah = bersih.filter((p) => p.y <= pemisah.k.y);
+        const teksAtas = atas.map((p) => p.str).join(" ");
+        const teksBawah = bawah.map((p) => p.str).join(" ");
+        const varian = varianDariTeks(teksAtas) ?? varianDariTeks(teksBawah);
+        hari[h] = {
+          ...(hari[h] ?? {}),
+          [w.id]: { subjek: kodAtas, seiring: pemisah.kod, ...(varian ? { varian } : {}) },
+        };
+        dikenal++;
+        for (const [kod, teks] of [[kodAtas, teksAtas], [pemisah.kod, teksBawah]] as const) {
+          const guru = namaGuruDariSel(teks, kod);
+          if (guru) kutipan.set(kod, [...(kutipan.get(kod) ?? []), guru]);
+        }
+        continue;
+      }
+
+      const teks = bersih.map((p) => p.str).join(" ");
       const kod = padanSubjek(teks);
       if (!kod) {
         // Ada teks di sel ini tetapi kita tidak tahu ia subjek apa. INI
@@ -606,8 +666,8 @@ export function binaDrafDariKedudukan(
         continue;
       }
 
-      const h = namaHari as Hari;
-      hari[h] = { ...(hari[h] ?? {}), [w.id]: { subjek: kod } };
+      const varian = varianDariTeks(teks);
+      hari[h] = { ...(hari[h] ?? {}), [w.id]: { subjek: kod, ...(varian ? { varian } : {}) } };
       dikenal++;
 
       const guru = namaGuruDariSel(teks, kod);

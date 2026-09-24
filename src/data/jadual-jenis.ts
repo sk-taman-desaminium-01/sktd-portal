@@ -47,6 +47,28 @@ export interface Slot {
   subjek: string;
   /** Tindihan untuk slot ini sahaja; biasanya kosong. Lihat `guruSubjek`. */
   guru?: string;
+  /**
+   * Subjek yang berjalan SERENTAK dalam waktu yang sama, untuk kumpulan
+   * murid yang berbeza.
+   *
+   * Ini bukan kes jarang: Pendidikan Islam dan Pendidikan Moral SENTIASA
+   * berjalan bersama. Murid Islam pergi ke kelas PI, murid bukan Islam ke
+   * kelas Moral, pada waktu yang sama dengan guru berbeza. Jadual rasmi
+   * sekolah mencetaknya sebagai satu petak yang dibahagi dua tingkat.
+   *
+   * Menyimpannya sebagai dua slot berasingan mustahil — hanya ada satu waktu.
+   * Menyimpan salah satu sahaja bermakna separuh kelas melihat jadual yang
+   * salah. Jadi kedua-duanya duduk dalam SATU slot.
+   *
+   * Guru bagi subjek seiring diambil dari `guruSubjek` seperti biasa.
+   */
+  seiring?: string;
+  /**
+   * Komponen Pendidikan Islam pada waktu itu: "Q" Quran, "J" Jawi, "U" Ulum.
+   * Jadual sekolah mencetaknya dalam kurungan ("P.ISLAM (Q)") dan nama
+   * penuhnya di atas petak. Guru perlu tahu komponen mana yang diajar.
+   */
+  varian?: string;
 }
 
 /**

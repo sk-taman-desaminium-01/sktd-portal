@@ -5,6 +5,7 @@ import { simpanJadualKelas, simpanSetWaktu } from "@/lib/jadual";
 import { naikFailJadual, type HasilBaca } from "@/lib/baca-jadual";
 import PukalJadual from "./PukalJadual";
 import { SUBJEK } from "@/data/subjek";
+import { kodSlot, huraiKodSlot, namaSlot } from "@/data/slot-jadual";
 import { semakSaiz } from "@/data/had-fail";
 import { sediaMuatan, normalkanFail } from "@/data/muatan-pelayar";
 import { bacaImbasanJadual, failOcrJadual, pdfTanpaTeks } from "@/data/ocr-pelayar";
@@ -27,8 +28,27 @@ import PilihCari from "@/components/PilihCari";
  * setiap kumpulan tahun ada senarai waktunya sendiri.
  */
 
-/** Senarai subjek datang dari SATU tempat — lihat src/data/subjek.ts. */
-const PILIHAN = SUBJEK;
+/**
+ * Senarai subjek datang dari SATU tempat — lihat src/data/subjek.ts.
+ *
+ * Pendidikan Islam mendapat barisan tambahan kerana jadual sekolah membezakan
+ * komponennya — Quran, Jawi, Ulum — dan kerana ia berjalan SERENTAK dengan
+ * Pendidikan Moral untuk murid bukan Islam. Kedua-duanya dalam SATU pilihan,
+ * bukan kawalan kedua: grid ini sudah padat dan dua dropdown setiap petak
+ * menjadikannya mustahil dibaca.
+ */
+const PILIHAN: { kod: string; nama: string }[] = [
+  ...SUBJEK.map((x) => ({ kod: x.kod, nama: x.nama })),
+  ...["Q", "J", "U"].map((v) => ({
+    kod: kodSlot({ subjek: "PAI", varian: v }),
+    nama: namaSlot({ subjek: "PAI", varian: v }),
+  })),
+  { kod: kodSlot({ subjek: "PAI", seiring: "PM" }), nama: namaSlot({ subjek: "PAI", seiring: "PM" }) },
+  ...["Q", "J", "U"].map((v) => ({
+    kod: kodSlot({ subjek: "PAI", varian: v, seiring: "PM" }),
+    nama: namaSlot({ subjek: "PAI", varian: v, seiring: "PM" }),
+  })),
+];
 
 const NAMA_SUBJEK = new Map(PILIHAN.map((p) => [p.kod, p.nama]));
 // 0 = Pendidikan Khas (PPKI) — sentinel dari `tahunKelas()`, bukan tahun
@@ -65,9 +85,17 @@ export default function PanelJadual({
   const subjekDigunakan = useMemo(() => {
     const ada = new Set<string>();
     for (const hariIni of Object.values(kelasIni?.hari ?? {})) {
-      for (const slot of Object.values(hariIni ?? {})) ada.add(slot.subjek);
+      for (const slot of Object.values(hariIni ?? {})) {
+        ada.add(slot.subjek);
+        // Subjek seiring perlu barisan gurunya SENDIRI — guru Moral bukan
+        // guru Pendidikan Islam. Tanpa ini, separuh kelas tidak tahu siapa
+        // mengajar mereka.
+        if (slot.seiring) ada.add(slot.seiring);
+      }
     }
-    return PILIHAN.map((p) => p.kod).filter((k) => ada.has(k));
+    // Varian tidak mengubah SIAPA yang mengajar, jadi barisan guru mengikut
+    // subjek asas sahaja — bukan satu baris untuk setiap komponen.
+    return SUBJEK.map((p) => p.kod).filter((k) => ada.has(k));
   }, [kelasIni]);
 
   async function jalan(f: () => Promise<{ ok: boolean; mesej: string }>) {
@@ -92,7 +120,15 @@ export default function PanelJadual({
       // dan slot bernilai "" kelihatan sama di skrin tetapi berbeza dalam
       // data, dan perbezaan itu muncul sebagai sel hantu di laman awam.
       if (!subjek) delete hariIni[waktuId];
-      else hariIni[waktuId] = { ...(hariIni[waktuId] ?? {}), subjek };
+      else {
+        // Kod membawa varian dan pasangan seiring sekali ("PAI:Q+PM"), jadi
+        // menukar kepada subjek biasa MEMBUANG kedua-duanya. Kalau tidak,
+        // Moral atau varian lama kekal tersembunyi dalam data walaupun skrin
+        // menunjukkan subjek lain.
+        const isi = huraiKodSlot(subjek);
+        const { guru } = hariIni[waktuId] ?? {};
+        hariIni[waktuId] = { ...isi, ...(guru ? { guru } : {}) };
+      }
       return { ...j, kelas: { ...j.kelas, [pilih]: { ...k, hari: { ...k.hari, [hari]: hariIni } } } };
     });
   }
@@ -241,7 +277,7 @@ export default function PanelJadual({
                       </span>
                     ) : (
                       <select
-                        value={kelasIni?.hari?.[h]?.[w.id]?.subjek ?? ""}
+                        value={kodSlot(kelasIni?.hari?.[h]?.[w.id] ?? { subjek: "" })}
                         onChange={(e) => ubahSlot(h, w.id, e.target.value)}
                         className="w-full rounded border border-garis px-1.5 py-1.5 text-xs"
                       >
@@ -263,10 +299,8 @@ export default function PanelJadual({
       <section className="mt-5 rounded-xl border border-garis bg-white p-4">
         <h2 className="text-base font-bold text-navy-800">Muat naik fail jadual</h2>
         <p className="mt-1 text-sm leading-relaxed text-slate-600">
-          Ada fail jadual untuk {pilih}? Muat naik dan sistem akan cuba
-          membacanya, termasuk <b>nama guru</b> kalau ia tertulis dalam fail
-          itu. <b>Tiada apa yang tersimpan secara automatik</b> — ia hanya
-          mengisi grid di atas sebagai cadangan untuk anda semak.
+          <b>Tiada apa tersimpan automatik</b> — fail hanya mengisi grid di
+          atas sebagai cadangan.
         </p>
 
         <form
@@ -287,16 +321,10 @@ export default function PanelJadual({
         </form>
 
         <p className="mt-2 text-xs leading-relaxed text-slate-500">
-          <b>Excel (.xlsx) dan CSV paling tepat</b> — ia menyimpan baris dan
-          lajur sebenar, jadi sistem tahu sel mana di bawah hari yang mana.
-          DOCX berjadual juga baik. PDF berteks boleh dibaca tetapi kurang
-          tepat. PDF imbasan dan gambar dibaca dengan OCR terus pada peranti
-          anda; semak cadangan grid sebelum menyimpan.
+          <b>Excel (.xlsx) dan CSV paling tepat.</b>
         </p>
         <p className="mt-2 text-xs leading-relaxed text-slate-500">
-          <b>Fail anda tidak disimpan.</b> Ia dibaca sekali, kemudian
-          dilupakan — yang kekal hanyalah jadual yang anda sahkan di atas.
-          Simpan salinan fail itu sendiri kalau anda perlukannya kemudian.
+          <b>Fail anda tidak disimpan.</b>
         </p>
 
         {baca && (
@@ -345,9 +373,7 @@ export default function PanelJadual({
       <section className="mt-5 rounded-xl border border-garis bg-white p-4">
         <h2 className="text-base font-bold text-navy-800">Guru subjek</h2>
         <p className="mt-1 text-sm leading-relaxed text-slate-600">
-          Nama guru bagi setiap subjek dalam kelas ini. <b>Ibu bapa akan
-          melihat nama ini</b> di laman sekolah, jadi gunakan nama yang guru
-          berkenaan selesa dipaparkan secara awam.
+          <b>Ibu bapa akan melihat nama ini</b> di laman sekolah.
         </p>
 
         {subjekDigunakan.length === 0 ? (
@@ -397,10 +423,8 @@ export default function PanelJadual({
           {bukaWaktu && (
             <div className="border-t border-garis p-4">
               <p className="rounded-xl border border-[#e9d9ae] bg-[#fdf9f0] p-3 text-sm leading-relaxed text-[#7a5a12]">
-                <b>Sahkan tetapan ini dahulu.</b> Hanya satu angka di sini
-                yang datang dari sekolah: rehat Tahun 1 bermula 3:30 petang,
-                dan semua rehat 30 minit. Waktu mula sesi, bilangan waktu, dan
-                tahun mana masuk kumpulan mana ialah tetapan permulaan sahaja.
+                <b>Sahkan tetapan ini dahulu.</b> Waktu sesi petang
+                disahkan dari jadual sekolah 31.7.2026; sesi pagi belum.
               </p>
 
               {/* Tahun → set */}
@@ -509,8 +533,7 @@ export default function PanelJadual({
           {sibuk ? "Menyimpan…" : `Simpan jadual ${pilih}`}
         </button>
         <span className="text-xs leading-relaxed text-slate-500">
-          Menyimpan hanya kelas <b>{pilih}</b> — kerja guru kelas lain tidak
-          disentuh. Ia mencetuskan binaan semula laman ibu bapa.
+          Menyimpan kelas <b>{pilih}</b> sahaja.
         </span>
       </div>
     </>
