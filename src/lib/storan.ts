@@ -127,6 +127,11 @@ export async function muatNaik(fail: File, folder = "am"): Promise<HasilMuatNaik
       apikey: rahsia,
       Authorization: `Bearer ${rahsia}`,
       "Content-Type": fail.type,
+      // Nama fail unik (cap masa + rawak), jadi kandungannya tidak pernah
+      // berubah untuk URL yang sama — selamat dicache setahun. Tanpa ini
+      // Supabase menghidangkannya dengan `no-cache`, dan setiap paparan
+      // menarik semula 250 KB daripada kuota egress.
+      "Cache-Control": "public, max-age=31536000, immutable",
       "x-upsert": "false",
     },
     body: new Uint8Array(await fail.arrayBuffer()),
