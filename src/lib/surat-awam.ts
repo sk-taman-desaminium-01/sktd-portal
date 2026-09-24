@@ -97,7 +97,7 @@ export async function hantarKebenaranGambarAwam(input: InputKebenaranGambarAwam)
     if (!/^\d{12}$/.test(penjagaKp) || !/^\d{12}$/.test(muridKp)) gagal("No. KP dan MyKid mesti mengandungi 12 digit.");
     if (!kelasSah.has(muridKelas) || !pecahKelas(muridKelas)) gagal("Kelas murid tidak sah.");
     if (typeof input.bersetuju !== "boolean") gagal("Pilih Bersetuju atau Tidak bersetuju.");
-    if (!input.tandatangan_url || !/^data:image\/png;base64,[A-Za-z0-9+/]+=*$/.test(input.tandatangan_url) || input.tandatangan_url.length > 350_000) {
+    if (!input.tandatangan_url || !/^data:image\/png;base64,[A-Za-z0-9+/]+=*$/.test(input.tandatangan_url) || input.tandatangan_url.length > 150_000) {
       gagal("Tandatangan ibu bapa atau penjaga diperlukan.");
     }
 
