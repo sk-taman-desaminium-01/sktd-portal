@@ -11,7 +11,7 @@ import { JENIS_SEKSYEN, type KodSeksyen } from "@/data/seksyen-pengurusan";
 import { bacaPenunjukKod } from "@/data/carta";
 import {
   simpanDokumen, tukarSeksyen, padamDokumen, barisSeksyen, seksyenDokumen,
-  suntingBaris, padamBaris,
+  suntingBaris, suntingBarisBanyak, padamBaris,
   type SeksyenUntukSimpan,
 } from "./pengurusan";
 import {
@@ -510,14 +510,21 @@ export async function kenakanPindaanEdisi(
     const seksyen = await seksyenDokumen(dokumenId);
     let diubah = 0;
     let digugur = 0;
+    // Kumpul dahulu, tulis sekali gus. Satu permintaan bagi setiap baris
+    // yang BERUBAH sahaja — bukan dua permintaan bagi setiap baris dibaca.
+    const tulis: { id: string; sel: string[]; asal: string[] | null }[] = [];
+    const buang: string[] = [];
     for (const s of seksyen) {
       for (const b of await barisSeksyen(s.id)) {
         const kesan = kenakanPindaan(b.sel, pindaan);
-        if (kesan.gugur) { await padamBaris(b.id); digugur++; continue; }
+        if (kesan.gugur) { buang.push(b.id); continue; }
         if (kesan.kena.length === 0) continue;
-        await suntingBaris(b.id, kesan.sel);
-        diubah++;
+        tulis.push({ id: b.id, sel: kesan.sel, asal: b.asal });
       }
+    }
+    diubah = await suntingBarisBanyak(tulis);
+    for (const id of buang) {
+      try { await padamBaris(id); digugur++; } catch { /* baris sudah tiada */ }
     }
     revalidatePath("/admin/pengurusan");
     revalidatePath("/admin/carta");

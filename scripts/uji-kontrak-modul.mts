@@ -58,8 +58,20 @@ for (const id of ["guru-kelas-portal", "kawalan-kelas", "rmt", "disiplin"]) {
   perlu(`Kad ${id} berstatus sedia`, new RegExp(`id: "${id}"[\\s\\S]{0,350}status: "sedia"`).test(bahagian));
 }
 
+
+const carta = baca("src/lib/tindakan-carta.ts");
+perlu("Sunting nama carta mencipta pindaan ganti_nama",
+  carta.includes('jenis: "ganti_nama"') && carta.includes("namaSelDalamBaris"));
+perlu("Pembetulan seluruh edisi TIDAK menahan permintaan sunting",
+  /after\(jalankan\)/.test(carta) && carta.includes("kenakanPindaanEdisi"));
+perlu("Carta mengenakan pindaan semasa baca",
+  carta.includes("kenakanPindaan(b.sel, pindaanAktif)"));
+const pengurusan = baca("src/lib/pengurusan.ts");
+perlu("Pembetulan edisi guna tulisan berkelompok",
+  pengurusan.includes("export async function suntingBarisBanyak"));
+
 if (gagal.length) {
   console.error(`Kontrak modul gagal:\n${gagal.map((x) => `- ${x}`).join("\n")}`);
   process.exit(1);
 }
-console.log("Kontrak modul: 32 semakan lulus.");
+console.log("Kontrak modul: 36 semakan lulus.");

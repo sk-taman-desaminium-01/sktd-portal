@@ -71,7 +71,13 @@ export default function PanelCarta({ punca, tahun, namaSekolah, semuaDisahkan }:
         setSunting(null);
       }
     } catch {
-      setMesej({ ok: false, teks: "Sambungan terputus atau pelayan tidak menjawab. Cuba lagi." });
+      // Permintaan tidak pernah menjawab (talian putus atau pelayan terlalu
+      // lama). Suntingan baris mungkin SUDAH tersimpan, jadi jangan beritahu
+      // pengguna ia gagal — suruh mereka semak.
+      setMesej({
+        ok: false,
+        teks: "Pelayan tidak menjawab. Muat semula halaman untuk menyemak — suntingan mungkin sudah tersimpan.",
+      });
     }
   }
 
