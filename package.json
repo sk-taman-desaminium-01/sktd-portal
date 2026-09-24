@@ -22,7 +22,8 @@
     "uji:kontrak-modul": "node --experimental-strip-types --no-warnings scripts/uji-kontrak-modul.mts",
     "uji:cetak": "node --experimental-strip-types --no-warnings scripts/uji-cetak.mts",
     "uji:kuasa": "node --experimental-strip-types --no-warnings scripts/uji-kuasa.mts",
-    "uji:borang-awam": "node --experimental-strip-types --no-warnings scripts/uji-borang-awam.mts"
+    "uji:borang-awam": "node --experimental-strip-types --no-warnings scripts/uji-borang-awam.mts",
+    "uji:kuota": "node --experimental-strip-types --no-warnings scripts/uji-kuota.mts"
   },
   "dependencies": {
     "@clerk/localizations": "^4.17.0",

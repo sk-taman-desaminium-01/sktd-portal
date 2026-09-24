@@ -8,6 +8,7 @@ import { naikMedia } from "@/lib/media";
 import {
   kecilkanGambar, bolehDikecilkan, ceritaKecil, bait, HAD_GAMBAR_BAIT,
 } from "@/lib/kecilkan-gambar";
+import { pautGambar } from "@/data/pautan-gambar";
 
 type Jenis = "pengumuman" | "aktiviti";
 
@@ -164,7 +165,8 @@ export default function BorangPos({
           <div className="mt-3 flex flex-wrap items-center gap-3">
             {gambar && gambar !== "__buang__" && (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={gambar} alt="" className="h-20 w-28 rounded-lg border border-garis object-cover" />
+              <img src={pautGambar(gambar)} alt="" loading="lazy" decoding="async"
+                className="h-20 w-28 rounded-lg border border-garis object-cover" />
             )}
             <label className="cursor-pointer rounded-lg border border-navy-700 px-4 py-2 text-sm font-semibold text-navy-700">
               {gambar && gambar !== "__buang__" ? "Tukar gambar" : "Tambah gambar"}

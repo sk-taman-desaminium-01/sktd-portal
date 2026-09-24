@@ -6,6 +6,7 @@ import { semakSaiz } from "@/data/had-fail";
 import {
   kecilkanGambar, bolehDikecilkan, ceritaKecil, bait, HAD_GAMBAR_BAIT,
 } from "@/lib/kecilkan-gambar";
+import { pautGambar } from "@/data/pautan-gambar";
 
 function saizPapar(b: number | null) {
   if (!b) return "—";
@@ -152,7 +153,13 @@ export default function PanelMedia({ awal }: { awal: Media[] }) {
               <span className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-navy-50">
                 {GAMBAR.test(m.url) ? (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img src={m.url} alt="" className="h-full w-full object-cover" />
+                  <img
+                    src={pautGambar(m.url)}
+                    alt=""
+                    loading="lazy"
+                    decoding="async"
+                    className="h-full w-full object-cover"
+                  />
                 ) : (
                   <span className="text-[10px] font-bold text-navy-700">PDF</span>
                 )}
