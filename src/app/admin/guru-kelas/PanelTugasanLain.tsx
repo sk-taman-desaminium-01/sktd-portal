@@ -12,11 +12,13 @@ import PilihCari from "@/components/PilihCari";
  * yang sama ialah kerja berulang yang tidak perlu.
  */
 export default function PanelTugasanLain({
-  jenis, tajuk, ringkas, placeholderSkop, awal, orang, skopTunggal,
+  jenis, tajuk, ringkas, labelSkop, placeholderSkop, awal, orang, skopTunggal,
 }: {
   jenis: JenisTugasan;
   tajuk: string;
   ringkas: string;
+  /** Label yang KELIHATAN di atas medan skop. Lihat nota susun atur di bawah. */
+  labelSkop?: string;
   placeholderSkop: string;
   awal: BarisTugasan[];
   orang: { id: string; nama: string; emel: string | null }[];
@@ -92,28 +94,45 @@ export default function PanelTugasanLain({
         </ul>
       )}
 
-      <div className="mt-4 flex flex-wrap gap-2">
-        <div className="min-w-[12rem] flex-1">
-          <PilihCari
-            id={`tugasan-${jenis}`} label="Pilih orang" sembunyiLabel
-            nilai={guruId} tukar={setGuruId} placeholder="Taip nama guru…"
-            pilihan={orang.map((o) => ({ nilai: o.id, label: o.nama }))}
-          />
-        </div>
+      {/* SATU LAJUR DI TELEFON, BUKAN TIGA KAWALAN BERHIMPIT.
+          Susun atur lama meletakkan pemilih orang, medan nama, dan butang
+          dalam SATU baris. Pemilih menuntut 12rem dan butang kira-kira 5rem,
+          jadi pada skrin 390px medan nama tinggal lebih kurang 50px — dan
+          kerana ia hanya ada placeholder, teksnya terpotong. Pengguna
+          terpaksa MENEKA apa yang perlu diisi.
+
+          Maka: satu lajur di telefon, dua lajur dari `sm` ke atas, dan label
+          yang KELIHATAN di atas setiap medan. Placeholder bukan label —
+          ia hilang sebaik pengguna mula menaip. */}
+      <div className="mt-4 grid gap-3 sm:grid-cols-2">
+        <PilihCari
+          id={`tugasan-${jenis}`} label="Nama guru"
+          nilai={guruId} tukar={setGuruId} placeholder="Taip nama guru…"
+          pilihan={orang.map((o) => ({ nilai: o.id, label: o.nama }))}
+        />
         {!skopTunggal && (
-          <input
-            value={skop} onChange={(e) => setSkop(e.target.value)}
-            placeholder={placeholderSkop}
-            className="min-w-0 flex-1 rounded-lg border border-garis px-3 py-2 text-sm"
-          />
+          <div>
+            <label
+              htmlFor={`skop-${jenis}`}
+              className="mb-1 block text-sm font-medium text-navy-800"
+            >
+              {labelSkop ?? "Nama"}
+            </label>
+            <input
+              id={`skop-${jenis}`}
+              value={skop} onChange={(e) => setSkop(e.target.value)}
+              placeholder={placeholderSkop}
+              className="block w-full min-w-0 rounded-lg border border-garis px-3 py-2.5 text-sm"
+            />
+          </div>
         )}
-        <button
-          type="button" disabled={sibuk || !guruId} onClick={tambah}
-          className="rounded-lg bg-navy-800 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
-        >
-          Tambah
-        </button>
       </div>
+      <button
+        type="button" disabled={sibuk || !guruId} onClick={tambah}
+        className="mt-3 w-full rounded-lg bg-navy-800 px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-50 sm:w-auto"
+      >
+        Tambah
+      </button>
       {mesej && <p className="mt-2 text-xs text-slate-500">{mesej}</p>}
     </section>
   );

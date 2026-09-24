@@ -80,7 +80,7 @@ export default async function GuruKelas() {
           <PanelTugasanLain
             jenis="pengurus_pasukan" tajuk="Pengurus Pasukan"
             ringkas="Urus Surat Kebenaran Waris & Perakuan Kesihatan bagi aktiviti/pertandingan pasukan masing-masing."
-            placeholderSkop="Nama pasukan (contoh: Bola Sepak)" awal={pengurusPasukan} orang={boleh}
+            labelSkop="Nama pasukan" placeholderSkop="Contoh: Bola Sepak" awal={pengurusPasukan} orang={boleh}
           />
         </>
       )}

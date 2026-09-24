@@ -1,5 +1,5 @@
 import { headers } from "next/headers";
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { ClerkProvider } from "@clerk/nextjs";
 import { msMY } from "@clerk/localizations";
 import TarikSegar from "@/components/TarikSegar";
@@ -20,6 +20,25 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
   icons: { apple: [{ url: "/portal/apple-touch-icon.png", sizes: "180x180" }] },
   appleWebApp: { capable: true, title: "Portal SKTD", statusBarStyle: "black-translucent" },
+};
+
+/**
+ * ZUM DIBENARKAN, DENGAN SENGAJA.
+ *
+ * Next menulis `width=device-width, initial-scale=1` bila viewport tidak
+ * diisytiharkan, dan itu memang membenarkan zum. Ia diisytiharkan di sini
+ * supaya keputusan itu KELIHATAN: mematikan zum ialah satu baris yang mudah
+ * ditambah "supaya app rasa seperti app", dan ia memotong guru yang perlu
+ * membesarkan borang atau grid jadual, serta melanggar WCAG 1.4.4.
+ *
+ * maximumScale 5 ialah minimum yang WCAG kehendaki; ia ditulis supaya tiada
+ * siapa menurunkannya tanpa perasan.
+ */
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 5,
+  userScalable: true,
 };
 
 export default async function RootLayout({ children }: LayoutProps<"/">) {
