@@ -66,6 +66,9 @@ perlu("Pembetulan seluruh edisi TIDAK menahan permintaan sunting",
   /after\(jalankan\)/.test(carta) && carta.includes("kenakanPindaanEdisi"));
 perlu("Carta mengenakan pindaan semasa baca",
   carta.includes("kenakanPindaan(b.sel, pindaanAktif)"));
+const pindaanLib = baca("src/lib/pindaan.ts");
+perlu("RPC pinda_baris_kekal yang tiada memberi arahan pemasangan",
+  pindaanLib.includes("pindaan-baris-transaksi.sql") && pindaanLib.includes("PGRST202"));
 const pengurusan = baca("src/lib/pengurusan.ts");
 perlu("Pembetulan edisi guna tulisan berkelompok",
   pengurusan.includes("export async function suntingBarisBanyak"));
@@ -74,4 +77,4 @@ if (gagal.length) {
   console.error(`Kontrak modul gagal:\n${gagal.map((x) => `- ${x}`).join("\n")}`);
   process.exit(1);
 }
-console.log("Kontrak modul: 36 semakan lulus.");
+console.log("Kontrak modul: 37 semakan lulus.");
