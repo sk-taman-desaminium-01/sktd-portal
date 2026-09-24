@@ -249,3 +249,57 @@ untuk pembinaan semula projek: `sktd/supabase/geran-data-api.sql` —
   statik berwarna, biasa dalam jalur); aktiviti sentiasa jalur bila ≥3, kad
   statik bila kurang. Gambar: `GambarPos` mengukur bentuk sebenar — poster
   TEGAK dipapar penuh, gambar melintang dipotong 16:9.
+
+## 🔴 Kuota & "di-deploy tetapi tidak berfungsi" (24 Sep 2026)
+
+**Dua pepijat, satu punca: tiada apa-apa yang MENGESAHKAN.**
+
+1. Laluan gambar tepi `/img/` ditulis, di-commit, di-push, di-deploy tanpa
+   satu ralat — dan tidak pernah berjalan sehari. `/img/*` tiada dalam
+   `assets.run_worker_first` (sktd-web/wrangler.jsonc), jadi penghidang aset
+   Cloudflare menjawab dahulu dan memulangkan `out/404.html`. Kerana 404 itu
+   dicache, tajuknya berbunyi `cf-cache-status: HIT` — ia kelihatan SEPERTI
+   cache tepi sedang bekerja. Ini kali KEDUA (pertama: `/api/kandungan`).
+   ⇒ **Setiap pengendali baharu dalam worker/index.ts MESTI ada dalam
+   `run_worker_first`.** `npm run semak` (sktd-web) menguatkuasakannya dan
+   berjalan dalam `npm run build`, jadi ia mematahkan binaan Cloudflare.
+
+2. Supabase memulangkan **HTTP 400** untuk objek Storage yang tiada (badan
+   berkata `{"statusCode":"404"}`). Memetakannya ke 502 bermakna 502 tidak
+   dicache → satu URL gambar rosak menghantar permintaan ke Supabase pada
+   SETIAP paparan, selamanya.
+
+**Peraturan gambar: tiada `<img>` boleh menunjuk terus ke Supabase Storage.**
+Supabase menghidangkan dengan `cache-control: no-cache`, jadi setiap paparan
+memakan kuota egress 5 GB/bulan; kuota habis = Storage BERHENTI menghidangkan
+(poster jadi kosong, bukan perlahan). Balut dengan `pautGambar()`:
+- laman awam: `sktd-web/src/lib/pos.ts` (relatif `/img/…`)
+- portal: `sktd-portal/src/data/pautan-gambar.ts` (mutlak `https://sktd.edu.my/img/…`)
+Kedua-duanya kembar — ubah satu, ubah yang lain.
+
+Tiga kebocoran ditemui oleh skrip, bukan oleh mata:
+- `/admin/media` memuatkan 200 gambar SAIZ PENUH (limit=200) sebagai petak
+  64×64 tanpa lazy-load → ~50 MB egress SETIAP lawatan (1% kuota sebulan).
+- `og:image`/`twitter:image` terus ke Supabase — perayap WhatsApp & Facebook
+  menariknya setiap kali pautan dikongsi.
+- Enam gambar pentadbir pada `/tentang`, setiap lawatan.
+Dikecualikan dengan sengaja: `tandatangan_url` ialah `data:image` dalam
+pangkalan data, tidak pernah menyentuh Storage.
+
+**Tiga penjaga automatik — jangan buang:**
+| Arahan | Bila | Menangkap |
+|---|---|---|
+| `npm run semak` (sktd-web) | dalam `npm run build` | laluan Worker tercicir; gambar terus ke Supabase dalam `out/` dan `src/` |
+| `npm run uji:kuota` (sktd-portal) | sebelum commit | `<img>` tanpa `pautGambar()`; Cache-Control muat naik; pemantau kuota utuh |
+| `npm run semak:hidup` (sktd-web) | SELEPAS setiap deploy | 16 semakan terhadap domain hidup: status, content-type, cache-control, senarai putih, og:image |
+
+⚠️ `semak:hidup` menghantar tajuk PELAYAR. Clerk memulangkan 404 dengan
+sengaja kepada permintaan bukan-dokumen, jadi `/portal` nampak rosak kepada
+curl sedangkan ia 307 ke skrin log masuk dalam pelayar sebenar. Amaran palsu
+sama merosakkan seperti pepijat yang terlepas.
+
+**Pemantau kuota (peraturan keras #8: amaran pada 70%, bukan 100%).**
+`supabase/pemantau-kuota.sql`: `kuota_sistem()` untuk melihat, `semak_kuota()`
+dijadualkan pg_cron menghantar notifikasi kepada setiap pentadbir pada 70%
+(sekali per 7 hari). Dipapar di `/admin/kuota`. Egress TIDAK boleh dibaca dari
+dalam Postgres — halaman itu menunjuk ke Supabase → Usage, dan tidak berpura-pura.
