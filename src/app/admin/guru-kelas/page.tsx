@@ -5,8 +5,9 @@ import { senaraiTugasan } from "@/lib/tugasan";
 import { semuaKelas, semuaKelasPPKI } from "@/data/kelas";
 import PanelGuruKelas from "./PanelGuruKelas";
 import PanelTugasanLain from "./PanelTugasanLain";
+import CetakJawatankuasa from "./CetakJawatankuasa";
 
-export const metadata = { title: "Guru Kelas" };
+export const metadata = { title: "Jawatankuasa Sekolah" };
 
 /**
  * Tetapkan siapa guru kelas bagi setiap kelas.
@@ -43,7 +44,7 @@ export default async function GuruKelas() {
         ← Urus Laman
       </Link>
 
-      <h1 className="mt-3 text-2xl font-bold text-navy-800">Guru Kelas</h1>
+      <h1 className="mt-3 text-2xl font-bold text-navy-800">Jawatankuasa Sekolah</h1>
       <p className="mt-1 text-sm leading-relaxed text-slate-500">
         {tugasan.length} daripada {kelas.length} kelas sudah ada guru kelas.
       </p>
@@ -81,6 +82,12 @@ export default async function GuruKelas() {
             jenis="pengurus_pasukan" tajuk="Pengurus Pasukan"
             ringkas="Urus Surat Kebenaran Waris & Perakuan Kesihatan bagi aktiviti/pertandingan pasukan masing-masing."
             labelSkop="Nama pasukan" placeholderSkop="Contoh: Bola Sepak" awal={pengurusPasukan} orang={boleh}
+          />
+          <CetakJawatankuasa
+            guruKelas={tugasan.map((t) => ({ kelas: t.label, nama: t.nama }))}
+            guruRmt={guruRmt}
+            guruDisiplin={guruDisiplin}
+            pengurusPasukan={pengurusPasukan}
           />
         </>
       )}

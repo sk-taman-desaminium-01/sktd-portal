@@ -253,22 +253,47 @@ function SenaraiPenuh({ senarai, berulang, urusSemua }: { senarai: BarisDisiplin
               </div>
             )}
 
-            <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-garis pt-2">
-              {urusSemua && <>
-              <label className="flex items-center gap-1.5 text-xs">
-                <input type="checkbox" checked={b.laporan_lembaga} onChange={(e) => tanda(b.id, e.target.checked)} />
-                Laporan Lembaga Disiplin
-              </label>
-              <input
-                placeholder="No. rujukan kami (jika perlu)" defaultValue={b.rujukan_kami ?? ""}
-                onChange={(e) => setRujukan((r) => ({ ...r, [b.id]: e.target.value }))}
-                onBlur={() => b.laporan_lembaga && tanda(b.id, true)}
-                className="min-w-0 flex-1 rounded-lg border border-garis px-2 py-1 text-xs"
-              />
-              </>}
-              <span className="ml-auto flex gap-2">
+            {/* SATU LAJUR, LABEL KELIHATAN — kesilapan yang sama seperti skrin
+                Pengurus Pasukan: medan `flex-1 min-w-0` berkongsi baris dengan
+                kotak semak dan dua butang, jadi pada telefon ia mengecut jadi
+                jalur nipis dan placeholdernya terpotong. Medan rujukan hanya
+                muncul selepas rekod ditanda untuk Lembaga, kerana hanya ketika
+                itu ia disimpan. */}
+            <div className="mt-3 border-t border-garis pt-2">
+              {urusSemua && (
+                <div className="mb-2">
+                  <label className="flex items-center gap-2 py-1 text-sm">
+                    <input
+                      type="checkbox" className="h-4 w-4 shrink-0"
+                      checked={b.laporan_lembaga}
+                      onChange={(e) => tanda(b.id, e.target.checked)}
+                    />
+                    Laporan Lembaga Disiplin
+                  </label>
+                  {b.laporan_lembaga && (
+                    <div className="mt-2">
+                      <label
+                        htmlFor={`ruj-${b.id}`}
+                        className="mb-1 block text-xs font-semibold text-slate-600"
+                      >
+                        No. rujukan kami{" "}
+                        <span className="font-normal text-slate-400">(jika perlu)</span>
+                      </label>
+                      <input
+                        id={`ruj-${b.id}`}
+                        placeholder="Contoh: SKTD/HEM/DIS/2026/14"
+                        defaultValue={b.rujukan_kami ?? ""}
+                        onChange={(e) => setRujukan((r) => ({ ...r, [b.id]: e.target.value }))}
+                        onBlur={() => tanda(b.id, true)}
+                        className="block w-full rounded-lg border border-garis px-3 py-2 text-sm"
+                      />
+                    </div>
+                  )}
+                </div>
+              )}
+              <span className="flex gap-2">
                 <button type="button" disabled={sibuk === b.id} onClick={() => mulaSunting(b)} className="min-h-11 touch-manipulation px-1 text-xs font-semibold text-navy-700 underline disabled:opacity-50">Sunting</button>
-                <button type="button" disabled={sibuk === b.id} onClick={() => void padam(b)} className="min-h-11 touch-manipulation px-1 text-xs font-semibold text-red-600 underline disabled:opacity-50">Padam</button>
+                <button type="button" disabled={sibuk === b.id} onClick={() => void padam(b)} className="ml-auto min-h-11 touch-manipulation px-1 text-xs font-semibold text-red-600 underline disabled:opacity-50">Padam</button>
               </span>
             </div>
           </li>
