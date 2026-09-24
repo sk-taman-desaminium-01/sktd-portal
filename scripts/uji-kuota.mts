@@ -18,6 +18,7 @@
  * pangkalan data.
  */
 import { readFileSync, readdirSync, statSync } from "node:fs";
+import pg from "libpg-query";
 import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -120,10 +121,20 @@ perlu("Fail sementara disapu selepas tempoh tertentu", sementara.includes("sapuF
  *   · `42P01` kerana cuba menggeran objek milik sambungan
  *   · `42601 syntax error at or near "declare"`
  *
- * Yang boleh disemak tanpa pangkalan data ialah PERKARA OBJEKTIF: setiap
- * tanda dolar mesti berpasangan. Tanda yang tidak berpasangan bermakna isi
- * fungsi akan dibaca sebagai SQL biasa, dan perkataan pertama yang dilihat
- * penghurai lazimnya `declare` — tepat seperti ralat itu.
+ * Puncanya akhirnya DIKETAHUI pada 24 Sep 2026: teks HILANG dalam laluan
+ * salin-tampal ke editor SQL. Bukan sintaks. Buktinya ada dalam mesej ralat
+ * sejak awal — `public.kuoe` sepatutnya `public.kuota_sistem() to
+ * service_role`, dan `stora` sepatutnya `storan_bait / had_storan`.
+ *
+ * Maka dua lapisan di sini:
+ *   1. libpg-query — penghurai Postgres SEBENAR, sama yang digunakan pelayan.
+ *      Ia membuktikan fail itu sah sebelum ia diberi kepada sesiapa. Ia juga
+ *      menangkap kerosakan yang saya sendiri sebabkan: penggantian mekanikal
+ *      pernah memecahkan satu baris KOMEN kepada tiga, dan dua baris itu
+ *      hilang awalan `--` — fail itu lalu gagal dengan "syntax error at or
+ *      near on" pada baris yang saya sangka hanya komen.
+ *   2. Pasangan tanda dolar — pemeriksaan murah yang menunjuk tepat kepada
+ *      blok yang tidak lengkap.
  *
  * Yang TIDAK disemak di sini: bilangan blok `$$` tanpa nama. Peraturan itu
  * pernah ditulis dan dibuang pada hari yang sama, kerana buktinya menafikannya
@@ -142,9 +153,20 @@ function failSql(dir: string): string[] {
   return keluar;
 }
 
+await pg.loadModule();
+
 const sqlAduan: string[] = [];
 for (const f of failSql(sqlDir)) {
   const teks = readFileSync(f, "utf8");
+
+  // Penghurai Postgres sebenar. Kalau ini gagal, pengguna PASTI akan
+  // melihat ralat yang sama — jadi ia tidak boleh keluar dari repo ini.
+  try {
+    pg.parseSync(teks);
+    pg.parsePlPgSQLSync(teks);
+  } catch (e) {
+    sqlAduan.push(`${relative(akar, f)}: ${e instanceof Error ? e.message : String(e)}`);
+  }
   // Buang komen satu baris supaya `$$` dalam penjelasan tidak dikira.
   const kod = teks.split("\n").filter((b) => !/^\s*--/.test(b)).join("\n");
   const tanda = [...kod.matchAll(/\$([A-Za-z_][A-Za-z0-9_]*)?\$/g)].map((m) => m[1] ?? "");
@@ -165,4 +187,4 @@ if (gagal.length) {
   console.error(`Kontrak kuota gagal:\n${gagal.map((x) => `- ${x}`).join("\n")}`);
   process.exit(1);
 }
-console.log(`Kontrak kuota: 14 semakan + ${failSql(sqlDir).length} fail SQL lulus.`);
+console.log(`Kontrak kuota: 14 semakan + ${failSql(sqlDir).length} fail SQL dihurai dengan libpg-query.`);

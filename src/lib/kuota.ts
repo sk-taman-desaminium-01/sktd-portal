@@ -21,13 +21,17 @@ import { klienTulis } from "./supabase-pelayan";
 export interface JadualSaiz {
   jadual: string;
   bait: number;
-  baris: number;
+  /** `n_live_tup` ialah ANGGARAN penganalisis, bukan kiraan tepat. */
+  anggaran_baris: number;
 }
 
 export interface Kuota {
   pada: string;
-  pangkalan_data: { bait: number; had: number; peratus: number };
-  storan: { bait: number; had: number; fail: number; peratus: number };
+  // `peratus` boleh null: SQL menggunakan nullif(had, 0) supaya had yang
+  // hilang memulangkan null dan bukan mematikan halaman dengan ralat
+  // bahagi-dengan-sifar.
+  pangkalan_data: { bait: number; had: number; peratus: number | null };
+  storan: { bait: number; had: number; fail: number; peratus: number | null };
   jadual: JadualSaiz[];
 }
 

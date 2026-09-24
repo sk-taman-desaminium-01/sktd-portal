@@ -25,9 +25,12 @@ function warna(peratus: number): { bar: string; teks: string; label: string } {
   return { bar: "bg-emerald-600", teks: "text-emerald-700", label: "Selamat" };
 }
 
-function Palang({ nama, guna, had, peratus, nota }: {
-  nama: string; guna: number; had: number; peratus: number; nota?: string;
+function Palang({ nama, guna, had, peratus: mentah, nota }: {
+  nama: string; guna: number; had: number; peratus: number | null; nota?: string;
 }) {
+  // null hanya berlaku kalau had sifar — tidak sepatutnya, tetapi halaman
+  // tidak boleh pecah kerananya.
+  const peratus = mentah ?? 0;
   const w = warna(peratus);
   return (
     <div className="rounded-xl border border-garis bg-white p-4">
@@ -101,7 +104,7 @@ export default async function KuotaPage() {
                 <li key={j.jadual} className="flex items-baseline justify-between gap-3 py-2">
                   <span className="truncate font-medium text-navy-800">{j.jadual}</span>
                   <span className="shrink-0 text-slate-500">
-                    {mb(j.bait)} · {j.baris.toLocaleString("ms-MY")} baris
+                    {mb(j.bait)} · ±{j.anggaran_baris.toLocaleString("ms-MY")} baris
                   </span>
                 </li>
               ))}
