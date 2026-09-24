@@ -110,6 +110,16 @@ const sementara = baca("src/lib/fail-sementara.ts");
 perlu("Fail sementara disapu selepas tempoh tertentu", sementara.includes("sapuFailYatim"));
 
 /* ---------------------------------------------------------------------- */
+/* 4b. Read-only mode diterjemahkan, bukan dilontar mentah                */
+/* ---------------------------------------------------------------------- */
+
+const pelayan = baca("src/lib/supabase-pelayan.ts");
+perlu("Ralat read-only diterjemah kepada bahasa yang boleh ditindak",
+  /read-only|25006/i.test(pelayan) && pelayan.includes("hanya boleh MEMBACA"));
+perlu("Mesej read-only memberitahu pengguna jangan tutup halaman",
+  pelayan.includes("Jangan") && pelayan.includes("/admin/kuota"));
+
+/* ---------------------------------------------------------------------- */
 /* 5. Setiap fail SQL boleh dihurai sebelum ia diberi kepada pengguna     */
 /* ---------------------------------------------------------------------- */
 
@@ -187,4 +197,4 @@ if (gagal.length) {
   console.error(`Kontrak kuota gagal:\n${gagal.map((x) => `- ${x}`).join("\n")}`);
   process.exit(1);
 }
-console.log(`Kontrak kuota: 14 semakan + ${failSql(sqlDir).length} fail SQL dihurai dengan libpg-query.`);
+console.log(`Kontrak kuota: 16 semakan + ${failSql(sqlDir).length} fail SQL dihurai dengan libpg-query.`);
