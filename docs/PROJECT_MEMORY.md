@@ -233,4 +233,6 @@ rosak pada 30 Okt. Tetapi setiap migrasi baharu MESTI menyertakan
 `grant ... to service_role` (dan `grant select ... to anon` hanya untuk
 jadual `web_*` awam), jika tidak modul baharu akan gagal dengan
 "permission denied" walaupun SQL berjaya dijalankan. Jaring keselamatan
-untuk pembinaan semula projek: `sktd/supabase/geran-data-api.sql`.
+untuk pembinaan semula projek: `sktd/supabase/geran-data-api.sql` —
+**sudah dijalankan pada pangkalan data pengeluaran, 24 Sep 2026, tanpa ralat**
+(versi 2; versi 1 gagal 42P01 kerana cuba menggeran objek milik sambungan).
