@@ -108,8 +108,61 @@ perlu("Rekod had borang dibersihkan automatik", /create or replace function publ
 const sementara = baca("src/lib/fail-sementara.ts");
 perlu("Fail sementara disapu selepas tempoh tertentu", sementara.includes("sapuFailYatim"));
 
+/* ---------------------------------------------------------------------- */
+/* 5. Setiap fail SQL boleh dihurai sebelum ia diberi kepada pengguna     */
+/* ---------------------------------------------------------------------- */
+
+/**
+ * KENAPA SEMAKAN INI WUJUD
+ * Tiga kali SQL yang diberi kepada pengguna gagal dalam editor Supabase
+ * sebelum Postgres sempat menjalankan apa-apa:
+ *   · tandatangan fungsi panjang yang terpotong semasa tampal
+ *   · `42P01` kerana cuba menggeran objek milik sambungan
+ *   · `42601 syntax error at or near "declare"`
+ *
+ * Yang boleh disemak tanpa pangkalan data ialah PERKARA OBJEKTIF: setiap
+ * tanda dolar mesti berpasangan. Tanda yang tidak berpasangan bermakna isi
+ * fungsi akan dibaca sebagai SQL biasa, dan perkataan pertama yang dilihat
+ * penghurai lazimnya `declare` — tepat seperti ralat itu.
+ *
+ * Yang TIDAK disemak di sini: bilangan blok `$$` tanpa nama. Peraturan itu
+ * pernah ditulis dan dibuang pada hari yang sama, kerana buktinya menafikannya
+ * — `geran-data-api.sql` mempunyai lima blok `$$` tanpa nama dan ia BERJAYA
+ * dijalankan pada pangkalan data pengeluaran. Amaran yang salah melatih orang
+ * mengabaikan amaran.
+ */
+const sqlDir = join(akar, "..", "supabase");
+function failSql(dir: string): string[] {
+  const keluar: string[] = [];
+  for (const nama of readdirSync(dir)) {
+    const penuh = join(dir, nama);
+    if (statSync(penuh).isDirectory()) keluar.push(...failSql(penuh));
+    else if (nama.endsWith(".sql")) keluar.push(penuh);
+  }
+  return keluar;
+}
+
+const sqlAduan: string[] = [];
+for (const f of failSql(sqlDir)) {
+  const teks = readFileSync(f, "utf8");
+  // Buang komen satu baris supaya `$$` dalam penjelasan tidak dikira.
+  const kod = teks.split("\n").filter((b) => !/^\s*--/.test(b)).join("\n");
+  const tanda = [...kod.matchAll(/\$([A-Za-z_][A-Za-z0-9_]*)?\$/g)].map((m) => m[1] ?? "");
+  const kira = new Map<string, number>();
+  for (const t of tanda) kira.set(t, (kira.get(t) ?? 0) + 1);
+
+  for (const [t, n] of kira) {
+    if (n % 2 !== 0) {
+      sqlAduan.push(`${relative(akar, f)}: tanda ${t ? `$${t}$` : "$$"} tidak berpasangan (${n} kali)`);
+    }
+  }
+}
+if (sqlAduan.length) {
+  gagal.push("Fail SQL berisiko gagal dihurai:\n" + sqlAduan.map((x) => `    ${x}`).join("\n"));
+}
+
 if (gagal.length) {
   console.error(`Kontrak kuota gagal:\n${gagal.map((x) => `- ${x}`).join("\n")}`);
   process.exit(1);
 }
-console.log("Kontrak kuota: 14 semakan lulus.");
+console.log(`Kontrak kuota: 14 semakan + ${failSql(sqlDir).length} fail SQL lulus.`);
