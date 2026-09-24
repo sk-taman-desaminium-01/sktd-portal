@@ -146,7 +146,22 @@ export async function wariskanPentadbir(
 
 /** Simpan baris dan ingatan pindaan dalam satu transaksi pangkalan data. */
 export async function pindaBarisKekal(id: string, sel: string[] | null, oleh: string | null): Promise<void> {
-  await klienTulis().minta("rpc/pinda_baris_kekal", {
-    method: "POST", body: JSON.stringify({ p_id: id, p_sel: sel, p_oleh: oleh }),
-  });
+  try {
+    await klienTulis().minta("rpc/pinda_baris_kekal", {
+      method: "POST", body: JSON.stringify({ p_id: id, p_sel: sel, p_oleh: oleh }),
+    });
+  } catch (e) {
+    // SQL belum dijalankan ialah keadaan PEMASANGAN, bukan pepijat — dan
+    // mesej mentah PostgREST ("PGRST202 … schema cache") tidak memberitahu
+    // sesiapa apa yang perlu dibuat. Terjemahkan kepada arahan.
+    const m = e instanceof Error ? e.message : String(e);
+    if (/pinda_baris_kekal/.test(m) && /PGRST202|404|schema cache|does not exist/i.test(m)) {
+      throw new Error(
+        "Modul pembetulan Buku Pengurusan belum dipasang dalam pangkalan data. " +
+        "Admin perlu menjalankan SQL `supabase/pindaan-baris-transaksi.sql` sekali sahaja, " +
+        "kemudian cuba semula. Suntingan anda TIDAK disimpan.",
+      );
+    }
+    throw e;
+  }
 }
