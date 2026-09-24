@@ -236,3 +236,10 @@ jadual `web_*` awam), jika tidak modul baharu akan gagal dengan
 untuk pembinaan semula projek: `sktd/supabase/geran-data-api.sql` —
 **sudah dijalankan pada pangkalan data pengeluaran, 24 Sep 2026, tanpa ralat**
 (versi 2; versi 1 gagal 42P01 kerana cuba menggeran objek milik sambungan).
+- **Pengumuman laman awam (24 Sep 2026)** — menggantikan keputusan lama
+  "marquee hanya untuk aktiviti": pengumuman `segera` dan `utama` ialah kad
+  STATIK berwarna (merah / emas) dengan poster penuh `object-contain`;
+  pengumuman `biasa` bergerak dalam jalur berposter. Bahagian ini dinaikkan
+  ke ATAS statistik pada laman utama. Kelajuan: Worker `/api/pos` dicache
+  1 saat di tepi, jadi pos baharu kelihatan bawah 1 saat tanpa menunggu
+  binaan semula; pos yang halamannya belum dibina tidak dipautkan (elak 404).
