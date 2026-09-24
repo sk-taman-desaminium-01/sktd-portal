@@ -47,17 +47,36 @@ for (let i = 1; i <= pdf.numPages; i++) {
   muka.push(item);
 }
 
-// Set waktu hanya untuk menganggar berapa slot boleh dibaca. Set sebenar
-// kelas itu datang dari pangkalan data semasa muat naik, jadi nombor di sini
-// ialah PANDUAN, bukan janji.
-const waktu = SET_LALAI.find((s) => s.id === "pagi-r4")!.senarai;
+// SETIAP SET WAKTU DICUBA, dan yang terbaik dilaporkan.
+//
+// Versi pertama alat ini menggunakan `pagi-r4` sahaja dan melaporkan 39/50
+// untuk jadual kelas PETANG — nombor yang menakutkan dan tidak bermakna,
+// kerana set petang hanya mempunyai 9 waktu PdP, bukan 10. Mengunci satu set
+// bermakna alat diagnostik ITU SENDIRI mencipta masalah yang dilaporkannya.
+const setDiminta = process.argv[3];
+const setDicuba = setDiminta
+  ? SET_LALAI.filter((s) => s.id === setDiminta)
+  : SET_LALAI;
+if (setDicuba.length === 0) {
+  console.error(`Set waktu "${setDiminta}" tiada. Pilihan: ${SET_LALAI.map((s) => s.id).join(", ")}`);
+  process.exit(2);
+}
 
 console.log(`\n${laluan}\nmuka surat: ${pdf.numPages}\n`);
 let satu = 0, kosong = 0, banyak = 0;
 for (let i = 0; i < muka.length; i++) {
   const kelas = semuaKelasDalam(muka[i].map((t) => t.str).join(" "));
-  const draf = binaDrafDariKedudukan([muka[i]], waktu);
-  const slot = `${draf?.dikenal ?? 0}/${draf?.jumlah ?? 0}`;
+  let terbaik: { id: string; dikenal: number; jumlah: number } | null = null;
+  for (const set of setDicuba) {
+    const d = binaDrafDariKedudukan([muka[i]], set.senarai);
+    if (!d) continue;
+    if (!terbaik || d.dikenal > terbaik.dikenal) {
+      terbaik = { id: set.id, dikenal: d.dikenal, jumlah: d.jumlah };
+    }
+  }
+  const slot = terbaik
+    ? `${terbaik.dikenal}/${terbaik.jumlah} (set ${terbaik.id})`
+    : "0/0";
   if (kelas.length === 1) satu++;
   else if (kelas.length === 0) kosong++;
   else banyak++;
