@@ -284,5 +284,54 @@ const disunting = naikTarafJadual({
 });
 semak("set yang disunting pentadbir tidak disentuh", disunting.set[0].senarai[0].mula, "13:15");
 
+/* ------------------------------------------------------------------ *
+ * SEL MERENTANG TIGA WAKTU
+ *
+ * Koordinat SEBENAR daripada 1 INOVATIF (muka 6, JW KELAS PETANG 31.7.2026):
+ * pusat lajur 130, 204, 278, … berjarak 73.6. "BM" merentang waktu 2–4 dan
+ * pusat teksnya 278 — iaitu pusat lajur 3 TEPAT, sama persis dengan rupa sel
+ * tunggal. Peraturan pusat-sahaja meninggalkan waktu 2 dan 4 kosong: kelas
+ * itu dibaca 42/45 sedangkan cetakannya penuh.
+ *
+ * aSc merapatkan nama guru ke tepi KANAN sel, jadi tepi itu boleh diukur dan
+ * pusat dicerminkan untuk mendapat tepi kiri. Ujian ini mengunci kedua-dua
+ * arah: sel tiga waktu mesti dikembangkan, DAN waktu yang memang lapang
+ * mesti kekal kosong.
+ * ------------------------------------------------------------------ */
+const P3 = [130, 204, 278, 351, 425, 498, 572, 646, 719, 793];
+const masa3 = ["01:00 - 01:30","01:30 - 02:00","02:00 - 02:30","02:30 - 03:00","03:00 - 03:30",
+               "03:30 - 04:00","04:00 - 04:20","04:20 - 04:50","04:50 - 05:20","05:20 - 05:50"];
+const item3 = [
+  ...P3.map((c, i) => ({ str: masa3[i], x: c - 27, y: 500, w: 54 })),
+  { str: "Mo", x: 40, y: 430, w: 14 },
+  { str: "PER", x: 116, y: 435, w: 29 },        // tunggal, waktu 1
+  { str: "MARDIAH", x: 125, y: 415, w: 39 },    // tepi kanan 164 = tepi sel 1
+  { str: "BM", x: 265, y: 435, w: 26 },         // TIGA waktu: 2-4, pusat 278
+  { str: "AISYAH", x: 347, y: 415, w: 30 },     // tepi kanan 377 = tepi sel 4
+  { str: "BI", x: 527, y: 435, w: 17 },         // dua waktu: 6-7
+  { str: "MARDIAH", x: 564, y: 415, w: 38 },
+  { str: "Tu", x: 40, y: 330, w: 14 },
+  { str: "SN", x: 636, y: 335, w: 20 },         // tunggal, waktu 8
+  { str: "HASMAWATI", x: 629, y: 315, w: 50 },
+  { str: "We", x: 40, y: 230, w: 14 },
+  { str: "MT", x: 267, y: 235, w: 22 },
+  { str: "AIN", x: 347, y: 215, w: 20 },
+];
+const r1 = SET_LALAI.find((s) => s.id === "petang-r1")!.senarai;
+const h3 = binaDrafDariKedudukan([item3], r1)!;
+const pdp3 = r1.filter((w) => !w.rehat);
+const isn = h3.draf.hari.isnin ?? {};
+semak("sel tiga waktu: waktu 1 = PER", isn[pdp3[0].id]?.subjek, "PERHIMPUNAN");
+semak("sel tiga waktu: waktu 2 = BM", isn[pdp3[1].id]?.subjek, "BM");
+semak("sel tiga waktu: waktu 3 = BM", isn[pdp3[2].id]?.subjek, "BM");
+semak("sel tiga waktu: waktu 4 = BM", isn[pdp3[3].id]?.subjek, "BM");
+// Waktu 5 ialah rehat bagi petang-r1, jadi PdP ke-5 ialah lajur 6.
+semak("sel dua waktu masih betul (lajur 6)", isn[pdp3[4].id]?.subjek, "BI");
+semak("sel dua waktu masih betul (lajur 7)", isn[pdp3[5].id]?.subjek, "BI");
+semak("waktu lapang kekal kosong (lajur 9)", isn[pdp3[7].id], undefined);
+const sel3 = h3.draf.hari.selasa ?? {};
+semak("sel tunggal tidak melebar", sel3[pdp3[6].id]?.subjek, "SAINS");
+semak("jiran sel tunggal kekal kosong", sel3[pdp3[5].id], undefined);
+
 console.log(`\n${lulus} lulus, ${gagal} gagal`);
 process.exit(gagal > 0 ? 1 : 0);

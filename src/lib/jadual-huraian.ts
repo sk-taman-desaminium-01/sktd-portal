@@ -480,6 +480,20 @@ export function binaDrafDariKedudukan(
     const hadAtas = Math.max(...lajurMasa.map((m) => m.y));
 
     const sel = new Map<string, string[]>();
+
+    /** Lajur yang pusatnya berada dalam separuh lebar dari pusat teks. */
+    const lajurDekat = (pusat: number): number[] => {
+      const keluar: number[] = [];
+      for (let i = 0; i < pusatLajur.length; i++) {
+        if (Math.abs(pusatLajur[i] - pusat) <= lebarLajur * 0.6) keluar.push(i);
+      }
+      return keluar;
+    };
+
+    // Kumpul item mengikut jalur hari dahulu. Sempadan sel hanya boleh
+    // dikira dengan melihat SELURUH baris itu sekaligus — lihat nota
+    // "SEL TIGA WAKTU" di bawah.
+    const ikutHari = new Map<string, Kedudukan[]>();
     for (const it of item) {
       if (it.y >= hadAtas) continue;
       if (RE_MASA.test(it.str)) continue;
@@ -491,7 +505,12 @@ export function binaDrafDariKedudukan(
 
       const h = jalurHari.find((j) => it.y <= j.atas && it.y > j.bawah);
       if (!h) continue;
+      const senarai = ikutHari.get(h.hari) ?? [];
+      senarai.push(it);
+      ikutHari.set(h.hari, senarai);
+    }
 
+    for (const [namaHari, senarai] of ikutHari) {
       /* SEL BERGABUNG DIKIRA, BUKAN DITEKA.
          aSc memusatkan teks dalam selnya. Diukur pada fail sebenar sekolah:
            · sel tunggal  → pusat teks jatuh TEPAT pada pusat lajur
@@ -502,16 +521,65 @@ export function binaDrafDariKedudukan(
          0.6 lebar lajur dari pusat teks: itu merangkumi kedua-dua lajur bagi
          sel bergabung (jarak setengah lebar) dan hanya satu bagi sel tunggal
          (jiran berada satu lebar penuh, di luar julat). */
-      const pusat = it.x + (it.w ?? 0) / 2;
-      const milik: number[] = [];
-      for (let i = 0; i < pusatLajur.length; i++) {
-        if (Math.abs(pusatLajur[i] - pusat) <= lebarLajur * 0.6) milik.push(i);
+      const asas = new Map<Kedudukan, number[]>();
+      const dimiliki = new Set<number>();
+      for (const it of senarai) {
+        const milik = lajurDekat(it.x + (it.w ?? 0) / 2);
+        asas.set(it, milik);
+        if (padanSubjek(it.str) !== null) for (const i of milik) dimiliki.add(i);
       }
-      if (milik.length === 0) continue;
 
-      for (const idx of milik) {
-        const kunci = `${h.hari}|${idx}`;
-        sel.set(kunci, [...(sel.get(kunci) ?? []), it.str.trim()]);
+      /* SEL TIGA WAKTU — kenapa peraturan pusat sahaja tidak cukup.
+         Sel yang merentang TIGA waktu meletakkan pusat teksnya TEPAT pada
+         pusat lajur tengah, yang kelihatan sama persis dengan sel tunggal.
+         Diukur pada 1 INOVATIF: "BM" Isnin merentang waktu 2–4, pusatnya 278
+         iaitu pusat lajur 3, jadi waktu 2 dan 4 tertinggal kosong — 42/45
+         dan bukan 44/45.
+
+         Lebar TEKS tidak membantu (teks lebih sempit daripada sel). Tetapi
+         aSc merapatkan NAMA GURU ke tepi KANAN sel, jadi tepi itu boleh
+         DIUKUR: ambil tepi kanan bukan-subjek yang terdekat di kanan pusat
+         teks, kemudian cerminkan pusat untuk mendapat tepi kiri.
+         Disahkan pada kelima-lima sel baris Isnin 1 INOVATIF, termasuk sel
+         tunggal dan sel dua waktu.
+
+         Ia hanya boleh MELUASKAN, dan hanya ke dalam lajur yang belum dimiliki
+         subjek lain — jadi ia tidak boleh mencuri slot yang sudah betul, dan
+         tidak boleh mengisi waktu lapang yang memang kosong. */
+      const tepiKanan = senarai
+        .filter((i) => padanSubjek(i.str) === null)
+        .map((i) => i.x + (i.w ?? 0))
+        .sort((a, b) => a - b);
+
+      for (const it of senarai) {
+        let milik = asas.get(it) ?? [];
+        if (padanSubjek(it.str) !== null && tepiKanan.length > 0) {
+          const pusat = it.x + (it.w ?? 0) / 2;
+          const kanan = tepiKanan.find((r) => r >= pusat);
+          if (kanan !== undefined) {
+            const kiri = 2 * pusat - kanan;
+            const toleransi = lebarLajur * 0.15;
+            const rentang: number[] = [];
+            for (let i = 0; i < pusatLajur.length; i++) {
+              const c = pusatLajur[i];
+              if (c >= kiri - toleransi && c <= kanan + toleransi) rentang.push(i);
+            }
+            const tambahan = rentang.filter((i) => !dimiliki.has(i));
+            const gabung = [...new Set([...milik, ...tambahan])].sort((a, b) => a - b);
+            // Mesti bersambung dengan lajur asalnya; lompatan bermakna sel
+            // jiran yang tiada gurunya, bukan sel yang lebih lebar.
+            if (milik.length > 0 && gabung.length > milik.length &&
+                gabung[gabung.length - 1] - gabung[0] === gabung.length - 1) {
+              milik = gabung;
+              for (const i of milik) dimiliki.add(i);
+            }
+          }
+        }
+        if (milik.length === 0) continue;
+        for (const idx of milik) {
+          const kunci = `${namaHari}|${idx}`;
+          sel.set(kunci, [...(sel.get(kunci) ?? []), it.str.trim()]);
+        }
       }
     }
 
