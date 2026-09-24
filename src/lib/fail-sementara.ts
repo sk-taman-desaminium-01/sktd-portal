@@ -68,3 +68,56 @@ export async function ambilFailSementara(laluan: string, nama: string, jenis: st
   if (bait.length > HAD_BAIT) throw new Error("Fail melebihi had saiz.");
   return new File([bait], nama, { type: jenis });
 }
+
+/**
+ * SAPU FAIL YATIM dalam baldi `sementara`.
+ *
+ * Fail dipadam sebaik dibaca, TETAPI muat naik yang ditinggalkan (talian
+ * putus, pengguna tutup tab) tidak pernah dibaca — dan fail itu kekal
+ * memakan kuota storan 1 GB selama-lamanya. Sapuan ini dipanggil secara
+ * rawak (satu daripada sepuluh muat naik) supaya tiada kerja berkala
+ * diperlukan, dan ia tidak pernah menggagalkan muat naik.
+ */
+export async function sapuFailYatim(maksUmurJam = 24): Promise<number> {
+  try {
+    const { url, kepala } = tetapan();
+    const res = await fetch(`${url}/storage/v1/object/list/${BUCKET}`, {
+      method: "POST",
+      headers: { ...kepala, "Content-Type": "application/json" },
+      body: JSON.stringify({ prefix: "", limit: 200, sortBy: { column: "created_at", order: "asc" } }),
+      cache: "no-store",
+    });
+    if (!res.ok) return 0;
+    const senarai = (await res.json()) as { name: string; created_at?: string }[];
+    const had = Date.now() - maksUmurJam * 3600_000;
+    // Baldi ini berstruktur `<cap-emel>/<uuid>.<jenis>`; senarai akar
+    // memulangkan folder, jadi setiap folder disemak isinya.
+    const buang: string[] = [];
+    for (const f of senarai) {
+      if (f.name.includes(".")) {
+        if (!f.created_at || Date.parse(f.created_at) < had) buang.push(f.name);
+        continue;
+      }
+      const dalam = await fetch(`${url}/storage/v1/object/list/${BUCKET}`, {
+        method: "POST",
+        headers: { ...kepala, "Content-Type": "application/json" },
+        body: JSON.stringify({ prefix: f.name, limit: 200, sortBy: { column: "created_at", order: "asc" } }),
+        cache: "no-store",
+      });
+      if (!dalam.ok) continue;
+      for (const g of (await dalam.json()) as { name: string; created_at?: string }[]) {
+        if (!g.created_at || Date.parse(g.created_at) < had) buang.push(`${f.name}/${g.name}`);
+      }
+    }
+    if (buang.length === 0) return 0;
+    await fetch(`${url}/storage/v1/object/${BUCKET}`, {
+      method: "DELETE",
+      headers: { ...kepala, "Content-Type": "application/json" },
+      body: JSON.stringify({ prefixes: buang.slice(0, 100) }),
+    });
+    return Math.min(buang.length, 100);
+  } catch {
+    // Sapuan gagal tidak boleh menjejaskan muat naik yang sedang berjalan.
+    return 0;
+  }
+}

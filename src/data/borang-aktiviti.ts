@@ -8,8 +8,15 @@ export interface AkuanAktiviti {
  /** Tandatangan penjaga (data URL PNG/JPEG). Pilihan — borang lama tidak mempunyainya. */
  tandatangan?: string;
 }
-/** Had tandatangan dalam jsonb. Lukisan jari biasanya 8–40 KB. */
-export const HAD_TANDATANGAN = 350_000;
+/**
+ * Had tandatangan dalam jsonb.
+ *
+ * Tandatangan kini dikecilkan ke 600×200 px sebelum disimpan, jadi ia
+ * 10–40 KB. Had lama 350 KB dikira: 2,252 murid × 350 KB = 770 MB setahun,
+ * iaitu LEBIH BESAR daripada kuota 500 MB pangkalan data percuma — dan
+ * pangkalan data yang penuh MENGUNCI sistem, bukan memperlahankannya.
+ */
+export const HAD_TANDATANGAN = 150_000;
 export function semakAkuan(x: unknown): x is AkuanAktiviti {
  if (!x || typeof x !== "object") return false;
  const d = x as AkuanAktiviti;

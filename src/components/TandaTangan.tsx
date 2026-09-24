@@ -83,7 +83,7 @@ export default function TandaTangan({
       if (blob.size > 250_000) throw new Error("Tandatangan terlalu besar. Cuba lukis semula atau ambil gambar lebih dekat.");
       if (tempatan) {
         const dataUrl = await blobKeDataUrl(blob);
-        if (dataUrl.length > 350_000) throw new Error("Tandatangan terlalu besar untuk disimpan.");
+        if (dataUrl.length > 150_000) throw new Error("Tandatangan terlalu besar untuk disimpan. Lukis semula atau ambil gambar lebih dekat.");
         tetap(dataUrl);
         return;
       }

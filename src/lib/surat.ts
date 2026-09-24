@@ -195,7 +195,7 @@ export async function hantarSuratGambar(input: {
   penjagaNama: string; penjagaKp: string; alamat: string; telefon: string; muridKp: string;
   tandatangan_url: string | null;
 }): Promise<HasilSurat> {
-  if (input.tandatangan_url && (!/^data:image\/png;base64,[A-Za-z0-9+/]+=*$/.test(input.tandatangan_url) || input.tandatangan_url.length > 350000))
+  if (input.tandatangan_url && (!/^data:image\/png;base64,[A-Za-z0-9+/]+=*$/.test(input.tandatangan_url) || input.tandatangan_url.length > 150_000))
     return { ok: false, mesej: "Tandatangan tidak sah. Lukis atau muat naik semula." };
   const saya = await pengguna();
   if (!saya?.peranan) return { ok: false, mesej: "Tiada kebenaran." };

@@ -3,7 +3,7 @@
 import { randomUUID } from "node:crypto";
 import { pengguna } from "./akses";
 import { HAD_BAIT } from "@/data/had-fail";
-import { BUCKET, tetapan, cap, pastikanBucket } from "./fail-sementara";
+import { BUCKET, tetapan, cap, pastikanBucket, sapuFailYatim } from "./fail-sementara";
 
 /** Lihat `fail-sementara.ts` untuk sebab muat naik terus wujud. */
 export interface SlotMuatNaik { ok: boolean; mesej: string; urlMuatNaik?: string; laluan?: string }
@@ -24,6 +24,9 @@ export async function mintaSlotMuatNaik(nama: string, saiz: number): Promise<Slo
     if (!res.ok) return { ok: false, mesej: `Storan menolak muat naik (${res.status}).` };
     const j = (await res.json()) as { url?: string };
     if (!j.url) return { ok: false, mesej: "Storan tidak memberi URL muat naik." };
+    // Sapuan sekali-sekala: muat naik yang ditinggalkan tidak pernah dibaca,
+    // dan fail yatim memakan kuota storan sehingga ia dibuang.
+    if (Math.random() < 0.1) void sapuFailYatim();
     return { ok: true, mesej: "", urlMuatNaik: `${url}/storage/v1${j.url}`, laluan };
   } catch (e) {
     return { ok: false, mesej: e instanceof Error ? e.message : "Gagal menyediakan muat naik." };
