@@ -6,7 +6,7 @@ import { semakFail } from "./storan";
 import type { MuatanFail } from "@/data/fail-base64";
 import { bacaMuatan, adaMuatan } from "./muatan";
 import { setUntukKelas, type KelasJadual, type Waktu } from "@/data/jadual-jenis";
-import { kesanKelas } from "@/data/kesan-kelas";
+import { kesanKelas, semuaKelasDalam } from "@/data/kesan-kelas";
 import { binaDraf, binaDrafDariGrid, binaDrafDariKedudukan } from "./jadual-huraian";
 import { bacaDokumen } from "./baca-dokumen";
 import { ambilJadual } from "./jadual";
@@ -268,5 +268,162 @@ export async function bacaJadualPukal(muatan: MuatanFail): Promise<HasilPukal> {
       nama, kelas: null, ok: false,
       mesej: e instanceof Error ? `${e.name}: ${e.message}` : String(e),
     };
+  }
+}
+
+
+/**
+ * SATU FAIL, SEMUA KELAS — jadual induk yang pentadbir sebenarnya terima.
+ *
+ * MASALAH YANG INI SELESAIKAN
+ * Muat naik pukal direka untuk satu fail satu kelas: pilih 57 fail, atau satu
+ * zip yang mengandunginya. Tetapi pentadbir sekolah tidak menerima 57 fail.
+ * Mereka menerima SATU PDF dengan semua kelas di dalamnya, dicetak oleh
+ * perisian jadual waktu.
+ *
+ * Pada fail itu, laluan lama gagal dengan tepat tetapi tidak berguna:
+ * `kesanKelas` menjumpai 57 nama kelas, memulangkan null kerana ia kabur, dan
+ * pentadbir membaca "Kelas tidak dapat dikesan dari fail ini" — untuk fail
+ * yang sebenarnya mengandungi setiap kelas di sekolah.
+ *
+ * CARA IA DIBACA
+ * Satu muka surat = satu kelas. Itu bentuk yang dicetak oleh perisian jadual;
+ * setiap kelas mendapat halamannya sendiri. Jadi setiap muka dibaca
+ * berasingan: nama kelas dikesan dari teks muka ITU, dan grid dibina hanya
+ * dari koordinat pada muka ITU.
+ *
+ * APA YANG IA TIDAK BUAT, DENGAN SENGAJA
+ * Kalau satu muka mengandungi BEBERAPA kelas (jadual induk satu helaian
+ * besar), ia TIDAK meneka. Ia melaporkan muka itu dengan menamakan kelas yang
+ * dijumpai, supaya pentadbir nampak apa yang berlaku. Meneka di situ bermakna
+ * menulis jadual satu kelas ke dalam kelas lain — dan tiada siapa akan
+ * perasan sampai seorang guru berdiri di bilik yang salah.
+ *
+ * Muka tanpa nama kelas (muka hadapan, nota, halaman kosong) dilangkau senyap.
+ *
+ * Helaian Excel dikira sama: buku kerja dengan satu helaian setiap kelas
+ * berfungsi melalui laluan yang sama.
+ */
+export async function bacaJadualPukalBanyak(muatan: MuatanFail): Promise<HasilPukal[]> {
+  const nama = muatan?.nama ?? "(fail)";
+  try {
+    await pastikanBoleh("urus_guru_kelas");
+  } catch {
+    return [{ nama, kelas: null, ok: false, mesej: "Tiada kebenaran." }];
+  }
+
+  try {
+    const failPukal = await bacaMuatan(muatan);
+    const tolak = semakFail(failPukal);
+    if (tolak) return [{ nama, kelas: null, ok: false, mesej: tolak }];
+
+    const dok = await bacaDokumen(failPukal);
+    if (dok.jenis === "imbasan" || dok.jenis === "lain") {
+      return [{ nama, kelas: null, ok: false, mesej: dok.amaran[0] ?? "Fail ini tidak boleh dibaca." }];
+    }
+
+    const bilMuka = Math.max(dok.item?.length ?? 0, dok.grid.length);
+    // Satu muka sahaja: tiada apa untuk dipecahkan. Guna laluan asal supaya
+    // setiap mesejnya kekal sama seperti sebelum ini.
+    if (bilMuka <= 1) return [await bacaJadualPukal(muatan)];
+
+    /** Teks satu muka, daripada koordinat PDF atau daripada helaian Excel. */
+    const teksMukaKe = (i: number): string => {
+      const item = dok.item?.[i];
+      if (item?.length) return item.map((t) => t.str).join(" ");
+      return (dok.grid[i] ?? []).map((b) => b.join(" ")).join("\n");
+    };
+
+    // SATU KELAS MERENTAS BEBERAPA MUKA bukan jadual induk.
+    //
+    // Jadual satu kelas kadang-kadang dicetak pada dua muka — hari Isnin
+    // hingga Rabu pada muka pertama, selebihnya pada muka kedua. Kalau muka
+    // dipecahkan di situ, muka kedua ditolak sebagai "sudah dibaca" dan kelas
+    // itu disimpan dengan SEPARUH jadualnya. Separuh jadual lebih buruk
+    // daripada tiada: ia kelihatan lengkap.
+    //
+    // Jadi pecahan hanya berlaku bila ada DUA ATAU LEBIH kelas berbeza dalam
+    // fail itu. Kalau semua muka menunjuk kepada kelas yang sama, dokumen itu
+    // dibaca sebagai SATU, tepat seperti sebelum ini.
+    const kelasSetiapMuka: string[][] = [];
+    for (let i = 0; i < bilMuka; i++) {
+      const t = teksMukaKe(i);
+      kelasSetiapMuka.push(t.trim() ? semuaKelasDalam(t) : []);
+    }
+    const kelasBerbeza = new Set(kelasSetiapMuka.flat());
+    if (kelasBerbeza.size <= 1) return [await bacaJadualPukal(muatan)];
+
+    const jadual = await ambilJadual();
+    const keluar: HasilPukal[] = [];
+    const sudah = new Set<string>();
+
+    for (let i = 0; i < bilMuka; i++) {
+      const item = dok.item?.[i];
+      const grid = dok.grid[i];
+      const teksMuka = teksMukaKe(i);
+      if (!teksMuka.trim()) continue;
+
+      const jumpa = kelasSetiapMuka[i];
+      const label = `${nama} — muka ${i + 1}`;
+
+      if (jumpa.length === 0) continue; // muka hadapan, nota, halaman kosong
+      if (jumpa.length > 1) {
+        keluar.push({
+          nama: label, kelas: null, ok: false,
+          mesej:
+            `Muka ini mengandungi ${jumpa.length} kelas (${jumpa.slice(0, 4).join(", ")}` +
+            `${jumpa.length > 4 ? ", …" : ""}), jadi ia tidak dibaca — meneka di sini ` +
+            `boleh meletakkan jadual satu kelas ke dalam kelas lain. Muat naik kelas ini ` +
+            `seorang diri, atau hantar fail ini kepada kami untuk disokong.`,
+        });
+        continue;
+      }
+
+      const kelas = jumpa[0];
+      // Kelas yang sama pada dua muka: yang KEDUA dilaporkan, bukan ditimpa
+      // senyap. Selalunya itu muka kedua jadual yang sama (sambungan), dan
+      // menimpanya akan membuang separuh pertama.
+      if (sudah.has(kelas)) {
+        keluar.push({
+          nama: label, kelas, ok: false,
+          mesej: `${kelas} sudah dibaca dari muka terdahulu. Muka ini dilangkau supaya ia tidak menimpanya.`,
+        });
+        continue;
+      }
+
+      const senaraiWaktu = setUntukKelas(jadual, kelas)?.senarai ?? [];
+      if (senaraiWaktu.length === 0) {
+        keluar.push({ nama: label, kelas, ok: false, mesej: `Tiada set waktu untuk ${kelas}.` });
+        continue;
+      }
+
+      const hasil =
+        (item?.length ? binaDrafDariKedudukan([item], senaraiWaktu) : null) ??
+        (grid?.length ? binaDrafDariGrid([grid], senaraiWaktu) : null) ??
+        binaDraf(teksMuka, senaraiWaktu);
+
+      sudah.add(kelas);
+      keluar.push({
+        nama: label, kelas, ok: hasil.dikenal > 0,
+        draf: hasil.draf,
+        waktu: senaraiWaktu,
+        keyakinan: { dikenal: hasil.dikenal, jumlah: hasil.jumlah },
+        mesej:
+          hasil.dikenal > 0
+            ? `${hasil.dikenal} slot dibaca`
+            : "Muka dibaca tetapi tiada subjek dikenal pasti.",
+      });
+    }
+
+    // Tiada satu muka pun memberi kelas. Jangan pulangkan senarai kosong —
+    // itu kelihatan seperti tiada apa berlaku. Pulangkan laluan asal supaya
+    // sebab sebenarnya kelihatan.
+    if (keluar.length === 0) return [await bacaJadualPukal(muatan)];
+    return keluar;
+  } catch (e) {
+    return [{
+      nama, kelas: null, ok: false,
+      mesej: e instanceof Error ? `${e.name}: ${e.message}` : String(e),
+    }];
   }
 }

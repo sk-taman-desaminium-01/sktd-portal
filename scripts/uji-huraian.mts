@@ -8,6 +8,7 @@ import { padanSubjek, binaDraf, binaDrafDariGrid, binaDrafDariKedudukan, namaGur
 import { SET_LALAI } from "../src/data/jadual-jenis.ts";
 import { KOD_SUBJEK, namaSubjek } from "../src/data/subjek.ts";
 import { kadIkutBahagian } from "../src/data/bahagian.ts";
+import { semuaKelasDalam, kesanKelas } from "../src/data/kesan-kelas.ts";
 
 /** Waktu sebenar sekolah — sesi pagi, rehat pada waktu 5 (R4). */
 const WAKTU = SET_LALAI.find((s) => s.id === "pagi-r4")!.senarai;
@@ -200,6 +201,30 @@ semak("tiada kad ePBD kedua", guru.filter((k) => k.startsWith("pbd")).length, 1)
 semak("kad ePBD lama sudah tiada", guru.includes("epbd"), false);
 semak("guru nampak Jadual Waktu", guru.includes("jadual"), true);
 semak("tiada peranan → tiada kad pentadbiran", kadUntuk(null).includes("urusweb"), false);
+
+/* ------------------------------------------------------------------ *
+ * SATU PDF, SEMUA KELAS
+ *
+ * Pentadbir sekolah menerima SATU fail dengan setiap kelas di dalamnya, bukan
+ * 57 fail. Pada fail itu `kesanKelas` menjumpai 57 nama, memulangkan null
+ * kerana kabur, dan pentadbir membaca "Kelas tidak dapat dikesan" untuk fail
+ * yang sebenarnya mengandungi segala-galanya.
+ *
+ * `semuaKelasDalam` membolehkan pembacaan setiap MUKA berasingan. Ujian ini
+ * mengunci dua sifat: ia menemui semua kelas bila ada banyak, DAN `kesanKelas`
+ * yang lama kekal memulangkan null bila kabur — kerana perlindungan itulah
+ * yang menghalang jadual satu kelas ditulis ke dalam kelas lain.
+ * ------------------------------------------------------------------ */
+semak("satu kelas pada satu muka", semuaKelasDalam("JADUAL WAKTU 1 AMANAH 2026").length, 1);
+semak("kelas itu dikenal betul", semuaKelasDalam("JADUAL WAKTU 1 AMANAH 2026")[0], "1 AMANAH");
+semak("muka tanpa kelas → kosong", semuaKelasDalam("SEKOLAH KEBANGSAAN TAMAN DESAMINIUM").length, 0);
+semak("jadual induk → semua kelas dijumpai",
+  semuaKelasDalam("1 AMANAH 2 DEDIKASI 3 EFEKTIF").length, 3);
+semak("kelas PPKI dikesan", semuaKelasDalam("JADUAL PPKI SUNFLOWER")[0], "PPKI SUNFLOWER");
+semak("teks kosong tidak melontar", semuaKelasDalam("").length, 0);
+// Perlindungan asal MESTI kekal: kabur bermakna berhenti, bukan meneka.
+semak("kesanKelas kekal null bila kabur", kesanKelas("1 AMANAH 2 DEDIKASI", "x.pdf"), null);
+semak("kesanKelas kekal berfungsi bila satu", kesanKelas("1 AMANAH", "x.pdf"), "1 AMANAH");
 
 console.log(`\n${lulus} lulus, ${gagal} gagal`);
 process.exit(gagal > 0 ? 1 : 0);
