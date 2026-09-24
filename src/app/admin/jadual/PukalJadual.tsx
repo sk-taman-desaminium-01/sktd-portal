@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { bacaJadualPukal, type HasilPukal } from "@/lib/baca-jadual";
+import { bacaJadualPukal, bacaJadualPukalBanyak, type HasilPukal } from "@/lib/baca-jadual";
 import { simpanJadualBanyak } from "@/lib/jadual";
 import { sediaMuatan, normalkanFail } from "@/data/muatan-pelayar";
 import { semakSaiz } from "@/data/had-fail";
@@ -105,15 +105,26 @@ export default function PukalJadual() {
         try {
           const f = await normalkanFail(fail);
           const imbasan = f.type.startsWith("image/") || (/\.pdf$/i.test(f.name) && await pdfTanpaTeks(f));
-          let r = imbasan ? null : await bacaJadualPukal(await sediaMuatan(f));
-          if (!r || ((/\.pdf$/i.test(f.name) || f.type.startsWith("image/")) && !r.ok && /imbasan|gambar|teks/i.test(r.mesej))) {
+          // SATU FAIL BOLEH MENGANDUNGI BANYAK KELAS.
+          //
+          // Pentadbir sekolah tidak menerima 57 fail — mereka menerima satu
+          // PDF dengan semua kelas, dicetak oleh perisian jadual waktu, satu
+          // kelas satu muka. `bacaJadualPukalBanyak` membaca setiap muka
+          // berasingan dan memulangkan satu baris bagi setiap satu. Untuk
+          // fail satu-kelas ia memulangkan tepat satu baris, jadi laluan lama
+          // tidak berubah.
+          let r = imbasan ? null : await bacaJadualPukalBanyak(await sediaMuatan(f));
+          const pertama = r?.[0];
+          if (!r || (r.length === 1 && pertama && (/\.pdf$/i.test(f.name) || f.type.startsWith("image/")) && !pertama.ok && /imbasan|gambar|teks/i.test(pertama.mesej))) {
             const hasil = await bacaImbasanJadual(f, (teks) =>
               setHasil({ ok: true, mesej: `${nama}: ${teks}` }),
             );
             if (!hasil.teks.trim() && hasil.item.length === 0) throw new Error("OCR selesai tetapi tiada teks dapat dikenal pasti.");
-            r = await bacaJadualPukal(await sediaMuatan(failOcrJadual(f, hasil)));
+            r = [await bacaJadualPukal(await sediaMuatan(failOcrJadual(f, hasil)))];
           }
-          keputusan.push({ ...r, pilih: r.ok, kunci: `${nama}-${i}` });
+          r.forEach((satu, n) => {
+            keputusan.push({ ...satu, pilih: satu.ok, kunci: `${nama}-${i}-${n}` });
+          });
         } catch (e) {
           keputusan.push({
             nama, kelas: null, ok: false, pilih: false, kunci: `${nama}-${i}`,
@@ -154,10 +165,11 @@ export default function PukalJadual() {
     <section className="mt-5 rounded-xl border-2 border-navy-100 bg-white p-4">
       <h2 className="text-base font-bold text-navy-800">Muat naik pukal</h2>
       <p className="mt-1 text-sm leading-relaxed text-slate-600">
-        Pilih <b>banyak fail sekaligus</b>, atau satu fail <b>.zip</b> yang
-        mengandungi semuanya. Sistem mengesan kelas setiap fail dari isinya,
+        Tiga cara, semuanya berfungsi: <b>satu PDF yang mengandungi semua
+        kelas</b> (satu kelas satu muka surat), <b>banyak fail sekaligus</b>,
+        atau satu fail <b>.zip</b>. Sistem mengesan kelas dari isi setiap muka,
         membacanya satu demi satu, dan menunjukkan hasilnya untuk anda semak
-        sebelum apa-apa disimpan.
+        sebelum apa-apa disimpan. Muka tanpa nama kelas dilangkau.
       </p>
 
       <form
