@@ -351,3 +351,49 @@ Tandatangan ibu bapa disimpan sebagai `data:image` DALAM pangkalan data, berhad
 338 MB = 68% kuota daripada SATU aktiviti. Jangan teka — selepas 20–30 borang
 sebenar masuk, buka `/admin/kuota` dan lihat saiz `borang_jawapan`. Kalau ia
 melonjak, pindahkan tandatangan ke Storage (1 GB, dan kini ada laluan tepi).
+
+## Borang laporan & UI medan di telefon (24 Sep 2026)
+
+**SETIAP modul yang merekod data perlu dokumen akhir.** Birokrasi sekolah
+berjalan atas kertas: rekod dalam skrin tidak boleh difailkan, dilampirkan
+pada minit mesyuarat, atau dihulurkan kepada auditor. Semakan 24 Sep mendapati
+lima modul merekod tetapi tidak mengeluarkan apa-apa.
+
+Susun atur borang: **`src/components/CetakLaporan.tsx` — guna yang ini, jangan
+tulis kepala surat sendiri.** Ia membawa jata negara, lencana sekolah, alamat
+dan kod rasmi seperti borang sekolah sedia ada, tajuk lajur berulang setiap
+muka, dan baris yang tidak dipotong antara muka surat. Cetakan melalui
+`mulaCetak(id, tajuk)` — berfungsi di iPhone, Android dan laptop tanpa popup.
+
+Sudah ada borang: borang aktiviti (CetakAkuan), kebenaran gambar (CetakMedia),
+surat rasmi (CetakSurat), slip PBD, Laporan Lembaga Disiplin, carta organisasi,
+dan kini **Inventori** (Rekod Pinjaman Aset), **RMT** (kehadiran bulanan,
+`hadirRmtBulan()`), **Tempahan Bilik** (Laporan Penggunaan), **Jawatankuasa
+Sekolah** (Senarai Lantikan).
+
+TIDAK dibina dengan sengaja: laporan PK HEM dari Kawalan Kelas — keputusan
+pengguna, "dah ada di DELIMa, tak perlu buat 2 kali kerja". Takwim dan eRPM
+tidak memerlukan borang.
+
+### Medan borang di telefon — kesilapan yang sudah berlaku DUA KALI
+
+Corak yang rosak: beberapa kawalan dalam satu baris `flex` di mana medan teks
+membawa `flex-1 min-w-0` dan hanya ada `placeholder`. Pada skrin 390px medan
+itu mengecut kepada ~50px, placeholdernya terpotong, dan pengguna terpaksa
+MENEKA apa yang perlu diisi. Berlaku pada skrin Pengurus Pasukan, kemudian
+diulang pada medan No. Rujukan dalam Disiplin.
+
+**Peraturan:** satu lajur di telefon (`grid gap-3 sm:grid-cols-2`), label yang
+KELIHATAN dengan `htmlFor`, butang penuh lebar di telefon. Placeholder bukan
+label — ia hilang sebaik pengguna menaip. Dikunci oleh `uji:kontrak-modul`.
+
+### Zum dan orientasi
+
+`globals.css` menetapkan medan borang 16px pada `@media (pointer: coarse)`.
+Pelayar mengezum halaman bila medan berfon < 16px difokus dan TIDAK kembali —
+bukan iOS sahaja, Chrome Android guna ambang yang sama. JANGAN "baiki" ini
+dengan `maximum-scale=1`: itu mematikan zum cubitan di Android.
+`orientation` manifest ialah "any", bukan "portrait" — landskap diperlukan
+untuk grid jadual dan laman KPM. `PautanDalamApp` hanya memintas pautan luar
+pada skrin >= 1024px; di telefon, pelayar peranti memberi bar alamat, zum dan
+putaran yang tetingkap app tidak boleh berikan.
