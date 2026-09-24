@@ -303,3 +303,51 @@ sama merosakkan seperti pepijat yang terlepas.
 dijadualkan pg_cron menghantar notifikasi kepada setiap pentadbir pada 70%
 (sekali per 7 hari). Dipapar di `/admin/kuota`. Egress TIDAK boleh dibaca dari
 dalam Postgres — halaman itu menunjuk ke Supabase → Usage, dan tidak berpura-pura.
+
+## Kapasiti percuma — apa yang dikaji, apa yang dipilih (24 Sep 2026)
+
+Dikaji dengan dokumen RASMI, bukan ingatan. Bacaan sebenar hari itu: pangkalan
+data 15.8 MB / 500 MB (hanya 3.0 MB daripadanya jadual kita; bakinya mesin
+Supabase), storan 1.6 MB / 1 GB, 9 fail.
+
+**Apa yang berlaku bila kuota penuh** — Supabase memasukkan projek ke
+**READ-ONLY MODE**: `cannot execute INSERT in a read-only transaction`
+(SQLSTATE 25006). Bacaan terus berjalan, tulisan berhenti, dan ia kembali
+normal sendiri apabila turun bawah 95%. `src/lib/supabase-pelayan.ts`
+menterjemahkannya kepada arahan yang boleh ditindak — dikunci oleh `uji:kuota`.
+
+**DIPILIH: gambar sebagai aset statik Cloudflare.** Dokumen Workers static
+assets: *"Requests to static assets are free and unlimited"*, dan permintaan
+itu TIDAK dikira terhadap kuota permintaan Worker. Pelan percuma 20,000 fail,
+25 MiB sefail, tiada caj egress. Jadi `scripts/tarik-gambar.mjs` menarik setiap
+gambar yang dirujuk semasa binaan ke `public/gambar/`, dan `pautGambar()`
+memilih:
+- `/gambar/…` bila gambar ada dalam eksport → percuma, tanpa had, Supabase
+  tidak disentuh
+- `/img/…` bila belum (baru dimuat naik) → Worker + cache tepi 30 hari
+Gambar baharu kelihatan serta-merta dan berpindah sendiri pada binaan
+berikutnya. Kegagalan menarik tidak mematahkan binaan.
+⚠️ `/gambar/*` JANGAN dimasukkan ke `run_worker_first` — itu akan memaksa
+Worker berjalan dan membatalkan seluruh faedahnya.
+
+**DITOLAK: Cloudflare R2** (10 GB, egress sifar) — **memerlukan kad kredit
+didaftarkan**, walaupun pada peringkat percuma. Ini fakta baharu yang tiada
+dalam keputusan 13 Sep. Untuk akaun sekolah, bil tanpa siling ialah risiko
+pentadbiran. Aset statik memberi faedah sama tanpa kad.
+
+**DITOLAK: banyak organisasi Supabase.** Had 2 projek aktif dikira **merentas
+semua organisasi** yang pengguna jadi Owner/Admin — Supabase sudah menutup
+jalan itu.
+
+**SIMPAN UNTUK NANTI: projek Supabase kedua.** Pelan percuma benarkan 2 projek
+aktif dan 500 MB itu kini **setiap projek**, jadi +500 MB DB, +1 GB storan,
++5 GB egress tersedia secara sah. Harganya: pertanyaan tidak boleh menyeberang
+projek. Tidak dibuat sekarang — pada 3 MB ia kerja besar untuk masalah yang
+belum ada.
+
+**RISIKO TERBESAR YANG TINGGAL untuk saiz DB:** `borang_jawapan` masih 0 baris.
+Tandatangan ibu bapa disimpan sebagai `data:image` DALAM pangkalan data, berhad
+150 KB sebaris. Kalau tandatangan sebenar menghampiri had itu, 2,252 keluarga =
+338 MB = 68% kuota daripada SATU aktiviti. Jangan teka — selepas 20–30 borang
+sebenar masuk, buka `/admin/kuota` dan lihat saiz `borang_jawapan`. Kalau ia
+melonjak, pindahkan tandatangan ke Storage (1 GB, dan kini ada laluan tepi).
