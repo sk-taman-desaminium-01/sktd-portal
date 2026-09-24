@@ -12,6 +12,8 @@ import {
   selGrid, statusBilik, gabungJulat, kunciSel, huraiKunci, tempahanAktif,
   SESI_GRID_LALAI, type BlokGrid,
 } from "@/data/grid-bilik";
+import CetakLaporan from "@/components/CetakLaporan";
+import { mulaCetak } from "@/components/cetak-mudah-alih";
 
 /**
  * GRID TEMPAHAN — Isnin hingga Jumaat, waktu menegak, pagi dan petang.
@@ -718,6 +720,23 @@ function MingguIni({
     }))
     .filter((h) => h.senarai.length > 0);
 
+  /**
+   * LAPORAN PENGGUNAAN BILIK — jejak bertulis bagi kelulusan.
+   *
+   * Kelulusan tempahan sebelum ini hidup dalam skrin sahaja. PK Pentadbiran
+   * yang perlu tahu "siapa guna dewan bulan ini" tiada apa untuk difailkan,
+   * dan guru yang menempah tiada slip untuk dibawa.
+   */
+  const semuaMinggu = ikutHari.flatMap((h) =>
+    h.senarai.map((t) => [
+      labelTarikh(h.tarikh),
+      `${t.mula}–${t.tamat}`,
+      namaBilik.get(t.bilik_id) ?? "(bilik dipadam)",
+      t.nama,
+      t.tujuan,
+    ]),
+  );
+
   if (ikutHari.length === 0) {
     return (
       <p className="mt-6 rounded-xl border border-garis bg-white p-4 text-sm text-slate-500">
@@ -728,7 +747,37 @@ function MingguIni({
 
   return (
     <div className="mt-6">
-      <h3 className="text-base font-bold text-navy-800">Tempahan minggu ini</h3>
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <h3 className="text-base font-bold text-navy-800">Tempahan minggu ini</h3>
+        <button
+          type="button"
+          onClick={() => mulaCetak("bilik-cetak", "Laporan Penggunaan Bilik")}
+          className="min-h-11 touch-manipulation rounded-lg border border-navy-800 px-3 py-1.5 text-xs font-semibold text-navy-800"
+        >
+          Cetak laporan ({semuaMinggu.length})
+        </button>
+      </div>
+
+      <CetakLaporan
+        id="bilik-cetak"
+        tajuk="Laporan Penggunaan Bilik"
+        subtajuk={`Minggu ${labelTarikh(tarikh[0])} – ${labelTarikh(tarikh[tarikh.length - 1])}`}
+        maklumat={[{ label: "Jumlah tempahan diluluskan", nilai: String(semuaMinggu.length) }]}
+        lajur={[
+          { tajuk: "Tarikh", lebar: "26mm", tengah: true },
+          { tajuk: "Masa", lebar: "24mm", tengah: true },
+          { tajuk: "Bilik", lebar: "38mm" },
+          { tajuk: "Penempah", lebar: "40mm" },
+          { tajuk: "Tujuan" },
+        ]}
+        baris={semuaMinggu}
+        nota="Hanya tempahan yang DILULUSKAN disenaraikan. Tempahan yang dibatalkan tidak dipaparkan."
+        tandatangan={[
+          { label: "Disediakan oleh" },
+          { label: "Disahkan oleh", jawatan: "Penolong Kanan Pentadbiran" },
+        ]}
+      />
+
       <ul className="mt-2 space-y-3">
         {ikutHari.map((h) => (
           <li key={h.tarikh}>

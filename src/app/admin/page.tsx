@@ -45,8 +45,8 @@ export default async function Admin() {
     { href: "/admin/jadual", nama: "Jadual Waktu", ikon: "🗓️", bahagian: "kurikulum",
       ringkas: "Jadual setiap kelas. Ibu bapa melihatnya di laman sekolah." },
     ...(bolehGuruKelas
-      ? [{ href: "/admin/guru-kelas", nama: "Guru Kelas", ikon: "🧑‍🏫", bahagian: "pentadbiran" as const,
-           ringkas: "Tetapkan siapa guru kelas, guru RMT, guru disiplin & pengurus pasukan." }]
+      ? [{ href: "/admin/guru-kelas", nama: "Jawatankuasa Sekolah", ikon: "🧑‍🏫", bahagian: "pentadbiran" as const,
+           ringkas: "Lantikan guru kelas, guru RMT, guru disiplin & pengurus pasukan." }]
       : []),
     ...(bolehPengurusan
       ? [{ href: "/admin/pengurusan", nama: "Buku Pengurusan", ikon: "📕", bahagian: "pentadbiran" as const,

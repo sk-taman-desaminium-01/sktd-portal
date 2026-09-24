@@ -176,6 +176,52 @@ export async function hadirRmtTarikh(
 }
 
 /**
+ * Kehadiran RMT bagi SATU BULAN — untuk rekod bulanan yang diserahkan.
+ *
+ * RMT ialah program bertuntutan: kehadiran bulanan dilaporkan, bukan harian.
+ * Data itu sudah wujud dalam sistem sejak guru menanda setiap hari; yang
+ * tiada sebelum ini hanyalah cara mengeluarkannya.
+ *
+ * Memulangkan hanya hari yang BENAR-BENAR ada rekod, supaya borang tidak
+ * memaparkan tiga puluh lajur kosong untuk bulan yang baru bermula — dan
+ * supaya hari cuti tidak kelihatan seperti murid tidak hadir.
+ */
+export async function hadirRmtBulan(
+  tahun_sesi: number, bulan: string,
+): Promise<{ belumSedia: boolean; tarikh: string[]; hadir: Record<string, string[]> }> {
+  sahInt(tahun_sesi, "sesi", 2000, 2100);
+  if (!/^\d{4}-\d{2}$/.test(bulan)) throw new Error("Bulan tidak sah.");
+  const saya = await pengguna();
+  if (!saya?.peranan) throw new Error("Tiada kebenaran.");
+
+  // Julat bulan penuh: dari hari pertama hingga sebelum hari pertama bulan
+  // berikutnya. Dikira dengan UTC supaya tiada anjakan zon waktu.
+  const [t, b] = bulan.split("-").map(Number);
+  const mula = `${bulan}-01`;
+  const hujung = new Date(Date.UTC(b === 12 ? t + 1 : t, b === 12 ? 0 : b, 1))
+    .toISOString().slice(0, 10);
+
+  try {
+    const baris = (await bacaSemua<{ rmt_murid_id: string; tarikh: string; hadir: boolean }>(
+      `pbd_rmt_kehadiran?select=rmt_murid_id,tarikh,hadir&tahun_sesi=eq.${tahun_sesi}` +
+      `&tarikh=gte.${mula}&tarikh=lt.${hujung}&order=tarikh.asc`,
+    )) as { rmt_murid_id: string; tarikh: string; hadir: boolean }[];
+
+    const hariAda = new Set<string>();
+    const hadir: Record<string, string[]> = {};
+    for (const r of baris) {
+      hariAda.add(r.tarikh);
+      if (!r.hadir) continue;
+      (hadir[r.rmt_murid_id] ??= []).push(r.tarikh);
+    }
+    return { belumSedia: false, tarikh: [...hariAda].sort(), hadir };
+  } catch (e) {
+    if (belumDipasang(e, "pbd_rmt_kehadiran")) return { belumSedia: true, tarikh: [], hadir: {} };
+    throw e;
+  }
+}
+
+/**
  * Simpan kehadiran RMT PUKAL bagi satu tarikh — dibuka kepada SEMUA guru
  * log masuk (permintaan E.3).
  */

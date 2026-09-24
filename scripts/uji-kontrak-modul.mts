@@ -73,8 +73,51 @@ const pengurusan = baca("src/lib/pengurusan.ts");
 perlu("Pembetulan edisi guna tulisan berkelompok",
   pengurusan.includes("export async function suntingBarisBanyak"));
 
+/* ------------------------------------------------------------------ *
+ * BORANG LAPORAN — dokumen yang diserahkan kepada unit & jawatankuasa
+ *
+ * Semakan 24 Sep 2026 mendapati lima modul merekod data tetapi tiada
+ * dokumen akhir untuk diserahkan: inventori, RMT, tempahan bilik, senarai
+ * lantikan. Rekod dalam skrin bukan rekod yang boleh difailkan — bila
+ * auditor bertanya "mana rekod pinjaman", skrin bukan jawapan.
+ *
+ * Semua borang berkongsi SATU susun atur (CetakLaporan) supaya kepala surat
+ * sekolah hanya wujud di satu tempat.
+ * ------------------------------------------------------------------ */
+const cetakLaporan = baca("src/components/CetakLaporan.tsx");
+perlu("Borang laporan membawa logo jata negara", cetakLaporan.includes("logo-jata-negara.png"));
+perlu("Borang laporan membawa lencana sekolah", cetakLaporan.includes("logo-sktd.png"));
+perlu("Borang laporan ada ruang tandatangan", cetakLaporan.includes("tandatangan"));
+perlu("Baris jadual tidak dipotong antara muka surat", cetakLaporan.includes("break-inside: avoid"));
+perlu("Tajuk lajur diulang pada setiap muka", cetakLaporan.includes("table-header-group"));
+
+for (const [nama, fail, id] of [
+  ["Inventori", "src/app/inventori/PanelInventori.tsx", "inventori-cetak"],
+  ["RMT", "src/app/rmt/PanelRmt.tsx", "rmt-cetak"],
+  ["Tempahan bilik", "src/app/bilik/GridBilik.tsx", "bilik-cetak"],
+  ["Jawatankuasa", "src/app/admin/guru-kelas/CetakJawatankuasa.tsx", "jk-cetak"],
+] as const) {
+  const isi = baca(fail);
+  perlu(`${nama} ada borang laporan`, isi.includes("CetakLaporan") && isi.includes(id));
+  perlu(`${nama} boleh dicetak dari telefon`, isi.includes("mulaCetak"));
+}
+
+// Rekod bulanan RMT memerlukan bacaan sebulan, bukan satu tarikh.
+const rmtLib = baca("src/lib/rmt.ts");
+perlu("RMT boleh membaca kehadiran SEBULAN", rmtLib.includes("export async function hadirRmtBulan"));
+perlu("Bacaan bulanan RMT disahkan bentuk bulannya", rmtLib.includes("Bulan tidak sah"));
+
+// Medan sempit yang pernah diadukan DUA KALI: pengurus pasukan, kemudian
+// nombor rujukan disiplin. Kedua-duanya kini label kelihatan, satu lajur.
+const tugasanUi = baca("src/app/admin/guru-kelas/PanelTugasanLain.tsx");
+perlu("Medan nama pasukan ada label kelihatan", tugasanUi.includes("labelSkop") && tugasanUi.includes("htmlFor"));
+perlu("Medan nama pasukan tidak berkongsi baris di telefon", tugasanUi.includes("grid gap-3 sm:grid-cols-2"));
+const disiplinUi = baca("src/app/disiplin/PanelDisiplin.tsx");
+perlu("Medan rujukan disiplin ada label kelihatan", disiplinUi.includes('htmlFor={`ruj-'));
+perlu("Medan rujukan disiplin penuh lebar", disiplinUi.includes('id={`ruj-${b.id}`}') && disiplinUi.includes("block w-full"));
+
 if (gagal.length) {
   console.error(`Kontrak modul gagal:\n${gagal.map((x) => `- ${x}`).join("\n")}`);
   process.exit(1);
 }
-console.log("Kontrak modul: 37 semakan lulus.");
+console.log(`Kontrak modul: semua semakan lulus.`);

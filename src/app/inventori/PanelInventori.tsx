@@ -2,6 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 import PilihCari from "@/components/PilihCari";
+import CetakLaporan from "@/components/CetakLaporan";
+import { mulaCetak } from "@/components/cetak-mudah-alih";
 import {
   mohonTindakan, putuskanTindakan, batalTindakan, simpanBarangTindakan,
   padamBarangTindakan, tambahPenyeliaTindakan, buangPenyeliaTindakan,
@@ -205,6 +207,48 @@ function Permohonanku({ papan, mohon, setMohon, namaBarang, setNota }: {
 
   const papar = tapis === "semua" ? mohon : mohon.filter((p) => p.status === tapis);
   const menunggu = mohon.filter((p) => p.status === "baharu").length;
+  const [cetak, setCetak] = useState(false);
+
+  /** "24 Sep 2026" waktu Malaysia. Pelayan Vercel berjalan pada UTC. */
+  const tarikhPendek = (iso: string) =>
+    new Intl.DateTimeFormat("ms-MY", {
+      timeZone: "Asia/Kuala_Lumpur", day: "2-digit", month: "short", year: "numeric",
+    }).format(new Date(iso));
+
+  /**
+   * REKOD PINJAMAN ASET — dokumen yang boleh diserahkan.
+   *
+   * Sekolah bertanggungjawab ke atas asetnya. Sebelum ini kelulusan pinjaman
+   * hidup dalam skrin sahaja: bila auditor atau PPD bertanya "mana rekod
+   * pinjaman", tiada apa untuk dihulurkan. Butang ini mencetak senarai yang
+   * SEDANG dipapar — jadi tapisan status menentukan isinya: "Diluluskan"
+   * memberi senarai barang yang masih dipegang, "Selesai" memberi rekod
+   * pulangan.
+   */
+  function cetakRekod() {
+    setCetak(true);
+    // Render dahulu, kemudian cetak: kandungan mesti sudah ada dalam DOM.
+    setTimeout(() => mulaCetak("inventori-cetak", "Rekod Pinjaman Aset"), 0);
+  }
+
+  const LAJUR_REKOD = [
+    { tajuk: "Tarikh mohon", lebar: "22mm", tengah: true },
+    { tajuk: "Pemohon" },
+    { tajuk: "Barang" },
+    { tajuk: "Kuantiti", lebar: "16mm", tengah: true },
+    { tajuk: "Tujuan" },
+    { tajuk: "Perlu pada", lebar: "22mm", tengah: true },
+    { tajuk: "Status", lebar: "20mm", tengah: true },
+  ];
+  const barisRekod = papar.map((p) => [
+    tarikhPendek(p.dicipta),
+    p.nama,
+    namaBarang.get(p.barang_id) ?? "(barang dipadam)",
+    p.kuantiti,
+    p.tujuan,
+    p.perlu_pada ? tarikhPendek(p.perlu_pada) : "—",
+    NAMA_STATUS[p.status],
+  ]);
 
   if (mohon.length === 0) return null;
 
@@ -231,6 +275,12 @@ function Permohonanku({ papan, mohon, setMohon, namaBarang, setNota }: {
           <option value="tolak">Ditolak</option>
           <option value="selesai">Selesai</option>
         </select>
+        <button
+          type="button" onClick={cetakRekod}
+          className="min-h-11 touch-manipulation rounded-lg border border-navy-800 px-3 py-1.5 text-xs font-semibold text-navy-800"
+        >
+          Cetak rekod ({papar.length})
+        </button>
       </div>
 
       <ul className="mt-2 space-y-1.5">
@@ -322,6 +372,25 @@ function Permohonanku({ papan, mohon, setMohon, namaBarang, setNota }: {
           <li className="py-3 text-sm text-slate-500">Tiada permohonan dengan status itu.</li>
         )}
       </ul>
+
+      {cetak && (
+        <CetakLaporan
+          id="inventori-cetak"
+          tajuk="Rekod Pinjaman Aset"
+          subtajuk="Unit ICT"
+          maklumat={[
+            { label: "Status", nilai: tapis === "semua" ? "Semua" : NAMA_STATUS[tapis] },
+            { label: "Bilangan rekod", nilai: String(papar.length) },
+          ]}
+          lajur={LAJUR_REKOD}
+          baris={barisRekod}
+          nota="Barang yang diluluskan kekal di bawah tanggungjawab pemohon sehingga dipulangkan dan direkodkan sebagai Selesai."
+          tandatangan={[
+            { label: "Disediakan oleh" },
+            { label: "Disahkan oleh", jawatan: "Penyelia Unit" },
+          ]}
+        />
+      )}
     </section>
   );
 }

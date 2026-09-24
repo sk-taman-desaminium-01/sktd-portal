@@ -2,7 +2,9 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { hadirRmtTarikh, naikRosterRmt, buangRosterRmt, simpanHadirRmt, type MuridRmt } from "@/lib/rmt";
+import { hadirRmtTarikh, hadirRmtBulan, naikRosterRmt, buangRosterRmt, simpanHadirRmt, type MuridRmt } from "@/lib/rmt";
+import CetakLaporan from "@/components/CetakLaporan";
+import { mulaCetak } from "@/components/cetak-mudah-alih";
 import PilihCari from "@/components/PilihCari";
 
 export default function PanelRmt({
@@ -35,6 +37,30 @@ function PanelKehadiran({ tahunSesi, roster, tarikhAwal, hadirAwal }: {
   );
   const [sibuk, setSibuk] = useState(false);
   const [nota, setNota] = useState<{ ok: boolean; teks: string } | null>(null);
+  const [bulanan, setBulanan] = useState<{ tarikh: string[]; hadir: Record<string, string[]> } | null>(null);
+
+  /**
+   * REKOD KEHADIRAN BULANAN — dokumen yang diserahkan.
+   *
+   * RMT ialah program bertuntutan; laporannya bulanan, bukan harian. Data
+   * ini sudah wujud sejak guru menanda setiap hari — yang tiada sebelum ini
+   * hanyalah cara mengeluarkannya.
+   */
+  async function cetakBulanan() {
+    setSibuk(true);
+    try {
+      const bulan = tarikh.slice(0, 7);
+      const r = await hadirRmtBulan(tahunSesi, bulan);
+      if (r.belumSedia) {
+        setNota({ ok: false, teks: "Jadual kehadiran RMT belum dipasang." });
+        return;
+      }
+      setBulanan({ tarikh: r.tarikh, hadir: r.hadir });
+      setTimeout(() => mulaCetak("rmt-cetak", "Rekod Kehadiran RMT"), 0);
+    } catch {
+      setNota({ ok: false, teks: "Sambungan terputus atau pelayan tidak menjawab. Cuba lagi." });
+    } finally { setSibuk(false); }
+  }
 
   const kumpulan = useMemo(() => {
     const peta = new Map<string, MuridRmt[]>();
@@ -80,6 +106,12 @@ function PanelKehadiran({ tahunSesi, roster, tarikhAwal, hadirAwal }: {
           className="block w-full min-w-0 max-w-full rounded-lg border border-garis px-3 py-1.5 text-sm sm:w-auto" />
       </div>
       <p className="mt-1 text-xs text-slate-500">Sesiapa guru boleh isi — tanda murid yang HADIR sahaja.</p>
+      <button
+        type="button" onClick={() => void cetakBulanan()} disabled={sibuk}
+        className="mt-3 min-h-11 touch-manipulation rounded-lg border border-navy-800 px-3 py-1.5 text-xs font-semibold text-navy-800 disabled:opacity-50"
+      >
+        Cetak rekod bulan ini
+      </button>
 
       <div className="mt-4 space-y-3">
         {kumpulan.map(([label, murid], indeks) => (
@@ -111,6 +143,41 @@ function PanelKehadiran({ tahunSesi, roster, tarikhAwal, hadirAwal }: {
         className="mt-4 min-h-11 touch-manipulation rounded-lg bg-navy-800 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">
         Simpan Kehadiran
       </button>
+
+      {bulanan && (
+        <CetakLaporan
+          id="rmt-cetak"
+          kertas="landscape"
+          tajuk="Rekod Kehadiran Rancangan Makanan Tambahan (RMT)"
+          subtajuk={new Intl.DateTimeFormat("ms-MY", { month: "long", year: "numeric", timeZone: "Asia/Kuala_Lumpur" })
+            .format(new Date(`${tarikh.slice(0, 7)}-01T00:00:00Z`))}
+          maklumat={[
+            { label: "Sesi", nilai: String(tahunSesi) },
+            { label: "Bilangan murid", nilai: String(roster.length) },
+            { label: "Hari direkod", nilai: String(bulanan.tarikh.length) },
+          ]}
+          lajur={[
+            { tajuk: "Nama Murid" },
+            { tajuk: "Kelas", lebar: "22mm", tengah: true },
+            ...bulanan.tarikh.map((t) => ({ tajuk: t.slice(8), lebar: "6mm", tengah: true })),
+            { tajuk: "Jumlah", lebar: "16mm", tengah: true },
+          ]}
+          baris={roster.map((m) => {
+            const hari = bulanan.hadir[m.id] ?? [];
+            return [
+              m.nama,
+              `${m.tahun} ${m.kelas}`.trim(),
+              ...bulanan.tarikh.map((t) => (hari.includes(t) ? "/" : "")),
+              hari.length,
+            ];
+          })}
+          nota="Tanda / bermakna murid HADIR pada hari tersebut. Hari yang tiada rekod (cuti, hujung minggu) tidak dipaparkan."
+          tandatangan={[
+            { label: "Disediakan oleh", jawatan: "Guru RMT" },
+            { label: "Disahkan oleh", jawatan: "Guru Besar" },
+          ]}
+        />
+      )}
     </section>
   );
 }
