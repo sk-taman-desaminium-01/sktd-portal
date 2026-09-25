@@ -39,6 +39,10 @@ export interface BarisDisiplin {
   saksi: string | null;
   guru_nama: string;
   laporan_lembaga: boolean;
+  /** Kelas SEBELUM murid berpindah — hanya diisi bila ia berubah. */
+  kelas_asal?: string;
+  /** Murid tiada pendaftaran aktif lagi (berpindah keluar atau dipadam). */
+  murid_tiada?: boolean;
   rujukan_kami: string | null;
   dicipta: string;
 }
@@ -138,6 +142,64 @@ export async function hantarDisiplin(input: {
 }
 
 /** Senarai penuh untuk pihak berkuasa; pelapor biasa menerima rekod sendiri sahaja. */
+/**
+ * MURID BERPINDAH KELAS, ATAU NAMANYA DIPADAM — rekod mesti ikut.
+ *
+ * `pbd_disiplin` menyimpan `murid_nama` dan `kelas` bersama rekod, supaya
+ * laporan lama masih boleh dibaca walaupun murid itu sudah tiada. Itu betul
+ * untuk arkib, tetapi salah untuk skrin dan borang HARI INI: murid yang
+ * bertukar dari 4 AMANAH ke 4 BESTARI akan kekal disenaraikan di kelas lama,
+ * dan guru kelas baharunya tidak akan nampak kes itu langsung.
+ *
+ * Diselaraskan semasa BACA, bukan dengan menulis semula rekod lama:
+ *   · tiada tulisan, jadi tiada risiko memusnahkan rekod sejarah
+ *   · tiada kerja latar yang boleh gagal senyap
+ *   · murid yang pendaftarannya DIPADAM dikekalkan dengan nama asalnya dan
+ *     ditandakan, bukan dibuang — rekod disiplin tidak boleh hilang hanya
+ *     kerana seseorang memadam satu baris kelas
+ *
+ * Satu pertanyaan untuk semua murid sekali gus (peraturan keras #31).
+ */
+async function selaraskanMurid(
+  senarai: BarisDisiplin[], tahun_sesi: number,
+): Promise<BarisDisiplin[]> {
+  const id = [...new Set(senarai.map((b) => b.murid_id).filter(Boolean))] as string[];
+  if (id.length === 0) return senarai;
+
+  try {
+    const db = klienTulis();
+    const kini = new Map<string, { nama: string; kelas: string }>();
+    // Dipecahkan supaya URL tidak melebihi had panjang pada kelas besar.
+    for (let i = 0; i < id.length; i += 150) {
+      const kepingan = id.slice(i, i + 150);
+      const baris = (await db.minta(
+        `pbd_pendaftaran?select=murid_id,kelas,pbd_murid!inner(nama)` +
+        `&tahun_sesi=eq.${tahun_sesi}&status=in.(aktif,pindah_masuk,ulang)` +
+        `&murid_id=in.(${kepingan.join(",")})`,
+      )) as { murid_id: string; kelas: string; pbd_murid: { nama: string } }[];
+      for (const b of baris) kini.set(b.murid_id, { nama: b.pbd_murid.nama, kelas: b.kelas });
+    }
+
+    return senarai.map((b) => {
+      if (!b.murid_id) return b;
+      const sekarang = kini.get(b.murid_id);
+      // Tiada pendaftaran aktif: murid berpindah keluar atau dipadam.
+      if (!sekarang) return { ...b, murid_tiada: true };
+      if (sekarang.nama === b.murid_nama && sekarang.kelas === b.kelas) return b;
+      return {
+        ...b,
+        murid_nama: sekarang.nama,
+        kelas: sekarang.kelas,
+        kelas_asal: sekarang.kelas === b.kelas ? undefined : b.kelas,
+      };
+    });
+  } catch {
+    // Penyelarasan ialah kemudahan, bukan syarat. Kalau ia gagal, rekod
+    // dipapar seperti tersimpan — bukan skrin kosong.
+    return senarai;
+  }
+}
+
 export async function senaraiDisiplin(
   tahun_sesi: number,
 ): Promise<{ belumSedia: boolean; boleh: boolean; urusSemua: boolean; senarai: BarisDisiplin[]; berulang: string[] }> {
@@ -152,7 +214,8 @@ export async function senaraiDisiplin(
       `pbd_disiplin?select=${LAJUR_DISIPLIN}&tahun_sesi=eq.${tahun_sesi}` +
         `${urusSemua ? "" : `&guru_id=eq.${saya.id}`}&order=tarikh.desc,id.asc`,
     )) as BarisDisiplin[];
-    return { belumSedia: false, boleh: true, urusSemua, senarai, berulang: ringkasBerulang(senarai) };
+    const selaras = await selaraskanMurid(senarai, tahun_sesi);
+    return { belumSedia: false, boleh: true, urusSemua, senarai: selaras, berulang: ringkasBerulang(selaras) };
   } catch (e) {
     if (skemaDisiplinBelumLengkap(e)) return { belumSedia: true, boleh: true, urusSemua, senarai: [], berulang: [] };
     throw e;

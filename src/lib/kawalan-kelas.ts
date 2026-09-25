@@ -19,9 +19,13 @@ import { sahInt } from "./sah";
  * `senaraiGuruKelas` dari `guru-kelas.ts` — bukan diulang di sini).
  * G.3: carta kehadiran harian ikut kelas — dikira dari `bil_hadir`/
  * `bil_murid` yang guru isi sendiri pada setiap rekod, BUKAN senarai
- * kehadiran satu-satu setiap murid setiap hari. Laporan & Amaran PK HEM
- * sengaja TIDAK dibina — permintaan pengguna eksplisit: "ia dah ada di
- * DELIMa, tak perlu buat 2 kali kerja".
+ * kehadiran satu-satu setiap murid setiap hari.
+ *
+ * PEMBETULAN 25 Sep 2026: nota lama di sini berkata laporan tidak perlu
+ * kerana "dah ada di DELIMa". Itu SALAH, dan pengguna membetulkannya. Yang
+ * ada di DELIMa ialah rekod KEHADIRAN; Kawalan Kelas tidak pernah ada di
+ * sana. Dan borang DELIMa sendiri tidak kemas, jadi kedua-dua borang —
+ * kawalan kelas DAN kehadiran — dibina di sini.
  *
  * BACAAN DIBUKA kepada semua guru log masuk — ini log BERSAMA
  * ("kebersamaan dengan para guru"), bukan rekod sulit seperti Disiplin.
