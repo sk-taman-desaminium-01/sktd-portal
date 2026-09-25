@@ -34,6 +34,10 @@ export interface MuridRmt {
   nama: string;
   no_kp: string | null;
   aktif: boolean;
+  /** Kelas SEBELUM murid berpindah — hanya diisi bila ia berubah. */
+  kelas_asal?: string;
+  /** Tiada pendaftaran aktif lagi: berpindah keluar, atau rekodnya dipadam. */
+  murid_tiada?: boolean;
 }
 
 export type HasilRmt = { ok: boolean; mesej: string; diproses?: number; ditolak?: string[]; semakan?: { nama: string; no_kp: string | null }[] };
@@ -109,6 +113,63 @@ export async function naikRosterRmt(
   return { ok: true, mesej: `${murid.length} murid ditambah ke senarai RMT.`, diproses: murid.length, ditolak };
 }
 
+/**
+ * ROSTER RMT DISELARASKAN DENGAN PENDAFTARAN SEMASA.
+ *
+ * Roster menyimpan nama, tahun dan kelas bersama setiap baris — disalin
+ * semasa senarai dimuat naik. Murid yang kemudiannya bertukar kelas kekal
+ * tersenarai di kelas lama, jadi borang tanda kehadiran memaparkannya di
+ * bawah tajuk kelas yang salah, dan guru yang mencarinya di kelas baharu
+ * tidak menjumpainya.
+ *
+ * Sama seperti rekod disiplin, ia diselaraskan semasa BACA dan bukan dengan
+ * menulis semula roster: tiada risiko memusnahkan senarai yang guru RMT sudah
+ * susun, dan tiada kerja latar yang boleh gagal senyap.
+ *
+ * KUNCINYA No. KP, bukan `murid_id` — roster RMT dimuat naik daripada senarai
+ * bertaip dan tidak pernah memegang id murid. Baris tanpa No. KP tidak boleh
+ * dipadankan, jadi ia dibiarkan SEPERTI ADANYA dan tidak ditanda hilang;
+ * menandakannya bermakna menuduh rekod yang betul.
+ */
+async function selaraskanRoster(
+  senarai: MuridRmt[], tahun_sesi: number,
+): Promise<MuridRmt[]> {
+  const kp = [...new Set(senarai.map((m) => m.no_kp).filter(Boolean))] as string[];
+  if (kp.length === 0) return senarai;
+
+  try {
+    const db = klienTulis();
+    const kini = new Map<string, { nama: string; tahun: number; kelas: string }>();
+    for (let i = 0; i < kp.length; i += 150) {
+      const baris = (await db.minta(
+        `pbd_pendaftaran?select=tahun,kelas,pbd_murid!inner(nama,no_kp)` +
+        `&tahun_sesi=eq.${tahun_sesi}&status=in.(aktif,pindah_masuk,ulang)` +
+        `&pbd_murid.no_kp=in.(${kp.slice(i, i + 150).join(",")})`,
+      )) as { tahun: number; kelas: string; pbd_murid: { nama: string; no_kp: string } }[];
+      for (const b of baris) {
+        kini.set(b.pbd_murid.no_kp, { nama: b.pbd_murid.nama, tahun: b.tahun, kelas: b.kelas });
+      }
+    }
+
+    return senarai.map((m) => {
+      if (!m.no_kp) return m;
+      const sekarang = kini.get(m.no_kp);
+      if (!sekarang) return { ...m, murid_tiada: true };
+      if (sekarang.nama === m.nama && sekarang.kelas === m.kelas && sekarang.tahun === m.tahun) return m;
+      return {
+        ...m,
+        nama: sekarang.nama,
+        tahun: sekarang.tahun,
+        kelas: sekarang.kelas,
+        ...(sekarang.kelas === m.kelas ? {} : { kelas_asal: `${m.tahun} ${m.kelas}`.trim() }),
+      };
+    });
+  } catch {
+    // Penyelarasan ialah kemudahan, bukan syarat.
+    return senarai;
+  }
+}
+
 export async function senaraiRosterRmt(
   tahun_sesi: number,
 ): Promise<{ belumSedia: boolean; boleh: boolean; senarai: MuridRmt[] }> {
@@ -122,7 +183,13 @@ export async function senaraiRosterRmt(
       `pbd_rmt_murid?select=id,tahun,kelas,nama,no_kp,aktif&tahun_sesi=eq.${tahun_sesi}` +
         `&aktif=eq.true&order=tahun.asc,kelas.asc,nama.asc,id.asc`,
     )) as MuridRmt[];
-    return { belumSedia: false, boleh: true, senarai };
+    // Diselaraskan dahulu, KEMUDIAN diisih semula — murid yang berpindah
+    // mesti muncul di bawah kelas barunya, bukan kekal di tempat lamanya.
+    const selaras = (await selaraskanRoster(senarai, tahun_sesi)).sort(
+      (a, b) => a.tahun - b.tahun || a.kelas.localeCompare(b.kelas, "ms") ||
+        a.nama.localeCompare(b.nama, "ms"),
+    );
+    return { belumSedia: false, boleh: true, senarai: selaras };
   } catch (e) {
     if (belumDipasang(e, "pbd_rmt_murid")) return { belumSedia: true, boleh: true, senarai: [] };
     throw e;

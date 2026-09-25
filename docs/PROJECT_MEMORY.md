@@ -383,6 +383,14 @@ kehadiran ialah rekod SATU kelas merentas hari; kawalan kelas ialah log SEMUA
 kelas merentas guru. Satu jadual gabungan tidak boleh disusun mengikut
 mana-mana satu daripadanya.
 
+**RMT juga di bawah PK HEM.** Roster RMT (`pbd_rmt_murid`) turut menyimpan
+nama/tahun/kelas secara denormal dan diselaraskan cara yang sama — tetapi
+kuncinya **No. KP**, bukan `murid_id`, kerana roster dimuat naik daripada
+senarai bertaip dan tidak pernah memegang id murid. Baris tanpa No. KP
+dibiarkan seperti adanya dan TIDAK ditanda hilang; menandakannya bermakna
+menuduh rekod yang betul. Roster diisih SEMULA selepas diselaraskan, supaya
+murid yang berpindah muncul di bawah kelas barunya.
+
 ### Medan borang di telefon — kesilapan yang sudah berlaku DUA KALI
 
 Corak yang rosak: beberapa kawalan dalam satu baris `flex` di mana medan teks
