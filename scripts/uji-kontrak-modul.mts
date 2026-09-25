@@ -122,6 +122,10 @@ perlu("Medan rujukan disiplin penuh lebar", disiplinUi.includes('id={`ruj-${b.id
 const kawalanUi = baca("src/app/kawalan-kelas/PanelKawalanKelas.tsx");
 perlu("Borang rekod kehadiran wujud", kawalanUi.includes("kehadiran-cetak"));
 perlu("Borang rekod kawalan kelas wujud", kawalanUi.includes("kawalan-cetak"));
+// Kedua-dua borang modul ini pergi kepada PK HEM (disahkan pengguna 25 Sep).
+perlu("Kedua-dua borang kawalan kelas ditujukan kepada PK HEM",
+  (kawalanUi.match(/Penolong Kanan HEM/g) ?? []).length === 2 &&
+  !kawalanUi.includes("Penolong Kanan Pentadbiran"));
 perlu("Nama guru relief dipilih, bukan ditaip bebas",
   kawalanUi.includes("kawalan-relief") && kawalanUi.includes("PilihCari"));
 const guruKelasLib = baca("src/lib/guru-kelas.ts");

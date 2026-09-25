@@ -377,6 +377,12 @@ rekod KEHADIRAN; Kawalan Kelas tidak pernah ada di sana. Dan borang DELIMa
 sendiri tidak kemas, jadi **kedua-dua** borang dibina di sini. Takwim dan eRPM
 tetap tidak memerlukan borang.
 
+Kedua-dua borang modul Kawalan Kelas & Kehadiran diserahkan kepada **PK HEM**
+(disahkan pengguna 25 Sep). Ia kekal DUA dokumen kerana bentuknya berbeza:
+kehadiran ialah rekod SATU kelas merentas hari; kawalan kelas ialah log SEMUA
+kelas merentas guru. Satu jadual gabungan tidak boleh disusun mengikut
+mana-mana satu daripadanya.
+
 ### Medan borang di telefon — kesilapan yang sudah berlaku DUA KALI
 
 Corak yang rosak: beberapa kawalan dalam satu baris `flex` di mana medan teks

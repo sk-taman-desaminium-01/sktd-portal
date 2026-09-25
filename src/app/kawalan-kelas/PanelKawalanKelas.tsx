@@ -176,11 +176,14 @@ export default function PanelKawalanKelas({
             </button>
           </div>
 
-          {/* DUA BORANG, BUKAN SATU.
-              Kehadiran dan kawalan kelas menjawab soalan berbeza dan pergi
-              kepada orang berbeza: kehadiran kepada HEM, kawalan kelas
-              (siapa masuk, relief) kepada Pentadbiran. Menggabungkannya
-              memaksa penerima mengabaikan separuh borang.
+          {/* DUA BORANG, SATU PENERIMA.
+              Kedua-duanya diserahkan kepada PK HEM (disahkan pengguna,
+              25 Sep 2026) — tetapi ia kekal DUA dokumen kerana bentuknya
+              berbeza: kehadiran ialah rekod SATU KELAS merentas hari,
+              manakala kawalan kelas ialah log SEMUA kelas merentas guru.
+              Menggabungkannya bermakna satu jadual yang tidak boleh
+              disusun mengikut mana-mana satu daripadanya, dan difailkan
+              di bawah dua tajuk yang berlainan.
 
               DELIMa memang ada rekod kehadiran, tetapi borangnya tidak kemas
               — itu sebab ia dibina di sini juga (pembetulan pengguna,
@@ -268,7 +271,7 @@ export default function PanelKawalanKelas({
           nota="Lajur Relief menunjukkan guru yang digantikan. Rekod ini melengkapkan Rekod Kehadiran Harian, bukan menggantikannya."
           tandatangan={[
             { label: "Disediakan oleh" },
-            { label: "Disahkan oleh", jawatan: "Penolong Kanan Pentadbiran" },
+            { label: "Disahkan oleh", jawatan: "Penolong Kanan HEM" },
           ]}
         />
         {senarai.length === 0 && (
