@@ -129,7 +129,23 @@ function PanelKehadiran({ tahunSesi, roster, tarikhAwal, hadirAwal }: {
                   <label className="flex min-w-0 items-start gap-2 text-sm">
                     <input type="checkbox" disabled={sibuk} checked={hadir[m.id] ?? false}
                       onChange={(e) => setHadir((h) => ({ ...h, [m.id]: e.target.checked }))} className="mt-0.5 shrink-0" />
-                    <span className="min-w-0"><span className="block break-words">{m.nama}</span>{m.no_kp && <span className="block text-[11px] text-slate-500">{m.no_kp}</span>}</span>
+                    <span className="min-w-0">
+                      <span className="block break-words">{m.nama}</span>
+                      {/* Nama, tahun dan kelas diselaraskan dengan pendaftaran
+                          semasa. Perubahan DITUNJUKKAN, bukan disembunyikan —
+                          guru RMT perlu tahu kenapa murid berpindah tajuk. */}
+                      {m.kelas_asal && (
+                        <span className="mt-0.5 inline-block rounded bg-navy-50 px-1.5 py-0.5 text-[10px] font-semibold text-navy-700">
+                          pindah dari {m.kelas_asal}
+                        </span>
+                      )}
+                      {m.murid_tiada && (
+                        <span className="mt-0.5 inline-block rounded bg-[#fdecec] px-1.5 py-0.5 text-[10px] font-semibold text-[#9a2e2e]">
+                          tiada pendaftaran aktif
+                        </span>
+                      )}
+                      {m.no_kp && <span className="block text-[11px] text-slate-500">{m.no_kp}</span>}
+                    </span>
                   </label>
                 </li>
               ))}
@@ -174,7 +190,7 @@ function PanelKehadiran({ tahunSesi, roster, tarikhAwal, hadirAwal }: {
           nota="Tanda / bermakna murid HADIR pada hari tersebut. Hari yang tiada rekod (cuti, hujung minggu) tidak dipaparkan."
           tandatangan={[
             { label: "Disediakan oleh", jawatan: "Guru RMT" },
-            { label: "Disahkan oleh", jawatan: "Guru Besar" },
+            { label: "Disahkan oleh", jawatan: "Penolong Kanan HEM" },
           ]}
         />
       )}

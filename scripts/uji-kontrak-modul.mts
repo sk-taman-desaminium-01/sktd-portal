@@ -148,6 +148,29 @@ perlu("Kegagalan penyelarasan tidak mengosongkan skrin",
 perlu("Perubahan kelas ditunjukkan kepada guru",
   disiplinUi.includes("pindah dari") && disiplinUi.includes("tiada pendaftaran aktif"));
 
+/* Roster RMT: murid berpindah kelas mesti muncul di bawah kelas barunya. */
+perlu("Roster RMT diselaraskan dengan pendaftaran semasa",
+  rmtLib.includes("async function selaraskanRoster"));
+perlu("Roster RMT dipadankan melalui No. KP, bukan murid_id",
+  rmtLib.includes("pbd_murid.no_kp=in."));
+perlu("Baris tanpa No. KP tidak dituduh hilang",
+  rmtLib.includes("if (!m.no_kp) return m;"));
+perlu("Roster diisih SEMULA selepas diselaraskan",
+  /selaraskanRoster\(senarai, tahun_sesi\)\)\.sort/.test(rmtLib));
+// Badan fungsi SAHAJA — tetingkap aksara tetap akan melepasi hujungnya dan
+// menangkap DELETE milik buangRosterRmt, iaitu amaran palsu.
+const badanSelaras = rmtLib.slice(
+  rmtLib.indexOf("async function selaraskanRoster"),
+  rmtLib.indexOf("export async function senaraiRosterRmt"),
+);
+perlu("Penyelarasan roster tidak menulis semula senarai",
+  badanSelaras.length > 200 && !/method: "(PATCH|POST|DELETE|PUT)"/.test(badanSelaras));
+const rmtUi = baca("src/app/rmt/PanelRmt.tsx");
+perlu("Perpindahan kelas ditunjukkan dalam roster RMT",
+  rmtUi.includes("pindah dari") && rmtUi.includes("tiada pendaftaran aktif"));
+perlu("Borang RMT ditujukan kepada PK HEM",
+  rmtUi.includes('jawatan: "Penolong Kanan HEM"') && !rmtUi.includes('jawatan: "Guru Besar"'));
+
 if (gagal.length) {
   console.error(`Kontrak modul gagal:\n${gagal.map((x) => `- ${x}`).join("\n")}`);
   process.exit(1);
