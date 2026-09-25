@@ -224,7 +224,22 @@ function SenaraiPenuh({ senarai, berulang, urusSemua }: { senarai: BarisDisiplin
         {data.map((b) => (
           <li key={b.id} className="rounded-xl border border-garis bg-white p-4 text-sm">
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <p className="font-semibold text-navy-800">{b.murid_nama} · {b.kelas}</p>
+              <p className="font-semibold text-navy-800">
+                {b.murid_nama} · {b.kelas}
+                {/* Nama dan kelas diselaraskan dengan pendaftaran semasa
+                    (lihat selaraskanMurid). Perubahan ditunjukkan, tidak
+                    disembunyikan — guru perlu tahu kenapa kelasnya berubah. */}
+                {b.kelas_asal && (
+                  <span className="ml-2 rounded bg-navy-50 px-1.5 py-0.5 text-[10px] font-semibold text-navy-700">
+                    pindah dari {b.kelas_asal}
+                  </span>
+                )}
+                {b.murid_tiada && (
+                  <span className="ml-2 rounded bg-[#fdecec] px-1.5 py-0.5 text-[10px] font-semibold text-[#9a2e2e]">
+                    tiada pendaftaran aktif
+                  </span>
+                )}
+              </p>
               <span className="text-xs text-slate-500">{new Date(b.tarikh).toLocaleDateString("ms-MY")}</span>
             </div>
             <p className="mt-1.5 text-slate-600">{b.kesalahan}</p>

@@ -8,13 +8,17 @@ import {
 } from "@/lib/kawalan-kelas";
 import { cartaKehadiranHarian } from "@/lib/kawalan-kelas-carta";
 import PilihCari from "@/components/PilihCari";
+import CetakLaporan from "@/components/CetakLaporan";
+import { mulaCetak } from "@/components/cetak-mudah-alih";
 
 export default function PanelKawalanKelas({
-  tahunSesi, kelas, namaGuruKelas, senarai, tarikhAwal,
+  tahunSesi, kelas, namaGuruKelas, namaGuru, senarai, tarikhAwal,
 }: {
   tahunSesi: number;
   kelas: string[];
   namaGuruKelas: Record<string, string>;
+  /** Nama guru untuk senarai pilihan — elak nama yang sama dieja empat cara. */
+  namaGuru: string[];
   senarai: BarisKawalanKelas[];
   tarikhAwal: string;
 }) {
@@ -130,8 +134,19 @@ export default function PanelKawalanKelas({
           Ganti/Relief guru yang tidak hadir
         </label>
         {relief && (
-          <input value={reliefUntuk} onChange={(e) => setReliefUntuk(e.target.value)}
-            placeholder="Ganti untuk guru…" className="mt-2 block w-full min-w-0 max-w-full rounded-lg border border-garis px-3 py-2 text-sm" />
+          <div className="mt-2">
+            {/* SENARAI PILIHAN, BUKAN TEKS BEBAS.
+                Sebagai medan bebas, nama yang sama ditulis empat cara —
+                "Hamidi", "En. Hamidi", "HAMIDI B." — dan laporan relief tidak
+                boleh dijumlahkan. Kalau nama tiada dalam senarai (guru baharu
+                belum diluluskan akses), taipan bebas masih diterima. */}
+            <PilihCari
+              id="kawalan-relief" label="Ganti untuk guru"
+              nilai={reliefUntuk} tukar={setReliefUntuk}
+              placeholder="Taip nama guru…"
+              pilihan={namaGuru.map((n) => ({ nilai: n, label: n }))}
+            />
+          </div>
         )}
 
         <div className="mt-4">
@@ -150,7 +165,52 @@ export default function PanelKawalanKelas({
 
       {carta.length > 0 && (
         <section>
-          <h2 className="text-lg font-bold text-navy-800">Carta Kehadiran Harian — {kelasPilih}</h2>
+          <div className="flex flex-wrap items-baseline justify-between gap-2">
+            <h2 className="text-lg font-bold text-navy-800">Carta Kehadiran Harian — {kelasPilih}</h2>
+            <button
+              type="button"
+              onClick={() => mulaCetak("kehadiran-cetak", "Rekod Kehadiran Harian")}
+              className="min-h-11 touch-manipulation rounded-lg border border-navy-800 px-3 py-1.5 text-xs font-semibold text-navy-800"
+            >
+              Cetak rekod kehadiran
+            </button>
+          </div>
+
+          {/* DUA BORANG, BUKAN SATU.
+              Kehadiran dan kawalan kelas menjawab soalan berbeza dan pergi
+              kepada orang berbeza: kehadiran kepada HEM, kawalan kelas
+              (siapa masuk, relief) kepada Pentadbiran. Menggabungkannya
+              memaksa penerima mengabaikan separuh borang.
+
+              DELIMa memang ada rekod kehadiran, tetapi borangnya tidak kemas
+              — itu sebab ia dibina di sini juga (pembetulan pengguna,
+              25 Sep 2026; nota lama menyangka ia tidak perlu). */}
+          <CetakLaporan
+            id="kehadiran-cetak"
+            tajuk="Rekod Kehadiran Harian"
+            subtajuk={`Kelas ${kelasPilih}`}
+            maklumat={[
+              { label: "Sesi", nilai: String(tahunSesi) },
+              { label: "Guru Kelas", nilai: namaGuruKelas[kelasPilih] ?? "—" },
+              { label: "Hari direkod", nilai: String(carta.length) },
+            ]}
+            lajur={[
+              { tajuk: "Tarikh", lebar: "30mm", tengah: true },
+              { tajuk: "Jumlah Murid", lebar: "28mm", tengah: true },
+              { tajuk: "Hadir", lebar: "24mm", tengah: true },
+              { tajuk: "Tidak Hadir", lebar: "26mm", tengah: true },
+              { tajuk: "Peratus", lebar: "22mm", tengah: true },
+            ]}
+            baris={carta.map((c) => [
+              new Date(c.tarikh).toLocaleDateString("ms-MY"),
+              c.murid, c.hadir, Math.max(0, c.murid - c.hadir), `${c.peratus}%`,
+            ])}
+            nota="Bilangan hadir direkod oleh guru yang masuk kelas pada hari berkenaan."
+            tandatangan={[
+              { label: "Disediakan oleh", nama: namaGuruKelas[kelasPilih], jawatan: "Guru Kelas" },
+              { label: "Disahkan oleh", jawatan: "Penolong Kanan HEM" },
+            ]}
+          />
           <div className="mt-3 space-y-1.5">
             {carta.map((c) => (
               <div key={c.tarikh} className="flex items-center gap-3 text-xs">
@@ -166,7 +226,51 @@ export default function PanelKawalanKelas({
       )}
 
       <section className="border-t border-garis pt-8">
-        <h2 className="text-lg font-bold text-navy-800">Log Terkini ({senarai.length})</h2>
+        <div className="flex flex-wrap items-baseline justify-between gap-2">
+          <h2 className="text-lg font-bold text-navy-800">Log Terkini ({senarai.length})</h2>
+          {senarai.length > 0 && (
+            <button
+              type="button"
+              onClick={() => mulaCetak("kawalan-cetak", "Rekod Kawalan Kelas")}
+              className="min-h-11 touch-manipulation rounded-lg border border-navy-800 px-3 py-1.5 text-xs font-semibold text-navy-800"
+            >
+              Cetak rekod kawalan kelas
+            </button>
+          )}
+        </div>
+
+        <CetakLaporan
+          id="kawalan-cetak"
+          kertas="landscape"
+          tajuk="Rekod Kawalan Kelas"
+          subtajuk={`Sesi ${tahunSesi}`}
+          maklumat={[{ label: "Bilangan rekod", nilai: String(senarai.length) }]}
+          lajur={[
+            { tajuk: "Tarikh", lebar: "24mm", tengah: true },
+            { tajuk: "Kelas", lebar: "24mm", tengah: true },
+            { tajuk: "Guru Masuk", lebar: "42mm" },
+            { tajuk: "Subjek", lebar: "30mm" },
+            { tajuk: "Masa", lebar: "18mm", tengah: true },
+            { tajuk: "Relief", lebar: "34mm" },
+            { tajuk: "Hadir", lebar: "18mm", tengah: true },
+            { tajuk: "Masalah Disiplin" },
+          ]}
+          baris={senarai.map((b) => [
+            new Date(b.tarikh).toLocaleDateString("ms-MY"),
+            b.kelas,
+            b.guru_nama,
+            b.subjek,
+            b.masa_masuk ?? "—",
+            b.relief ? `Ganti ${b.guru_relief_untuk ?? ""}`.trim() : "—",
+            b.bil_murid ? `${b.bil_hadir ?? 0}/${b.bil_murid}` : "—",
+            b.masalah_disiplin ?? "",
+          ])}
+          nota="Lajur Relief menunjukkan guru yang digantikan. Rekod ini melengkapkan Rekod Kehadiran Harian, bukan menggantikannya."
+          tandatangan={[
+            { label: "Disediakan oleh" },
+            { label: "Disahkan oleh", jawatan: "Penolong Kanan Pentadbiran" },
+          ]}
+        />
         {senarai.length === 0 && (
           <p className="mt-4 rounded-xl border border-dashed border-slate-300 bg-white p-5 text-center text-sm text-slate-500">
             Belum ada rekod kawalan kelas. Rekod pertama anda akan muncul di sini sebaik dihantar.

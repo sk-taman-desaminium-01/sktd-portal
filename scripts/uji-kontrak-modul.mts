@@ -116,6 +116,34 @@ const disiplinUi = baca("src/app/disiplin/PanelDisiplin.tsx");
 perlu("Medan rujukan disiplin ada label kelihatan", disiplinUi.includes('htmlFor={`ruj-'));
 perlu("Medan rujukan disiplin penuh lebar", disiplinUi.includes('id={`ruj-${b.id}`}') && disiplinUi.includes("block w-full"));
 
+/* Kawalan Kelas & Kehadiran — DUA borang, bukan satu.
+   Pembetulan pengguna 25 Sep 2026: yang ada di DELIMa ialah rekod KEHADIRAN
+   (dan borangnya tidak kemas); Kawalan Kelas tidak pernah ada di sana. */
+const kawalanUi = baca("src/app/kawalan-kelas/PanelKawalanKelas.tsx");
+perlu("Borang rekod kehadiran wujud", kawalanUi.includes("kehadiran-cetak"));
+perlu("Borang rekod kawalan kelas wujud", kawalanUi.includes("kawalan-cetak"));
+perlu("Nama guru relief dipilih, bukan ditaip bebas",
+  kawalanUi.includes("kawalan-relief") && kawalanUi.includes("PilihCari"));
+const guruKelasLib = baca("src/lib/guru-kelas.ts");
+perlu("Senarai nama guru untuk pilihan wujud", guruKelasLib.includes("namaGuruUntukPilihan"));
+perlu("Senarai itu memulangkan NAMA sahaja, bukan emel",
+  /pbd_guru\?select=nama&dibenarkan=eq\.true/.test(guruKelasLib));
+
+/* Murid berpindah kelas atau dipadam — rekod disiplin mesti ikut. */
+const disiplinLib = baca("src/lib/disiplin.ts");
+perlu("Rekod disiplin diselaraskan dengan pendaftaran semasa",
+  disiplinLib.includes("async function selaraskanMurid"));
+perlu("Penyelarasan membaca pendaftaran aktif sahaja",
+  disiplinLib.includes("status=in.(aktif,pindah_masuk,ulang)"));
+perlu("Murid tanpa pendaftaran ditanda, BUKAN dibuang",
+  disiplinLib.includes("murid_tiada") && !disiplinLib.includes("senarai.filter((b) => !b.murid_tiada)"));
+perlu("Penyelarasan tidak menulis semula rekod sejarah",
+  !/selaraskanMurid[\s\S]{0,1200}method: "PATCH"/.test(disiplinLib));
+perlu("Kegagalan penyelarasan tidak mengosongkan skrin",
+  /catch \{[\s\S]{0,260}return senarai;/.test(disiplinLib));
+perlu("Perubahan kelas ditunjukkan kepada guru",
+  disiplinUi.includes("pindah dari") && disiplinUi.includes("tiada pendaftaran aktif"));
+
 if (gagal.length) {
   console.error(`Kontrak modul gagal:\n${gagal.map((x) => `- ${x}`).join("\n")}`);
   process.exit(1);

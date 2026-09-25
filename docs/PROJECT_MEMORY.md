@@ -371,9 +371,11 @@ dan kini **Inventori** (Rekod Pinjaman Aset), **RMT** (kehadiran bulanan,
 `hadirRmtBulan()`), **Tempahan Bilik** (Laporan Penggunaan), **Jawatankuasa
 Sekolah** (Senarai Lantikan).
 
-TIDAK dibina dengan sengaja: laporan PK HEM dari Kawalan Kelas — keputusan
-pengguna, "dah ada di DELIMa, tak perlu buat 2 kali kerja". Takwim dan eRPM
-tidak memerlukan borang.
+⚠️ PEMBETULAN 25 Sep 2026 — nota terdahulu di sini SALAH. Ia berkata laporan
+Kawalan Kelas tidak perlu kerana "dah ada di DELIMa". Yang ada di DELIMa ialah
+rekod KEHADIRAN; Kawalan Kelas tidak pernah ada di sana. Dan borang DELIMa
+sendiri tidak kemas, jadi **kedua-dua** borang dibina di sini. Takwim dan eRPM
+tetap tidak memerlukan borang.
 
 ### Medan borang di telefon — kesilapan yang sudah berlaku DUA KALI
 

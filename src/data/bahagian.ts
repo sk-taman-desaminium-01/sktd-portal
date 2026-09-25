@@ -206,8 +206,10 @@ export const KAD_TAMBAHAN: KadBaharu[] = [
     akses: "Guru kelas, pentadbir & admin",
   },
   {
-    // Kad BAHARU (permintaan pengguna G, 18 Sep 2026). Laporan & amaran PK
-    // HEM SENGAJA TIDAK dibina — ia sudah ada di DELIMa (kerja berulang).
+    // Kad BAHARU (permintaan pengguna G, 18 Sep 2026).
+    // Nota lama "laporan tidak dibina kerana sudah ada di DELIMa" DIBETULKAN
+    // 25 Sep 2026: yang ada di DELIMa ialah rekod kehadiran, bukan kawalan
+    // kelas — dan borangnya tidak kemas. Kedua-dua borang ada di sini.
     id: "kawalan-kelas", bahagian: "pentadbiran",
     nama: "Rekod Kawalan Kelas & Kehadiran", ikon: "RKK", warna: "#3a6f4a",
     fungsi: "Guru yang masuk kelas, subjek, relief, dan carta kehadiran harian.",

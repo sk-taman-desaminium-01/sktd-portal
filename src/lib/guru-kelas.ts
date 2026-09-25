@@ -185,3 +185,26 @@ export async function buangGuruKelas(label: string): Promise<HasilTugasan> {
   revalidatePath("/admin/jadual");
   return { ok: true, mesej: `Tugasan guru kelas ${label} dibuang.` };
 }
+
+/**
+ * Nama semua guru yang dibenarkan masuk portal — untuk senarai pilihan.
+ *
+ * KENAPA NAMA SAHAJA, DAN KENAPA TERBUKA KEPADA SEMUA YANG LOG MASUK
+ * Borang Kawalan Kelas meminta "ganti untuk guru mana". Sebagai medan teks
+ * bebas, nama yang sama ditulis empat cara — "Hamidi", "En. Hamidi",
+ * "HAMIDI B.", "Hamid" — dan laporan relief yang terhasil tidak boleh
+ * dijumlahkan. Senarai pilihan menghapuskan seluruh kelas masalah itu.
+ *
+ * Ia memulangkan NAMA sahaja: tiada emel, tiada peranan, tiada id. Nama
+ * rakan sekerja bukan rahsia dalam portal yang sudah memerlukan log masuk,
+ * tetapi emel dan peranan adalah — jadi ia tidak dihantar.
+ */
+export async function namaGuruUntukPilihan(): Promise<string[]> {
+  const saya = await pengguna();
+  if (!saya?.peranan) return [];
+  const db = klienTulis();
+  const baris = (await db.minta(
+    "pbd_guru?select=nama&dibenarkan=eq.true&order=nama.asc",
+  )) as { nama: string | null }[];
+  return [...new Set(baris.map((b) => (b.nama ?? "").trim()).filter(Boolean))];
+}
