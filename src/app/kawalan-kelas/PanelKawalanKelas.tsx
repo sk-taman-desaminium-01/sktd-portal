@@ -8,17 +8,22 @@ import {
 } from "@/lib/kawalan-kelas";
 import { cartaKehadiranHarian } from "@/lib/kawalan-kelas-carta";
 import PilihCari from "@/components/PilihCari";
+import { SUBJEK } from "@/data/subjek";
 import CetakLaporan from "@/components/CetakLaporan";
+import CetakKawalanBilikDarjah, { barisDariWaktu } from "@/components/CetakKawalanBilikDarjah";
+import { setUntukKelas, NAMA_HARI, HARI, type Jadual } from "@/data/jadual-jenis";
 import { mulaCetak } from "@/components/cetak-mudah-alih";
 
 export default function PanelKawalanKelas({
-  tahunSesi, kelas, namaGuruKelas, namaGuru, senarai, tarikhAwal,
+  tahunSesi, kelas, namaGuruKelas, namaGuru, jadual, senarai, tarikhAwal,
 }: {
   tahunSesi: number;
   kelas: string[];
   namaGuruKelas: Record<string, string>;
   /** Nama guru untuk senarai pilihan — elak nama yang sama dieja empat cara. */
   namaGuru: string[];
+  /** Untuk waktu kelas pada Borang Kawalan Bilik Darjah. Null = belum ada. */
+  jadual: Jadual | null;
   senarai: BarisKawalanKelas[];
   tarikhAwal: string;
 }) {
@@ -37,6 +42,27 @@ export default function PanelKawalanKelas({
   const [nota, setNota] = useState<{ ok: boolean; teks: string } | null>(null);
 
   const carta = useMemo(() => cartaKehadiranHarian(senarai, kelasPilih), [senarai, kelasPilih]);
+
+  /**
+   * BORANG KAWALAN BILIK DARJAH — tiruan borang kertas sekolah.
+   *
+   * Waktu diambil daripada set kelas itu sendiri, bukan disenaraikan tetap:
+   * sesi pagi ada 11 waktu, sesi petang 10, dan rehatnya pada waktu berbeza
+   * mengikut tahun. Borang yang memaksa satu susunan akan salah untuk
+   * separuh sekolah.
+   */
+  const borang = useMemo(() => {
+    const set = jadual ? setUntukKelas(jadual, kelasPilih) : null;
+    const rekod = senarai.filter((b) => b.kelas === kelasPilih && b.tarikh === tarikh);
+    const hadir = rekod.find((r) => r.bil_murid !== null);
+    const hariMY = HARI[(new Date(`${tarikh}T00:00:00`).getDay() + 6) % 7] ?? null;
+    return {
+      baris: set ? barisDariWaktu(set.senarai, rekod) : [],
+      hari: hariMY ? NAMA_HARI[hariMY] : "",
+      hadirJumlah: hadir?.bil_hadir ?? null,
+      muridJumlah: hadir?.bil_murid ?? null,
+    };
+  }, [jadual, kelasPilih, tarikh, senarai]);
 
   async function hantar() {
     try {
@@ -112,8 +138,17 @@ export default function PanelKawalanKelas({
             )}
           </Medan>
           <Medan label="Subjek">
-            <input value={subjek} onChange={(e) => setSubjek(e.target.value)}
-              className="block w-full min-w-0 max-w-full rounded-lg border border-garis px-3 py-2 text-sm" />
+            {/* SENARAI PILIHAN, seperti nama guru. Subjek yang ditaip bebas
+                menghasilkan "BM", "B.M.", "Bahasa Melayu" untuk perkara yang
+                sama, dan Borang Kawalan Bilik Darjah yang dicetak daripadanya
+                kelihatan tidak kemas. Taipan bebas masih diterima untuk
+                aktiviti yang bukan mata pelajaran. */}
+            <PilihCari
+              id="kawalan-subjek" label="Mata pelajaran" sembunyiLabel
+              nilai={subjek} tukar={setSubjek}
+              placeholder="Taip mata pelajaran…"
+              pilihan={SUBJEK.map((x) => ({ nilai: x.nama, label: x.nama, nota: x.kod }))}
+            />
           </Medan>
           <Medan label="Masa Masuk">
             <input type="time" value={masaMasuk} onChange={(e) => setMasaMasuk(e.target.value)}
@@ -169,6 +204,13 @@ export default function PanelKawalanKelas({
             <h2 className="text-lg font-bold text-navy-800">Carta Kehadiran Harian — {kelasPilih}</h2>
             <button
               type="button"
+              onClick={() => mulaCetak("kawalan-borang", "Borang Kawalan Bilik Darjah")}
+              className="min-h-11 touch-manipulation rounded-lg bg-navy-800 px-3 py-1.5 text-xs font-semibold text-white"
+            >
+              Cetak Borang Kawalan Bilik Darjah
+            </button>
+            <button
+              type="button"
               onClick={() => mulaCetak("kehadiran-cetak", "Rekod Kehadiran Harian")}
               className="min-h-11 touch-manipulation rounded-lg border border-navy-800 px-3 py-1.5 text-xs font-semibold text-navy-800"
             >
@@ -188,6 +230,21 @@ export default function PanelKawalanKelas({
               DELIMa memang ada rekod kehadiran, tetapi borangnya tidak kemas
               — itu sebab ia dibina di sini juga (pembetulan pengguna,
               25 Sep 2026; nota lama menyangka ia tidak perlu). */}
+          <CetakKawalanBilikDarjah
+            kelas={kelasPilih}
+            hari={borang.hari}
+            tarikh={new Date(`${tarikh}T00:00:00`).toLocaleDateString("ms-MY")}
+            guruKelas={namaGuruKelas[kelasPilih] ?? ""}
+            lelaki="" perempuan=""
+            tidakHadir={
+              borang.muridJumlah !== null && borang.hadirJumlah !== null
+                ? String(Math.max(0, borang.muridJumlah - borang.hadirJumlah))
+                : ""
+            }
+            jumlah={borang.muridJumlah !== null ? String(borang.muridJumlah) : ""}
+            baris={borang.baris}
+          />
+
           <CetakLaporan
             id="kehadiran-cetak"
             tajuk="Rekod Kehadiran Harian"

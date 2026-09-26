@@ -135,7 +135,7 @@ export const KAD_TAMBAHAN: KadBaharu[] = [
     id: "pejabat", bahagian: "pentadbiran",
     nama: "Urusan Pejabat", ikon: "PEJ", warna: "#5a5a5a",
     fungsi: "Peti masuk surat rasmi — beri nombor rujukan kami, dan rekod kakitangan.",
-    domain: "portal.sktd.edu.my/pejabat", pautan: "/pejabat", status: "bina",
+    domain: "portal.sktd.edu.my/pejabat", pautan: "/pejabat", status: "sedia",
     // Kad ini HANYA untuk kerani, pentadbir & admin (permintaan B.4: kuasa
     // kerani turut diberi kepada pentadbir & admin). Guru biasa menghantar
     // surat rasmi melalui kad "Borang Sekolah" — mereka tidak perlu tahu
