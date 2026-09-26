@@ -269,8 +269,16 @@ for (const medan of [
   "NAMA GURU KELAS", "BILANGAN MURID HADIR", "BIL TIDAK HADIR", "JUMLAH MURID",
   "Mata Pelajaran", "T/T Guru", "Bil Murid",
   "Senarai Nama Murid Tidak Hadir", "Catatan Salah Laku Murid",
-  "Disemak oleh", "Guru Kelas",
 ]) perlu(`Borang ada medan "${medan}"`, borangUi.includes(medan));
+// Ruang tandatangan DIBUANG: tandatangan sebenar dibuat dalam buku fizikal
+// (keputusan pengguna). Ruang yang tidak pernah diisi hanya menimbulkan
+// soalan kenapa ia kosong.
+perlu("Tiada ruang tandatangan di bawah borang",
+  !borangUi.includes('className="ttd"') && !borangUi.includes("garis-ttd"));
+perlu("Semua nama dicetak huruf besar",
+  borangUi.includes("text-transform: uppercase") && borangUi.includes('className="isi lebar nama"'));
+perlu("Margin A4 15mm, tiada kandungan terpotong",
+  borangUi.includes("margin: 15mm") && borangUi.includes("max-width: 100%"));
 perlu("Senarai tidak hadir 20 baris dalam dua lajur",
   borangUi.includes("length: 10") && borangUi.includes("[0, 1].map"));
 perlu("Catatan salah laku 5 baris", borangUi.includes("length: 5"));

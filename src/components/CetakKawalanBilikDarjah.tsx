@@ -17,6 +17,13 @@ import type { Waktu } from "@/data/jadual-jenis";
  *  3. Senarai murid tidak hadir (20 baris, dua lajur) dan catatan salah laku
  *     (5 baris)
  *
+ * TIADA RUANG TANDATANGAN DI BAWAH. Borang asal ada "Disemak oleh / Guru
+ * Kelas", tetapi tandatangan sebenar dibuat dalam BUKU FIZIKAL (keputusan
+ * pengguna, 26 Sep 2026). Mencetak ruang yang tidak pernah diisi hanya
+ * memanjangkan borang dan menimbulkan soalan kenapa ia kosong.
+ * Lajur "T/T Guru" dalam jadual DIKEKALKAN — itu sebahagian jadual waktu,
+ * ditandatangani guru semasa masuk kelas.
+ *
  * APA YANG DIISI SISTEM, APA YANG DIISI TANGAN
  * Waktu, mata pelajaran dan nama guru datang daripada jadual waktu kelas itu
  * — itu yang sistem memang tahu. Tandatangan, nama murid tidak hadir dan
@@ -55,9 +62,15 @@ export default function CetakKawalanBilikDarjah({
           body * { visibility: hidden; }
           #${id}, #${id} * { visibility: visible; }
           #${id} { position: absolute; inset: 0; width: 100%; }
-          @page { size: A4 portrait; margin: 12mm; }
+          /* 15mm sekeliling: margin A4 yang selesa untuk borang yang
+             difailkan dan dilubang. Diukur selepas ditetapkan — kandungan
+             berakhir pada ~78% tinggi halaman, jadi ada ruang lebih. */
+          @page { size: A4 portrait; margin: 15mm; }
         }
-        #${id} { font-family: Arial, Helvetica, sans-serif; color: #000; font-size: 9pt; }
+        /* max-width melindungi daripada limpahan mendatar walau apa pun
+           kandungan sel — tiada apa boleh terpotong di tepi kanan. */
+        #${id} { font-family: Arial, Helvetica, sans-serif; color: #000; font-size: 9pt; max-width: 100%; }
+        #${id} table { max-width: 100%; }
         #${id} .tajuk { text-align: center; font-weight: 700; font-size: 11pt; margin-bottom: 4mm; }
         /* Medan kepala: label, titik bertitik untuk diisi tangan. */
         #${id} .kepala { font-size: 9pt; line-height: 2.1; }
@@ -86,12 +99,12 @@ export default function CetakKawalanBilikDarjah({
         /* Tinggi baris disamakan dengan borang kertas supaya ada ruang menulis. */
         #${id} td { height: 6.6mm; }
         #${id} .c { text-align: center; }
+        /* NAMA HURUF BESAR. Dibuat dengan CSS dan bukan .toUpperCase() dalam
+           data, supaya nama yang tersimpan kekal seperti dieja pemiliknya —
+           yang berubah hanya cara ia DICETAK. */
+        #${id} .nama { text-transform: uppercase; }
         #${id} .sub { margin-top: 4mm; font-size: 9pt; font-weight: 400; }
         #${id} .dua { display: grid; grid-template-columns: 1fr 1fr; gap: 4mm; }
-        #${id} .ttd { margin-top: 6mm; font-size: 9pt; }
-        #${id} .garis-ttd {
-          border-bottom: .8pt dotted #000; width: 62mm; height: 9mm;
-        }
       `}</style>
 
       <p className="tajuk">BORANG KAWALAN BILIK DARJAH</p>
@@ -102,7 +115,7 @@ export default function CetakKawalanBilikDarjah({
           <span style={{ marginLeft: "10mm" }}>HARI : <span className="isi">{hari}</span></span>
           <span style={{ marginLeft: "10mm" }}>TARIKH : <span className="isi">{tarikh}</span></span>
         </div>
-        <div>NAMA GURU KELAS: <span className="isi lebar">{guruKelas}</span></div>
+        <div>NAMA GURU KELAS: <span className="isi lebar nama">{guruKelas}</span></div>
         <div>
           BILANGAN MURID HADIR : <span style={{ marginLeft: "4mm" }}>LELAKI</span>
           {" : "}<span className="isi sempit">{lelaki}</span> ORANG
@@ -136,8 +149,8 @@ export default function CetakKawalanBilikDarjah({
             <tr key={i}>
               <td className="c">{i + 1}</td>
               <td className="c">{b.masa}</td>
-              <td className="c">{b.subjek}</td>
-              <td>{b.guru}</td>
+              <td className="c nama">{b.subjek}</td>
+              <td className="nama">{b.guru}</td>
               <td />
               <td className="c">{b.bilMurid}</td>
               <td>{b.catatan}</td>
@@ -188,11 +201,6 @@ export default function CetakKawalanBilikDarjah({
         </tbody>
       </table>
 
-      <div className="ttd">
-        <p>Disemak oleh :</p>
-        <div className="garis-ttd" />
-        <p>Guru Kelas</p>
-      </div>
     </div>
   );
 }
