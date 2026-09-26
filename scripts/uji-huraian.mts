@@ -11,6 +11,7 @@ import { kadIkutBahagian } from "../src/data/bahagian.ts";
 import { semuaKelasDalam, kesanKelas } from "../src/data/kesan-kelas.ts";
 import { kodSlot, huraiKodSlot, namaSlot } from "../src/data/slot-jadual.ts";
 import { pasanganGuruKelas } from "../src/data/guru-kelas-buku.ts";
+import { samaOrang as samaGuru } from "../src/data/padan-nama.ts";
 
 /** Waktu sebenar sekolah — sesi pagi, rehat pada waktu 5 (R4). */
 const WAKTU = SET_LALAI.find((s) => s.id === "pagi-r4")!.senarai;
@@ -420,6 +421,33 @@ semak("prasekolah tidak masuk senarai kelas rendah",
 semak("guru pembantu TIDAK diambil",
   pasangan.some((p) => /NASSER|ISFAN|NURUL NADIA/.test(p.guru)), false);
 semak("baris tajuk bukan pasangan", pasangan.length, 3);
+
+/* ------------------------------------------------------------------ *
+ * PADANAN NAMA GURU — buku lawan senarai akses portal
+ *
+ * Nama portal datang daripada akaun e-mel sekolah, yang menambah penanda
+ * pada hujungnya: "SUHAILA BINTI SUHAIMI KPM-Guru". Padanan tepat memberi
+ * "tiada padanan" untuk SETIAP guru — itulah sebab senarai lantikan kekal
+ * kosong walaupun nama mereka jelas ada dalam senarai pilihan.
+ *
+ * Kes NEGATIF sama pentingnya: padanan yang salah memberi seorang guru kuasa
+ * menyunting jadual dan rekod kelas orang lain.
+ * ------------------------------------------------------------------ */
+for (const [portal, buku, jangka] of [
+  ["SUHAILA BINTI SUHAIMI KPM-Guru", "SUHAILA BINTI SUHAIMI", true],
+  ["FARIZAH BEGUM BINTI MOHD YUSOFF KPM-Guru", "FARIZAH BEGUM BINTI MOHD YUSOFF", true],
+  ["MUHAMMAD SYAIFUL IZHAN BIN SHAHRUDDIN", "M. SYAIFUL IZHAN BIN SHAHRUDDIN", true],
+  ["NOR HASFARADZI BIN HASHIM KPM-Guru", "NOR HASFARADZI BIN HASHIM A.H", true],
+  ["SRINIMALAAN A/L LACHIMANAN KPM-Guru", "SRINIMALAAN A/L LACHIMANAN", true],
+  ["NUR ZAFIRAH ALYA BINTI ZAHARI (GB)", "NUR ZAFIRAH ALYA BINTI ZAHARI", true],
+  ["MOHD NASSER BIN SAPARI", "MUHAMMAD NASSER BIN SAPARI", true],
+  ["NOR ASHIKIN BINTI HARUN", "NOR ASHIKIN BINTI OTHMAN", false],
+  ["SUHAILA BINTI SUHAIMI", "SUHAILA BINTI AHMAD", false],
+  ["NOR DIANA", "NOR DIANA BINTI SALLEH", false],
+  ["AIMAN HAZIQ BIN HAMZAH", "AIMAN BIN HAMZAH", false],
+] as [string, string, boolean][]) {
+  semak(`nama: ${buku.slice(0, 28)}`, samaGuru(portal, buku), jangka);
+}
 
 console.log(`\n${lulus} lulus, ${gagal} gagal`);
 process.exit(gagal > 0 ? 1 : 0);

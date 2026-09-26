@@ -19,7 +19,7 @@ import { tagGuruKelas, type CalonTag, type HasilTag } from "@/lib/tag-guru-kelas
 const LABEL: Record<CalonTag["keputusan"], { teks: string; warna: string }> = {
   "boleh": { teks: "Akan ditag", warna: "bg-[#e5f4ec] text-[#14603c]" },
   "sudah-ada": { teks: "Sudah ada — tidak disentuh", warna: "bg-slate-100 text-slate-600" },
-  "tiada-padanan": { teks: "Nama tiada dalam senarai akses", warna: "bg-[#fdf3dc] text-[#9a6b06]" },
+  "tiada-padanan": { teks: "Tiada dalam senarai akses", warna: "bg-[#fdf3dc] text-[#9a6b06]" },
   "kabur": { teks: "Lebih sekali padanan — dilangkau", warna: "bg-[#fbeaea] text-[#8f2424]" },
   "kelas-tak-dikenali": { teks: "Kelas tidak dikenali", warna: "bg-[#fbeaea] text-[#8f2424]" },
 };
@@ -107,7 +107,10 @@ export default function TagDariBuku() {
                 <b className="text-navy-800">{c.kelas}</b>{" "}
                 <span className="text-slate-600">{c.namaPortal ?? c.namaBuku}</span>
                 {c.calon && c.calon.length > 0 && (
-                  <span className="block text-xs text-slate-500">{c.calon.join(" · ")}</span>
+                  <span className="block text-xs text-slate-500">
+                    {c.keputusan === "tiada-padanan" ? "Paling hampir: " : ""}
+                    {c.calon.join(" · ")}
+                  </span>
                 )}
               </span>
               <span className={`shrink-0 rounded px-2 py-0.5 text-[11px] font-semibold ${LABEL[c.keputusan].warna}`}>

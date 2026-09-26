@@ -5,8 +5,8 @@ import { klienTulis } from "./supabase-pelayan";
 import { tahunSesiAktif } from "./sesi-aktif";
 import { senaraiDokumen, seksyenDokumen, barisSeksyen } from "./pengurusan";
 import { tetapGuruKelas } from "./guru-kelas";
-import { tokenNama } from "@/data/borang-aktiviti";
 import { pasanganGuruKelas } from "@/data/guru-kelas-buku";
+import { samaOrang, palingHampir } from "@/data/padan-nama";
 import { revalidatePath } from "next/cache";
 
 /**
@@ -67,19 +67,6 @@ export interface HasilTag {
   diagnostik?: { tajuk: string; lajur: string[]; bilBaris: number; contoh: string[] };
 }
 
-/** Padanan nama yang BOLEH DIPERCAYAI untuk memberi kuasa. */
-function samaOrang(a: string, b: string): boolean {
-  const x = tokenNama(a), y = tokenNama(b);
-  if (x.length === 0 || y.length === 0) return false;
-  if (x.join(" ") === y.join(" ")) return true;
-  // Buku menulis "MOHD" di mana portal menulis "MUHAMMAD", dan sebaliknya;
-  // selain itu setiap perkataan mesti sama, mengikut urutan. Ini SENGAJA
-  // ketat: padanan separa memberi kuasa kepada orang yang salah.
-  const normal = (t: string[]) =>
-    t.map((w) => (w === "MOHD" || w === "MUHD" ? "MUHAMMAD" : w)).join(" ");
-  return normal(x) === normal(y);
-}
-
 export async function tagGuruKelas(tulis = false): Promise<HasilTag> {
   await pastikanBoleh("urus_guru_kelas");
   const SESI = await tahunSesiAktif();
@@ -135,7 +122,13 @@ export async function tagGuruKelas(tulis = false): Promise<HasilTag> {
         calon: padan.map((x) => x.nama ?? "").filter(Boolean),
       });
     } else {
-      calon.push({ kelas: p.kelas, namaBuku: p.guru, keputusan: "tiada-padanan" });
+      // "Tiada padanan" sahaja menghantar pentadbir mencari antara 130 nama.
+      // Nama terdekat menjawab soalan sebenar: tiada akses, atau eja lain?
+      const hampir = palingHampir(p.guru, orang.map((o) => o.nama ?? "").filter(Boolean));
+      calon.push({
+        kelas: p.kelas, namaBuku: p.guru, keputusan: "tiada-padanan",
+        ...(hampir ? { calon: [hampir] } : {}),
+      });
     }
   }
 
