@@ -287,18 +287,28 @@ export default async function Hab() {
               <h3 className="text-[11px] font-bold uppercase tracking-widest text-emas-gelap">
                 {k.kumpulan}
               </h3>
-              <ul className="mt-2.5 space-y-2">
+              {/* Kekal SENARAI TEKS, bukan kad — keputusan reka bentuk yang
+                  sudah dimuktamadkan: kad bermaksud "app kita, kita jaga",
+                  dan ini laman luar. Yang dikemas hanyalah sasaran sentuh:
+                  seluruh baris boleh ditekan dengan ruang yang cukup, bukan
+                  hanya teks nama setinggi 14px. */}
+              <ul className="mt-2 space-y-0.5">
                 {k.item.map((x) => (
-                  <li key={x.url} className="text-sm leading-snug">
+                  <li key={x.url}>
                     <a
                       href={x.url}
                       target="_blank"
                       rel="noreferrer"
-                      className="font-medium text-white/85 underline underline-offset-2 hover:text-white"
+                      className="-mx-2 block rounded-lg px-2 py-2 transition hover:bg-white/10 focus-visible:bg-white/10 focus-visible:outline-none"
                     >
-                      {x.nama} <span className="text-white/40">↗</span>
+                      <span className="text-sm font-medium leading-snug text-white/90 underline decoration-white/30 underline-offset-4 group-hover:text-white">
+                        {x.nama}
+                      </span>
+                      <span aria-hidden="true" className="ml-1.5 text-xs text-white/40">↗</span>
+                      {x.nota && (
+                        <span className="mt-0.5 block text-xs leading-snug text-white/45">{x.nota}</span>
+                      )}
                     </a>
-                    {x.nota && <span className="mt-0.5 block text-xs text-white/45">{x.nota}</span>}
                   </li>
                 ))}
               </ul>

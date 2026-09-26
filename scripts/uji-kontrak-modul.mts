@@ -193,6 +193,22 @@ const tagUi = baca("src/app/admin/guru-kelas/TagDariBuku.tsx");
 perlu("Pentadbir melihat senarai sebelum menulis",
   tagUi.includes("Semak dahulu") && tagUi.includes("jalan(false)"));
 
+/* PAUTAN KPM — satu tingkah laku, dipasang atau tidak.
+   Aduan pengguna 26 Sep: di Windows dengan pelayar biasa, pautan KPM masih
+   membuka tetingkap baharu kerana pintasan dahulu menuntut display-mode
+   standalone. */
+const pautanApp = baca("src/components/PautanDalamApp.tsx");
+perlu("Pintasan tidak lagi menuntut app DIPASANG",
+  !pautanApp.includes("!apl.matches") && !pautanApp.includes("display-mode: standalone"));
+perlu("Pintasan kekal pada skrin besar sahaja",
+  pautanApp.includes('matchMedia("(min-width: 1024px)")') && pautanApp.includes("!luas.matches"));
+perlu("Kerja yang belum disimpan tidak dimusnahkan",
+  pautanApp.includes("adaKerjaBelumSimpan") && /if \(adaKerjaBelumSimpan\(\)\) return;/.test(pautanApp));
+perlu("Kotak semak dan radio turut dikesan",
+  pautanApp.includes("defaultChecked") && pautanApp.includes("textarea"));
+perlu("Klik Ctrl/Shift masih membuka tab sengaja",
+  pautanApp.includes("e.metaKey") && pautanApp.includes("e.shiftKey"));
+
 if (gagal.length) {
   console.error(`Kontrak modul gagal:\n${gagal.map((x) => `- ${x}`).join("\n")}`);
   process.exit(1);
