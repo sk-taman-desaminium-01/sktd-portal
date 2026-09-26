@@ -209,7 +209,7 @@ export const SEKOLAH = {
     {
       id: "urusweb", nama: "Urus Laman", ikon: "WEB", warna: "#123561",
       fungsi: "Pos pengumuman & aktiviti, urus Buku Pengurusan dan barisan pentadbir.",
-      domain: "sktd.edu.my/admin", pautan: "/admin", status: "bina",
+      domain: "sktd.edu.my/admin", pautan: "/admin", status: "sedia",
       akses: "Pentadbir, guru kanan & admin",
     },
     // Kad "ePBD" tunggal DIBUANG (17 Sep 2026). Ia menunjuk ke

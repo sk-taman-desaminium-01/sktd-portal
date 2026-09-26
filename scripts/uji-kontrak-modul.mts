@@ -259,6 +259,34 @@ perlu("Kegagalan tag tidak menyembunyikan jadual yang tersimpan",
   pukalUi.includes("guru kelas gagal ditetapkan"));
 perlu("Nama guru kelas dipapar sebelum simpan", pukalUi.includes("Guru kelas: {b.guruKelas}"));
 
+/* BORANG KAWALAN BILIK DARJAH — tiruan borang kertas sekolah (gambar
+   pengguna, 25 Sep 2026). Guru sudah kenal borang ini; yang "hampir sama"
+   memaksa mereka membacanya semula setiap kali. */
+const borangUi = baca("src/components/CetakKawalanBilikDarjah.tsx");
+perlu("Tajuk borang sama seperti kertas",
+  borangUi.includes("BORANG KAWALAN BILIK DARJAH"));
+for (const medan of [
+  "NAMA GURU KELAS", "BILANGAN MURID HADIR", "BIL TIDAK HADIR", "JUMLAH MURID",
+  "Mata Pelajaran", "T/T Guru", "Bil Murid",
+  "Senarai Nama Murid Tidak Hadir", "Catatan Salah Laku Murid",
+  "Disemak oleh", "Guru Kelas",
+]) perlu(`Borang ada medan "${medan}"`, borangUi.includes(medan));
+perlu("Senarai tidak hadir 20 baris dalam dua lajur",
+  borangUi.includes("length: 10") && borangUi.includes("[0, 1].map"));
+perlu("Catatan salah laku 5 baris", borangUi.includes("length: 5"));
+// Tiga pepijat susun atur yang ditemui semasa render, bukan diandaikan.
+perlu("Lajur tetap supaya Catatan tidak tertolak keluar halaman",
+  borangUi.includes("table-layout: fixed"));
+perlu("box-sizing border-box supaya padding tidak menambah lebar",
+  borangUi.includes("box-sizing: border-box"));
+perlu("Tajuk lajur boleh membalut", /th[^{]*\{[\s\S]{0,80}overflow-wrap/.test(borangUi));
+perlu("Waktu ditulis jam 12 seperti borang kertas",
+  borangUi.includes("j > 12 ? j - 12 : j"));
+perlu("Waktu diambil dari set kelas, bukan disenaraikan tetap",
+  baca("src/app/kawalan-kelas/PanelKawalanKelas.tsx").includes("setUntukKelas(jadual, kelasPilih)"));
+perlu("Mata pelajaran dipilih, bukan ditaip bebas",
+  baca("src/app/kawalan-kelas/PanelKawalanKelas.tsx").includes("kawalan-subjek"));
+
 if (gagal.length) {
   console.error(`Kontrak modul gagal:\n${gagal.map((x) => `- ${x}`).join("\n")}`);
   process.exit(1);
