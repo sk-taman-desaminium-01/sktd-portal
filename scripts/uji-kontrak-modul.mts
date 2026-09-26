@@ -188,8 +188,15 @@ perlu("Hanya guru yang dibenarkan masuk portal dipadankan",
   tagLib.includes("dibenarkan=eq.true"));
 perlu("Kelas dipadan dengan senarai rasmi, bukan teks bebas",
   bukuLib.includes("semuaKelas()") && bukuLib.includes("semuaKelasPPKI()"));
-perlu("Padanan nama tidak menerima padanan separa",
-  tagLib.includes("function samaOrang") && !tagLib.includes("startsWith(nama)"));
+const padanLib = baca("src/data/padan-nama.ts");
+perlu("Penanda akaun sekolah (KPM-Guru) dibuang sebelum padan",
+  padanLib.includes('"KPM"') && padanLib.includes('"GURU"'));
+perlu("Singkatan MOHD/MUHD/M. dianggap nama sama", padanLib.includes("SERUPA"));
+perlu("Kurungan dibuang sebelum nama dipecah", padanLib.includes('replace(/\\([^)]*\\)/g'));
+perlu("Awalan hanya diterima bila tiga perkataan pertama sama",
+  padanLib.includes("pendek.length < 3") && padanLib.includes("panjang[i] === t"));
+perlu("Nama terdekat ialah cadangan, bukan padanan",
+  padanLib.includes("export function palingHampir") && tagLib.includes("palingHampir"));
 const tagUi = baca("src/app/admin/guru-kelas/TagDariBuku.tsx");
 perlu("Pentadbir melihat senarai sebelum menulis",
   tagUi.includes("Semak dahulu") && tagUi.includes("jalan(false)"));

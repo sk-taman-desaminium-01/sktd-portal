@@ -434,3 +434,20 @@ Padanan nama ketat: setiap perkataan sama mengikut urutan, dengan MOHD/MUHD
 dinormalkan kepada MUHAMMAD. Tiada padanan separa. Kelas dipadan dengan
 `semuaKelas()`/`semuaKelasPPKI()`, bukan teks bebas dalam buku.
 
+### Padanan nama guru: portal membawa "KPM-Guru"
+
+Nama dalam `pbd_guru` datang daripada akaun e-mel sekolah, yang MENAMBAH
+penanda pada hujung nama — "SUHAILA BINTI SUHAIMI KPM-Guru". Buku pengurusan
+menulis nama tanpa penanda itu. Membandingkan dua rentetan itu memberi
+"tiada padanan" untuk SETIAP guru, dan itulah sebab senarai lantikan kekal
+kosong walaupun nama mereka jelas ada dalam senarai pilihan.
+
+Guna `src/data/padan-nama.ts` — `samaOrang()` dan `palingHampir()` — untuk
+SEBARANG padanan nama guru. Ia membuang penanda akaun dan jawatan, menyatukan
+singkatan (MOHD/MUHD/M. → MUHAMMAD, NOR/NOOR → NUR), dan membuang kurungan.
+
+⚠️ Padanan awalan hanya diterima bila TIGA perkataan pertama sama. Jangan
+longgarkan: padanan yang salah memberi seorang guru kuasa menyunting jadual
+dan rekod kelas orang lain — lebih buruk daripada tidak padan langsung.
+11 kes (positif DAN negatif) dikunci dalam `uji:jadual`.
+
