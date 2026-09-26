@@ -5,8 +5,8 @@ import { klienTulis } from "./supabase-pelayan";
 import { tahunSesiAktif } from "./sesi-aktif";
 import { senaraiDokumen, seksyenDokumen, barisSeksyen } from "./pengurusan";
 import { tetapGuruKelas } from "./guru-kelas";
-import { semuaKelas, semuaKelasPPKI } from "@/data/kelas";
 import { tokenNama } from "@/data/borang-aktiviti";
+import { pasanganGuruKelas } from "@/data/guru-kelas-buku";
 import { revalidatePath } from "next/cache";
 
 /**
@@ -80,68 +80,6 @@ function samaOrang(a: string, b: string): boolean {
   return normal(x) === normal(y);
 }
 
-/**
- * Label kelas rasmi daripada teks buku — atau null.
- *
- * KENAPA INI LEBIH LUAS DARIPADA PADANAN TEPAT
- * Larian kering pertama (26 Sep) memulangkan SIFAR calon walaupun seksyen
- * Guru Kelas wujud dan penuh dengan baris. Sebabnya buku tidak menulis label
- * kelas seperti yang kod ini menyimpannya. Bentuk yang benar-benar berlaku:
- *   · "1 AMANAH"            — sama seperti senarai rasmi
- *   · "TAHUN 1 AMANAH"      — berawalan
- *   · "1AMANAH"             — tiada ruang
- *   · "AMANAH" dengan "1" dalam sel BERASINGAN  ← ini yang paling kerap
- * Yang terakhir itu sebab padanan sel-demi-sel gagal sepenuhnya: tiada satu
- * pun sel mengandungi label penuh.
- */
-function padanKelas(teks: string): string | null {
-  const semua = [...semuaKelas(), ...semuaKelasPPKI()];
-  const bersih = teks
-    .toUpperCase()
-    .replace(/[^A-Z0-9 ]+/g, " ")
-    .replace(/\b(TAHUN|KELAS|THN)\b/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
-  if (!bersih) return null;
-
-  // Tiada ruang: "1AMANAH" → "1 AMANAH".
-  const renggang = bersih.replace(/^([1-6])(?=[A-Z])/, "$1 ");
-  const tepat = semua.find((k) => k.toUpperCase() === renggang);
-  if (tepat) return tepat;
-
-  const dalam = semua.filter((k) => ` ${renggang} `.includes(` ${k.toUpperCase()} `));
-  return dalam.length === 1 ? dalam[0] : null;
-}
-
-/**
- * Kelas daripada SATU BARIS penuh, bukan satu sel.
- *
- * Buku selalunya memecahkan tahun dan nama kelas ke dalam lajur berasingan
- * ("1" | "AMANAH" | "NORA BINTI ..."). Maka setiap sel dicuba sendiri, dan
- * setiap pasangan sel BERSEBELAHAN dicuba bercantum. Indeks sel yang
- * digunakan dipulangkan supaya sel itu tidak tersalah ambil sebagai nama.
- */
-function kelasDariBaris(sel: string[]): { kelas: string; guna: Set<number> } | null {
-  for (let i = 0; i < sel.length; i++) {
-    const k = padanKelas(sel[i]);
-    if (k) return { kelas: k, guna: new Set([i]) };
-  }
-  for (let i = 0; i + 1 < sel.length; i++) {
-    const k = padanKelas(`${sel[i]} ${sel[i + 1]}`);
-    if (k) return { kelas: k, guna: new Set([i, i + 1]) };
-  }
-  return null;
-}
-
-/** Sel yang berupa nama orang: dua perkataan huruf, bukan nombor atau kod. */
-function selNama(isi: string): boolean {
-  if (/\d/.test(isi)) return false;
-  const t = tokenNama(isi);
-  if (t.length < 2) return false;
-  // "GURU KELAS", "BIL", "JUMLAH" ialah tajuk lajur, bukan nama.
-  return !/^(GURU|KELAS|BIL|NAMA|JUMLAH|TAHUN|SENARAI)\b/.test(t.join(" "));
-}
-
 export async function tagGuruKelas(tulis = false): Promise<HasilTag> {
   await pastikanBoleh("urus_guru_kelas");
   const SESI = await tahunSesiAktif();
@@ -172,51 +110,32 @@ export async function tagGuruKelas(tulis = false): Promise<HasilTag> {
   ]);
   const adaGuru = new Set(sudah.map((s) => (s.tahun === 0 ? s.kelas : `${s.tahun} ${s.kelas}`)));
 
-  // --- Baca baris seksyen, cari pasangan kelas + nama ---
+  // --- Baca baris seksyen mengikut struktur sebenar buku ---
+  const semuaBaris: string[][] = [];
+  for (const sk of gk) {
+    for (const b of await barisSeksyen(sk.id)) semuaBaris.push(b.sel ?? []);
+  }
+  const pasangan = pasanganGuruKelas(semuaBaris);
+
   const calon: CalonTag[] = [];
-  const sudahDilihat = new Set<string>();
-  /** Baris yang TIDAK dikenali — supaya larian kering boleh menunjukkan
-   *  bentuk sebenar buku, dan bukan sekadar melaporkan sifar. */
-  const contohBaris: string[] = [];
-  let bilBaris = 0;
-
-  for (const s of gk) {
-    for (const b of await barisSeksyen(s.id)) {
-      bilBaris++;
-      const sel = b.sel.map((x) => (x ?? "").trim()).filter(Boolean);
-      if (sel.length < 2) continue;
-
-      // Kelas dicari merentas SELURUH baris (sel tunggal atau dua sel
-      // bersebelahan), kemudian nama diambil daripada sel yang TINGGAL.
-      const jumpa = kelasDariBaris(sel);
-      if (!jumpa) { contohBaris.length < 6 && contohBaris.push(sel.join(" | ")); continue; }
-      const kelas = jumpa.kelas;
-      const nama = sel
-        .filter((_, i) => !jumpa.guna.has(i))
-        .filter(selNama)
-        .sort((a, b) => b.length - a.length)[0] ?? "";
-      if (!nama) { contohBaris.length < 6 && contohBaris.push(sel.join(" | ")); continue; }
-      if (sudahDilihat.has(kelas)) continue;
-      sudahDilihat.add(kelas);
-
-      if (adaGuru.has(kelas)) {
-        calon.push({ kelas, namaBuku: nama, keputusan: "sudah-ada" });
-        continue;
-      }
-      const padan = orang.filter((o) => o.nama && samaOrang(o.nama, nama));
-      if (padan.length === 1) {
-        calon.push({
-          kelas, namaBuku: nama, guruId: padan[0].id,
-          namaPortal: padan[0].nama ?? undefined, keputusan: "boleh",
-        });
-      } else if (padan.length > 1) {
-        calon.push({
-          kelas, namaBuku: nama, keputusan: "kabur",
-          calon: padan.map((p) => p.nama ?? "").filter(Boolean),
-        });
-      } else {
-        calon.push({ kelas, namaBuku: nama, keputusan: "tiada-padanan" });
-      }
+  for (const p of pasangan) {
+    if (adaGuru.has(p.kelas)) {
+      calon.push({ kelas: p.kelas, namaBuku: p.guru, keputusan: "sudah-ada" });
+      continue;
+    }
+    const padan = orang.filter((o) => o.nama && samaOrang(o.nama, p.guru));
+    if (padan.length === 1) {
+      calon.push({
+        kelas: p.kelas, namaBuku: p.guru, guruId: padan[0].id,
+        namaPortal: padan[0].nama ?? undefined, keputusan: "boleh",
+      });
+    } else if (padan.length > 1) {
+      calon.push({
+        kelas: p.kelas, namaBuku: p.guru, keputusan: "kabur",
+        calon: padan.map((x) => x.nama ?? "").filter(Boolean),
+      });
+    } else {
+      calon.push({ kelas: p.kelas, namaBuku: p.guru, keputusan: "tiada-padanan" });
     }
   }
 
@@ -225,8 +144,8 @@ export async function tagGuruKelas(tulis = false): Promise<HasilTag> {
     ? {
         tajuk: gk.map((x) => x.tajuk).join(" · "),
         lajur: gk[0]?.lajur ?? [],
-        bilBaris,
-        contoh: contohBaris,
+        bilBaris: semuaBaris.length,
+        contoh: semuaBaris.slice(0, 8).map((r) => r.filter(Boolean).join(" | ")),
       }
     : undefined;
 
@@ -234,7 +153,7 @@ export async function tagGuruKelas(tulis = false): Promise<HasilTag> {
     return {
       ok: true, ditulis: false, calon, diagnostik,
       mesej: calon.length === 0
-        ? `Tiada pasangan kelas + nama dikenali daripada ${bilBaris} baris. ` +
+        ? `Tiada pasangan kelas + nama dikenali daripada ${semuaBaris.length} baris. ` +
           "Lihat contoh baris di bawah — hantar kepada kami kalau bentuknya berbeza."
         : `${boleh.length} kelas boleh ditag. ` +
           `${calon.filter((c) => c.keputusan === "sudah-ada").length} sudah ada guru kelas, ` +
@@ -368,4 +287,3 @@ export async function tagDariJadual(
       `${gagal.length ? `, ${gagal.length} gagal` : ""}.`,
   };
 }
-
