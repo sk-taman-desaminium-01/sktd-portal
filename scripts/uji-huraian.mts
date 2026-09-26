@@ -10,6 +10,7 @@ import { KOD_SUBJEK, namaSubjek } from "../src/data/subjek.ts";
 import { kadIkutBahagian } from "../src/data/bahagian.ts";
 import { semuaKelasDalam, kesanKelas } from "../src/data/kesan-kelas.ts";
 import { kodSlot, huraiKodSlot, namaSlot } from "../src/data/slot-jadual.ts";
+import { pasanganGuruKelas } from "../src/data/guru-kelas-buku.ts";
 
 /** Waktu sebenar sekolah — sesi pagi, rehat pada waktu 5 (R4). */
 const WAKTU = SET_LALAI.find((s) => s.id === "pagi-r4")!.senarai;
@@ -379,6 +380,46 @@ semak("kod slot membawa varian dan pasangan", kodSlot({ subjek: "PAI", varian: "
 semak("kod slot dihurai semula", JSON.stringify(huraiKodSlot("PAI:Q+PM")), JSON.stringify({ subjek: "PAI", varian: "Q", seiring: "PM" }));
 semak("kod biasa tidak terjejas", kodSlot({ subjek: "BM" }), "BM");
 semak("nama dipapar penuh", namaSlot({ subjek: "PAI", varian: "Q", seiring: "PM" }), "Pendidikan Islam (Quran) / Pendidikan Moral");
+
+/* ------------------------------------------------------------------ *
+ * GURU KELAS DARIPADA BUKU PENGURUSAN
+ *
+ * Bentuk SEBENAR, disalin daripada buku sekolah (m.73–75):
+ *   TAHUN 1                              ← tahun pada baris tajuk
+ *   BIL | KELAS | GURU KELAS | GURU PEMBANTU / PPM
+ *    1  | DEDIKASI | SUHAILA … | MOHD NASSER …
+ *
+ * Dua pusingan tekaan memulangkan SIFAR kerana kelas ditulis TANPA tahun.
+ * Penghurai PDF kadang mencantumkan sel, jadi kedua-dua bentuk diuji.
+ * ------------------------------------------------------------------ */
+const barisBuku = [
+  ["SENARAI GURU KELAS SK TAMAN DESAMINIUM TAHUN 2026"],
+  ["PRASEKOLAH"],
+  ["BIL", "KELAS", "GURU KELAS", "GURU PEMBANTU / PPM"],
+  ["1", "DESA IMPIAN", "SUHAIZALMI BINTI SALLEH", "NUR AFIZA BINTI ABD AZIZ"],
+  ["TAHUN 1"],
+  ["PENYELARAS : NOR HASFARADZI BIN HASHIM"],
+  ["BIL", "KELAS", "GURU KELAS", "GURU PEMBANTU / PPM"],
+  ["1", "DEDIKASI", "SUHAILA BINTI SUHAIMI", "MOHD NASSER BIN SAPARI"],
+  ["2", "SUNFLOWER", "NOR ASHIKIN BINTI HARUN", "NURUL NADIA BINTI MOHD HATTA"],
+  ["TAHUN 2"],
+  // Sel BERCANTUM — bentuk kedua yang sama sahnya.
+  ["BIL KELAS", "GURU KELAS", "GURU PEMBANTU / PPM"],
+  ["1 EFEKTIF", "FARIZAH BEGUM BINTI MOHD YUSOFF", "ISFAN FAZLI BIN ABDUL AZIZ"],
+];
+const pasangan = pasanganGuruKelas(barisBuku);
+semak("kelas tanpa tahun dapat tahun dari tajuk",
+  pasangan.find((p) => p.kelas === "1 DEDIKASI")?.guru, "SUHAILA BINTI SUHAIMI");
+semak("sel bercantum turut dibaca",
+  pasangan.find((p) => p.kelas === "2 EFEKTIF")?.guru, "FARIZAH BEGUM BINTI MOHD YUSOFF");
+semak("PPKI dikenali walau ditulis tanpa awalan",
+  pasangan.find((p) => p.kelas === "PPKI SUNFLOWER")?.guru, "NOR ASHIKIN BINTI HARUN");
+semak("prasekolah tidak masuk senarai kelas rendah",
+  pasangan.some((p) => /DESA/.test(p.kelas)), false);
+// Guru PEMBANTU tidak boleh terpilih — ia memberi kuasa menyunting kelas.
+semak("guru pembantu TIDAK diambil",
+  pasangan.some((p) => /NASSER|ISFAN|NURUL NADIA/.test(p.guru)), false);
+semak("baris tajuk bukan pasangan", pasangan.length, 3);
 
 console.log(`\n${lulus} lulus, ${gagal} gagal`);
 process.exit(gagal > 0 ? 1 : 0);

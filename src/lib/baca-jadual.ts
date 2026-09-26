@@ -245,8 +245,13 @@ function guruKelasDariKepala(item: { str: string }[]): string | null {
   const nama = m[1]
     .split(/\b(?:Jadual|aSc|Tarikh|Kelas)\b/i)[0]
     .split(/\d/)[0]
+    // "A/L" dan "A/P" ialah SEBAHAGIAN nama, bukan pemisah. Tanpa
+    // perlindungan ini "KALAIVANI A/P KALIAPPAN" terpotong jadi
+    // "KALAIVANI A" — diukur pada 2 AMANAH, 2 INTELEK dan 3 INOVATIF.
+    .replace(/\bA\s*\/\s*([LP])\b/gi, "A§$1")
     // Pembantu guru kelas dipisahkan "/", "&" atau koma — ambil yang pertama.
     .split(/[/&,]/)[0]
+    .replace(/A§([LP])/gi, "A/$1")
     .replace(/\s+/g, " ")
     .trim();
   // Dua perkataan minimum: sel kosong atau "-" bukan nama.

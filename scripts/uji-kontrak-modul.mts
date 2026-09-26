@@ -174,8 +174,9 @@ perlu("Borang RMT ditujukan kepada PK HEM",
 /* TAG GURU KELAS DARI BUKU PENGURUSAN — guru sedang log masuk, jadi tiada
    ruang untuk "baiki kemudian". Tiga sifat dikunci di sini. */
 const tagLib = baca("src/lib/tag-guru-kelas.ts");
+const bukuLib = baca("src/data/guru-kelas-buku.ts");
 perlu("Tag guru kelas TIDAK menimpa tugasan sedia ada",
-  tagLib.includes('keputusan: "sudah-ada"') && tagLib.includes("adaGuru.has(kelas)"));
+  tagLib.includes('keputusan: "sudah-ada"') && tagLib.includes("adaGuru.has(p.kelas)"));
 perlu("Tag guru kelas tidak memadam apa-apa",
   !/method: "DELETE"/.test(tagLib) && !tagLib.includes("buangGuruKelas"));
 perlu("Larian kering ialah lalai (peraturan keras #5)",
@@ -186,7 +187,7 @@ perlu("Nama kabur DILANGKAU, bukan diteka",
 perlu("Hanya guru yang dibenarkan masuk portal dipadankan",
   tagLib.includes("dibenarkan=eq.true"));
 perlu("Kelas dipadan dengan senarai rasmi, bukan teks bebas",
-  tagLib.includes("semuaKelas()") && tagLib.includes("semuaKelasPPKI()"));
+  bukuLib.includes("semuaKelas()") && bukuLib.includes("semuaKelasPPKI()"));
 perlu("Padanan nama tidak menerima padanan separa",
   tagLib.includes("function samaOrang") && !tagLib.includes("startsWith(nama)"));
 const tagUi = baca("src/app/admin/guru-kelas/TagDariBuku.tsx");
@@ -213,13 +214,17 @@ perlu("Klik Ctrl/Shift masih membuka tab sengaja",
    memberitahu apa-apa. Penghurai kini mencari kelas merentas SELURUH baris
    (buku memecahkan tahun dan nama kelas ke lajur berasingan), dan larian
    kering menunjukkan bentuk sebenar buku bila tiada apa dikenali. */
-perlu("Kelas dicari merentas baris, bukan sel demi sel",
-  tagLib.includes("function kelasDariBaris") && tagLib.includes("sel[i]} ${sel[i + 1]}"));
-perlu("Awalan TAHUN/KELAS diabaikan", /\(TAHUN\|KELAS\|THN\)/.test(tagLib));
+perlu("Tahun diambil dari baris TAJUK, bukan dari baris data",
+  bukuLib.includes("function tahunDariTajuk") && bukuLib.includes("labelRasmi"));
+perlu("Sel bercantum (\"BIL KELAS\") turut diterima",
+  bukuLib.includes('b === "BIL KELAS"'));
+perlu("Guru PEMBANTU tidak boleh terpilih sebagai guru kelas",
+  bukuLib.includes('b === "GURU KELAS"') && bukuLib.includes("PEMBANTU"));
+perlu("PPKI dikenali walau ditulis tanpa awalan",
+  bukuLib.includes("semuaKelasPPKI") && bukuLib.includes("PPKI ${bersih}"));
 perlu("Larian kering menunjukkan bentuk buku bila sifar",
-  tagLib.includes("diagnostik") && tagLib.includes("contohBaris"));
-perlu("Tajuk lajur tidak tersalah ambil sebagai nama",
-  tagLib.includes("function selNama") && tagLib.includes("BIL|NAMA|JUMLAH"));
+  tagLib.includes("diagnostik") && tagLib.includes("semuaBaris.slice"));
+
 perlu("Guru ditag automatik sebaik akses diluluskan",
   tagLib.includes("export async function tagSatuGuru") &&
   baca("src/lib/akses-urus.ts").includes("tagSatuGuru"));
