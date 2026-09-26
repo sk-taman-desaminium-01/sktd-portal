@@ -171,6 +171,28 @@ perlu("Perpindahan kelas ditunjukkan dalam roster RMT",
 perlu("Borang RMT ditujukan kepada PK HEM",
   rmtUi.includes('jawatan: "Penolong Kanan HEM"') && !rmtUi.includes('jawatan: "Guru Besar"'));
 
+/* TAG GURU KELAS DARI BUKU PENGURUSAN — guru sedang log masuk, jadi tiada
+   ruang untuk "baiki kemudian". Tiga sifat dikunci di sini. */
+const tagLib = baca("src/lib/tag-guru-kelas.ts");
+perlu("Tag guru kelas TIDAK menimpa tugasan sedia ada",
+  tagLib.includes('keputusan: "sudah-ada"') && tagLib.includes("adaGuru.has(kelas)"));
+perlu("Tag guru kelas tidak memadam apa-apa",
+  !/method: "DELETE"/.test(tagLib) && !tagLib.includes("buangGuruKelas"));
+perlu("Larian kering ialah lalai (peraturan keras #5)",
+  /export async function tagGuruKelas\(tulis = false\)/.test(tagLib));
+perlu("Larian kering tidak menulis", /if \(!tulis\) \{[\s\S]{0,400}ditulis: false/.test(tagLib));
+perlu("Nama kabur DILANGKAU, bukan diteka",
+  tagLib.includes('keputusan: "kabur"') && tagLib.includes("padan.length > 1"));
+perlu("Hanya guru yang dibenarkan masuk portal dipadankan",
+  tagLib.includes("dibenarkan=eq.true"));
+perlu("Kelas dipadan dengan senarai rasmi, bukan teks bebas",
+  tagLib.includes("semuaKelas()") && tagLib.includes("semuaKelasPPKI()"));
+perlu("Padanan nama tidak menerima padanan separa",
+  tagLib.includes("function samaOrang") && !tagLib.includes("startsWith(nama)"));
+const tagUi = baca("src/app/admin/guru-kelas/TagDariBuku.tsx");
+perlu("Pentadbir melihat senarai sebelum menulis",
+  tagUi.includes("Semak dahulu") && tagUi.includes("jalan(false)"));
+
 if (gagal.length) {
   console.error(`Kontrak modul gagal:\n${gagal.map((x) => `- ${x}`).join("\n")}`);
   process.exit(1);

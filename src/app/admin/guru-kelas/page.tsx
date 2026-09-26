@@ -6,6 +6,7 @@ import { semuaKelas, semuaKelasPPKI } from "@/data/kelas";
 import PanelGuruKelas from "./PanelGuruKelas";
 import PanelTugasanLain from "./PanelTugasanLain";
 import CetakJawatankuasa from "./CetakJawatankuasa";
+import TagDariBuku from "./TagDariBuku";
 
 export const metadata = { title: "Jawatankuasa Sekolah" };
 
@@ -66,6 +67,8 @@ export default async function GuruKelas() {
         </p>
       ) : (
         <>
+          <TagDariBuku />
+
           <PanelGuruKelas kelas={kelas} awal={petaan} orang={boleh} />
 
           <PanelTugasanLain

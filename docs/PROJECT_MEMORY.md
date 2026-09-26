@@ -413,3 +413,24 @@ dengan `maximum-scale=1`: itu mematikan zum cubitan di Android.
 untuk grid jadual dan laman KPM. `PautanDalamApp` hanya memintas pautan luar
 pada skrin >= 1024px; di telefon, pelayar peranti memberi bar alamat, zum dan
 putaran yang tetingkap app tidak boleh berikan.
+
+## Tag guru kelas dari Buku Pengurusan (26 Sep 2026)
+
+Guru sudah mula log masuk. `src/lib/tag-guru-kelas.ts` memadankan seksyen
+`gurukelas` Buku Pengurusan terkini dengan senarai akses portal, mengikut
+**NAMA** — bukan nombor KPM-Guru, kerana buku tidak menyimpannya.
+
+**JANGAN longgarkan tiga peraturan ini** (dikunci oleh `uji:kontrak-modul`):
+1. **Tambah sahaja.** Kelas yang sudah ada guru kelas TIDAK disentuh walaupun
+   buku berkata orang lain — buku dicetak sekali setahun, tugasan pentadbir
+   lebih terkini (peraturan keras #21). Tiada DELETE, tiada timpa.
+2. **Larian kering ialah lalai.** `tagGuruKelas()` tanpa argumen hanya
+   melaporkan. UI memaksa "Semak dahulu" sebelum butang tag muncul.
+3. **Kabur bermakna berhenti.** Nama yang padan dua orang, atau tiada
+   padanan, dilangkau dan dilaporkan. Meneka bermakna memberi seorang guru
+   kuasa menyunting kelas orang lain.
+
+Padanan nama ketat: setiap perkataan sama mengikut urutan, dengan MOHD/MUHD
+dinormalkan kepada MUHAMMAD. Tiada padanan separa. Kelas dipadan dengan
+`semuaKelas()`/`semuaKelasPPKI()`, bukan teks bebas dalam buku.
+
