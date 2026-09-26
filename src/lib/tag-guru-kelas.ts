@@ -293,3 +293,79 @@ export async function tagSatuGuru(guruId: string, nama: string): Promise<string 
   }
 }
 
+/**
+ * TAG GURU KELAS DARIPADA JADUAL WAKTU — sumber yang pasti.
+ *
+ * KENAPA INI, BUKAN BUKU PENGURUSAN
+ * Padanan daripada Buku Pengurusan memulangkan sifar: buku memecahkan tahun
+ * dan nama kelas ke lajur berasingan, dan bentuknya berbeza setiap edisi.
+ * Jadual waktu pula mencetak "Guru kelas : NAMA" pada kepala SETIAP muka,
+ * bersebelahan nama kelas — satu kelas, satu nama, tiada kekaburan bentuk.
+ * Ia datang daripada pangkalan data jadual sekolah sendiri.
+ *
+ * Peraturan keselamatan SAMA seperti tag pukal:
+ *  · kelas yang sudah ada guru kelas TIDAK disentuh
+ *  · nama yang padan dua orang, atau tiada padanan, DILANGKAU
+ *  · tiada apa dipadam
+ */
+export async function tagDariJadual(
+  pasangan: { kelas: string; guruKelas: string }[],
+): Promise<HasilTag> {
+  await pastikanBoleh("urus_guru_kelas");
+  const SESI = await tahunSesiAktif();
+  const db = klienTulis();
+
+  const [sudah, orang] = await Promise.all([
+    db.minta(
+      `pbd_guru_kelas?select=tahun,kelas&tahun_sesi=eq.${SESI}&peranan=eq.guru_kelas`,
+    ) as Promise<{ tahun: number; kelas: string }[]>,
+    db.minta("pbd_guru?select=id,nama&dibenarkan=eq.true") as Promise<
+      { id: string; nama: string | null }[]
+    >,
+  ]);
+  const adaGuru = new Set(sudah.map((s) => (s.tahun === 0 ? s.kelas : `${s.tahun} ${s.kelas}`)));
+
+  const calon: CalonTag[] = [];
+  for (const p of pasangan) {
+    if (!p.kelas || !p.guruKelas) continue;
+    if (adaGuru.has(p.kelas)) {
+      calon.push({ kelas: p.kelas, namaBuku: p.guruKelas, keputusan: "sudah-ada" });
+      continue;
+    }
+    const padan = orang.filter((o) => o.nama && samaOrang(o.nama, p.guruKelas));
+    if (padan.length === 1) {
+      calon.push({
+        kelas: p.kelas, namaBuku: p.guruKelas, guruId: padan[0].id,
+        namaPortal: padan[0].nama ?? undefined, keputusan: "boleh",
+      });
+    } else if (padan.length > 1) {
+      calon.push({
+        kelas: p.kelas, namaBuku: p.guruKelas, keputusan: "kabur",
+        calon: padan.map((x) => x.nama ?? "").filter(Boolean),
+      });
+    } else {
+      calon.push({ kelas: p.kelas, namaBuku: p.guruKelas, keputusan: "tiada-padanan" });
+    }
+  }
+
+  let berjaya = 0;
+  const gagal: string[] = [];
+  for (const c of calon.filter((x) => x.keputusan === "boleh")) {
+    const r = await tetapGuruKelas(c.guruId!, c.kelas);
+    if (r.ok) berjaya++;
+    else gagal.push(`${c.kelas}: ${r.mesej}`);
+  }
+
+  revalidatePath("/admin/guru-kelas");
+  revalidatePath("/admin/jadual");
+  return {
+    ok: gagal.length === 0,
+    ditulis: true,
+    calon,
+    mesej: `${berjaya} guru kelas ditetapkan daripada jadual waktu. ` +
+      `${calon.filter((c) => c.keputusan === "sudah-ada").length} sudah ada, ` +
+      `${calon.filter((c) => c.keputusan === "tiada-padanan").length} nama tiada dalam senarai akses` +
+      `${gagal.length ? `, ${gagal.length} gagal` : ""}.`,
+  };
+}
+

@@ -228,6 +228,25 @@ perlu("Tag automatik tidak boleh menggagalkan kelulusan",
 perlu("Dua kelas untuk orang sama TIDAK dipilih sendiri",
   tagLib.includes("padan.length !== 1"));
 
+/* GURU KELAS DARIPADA JADUAL WAKTU — sumber yang pasti.
+   Padanan daripada Buku Pengurusan memulangkan sifar kerana bentuk lajurnya
+   berbeza setiap edisi. Jadual waktu mencetak "Guru kelas : NAMA" pada kepala
+   SETIAP muka; disahkan pada 30 muka JW KELAS PETANG 31.7.2026. */
+const bacaJadualLib = baca("src/lib/baca-jadual.ts");
+perlu("Guru kelas dibaca dari kepala muka jadual",
+  bacaJadualLib.includes("function guruKelasDariKepala") && /Guru\\s\*kelas/.test(bacaJadualLib));
+perlu("Nama KEDUA ialah pembantu, bukan guru kelas",
+  bacaJadualLib.includes("split(/[/&,]/)[0]") && bacaJadualLib.includes("PEMBANTU"));
+perlu("Kaki muka tidak tersalah ambil sebagai nama",
+  bacaJadualLib.includes("Jadual|aSc|Tarikh|Kelas"));
+perlu("Tag daripada jadual menghormati tugasan sedia ada",
+  tagLib.includes("export async function tagDariJadual") && tagLib.includes('keputusan: "sudah-ada"'));
+const pukalUi = baca("src/app/admin/jadual/PukalJadual.tsx");
+perlu("Guru kelas ditetapkan semasa jadual disimpan", pukalUi.includes("tagDariJadual"));
+perlu("Kegagalan tag tidak menyembunyikan jadual yang tersimpan",
+  pukalUi.includes("guru kelas gagal ditetapkan"));
+perlu("Nama guru kelas dipapar sebelum simpan", pukalUi.includes("Guru kelas: {b.guruKelas}"));
+
 if (gagal.length) {
   console.error(`Kontrak modul gagal:\n${gagal.map((x) => `- ${x}`).join("\n")}`);
   process.exit(1);

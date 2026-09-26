@@ -203,6 +203,16 @@ export interface HasilPukal {
    */
   waktu?: Waktu[];
   keyakinan?: { dikenal: number; jumlah: number };
+  /**
+   * Nama guru kelas seperti TERCETAK pada kepala muka jadual.
+   *
+   * Perisian jadual mencetak "Guru kelas : NAMA" pada setiap muka. Itu sumber
+   * yang PASTI — ia datang daripada pangkalan data jadual sekolah sendiri,
+   * bukan senarai yang ditaip semula. Buku Pengurusan pula memecahkan tahun
+   * dan kelas ke lajur berasingan dengan bentuk berbeza setiap edisi, dan
+   * itulah sebab padanan daripadanya memulangkan sifar.
+   */
+  guruKelas?: string;
 }
 
 /**
@@ -214,6 +224,35 @@ export interface HasilPukal {
  * mengekalkan setiap permintaan kecil, memberi kemajuan yang boleh dilihat,
  * dan bermakna satu fail rosak tidak menjatuhkan keseluruhan kerja.
  */
+/**
+ * Nama guru kelas daripada kepala muka jadual.
+ *
+ * Bentuk sebenar (disahkan pada JW KELAS PETANG 31.7.2026, 30 muka):
+ *   "SK Taman Desaminium, Seri Kembangan, Selangor   Guru kelas : ADHLINA …"
+ *
+ * DUA PEMOTONGAN, kedua-duanya perlu:
+ *  1. Teks selepas nama ialah kaki muka ("Jadual waktu terjana:7/31/2026"),
+ *     jadi ia dipotong pada perkataan itu dan pada digit pertama — nama guru
+ *     tidak mengandungi nombor.
+ *  2. Bila DUA nama tersenarai, yang kedua ialah PEMBANTU guru kelas, bukan
+ *     guru kelas. Hanya yang pertama diambil. Mengambil kedua-duanya bermakna
+ *     memberi pembantu kuasa menyunting jadual kelas itu.
+ */
+function guruKelasDariKepala(item: { str: string }[]): string | null {
+  const gabung = item.map((i) => i.str).join(" ").replace(/\s+/g, " ");
+  const m = /Guru\s*kelas\s*:\s*(.+)/i.exec(gabung);
+  if (!m) return null;
+  const nama = m[1]
+    .split(/\b(?:Jadual|aSc|Tarikh|Kelas)\b/i)[0]
+    .split(/\d/)[0]
+    // Pembantu guru kelas dipisahkan "/", "&" atau koma — ambil yang pertama.
+    .split(/[/&,]/)[0]
+    .replace(/\s+/g, " ")
+    .trim();
+  // Dua perkataan minimum: sel kosong atau "-" bukan nama.
+  return nama.split(" ").filter(Boolean).length >= 2 ? nama : null;
+}
+
 export async function bacaJadualPukal(muatan: MuatanFail): Promise<HasilPukal> {
   try {
     // Pukal ialah kerja pentadbiran ke atas SEMUA kelas, jadi ia memerlukan
@@ -405,6 +444,7 @@ export async function bacaJadualPukalBanyak(muatan: MuatanFail): Promise<HasilPu
       sudah.add(kelas);
       keluar.push({
         nama: label, kelas, ok: hasil.dikenal > 0,
+        ...(item?.length ? { guruKelas: guruKelasDariKepala(item) ?? undefined } : {}),
         draf: hasil.draf,
         waktu: senaraiWaktu,
         keyakinan: { dikenal: hasil.dikenal, jumlah: hasil.jumlah },
