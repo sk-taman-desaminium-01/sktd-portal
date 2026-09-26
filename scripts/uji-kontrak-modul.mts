@@ -209,6 +209,25 @@ perlu("Kotak semak dan radio turut dikesan",
 perlu("Klik Ctrl/Shift masih membuka tab sengaja",
   pautanApp.includes("e.metaKey") && pautanApp.includes("e.shiftKey"));
 
+/* Larian kering pertama memulangkan SIFAR pada setiap lajur — dan sifar tidak
+   memberitahu apa-apa. Penghurai kini mencari kelas merentas SELURUH baris
+   (buku memecahkan tahun dan nama kelas ke lajur berasingan), dan larian
+   kering menunjukkan bentuk sebenar buku bila tiada apa dikenali. */
+perlu("Kelas dicari merentas baris, bukan sel demi sel",
+  tagLib.includes("function kelasDariBaris") && tagLib.includes("sel[i]} ${sel[i + 1]}"));
+perlu("Awalan TAHUN/KELAS diabaikan", /\(TAHUN\|KELAS\|THN\)/.test(tagLib));
+perlu("Larian kering menunjukkan bentuk buku bila sifar",
+  tagLib.includes("diagnostik") && tagLib.includes("contohBaris"));
+perlu("Tajuk lajur tidak tersalah ambil sebagai nama",
+  tagLib.includes("function selNama") && tagLib.includes("BIL|NAMA|JUMLAH"));
+perlu("Guru ditag automatik sebaik akses diluluskan",
+  tagLib.includes("export async function tagSatuGuru") &&
+  baca("src/lib/akses-urus.ts").includes("tagSatuGuru"));
+perlu("Tag automatik tidak boleh menggagalkan kelulusan",
+  /after\(async \(\) => \{[\s\S]{0,200}tagSatuGuru/.test(baca("src/lib/akses-urus.ts")));
+perlu("Dua kelas untuk orang sama TIDAK dipilih sendiri",
+  tagLib.includes("padan.length !== 1"));
+
 if (gagal.length) {
   console.error(`Kontrak modul gagal:\n${gagal.map((x) => `- ${x}`).join("\n")}`);
   process.exit(1);

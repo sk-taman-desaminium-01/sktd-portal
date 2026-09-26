@@ -56,6 +56,15 @@ export interface HasilTag {
   /** Benar bila tulisan benar-benar berlaku. */
   ditulis: boolean;
   calon: CalonTag[];
+  /**
+   * Bentuk sebenar buku, dipapar bila tiada apa yang dikenali.
+   *
+   * Larian kering pertama memulangkan SIFAR pada setiap lajur, dan sifar
+   * tidak memberitahu apa-apa: adakah seksyen kosong, adakah lajur berbeza,
+   * adakah nama ditulis lain? Tanpa ini, satu-satunya jalan ke hadapan ialah
+   * meneka — dan meneka pada data sekolah yang hidup bukan pilihan.
+   */
+  diagnostik?: { tajuk: string; lajur: string[]; bilBaris: number; contoh: string[] };
 }
 
 /** Padanan nama yang BOLEH DIPERCAYAI untuk memberi kuasa. */
@@ -71,16 +80,66 @@ function samaOrang(a: string, b: string): boolean {
   return normal(x) === normal(y);
 }
 
-/** Label kelas yang sah, daripada senarai rasmi — bukan apa sahaja yang ditulis buku. */
+/**
+ * Label kelas rasmi daripada teks buku — atau null.
+ *
+ * KENAPA INI LEBIH LUAS DARIPADA PADANAN TEPAT
+ * Larian kering pertama (26 Sep) memulangkan SIFAR calon walaupun seksyen
+ * Guru Kelas wujud dan penuh dengan baris. Sebabnya buku tidak menulis label
+ * kelas seperti yang kod ini menyimpannya. Bentuk yang benar-benar berlaku:
+ *   · "1 AMANAH"            — sama seperti senarai rasmi
+ *   · "TAHUN 1 AMANAH"      — berawalan
+ *   · "1AMANAH"             — tiada ruang
+ *   · "AMANAH" dengan "1" dalam sel BERASINGAN  ← ini yang paling kerap
+ * Yang terakhir itu sebab padanan sel-demi-sel gagal sepenuhnya: tiada satu
+ * pun sel mengandungi label penuh.
+ */
 function padanKelas(teks: string): string | null {
   const semua = [...semuaKelas(), ...semuaKelasPPKI()];
-  const bersih = teks.toUpperCase().replace(/[^A-Z0-9 ]+/g, " ").replace(/\s+/g, " ").trim();
+  const bersih = teks
+    .toUpperCase()
+    .replace(/[^A-Z0-9 ]+/g, " ")
+    .replace(/\b(TAHUN|KELAS|THN)\b/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
   if (!bersih) return null;
-  const tepat = semua.find((k) => k.toUpperCase() === bersih);
+
+  // Tiada ruang: "1AMANAH" → "1 AMANAH".
+  const renggang = bersih.replace(/^([1-6])(?=[A-Z])/, "$1 ");
+  const tepat = semua.find((k) => k.toUpperCase() === renggang);
   if (tepat) return tepat;
-  // "KELAS 4 NILAM" atau "4 NILAM (PAGI)" — cari label rasmi di dalamnya.
-  const dalam = semua.filter((k) => ` ${bersih} `.includes(` ${k.toUpperCase()} `));
+
+  const dalam = semua.filter((k) => ` ${renggang} `.includes(` ${k.toUpperCase()} `));
   return dalam.length === 1 ? dalam[0] : null;
+}
+
+/**
+ * Kelas daripada SATU BARIS penuh, bukan satu sel.
+ *
+ * Buku selalunya memecahkan tahun dan nama kelas ke dalam lajur berasingan
+ * ("1" | "AMANAH" | "NORA BINTI ..."). Maka setiap sel dicuba sendiri, dan
+ * setiap pasangan sel BERSEBELAHAN dicuba bercantum. Indeks sel yang
+ * digunakan dipulangkan supaya sel itu tidak tersalah ambil sebagai nama.
+ */
+function kelasDariBaris(sel: string[]): { kelas: string; guna: Set<number> } | null {
+  for (let i = 0; i < sel.length; i++) {
+    const k = padanKelas(sel[i]);
+    if (k) return { kelas: k, guna: new Set([i]) };
+  }
+  for (let i = 0; i + 1 < sel.length; i++) {
+    const k = padanKelas(`${sel[i]} ${sel[i + 1]}`);
+    if (k) return { kelas: k, guna: new Set([i, i + 1]) };
+  }
+  return null;
+}
+
+/** Sel yang berupa nama orang: dua perkataan huruf, bukan nombor atau kod. */
+function selNama(isi: string): boolean {
+  if (/\d/.test(isi)) return false;
+  const t = tokenNama(isi);
+  if (t.length < 2) return false;
+  // "GURU KELAS", "BIL", "JUMLAH" ialah tajuk lajur, bukan nama.
+  return !/^(GURU|KELAS|BIL|NAMA|JUMLAH|TAHUN|SENARAI)\b/.test(t.join(" "));
 }
 
 export async function tagGuruKelas(tulis = false): Promise<HasilTag> {
@@ -116,22 +175,27 @@ export async function tagGuruKelas(tulis = false): Promise<HasilTag> {
   // --- Baca baris seksyen, cari pasangan kelas + nama ---
   const calon: CalonTag[] = [];
   const sudahDilihat = new Set<string>();
+  /** Baris yang TIDAK dikenali — supaya larian kering boleh menunjukkan
+   *  bentuk sebenar buku, dan bukan sekadar melaporkan sifar. */
+  const contohBaris: string[] = [];
+  let bilBaris = 0;
 
   for (const s of gk) {
     for (const b of await barisSeksyen(s.id)) {
+      bilBaris++;
       const sel = b.sel.map((x) => (x ?? "").trim()).filter(Boolean);
       if (sel.length < 2) continue;
 
-      // Sel mana kelas, sel mana nama? Dicari, bukan diandaikan lajur ke-berapa
-      // — susunan lajur berbeza antara edisi buku.
-      let kelas: string | null = null;
-      let nama = "";
-      for (const isi of sel) {
-        const k = padanKelas(isi);
-        if (k && !kelas) { kelas = k; continue; }
-        if (!k && tokenNama(isi).length >= 2 && isi.length > nama.length) nama = isi;
-      }
-      if (!kelas || !nama) continue;
+      // Kelas dicari merentas SELURUH baris (sel tunggal atau dua sel
+      // bersebelahan), kemudian nama diambil daripada sel yang TINGGAL.
+      const jumpa = kelasDariBaris(sel);
+      if (!jumpa) { contohBaris.length < 6 && contohBaris.push(sel.join(" | ")); continue; }
+      const kelas = jumpa.kelas;
+      const nama = sel
+        .filter((_, i) => !jumpa.guna.has(i))
+        .filter(selNama)
+        .sort((a, b) => b.length - a.length)[0] ?? "";
+      if (!nama) { contohBaris.length < 6 && contohBaris.push(sel.join(" | ")); continue; }
       if (sudahDilihat.has(kelas)) continue;
       sudahDilihat.add(kelas);
 
@@ -157,13 +221,25 @@ export async function tagGuruKelas(tulis = false): Promise<HasilTag> {
   }
 
   const boleh = calon.filter((c) => c.keputusan === "boleh");
+  const diagnostik = calon.length === 0
+    ? {
+        tajuk: gk.map((x) => x.tajuk).join(" · "),
+        lajur: gk[0]?.lajur ?? [],
+        bilBaris,
+        contoh: contohBaris,
+      }
+    : undefined;
+
   if (!tulis) {
     return {
-      ok: true, ditulis: false, calon,
-      mesej: `${boleh.length} kelas boleh ditag. ` +
-        `${calon.filter((c) => c.keputusan === "sudah-ada").length} sudah ada guru kelas, ` +
-        `${calon.filter((c) => c.keputusan === "tiada-padanan").length} nama tiada dalam senarai akses, ` +
-        `${calon.filter((c) => c.keputusan === "kabur").length} kabur.`,
+      ok: true, ditulis: false, calon, diagnostik,
+      mesej: calon.length === 0
+        ? `Tiada pasangan kelas + nama dikenali daripada ${bilBaris} baris. ` +
+          "Lihat contoh baris di bawah — hantar kepada kami kalau bentuknya berbeza."
+        : `${boleh.length} kelas boleh ditag. ` +
+          `${calon.filter((c) => c.keputusan === "sudah-ada").length} sudah ada guru kelas, ` +
+          `${calon.filter((c) => c.keputusan === "tiada-padanan").length} nama tiada dalam senarai akses, ` +
+          `${calon.filter((c) => c.keputusan === "kabur").length} kabur.`,
     };
   }
 
@@ -186,3 +262,34 @@ export async function tagGuruKelas(tulis = false): Promise<HasilTag> {
       : `${berjaya} berjaya, ${gagal.length} gagal: ${gagal.slice(0, 3).join("; ")}`,
   };
 }
+
+/**
+ * TAG SEORANG GURU SAHAJA — dipanggil sebaik aksesnya diluluskan.
+ *
+ * Pentadbir tidak sepatutnya perlu ingat menekan "Tag dari Buku" selepas
+ * setiap kelulusan. Bila seseorang diluluskan dan buku pengurusan berkata
+ * dia guru kelas sesuatu kelas yang MASIH KOSONG, dia ditag serta-merta.
+ *
+ * Peraturan yang sama seperti tag pukal, dan atas sebab yang sama:
+ *  · kelas yang sudah ada guru kelas TIDAK disentuh
+ *  · nama kabur DILANGKAU
+ *  · kegagalan tidak pernah menghalang kelulusan itu sendiri — orang itu
+ *    tetap mendapat akses walaupun tag gagal
+ *
+ * Memulangkan label kelas yang ditag, atau null. Tidak melontar.
+ */
+export async function tagSatuGuru(guruId: string, nama: string): Promise<string | null> {
+  try {
+    const hasil = await tagGuruKelas(false);
+    const padan = hasil.calon.filter(
+      (c) => c.keputusan === "boleh" && (c.guruId === guruId || samaOrang(c.namaBuku, nama)),
+    );
+    // Dua kelas untuk orang yang sama dalam buku: jangan pilih sendiri.
+    if (padan.length !== 1 || !padan[0].guruId) return null;
+    const r = await tetapGuruKelas(padan[0].guruId, padan[0].kelas);
+    return r.ok ? padan[0].kelas : null;
+  } catch {
+    return null;
+  }
+}
+

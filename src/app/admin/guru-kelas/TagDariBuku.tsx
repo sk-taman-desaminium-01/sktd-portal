@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { tagGuruKelas, type CalonTag } from "@/lib/tag-guru-kelas";
+import { tagGuruKelas, type CalonTag, type HasilTag } from "@/lib/tag-guru-kelas";
 
 /**
  * Tag guru kelas terus daripada Buku Pengurusan.
@@ -27,6 +27,7 @@ const LABEL: Record<CalonTag["keputusan"], { teks: string; warna: string }> = {
 export default function TagDariBuku() {
   const router = useRouter();
   const [calon, setCalon] = useState<CalonTag[] | null>(null);
+  const [diagnostik, setDiagnostik] = useState<HasilTag["diagnostik"]>(undefined);
   const [mesej, setMesej] = useState<{ ok: boolean; teks: string } | null>(null);
   const [sibuk, setSibuk] = useState(false);
 
@@ -36,6 +37,7 @@ export default function TagDariBuku() {
     try {
       const r = await tagGuruKelas(tulis);
       setCalon(r.calon);
+      setDiagnostik(r.diagnostik);
       setMesej({ ok: r.ok, teks: r.mesej });
       if (r.ditulis) router.refresh();
     } catch (e) {
@@ -76,6 +78,25 @@ export default function TagDariBuku() {
         <p className={`mt-3 text-sm leading-relaxed ${mesej.ok ? "text-[#14603c]" : "text-[#8f2424]"}`}>
           {mesej.teks}
         </p>
+      )}
+
+      {/* TIADA PADANAN? TUNJUKKAN BENTUK SEBENAR BUKU.
+          "0 kelas boleh ditag" tidak memberitahu apa-apa: adakah seksyen
+          kosong, lajur berbeza, atau nama ditulis lain? Contoh baris di sini
+          menjawabnya tanpa sesiapa perlu meneka. */}
+      {diagnostik && (
+        <div className="mt-3 rounded-lg border border-[#e9d9ae] bg-[#fdf9f0] p-3 text-xs leading-relaxed text-[#7a5a12]">
+          <p><b>Seksyen:</b> {diagnostik.tajuk || "(tiada tajuk)"} · <b>{diagnostik.bilBaris}</b> baris</p>
+          {diagnostik.lajur.length > 0 && <p className="mt-1"><b>Lajur:</b> {diagnostik.lajur.join(" | ")}</p>}
+          {diagnostik.contoh.length > 0 && (
+            <>
+              <p className="mt-2"><b>Contoh baris yang tidak dikenali:</b></p>
+              <ul className="mt-1 space-y-0.5 font-mono text-[11px]">
+                {diagnostik.contoh.map((c, i) => <li key={i}>{c}</li>)}
+              </ul>
+            </>
+          )}
+        </div>
       )}
 
       {calon && calon.length > 0 && (

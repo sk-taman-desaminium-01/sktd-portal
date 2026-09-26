@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { after } from "next/server";
 import { pastikanBoleh, domainRasmi } from "./akses";
 import { klienTulis } from "./supabase-pelayan";
 import { PERANAN, perananBolehDiberi, sembunyiBaris, type Peranan } from "./peranan";
@@ -218,6 +219,21 @@ export async function tarikAkses(id: string, dibenarkan: boolean): Promise<Hasil
     // Orang yang baru diluluskan diberitahu. Sebelum ini mereka menunggu
     // tanpa tahu bila ia berlaku, dan bertanya kepada pentadbir — iaitu
     // kerja yang notifikasi wujud untuk hapuskan.
+    // GURU KELAS DITAG SERTA-MERTA, kalau buku pengurusan berkata begitu
+    // dan kelas itu masih kosong. Tanpa ini pentadbir perlu ingat menekan
+    // "Tag dari Buku" selepas setiap kelulusan — dan guru yang terlepas
+    // tidak boleh menyunting jadual kelasnya tanpa tahu sebabnya.
+    //
+    // Dalam `after()`: kelulusan TIDAK boleh menunggu buku dibaca, dan tag
+    // yang gagal tidak boleh menggagalkan kelulusan.
+    if (dibenarkan && baris[0]?.nama) {
+      const { id: idGuru, nama: namaGuru } = baris[0];
+      after(async () => {
+        const { tagSatuGuru } = await import("./tag-guru-kelas");
+        await tagSatuGuru(idGuru, namaGuru);
+      });
+    }
+
     if (dibenarkan && baris[0]?.email) {
       await hantar({
         penerima: [baris[0].email],
