@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { bacaJadualPukal, bacaJadualPukalBanyak, type HasilPukal } from "@/lib/baca-jadual";
 import { simpanJadualBanyak } from "@/lib/jadual";
+import { tagDariJadual } from "@/lib/tag-guru-kelas";
 import { sediaMuatan, normalkanFail } from "@/data/muatan-pelayar";
 import { semakSaiz } from "@/data/had-fail";
 import { bacaImbasanJadual, failOcrJadual, pdfTanpaTeks } from "@/data/ocr-pelayar";
@@ -150,7 +151,32 @@ export default function PukalJadual() {
     }
     setSibuk(true);
     try {
-      setHasil(await simpanJadualBanyak(masukan));
+      const r = await simpanJadualBanyak(masukan);
+
+      /* GURU KELAS DITETAPKAN SEKALI GUS.
+         Jadual waktu mencetak "Guru kelas : NAMA" pada kepala setiap muka.
+         Memuat naik jadual lalu MENUNTUT pentadbir menetapkan 57 guru kelas
+         dengan tangan — daripada nama yang baru sahaja dibaca sistem —
+         ialah kerja yang tidak perlu wujud.
+
+         Kelas yang sudah ada guru kelas tidak disentuh; nama yang tiada
+         dalam senarai akses dilaporkan, bukan diteka. */
+      const gk = baris
+        .filter((b) => b.pilih && b.ok && b.kelas && b.guruKelas)
+        .map((b) => ({ kelas: b.kelas!, guruKelas: b.guruKelas! }));
+      if (r.ok && gk.length > 0) {
+        try {
+          const t = await tagDariJadual(gk);
+          setHasil({ ok: r.ok, mesej: `${r.mesej} ${t.mesej}` });
+          return;
+        } catch {
+          // Jadual sudah tersimpan; kegagalan tag tidak boleh menyembunyikan
+          // kejayaan itu.
+          setHasil({ ok: r.ok, mesej: `${r.mesej} (guru kelas gagal ditetapkan — cuba di Jawatankuasa Sekolah)` });
+          return;
+        }
+      }
+      setHasil(r);
     } catch (e) {
       setHasil({ ok: false, mesej: e instanceof Error ? e.message : "Gagal menyimpan." });
     } finally {
@@ -277,6 +303,14 @@ export default function PukalJadual() {
                           </span>
                         )}
                       </span>
+                      {/* Guru kelas dibaca dari kepala muka jadual. Dipapar
+                          SEBELUM simpan supaya pentadbir nampak siapa akan
+                          ditetapkan — bukan mengetahuinya selepas ia berlaku. */}
+                      {b.guruKelas && (
+                        <span className="mt-0.5 block text-[11px] font-semibold text-navy-700">
+                          Guru kelas: {b.guruKelas}
+                        </span>
+                      )}
                       <span className="mt-0.5 block truncate text-[11px] text-slate-500">
                         {b.nama}
                       </span>
