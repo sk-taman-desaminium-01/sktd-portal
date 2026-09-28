@@ -43,3 +43,7 @@ next-env.d.ts
 # Rujukan tempatan mengandungi butiran murid; jangan terbitkan.
 /rujukan-borang/
 /scripts/tmp/
+
+# Sandaran penuh DB + Storage (scripts/sandaran-penuh.mjs) — mengandungi
+# No. KP, tandatangan dan rekod disiplin. TIDAK PERNAH masuk git.
+/sandaran/
