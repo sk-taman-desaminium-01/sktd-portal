@@ -121,14 +121,16 @@ export async function statusKehadiran(tarikh: string, labelKelas: string): Promi
 }
 
 /**
- * Simpan draf murid tidak hadir bagi satu (kelas, tarikh) — GANTI SEPENUHNYA
- * senarai lama (padam + tulis semula). Senarai harian kecil (jarang > 10
- * murid sekelas), jadi ganti-sepenuhnya lebih ringkas dan tidak berisiko
- * dibandingkan cuba kira pertokokan.
+ * Simpan senarai murid tidak hadir bagi satu (kelas, tarikh) — GANTI
+ * SEPENUHNYA senarai lama (padam + tulis semula). Senarai harian kecil
+ * (jarang > 10 murid sekelas), jadi ganti-sepenuhnya lebih ringkas dan
+ * tidak berisiko dibandingkan cuba kira pertokokan.
  *
- * DITOLAK selepas hari itu DISAHKAN — guru kelas mesti buka semula
- * (`bukaSemulaKehadiran`) dahulu supaya iSPEL tidak diisi separuh jalan
- * semasa seseorang masih menyunting.
+ * Boleh disunting BILA-BILA, walaupun hari itu sudah disahkan — keputusan
+ * pengguna 29 Sep 2026 ("buang keperluan buka semula") supaya guru kelas
+ * tidak perlu langkah tambahan bila terjumpa kesilapan. `disahkan_pada`
+ * TIDAK disentuh oleh fungsi ini — sunting kandungan tidak membatalkan
+ * pengesahan; `sahkanKehadiran()` sahaja yang menetapkannya.
  */
 export async function simpanTidakHadir(
   tarikh: string, labelKelas: string,
@@ -144,14 +146,6 @@ export async function simpanTidakHadir(
   const sesi = await tahunSesiAktif();
   const db = klienTulis();
   try {
-    const sedia = (await db.minta(
-      `pbd_kehadiran_status?select=disahkan_pada&tahun_sesi=eq.${sesi}` +
-        `&tarikh=eq.${tarikh}&kelas=eq.${encodeURIComponent(labelKelas)}`,
-    )) as { disahkan_pada: string | null }[];
-    if (sedia[0]?.disahkan_pada) {
-      return { ok: false, mesej: "Hari ini sudah disahkan — buka semula dahulu untuk menyunting." };
-    }
-
     await db.minta(
       `pbd_kehadiran_murid?tahun_sesi=eq.${sesi}&tarikh=eq.${tarikh}&kelas=eq.${encodeURIComponent(labelKelas)}`,
       { method: "DELETE", headers: { Prefer: "return=minimal" } },
