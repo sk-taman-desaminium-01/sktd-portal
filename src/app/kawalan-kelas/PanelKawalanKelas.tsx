@@ -356,10 +356,22 @@ export default function PanelKawalanKelas({
                   {b.relief && <span className="ml-1 rounded bg-[#fdf3dc] px-1.5 py-0.5 text-[10px] font-bold text-[#9a6b06]">RELIEF</span>}
                   {b.masalah_disiplin && <p className="mt-1 text-slate-500">⚠ {b.masalah_disiplin}</p>}
                 </div>
-                {b.boleh_urus && <div className="flex shrink-0 gap-2">
-                  <button type="button" disabled={sibuk} onClick={() => mulaSunting(b)} className="min-h-11 touch-manipulation px-1 font-semibold text-navy-700 underline disabled:opacity-50">Sunting</button>
-                  <button type="button" disabled={sibuk} onClick={() => void padam(b)} className="min-h-11 touch-manipulation px-1 font-semibold text-red-600 underline disabled:opacity-50">Padam</button>
-                </div>}
+                {b.boleh_urus ? (
+                  <div className="flex shrink-0 gap-2">
+                    <button type="button" disabled={sibuk} onClick={() => mulaSunting(b)}
+                      className="min-h-11 touch-manipulation rounded-lg border border-navy-700 px-3 text-xs font-bold text-navy-700 disabled:opacity-50">
+                      Sunting
+                    </button>
+                    <button type="button" disabled={sibuk} onClick={() => void padam(b)}
+                      className="min-h-11 touch-manipulation rounded-lg border border-[#e7bcbc] px-3 text-xs font-bold text-red-600 disabled:opacity-50">
+                      Padam
+                    </button>
+                  </div>
+                ) : (
+                  <span className="shrink-0 text-[11px] italic text-slate-400">
+                    Hanya {b.guru_nama} atau pentadbir boleh sunting
+                  </span>
+                )}
               </div>
             </li>
           ))}
