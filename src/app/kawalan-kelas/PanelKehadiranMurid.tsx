@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import PilihCari from "@/components/PilihCari";
 import {
-  senaraiMuridKelas, statusKehadiran, simpanTidakHadir, sahkanKehadiran, bukaSemulaKehadiran,
+  senaraiMuridKelas, statusKehadiran, simpanTidakHadir, sahkanKehadiran,
   type MuridRoster, type TidakHadirMurid,
 } from "@/lib/kehadiran-murid";
 
@@ -94,59 +94,24 @@ export default function PanelKehadiranMurid({ kelas, tarikh }: { kelas: string; 
     setSibuk(false);
   }
 
-  async function bukaSemula() {
-    setSibuk(true); setNota(null);
-    const r = await bukaSemulaKehadiran(tarikh, kelas);
-    setNota({ ok: r.ok, teks: r.mesej });
-    if (r.ok) { setDisahkanPada(null); setDisahkanOleh(null); }
-    setSibuk(false);
-  }
-
-  if (disahkanPada) {
-    return (
-      <div className="rounded-xl border border-[#cfe9db] bg-[#edf8f2] p-4">
-        <p className="text-sm font-semibold text-[#176b49]">
-          ✓ Kehadiran {tarikh} disahkan oleh {disahkanOleh ?? "—"}
-        </p>
-        <p className="mt-1 text-xs text-[#176b49]">
-          Extension &quot;Kehadiran IDME&quot; kini boleh menarik senarai ini ke iSPEL. Buka semula hanya jika perlu pembetulan.
-        </p>
-        <a
-          href="https://sktd.edu.my/bantuan-ispel"
-          target="_blank" rel="noreferrer"
-          className="mt-2 inline-block text-xs font-semibold text-[#176b49] underline underline-offset-2"
-        >
-          Belum pasang extension? Panduan pasang di sini →
-        </a>
-        {draf.length === 0 ? (
-          <p className="mt-3 text-sm text-[#176b49]">Semua murid hadir — tiada murid ditandakan tidak hadir.</p>
-        ) : (
-          <ul className="mt-3 space-y-1.5">
-            {draf.map((d) => (
-              <li key={d.murid_id} className="text-sm text-[#176b49]">
-                <b>{d.nama_murid}</b> — {d.kategori} / {d.sebab}
-              </li>
-            ))}
-          </ul>
-        )}
-        {nota && <p className={`mt-3 text-sm ${nota.ok ? "text-[#176b49]" : "text-red-600"}`}>{nota.teks}</p>}
-        <button type="button" disabled={sibuk} onClick={() => void bukaSemula()}
-          className="mt-3 min-h-11 touch-manipulation rounded-lg border border-[#176b49] px-3 py-2 text-xs font-semibold text-[#176b49] disabled:opacity-50">
-          Buka semula untuk sunting
-        </button>
-      </div>
-    );
-  }
-
   return (
     <div className="rounded-xl border border-garis bg-white p-4">
       <p className="text-sm font-bold text-navy-800">Murid tidak hadir — {tarikh}</p>
-      <p className="mt-1 text-xs text-slate-500">
-        Kosong = semua murid hadir. Sahkan bila selesai supaya extension &quot;Kehadiran IDME&quot; boleh menariknya ke iSPEL.{" "}
-        <a href="https://sktd.edu.my/bantuan-ispel" target="_blank" rel="noreferrer" className="font-semibold text-navy-700 underline underline-offset-2">
-          Belum pasang? Panduan di sini →
-        </a>
-      </p>
+
+      {disahkanPada ? (
+        <p className="mt-1 rounded-lg bg-[#edf8f2] px-3 py-2 text-xs font-semibold text-[#176b49]">
+          ✓ Disahkan oleh {disahkanOleh ?? "—"} — extension &quot;Kehadiran IDME&quot; boleh menarik senarai ini.
+          Sunting terus di bawah bila perlu, tiada langkah tambahan.
+        </p>
+      ) : (
+        <p className="mt-1 text-xs text-slate-500">
+          Kosong = semua murid hadir. Sahkan bila selesai supaya extension &quot;Kehadiran IDME&quot; boleh menariknya ke iSPEL.
+        </p>
+      )}
+      <a href="https://sktd.edu.my/bantuan-ispel" target="_blank" rel="noreferrer"
+        className="mt-1 inline-block text-xs font-semibold text-navy-700 underline underline-offset-2">
+        Belum pasang extension? Panduan di sini →
+      </a>
 
       {draf.length > 0 && (
         <ul className="mt-3 space-y-2">
