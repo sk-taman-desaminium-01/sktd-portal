@@ -109,8 +109,15 @@ export default function PanelKehadiranMurid({ kelas, tarikh }: { kelas: string; 
           ✓ Kehadiran {tarikh} disahkan oleh {disahkanOleh ?? "—"}
         </p>
         <p className="mt-1 text-xs text-[#176b49]">
-          Extension iSPEL kini boleh menarik senarai ini. Buka semula hanya jika perlu pembetulan.
+          Extension &quot;Kehadiran IDME&quot; kini boleh menarik senarai ini ke iSPEL. Buka semula hanya jika perlu pembetulan.
         </p>
+        <a
+          href="https://sktd.edu.my/bantuan-ispel"
+          target="_blank" rel="noreferrer"
+          className="mt-2 inline-block text-xs font-semibold text-[#176b49] underline underline-offset-2"
+        >
+          Belum pasang extension? Panduan pasang di sini →
+        </a>
         {draf.length === 0 ? (
           <p className="mt-3 text-sm text-[#176b49]">Semua murid hadir — tiada murid ditandakan tidak hadir.</p>
         ) : (
@@ -135,7 +142,10 @@ export default function PanelKehadiranMurid({ kelas, tarikh }: { kelas: string; 
     <div className="rounded-xl border border-garis bg-white p-4">
       <p className="text-sm font-bold text-navy-800">Murid tidak hadir — {tarikh}</p>
       <p className="mt-1 text-xs text-slate-500">
-        Kosong = semua murid hadir. Sahkan bila selesai supaya extension iSPEL boleh menariknya.
+        Kosong = semua murid hadir. Sahkan bila selesai supaya extension &quot;Kehadiran IDME&quot; boleh menariknya ke iSPEL.{" "}
+        <a href="https://sktd.edu.my/bantuan-ispel" target="_blank" rel="noreferrer" className="font-semibold text-navy-700 underline underline-offset-2">
+          Belum pasang? Panduan di sini →
+        </a>
       </p>
 
       {draf.length > 0 && (
