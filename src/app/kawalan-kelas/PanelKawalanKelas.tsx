@@ -13,6 +13,7 @@ import CetakLaporan from "@/components/CetakLaporan";
 import CetakKawalanBilikDarjah, { barisDariWaktu } from "@/components/CetakKawalanBilikDarjah";
 import { setUntukKelas, NAMA_HARI, HARI, type Jadual } from "@/data/jadual-jenis";
 import { mulaCetak } from "@/components/cetak-mudah-alih";
+import PanelKehadiranMurid from "./PanelKehadiranMurid";
 
 export default function PanelKawalanKelas({
   tahunSesi, kelas, namaGuruKelas, namaGuru, jadual, senarai, tarikhAwal,
@@ -197,6 +198,15 @@ export default function PanelKawalanKelas({
           {sunting ? "Simpan Perubahan" : "Simpan Rekod"}
         </button>
       </section>
+
+      {kelasPilih && (
+        <section>
+          <h2 className="text-lg font-bold text-navy-800">Kehadiran Murid — {kelasPilih}</h2>
+          <div className="mt-4">
+            <PanelKehadiranMurid key={`${kelasPilih}-${tarikh}`} kelas={kelasPilih} tarikh={tarikh} />
+          </div>
+        </section>
+      )}
 
       {carta.length > 0 && (
         <section>
