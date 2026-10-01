@@ -27,6 +27,15 @@ const LALUAN_AWAM = createRouteMatcher([
   "/kebenaran",
   "/kebenaran/(.*)",
   "/api/statistik-murid",
+  // BUKAN bermakna tiada kawalan akses — route.ts sendiri semak sesi (401)
+  // dan kelas guru (403) melalui pengguna()/kelasBolehSunting(). Ia MESTI
+  // dikecualikan daripada `auth.protect()` di sini kerana extension iSPEL
+  // (~/Projects/ispel-kehadiran) memanggilnya sebagai fetch() biasa, bukan
+  // navigasi — Clerk mengesan bentuk permintaan itu dan memulangkan 404
+  // KOSONG Vercel (bukan JSON kita) sebelum route.ts sempat jalan langsung,
+  // walaupun kuki sesi guru sah. Disahkan pada domain hidup 1 Okt 2026:
+  // header `x-clerk-auth-reason: protect-rewrite` pada respons 404 itu.
+  "/api/kehadiran",
 ]);
 
 function borangAwam(path: string): boolean {
