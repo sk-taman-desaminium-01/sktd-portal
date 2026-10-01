@@ -94,10 +94,17 @@ export default function PanelKehadiranMurid({ kelas, tarikh }: { kelas: string; 
 
   const belumDitambah = roster.filter((m) => !draf.some((d) => d.murid_id === m.murid_id));
 
+  // Lalai "Masalah Kesihatan / Demam" — sebab TERBANYAK berbanding lain
+  // (lihat sebab-tidak-hadir.ts). Guru kelas boleh tukar bila perlu, tapi
+  // lalai ini elak klik berulang untuk kes biasa — penting bila kejar
+  // balik banyak hari sekali gus (laporan pengguna 2 Okt 2026: "kalau dia
+  // tangguh pengisian macam saya 3 bulan... default ini membantu dia").
+  const KATEGORI_LALAI = "MASALAH KESIHATAN", SEBAB_LALAI = "DEMAM";
+
   function tambah() {
     const m = roster.find((x) => x.murid_id === muridPilih);
     if (!m) return;
-    setDraf((d) => [...d, { murid_id: m.murid_id, nama_murid: m.nama, kategori: "", sebab: "" }]);
+    setDraf((d) => [...d, { murid_id: m.murid_id, nama_murid: m.nama, kategori: KATEGORI_LALAI, sebab: SEBAB_LALAI }]);
     setMuridPilih("");
   }
 
