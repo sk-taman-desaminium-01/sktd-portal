@@ -30,6 +30,25 @@ import { sahTarikh, sahUuid } from "./sah";
  * — mengelakkan iSPEL diisi dengan data separuh siap.
  */
 
+/**
+ * Emel → nama guru, untuk paparan "Disahkan oleh" yang mesra cikgu.
+ * `pbd_kehadiran_status.disahkan_oleh` menyimpan EMEL (identiti tetap,
+ * audit-safe), tapi memaparkan emel mentah ("g-45550141@moe-dl.edu.my")
+ * kepada cikgu lain kelihatan teknikal dan mengelirukan (laporan pengguna
+ * 1 Okt 2026, semakan sebelum lancar). Jatuh balik ke bahagian sebelum "@"
+ * jika guru tiada dalam pbd_guru (cth akaun admin_mutlak).
+ */
+async function namaGuru(db: ReturnType<typeof klienTulis>, emel: string): Promise<string> {
+  try {
+    const baris = (await db.minta(
+      `pbd_guru?select=nama&email=eq.${encodeURIComponent(emel)}&limit=1`,
+    )) as { nama: string }[];
+    return baris[0]?.nama?.trim() || emel.split("@")[0];
+  } catch {
+    return emel.split("@")[0];
+  }
+}
+
 export interface MuridRoster {
   murid_id: string;
   nama: string;
@@ -106,9 +125,10 @@ export async function statusKehadiran(tarikh: string, labelKelas: string): Promi
           `&tarikh=eq.${tarikh}&kelas=eq.${encodeURIComponent(labelKelas)}&order=nama_murid.asc`,
       ),
     ]);
+    const emelSah = status[0]?.disahkan_oleh ?? null;
     return {
       belumSedia: false, boleh: true,
-      disahkanOleh: status[0]?.disahkan_oleh ?? null,
+      disahkanOleh: emelSah ? await namaGuru(db, emelSah) : null,
       disahkanPada: status[0]?.disahkan_pada ?? null,
       tidakHadir,
     };
