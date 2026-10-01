@@ -107,18 +107,23 @@ export default function PanelKehadiranMurid({ kelas, tarikh }: { kelas: string; 
 
       {disahkanPada ? (
         <p className="mt-1 rounded-lg bg-[#edf8f2] px-3 py-2 text-xs font-semibold text-[#176b49]">
-          ✓ Disahkan oleh {disahkanOleh ?? "—"} — extension &quot;Kehadiran IDME&quot; boleh menarik senarai ini.
-          Sunting terus di bawah bila perlu, tiada langkah tambahan.
+          ✓ Disahkan oleh {disahkanOleh ?? "—"} — boleh sunting terus bila perlu.
         </p>
       ) : (
         <p className="mt-1 text-xs text-slate-500">
-          Kosong = semua murid hadir. Sahkan bila selesai supaya extension &quot;Kehadiran IDME&quot; boleh menariknya ke iSPEL.
+          Kosong = semua murid hadir. Sahkan bila selesai.
         </p>
       )}
-      <a href="https://sktd.edu.my/bantuan-ispel" target="_blank" rel="noreferrer"
-        className="mt-1 inline-block text-xs font-semibold text-navy-700 underline underline-offset-2">
-        Belum pasang extension? Panduan di sini →
-      </a>
+      <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1">
+        <a href="https://sktd.edu.my/bantuan-ispel#pasang" target="_blank" rel="noreferrer"
+          className="inline-block text-xs font-semibold text-navy-700 underline underline-offset-2">
+          Pasang extension Kehadiran IDME →
+        </a>
+        <a href="https://sktd.edu.my/bantuan-ispel#guna" target="_blank" rel="noreferrer"
+          className="inline-block text-xs font-semibold text-navy-700 underline underline-offset-2">
+          Dah pasang? Cara guna →
+        </a>
+      </div>
 
       {draf.length > 0 && (
         <ul className="mt-3 space-y-2">
