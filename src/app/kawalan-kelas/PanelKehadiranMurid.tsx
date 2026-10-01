@@ -6,6 +6,7 @@ import {
   senaraiMuridKelas, statusKehadiran, simpanTidakHadir, sahkanKehadiran,
   type MuridRoster, type TidakHadirMurid,
 } from "@/lib/kehadiran-murid";
+import { SENARAI_KATEGORI, sebabUntukKategori } from "@/data/sebab-tidak-hadir";
 
 /**
  * Kehadiran murid satu-satu — di DALAM kad Kawalan Kelas (permintaan
@@ -69,8 +70,14 @@ export default function PanelKehadiranMurid({ kelas, tarikh }: { kelas: string; 
     setDraf((d) => d.filter((x) => x.murid_id !== muridId));
   }
 
-  function kemaskini(muridId: string, medan: "kategori" | "sebab", nilai: string) {
-    setDraf((d) => d.map((x) => (x.murid_id === muridId ? { ...x, [medan]: nilai } : x)));
+  function tukarKategori(muridId: string, kategori: string) {
+    // Tukar kategori membatalkan sebab lama — sebab tersenarai ikut
+    // kategori SAMA seperti borang iSPEL sendiri; sebab kategori lama
+    // tidak bermakna lagi selepas kategori ditukar.
+    setDraf((d) => d.map((x) => (x.murid_id === muridId ? { ...x, kategori, sebab: "" } : x)));
+  }
+  function tukarSebab(muridId: string, sebab: string) {
+    setDraf((d) => d.map((x) => (x.murid_id === muridId ? { ...x, sebab } : x)));
   }
 
   async function simpan() {
@@ -122,15 +129,18 @@ export default function PanelKehadiranMurid({ kelas, tarikh }: { kelas: string; 
                 <button type="button" onClick={() => buang(d.murid_id)} className="min-h-8 touch-manipulation text-xs font-semibold text-red-600 underline">Buang</button>
               </div>
               <div className="mt-2 grid gap-2 sm:grid-cols-2">
-                <input
-                  value={d.kategori} onChange={(e) => kemaskini(d.murid_id, "kategori", e.target.value)}
-                  placeholder="Kategori — cth: Masalah Kesihatan"
-                  className="min-w-0 rounded-lg border border-garis px-3 py-2 text-sm"
+                <PilihCari
+                  id={`kategori-${d.murid_id}`} label="Kategori" sembunyiLabel
+                  nilai={d.kategori} tukar={(v) => tukarKategori(d.murid_id, v)}
+                  placeholder="Kategori…"
+                  pilihan={SENARAI_KATEGORI.map((k) => ({ nilai: k, label: k }))}
                 />
-                <input
-                  value={d.sebab} onChange={(e) => kemaskini(d.murid_id, "sebab", e.target.value)}
-                  placeholder="Sebab — cth: Demam"
-                  className="min-w-0 rounded-lg border border-garis px-3 py-2 text-sm"
+                <PilihCari
+                  id={`sebab-${d.murid_id}`} label="Sebab" sembunyiLabel
+                  nilai={d.sebab} tukar={(v) => tukarSebab(d.murid_id, v)}
+                  placeholder={d.kategori ? "Sebab…" : "Pilih kategori dahulu"}
+                  disabled={!d.kategori}
+                  pilihan={sebabUntukKategori(d.kategori).map((s) => ({ nilai: s, label: s }))}
                 />
               </div>
             </li>
