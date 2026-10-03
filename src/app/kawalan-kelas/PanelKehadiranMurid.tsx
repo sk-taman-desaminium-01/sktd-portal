@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import PilihCari from "@/components/PilihCari";
 import {
-  senaraiMuridKelas, statusKehadiran, simpanTidakHadir, sahkanKehadiran,
+  senaraiMuridKelas, statusKehadiran, simpanTidakHadir, sahkanKehadiran, padamKehadiranMurid,
   type MuridRoster, type TidakHadirMurid,
 } from "@/lib/kehadiran-murid";
 import { SENARAI_KATEGORI, sebabUntukKategori } from "@/data/sebab-tidak-hadir";
@@ -26,6 +26,7 @@ export default function PanelKehadiranMurid({ kelas, tarikh }: { kelas: string; 
   const [roster, setRoster] = useState<MuridRoster[]>([]);
   const [belumSedia, setBelumSedia] = useState(false);
   const [bolehSahkan, setBolehSahkan] = useState(true);
+  const [bolehPadam, setBolehPadam] = useState(false);
   const [disahkanPada, setDisahkanPada] = useState<string | null>(null);
   const [disahkanOleh, setDisahkanOleh] = useState<string | null>(null);
   const [draf, setDraf] = useState<{ murid_id: string; nama_murid: string; kategori: string; sebab: string }[]>([]);
@@ -42,6 +43,7 @@ export default function PanelKehadiranMurid({ kelas, tarikh }: { kelas: string; 
       setRoster(r);
       setBelumSedia(s.belumSedia);
       setBolehSahkan(s.bolehSahkan);
+      setBolehPadam(s.bolehPadam);
       setDisahkanPada(s.disahkanPada);
       setDisahkanOleh(s.disahkanOleh);
       setDraf(s.tidakHadir.map((t: TidakHadirMurid) => ({ ...t })));
@@ -107,6 +109,15 @@ export default function PanelKehadiranMurid({ kelas, tarikh }: { kelas: string; 
     const r = await sahkanKehadiran(tarikh, kelas);
     setNota({ ok: r.ok, teks: r.mesej });
     if (r.ok) { setDisahkanPada(new Date().toISOString()); }
+    setSibuk(false);
+  }
+
+  async function padam() {
+    if (!window.confirm(`Padam SEPENUHNYA rekod kehadiran ${kelas} bagi ${tarikh}? Tindakan ini tidak boleh dibatalkan.`)) return;
+    setSibuk(true); setNota(null);
+    const r = await padamKehadiranMurid(tarikh, kelas);
+    setNota({ ok: r.ok, teks: r.mesej });
+    if (r.ok) { setDraf([]); setDisahkanPada(null); setDisahkanOleh(null); }
     setSibuk(false);
   }
 
@@ -195,6 +206,12 @@ export default function PanelKehadiranMurid({ kelas, tarikh }: { kelas: string; 
           <span className="text-xs italic text-slate-400">
             Hanya guru kelas boleh sahkan — draf anda tetap tersimpan untuk mereka teruskan.
           </span>
+        )}
+        {bolehPadam && (disahkanPada || draf.length > 0) && (
+          <button type="button" disabled={sibuk} onClick={() => void padam()}
+            className="min-h-11 touch-manipulation rounded-lg border border-[#e7bcbc] px-4 text-sm font-bold text-red-600 disabled:opacity-50">
+            🗑 Padam rekod (pentadbir)
+          </button>
         )}
       </div>
     </div>

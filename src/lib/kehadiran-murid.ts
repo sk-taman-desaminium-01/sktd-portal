@@ -3,7 +3,7 @@
 import { bacaSemua } from "./baca-semua";
 import { tahunSesiAktif } from "./sesi-aktif";
 import { revalidatePath } from "next/cache";
-import { pengguna } from "./akses";
+import { pengguna, bolehBuat } from "./akses";
 import { kelasBolehSunting } from "./guru-kelas";
 import { klienTulis } from "./supabase-pelayan";
 import { belumDipasang } from "./db-belum-sedia";
@@ -76,6 +76,16 @@ export interface StatusKehadiran {
   /** Boleh SAHKAN (kuning → hijau, dibaca extension iSPEL) — GURU KELAS
    *  SAHAJA. "Button sah kehadiran hanya guru kelas je nampak." */
   bolehSahkan: boolean;
+  /**
+   * Boleh PADAM rekod hari ini sepenuhnya — PENTADBIR/ADMIN SAHAJA, bukan
+   * guru kelas. Permintaan pengguna 2 Okt 2026: "boleh tak admin padam dan
+   * edit rekod kehadiran?... mungkin berlaku kesilapan pengisian, takut
+   * ada konflik antara kelas." Lebih ketat daripada `bolehSahkan` sengaja —
+   * guru kelas boleh sunting/sahkan rekod SENDIRI tapi tidak padam terus;
+   * padam hanya untuk betulkan kesilapan (cth tersalah kelas) yang perlu
+   * pandangan pentadbir.
+   */
+  bolehPadam: boolean;
   disahkanOleh: string | null;
   disahkanPada: string | null;
   tidakHadir: TidakHadirMurid[];
@@ -118,13 +128,17 @@ export async function senaraiMuridKelas(labelKelas: string): Promise<MuridRoster
 
 /** Status kehadiran (draf/disahkan) bagi satu kelas + tarikh. */
 export async function statusKehadiran(tarikh: string, labelKelas: string): Promise<StatusKehadiran> {
-  const kosong = { belumSedia: false, boleh: false, bolehSahkan: false, disahkanOleh: null, disahkanPada: null, tidakHadir: [] };
+  const kosong = { belumSedia: false, boleh: false, bolehSahkan: false, bolehPadam: false, disahkanOleh: null, disahkanPada: null, tidakHadir: [] };
   const saya = await pengguna();
   if (!saya?.peranan) return kosong;
   sahTarikh(tarikh);
   // SESIAPA guru log masuk boleh simpan draf (guru subjek termasuk) — hanya
-  // SAHKAN yang dikhaskan guru kelas. Lihat nota penuh pada StatusKehadiran.
-  const bolehSahkan = await bolehUrusKelas(labelKelas);
+  // SAHKAN yang dikhaskan guru kelas, dan PADAM dikhaskan pentadbir sahaja.
+  // Lihat nota penuh pada StatusKehadiran.
+  const [bolehSahkan, bolehPadam] = await Promise.all([
+    bolehUrusKelas(labelKelas),
+    bolehBuat("urus_guru_kelas"),
+  ]);
 
   const sesi = await tahunSesiAktif();
   const db = klienTulis();
@@ -141,14 +155,14 @@ export async function statusKehadiran(tarikh: string, labelKelas: string): Promi
     ]);
     const emelSah = status[0]?.disahkan_oleh ?? null;
     return {
-      belumSedia: false, boleh: true, bolehSahkan,
+      belumSedia: false, boleh: true, bolehSahkan, bolehPadam,
       disahkanOleh: emelSah ? await namaGuru(db, emelSah) : null,
       disahkanPada: status[0]?.disahkan_pada ?? null,
       tidakHadir,
     };
   } catch (e) {
     if (belumDipasang(e, "pbd_kehadiran_status", "pbd_kehadiran_murid")) {
-      return { belumSedia: true, boleh: true, bolehSahkan, disahkanOleh: null, disahkanPada: null, tidakHadir: [] };
+      return { belumSedia: true, boleh: true, bolehSahkan, bolehPadam, disahkanOleh: null, disahkanPada: null, tidakHadir: [] };
     }
     return kosong;
   }
@@ -331,4 +345,41 @@ export async function bukaSemulaKehadiran(tarikh: string, labelKelas: string): P
   }
   revalidatePath("/kawalan-kelas");
   return { ok: true, mesej: "Dibuka semula — boleh disunting." };
+}
+
+/**
+ * Padam rekod Kehadiran Murid SEPENUHNYA (status + setiap murid) bagi satu
+ * (kelas, tarikh) — PENTADBIR/ADMIN SAHAJA, bukan guru kelas. Permintaan
+ * pengguna 2 Okt 2026: "boleh tak admin padam dan edit rekod kehadiran?...
+ * mungkin berlaku kesilapan pengisian, takut ada konflik antara kelas."
+ *
+ * Lebih ketat daripada sahkan/buka semula (yang guru kelas sendiri pun
+ * boleh) — padam ialah tindakan tidak boleh patah balik, jadi dikhaskan
+ * peranan yang sudah ada `urus_guru_kelas` (sama tahap kebenaran dengan
+ * padam Kawalan Kelas sedia ada).
+ */
+export async function padamKehadiranMurid(tarikh: string, labelKelas: string): Promise<{ ok: boolean; mesej: string }> {
+  const saya = await pengguna();
+  if (!saya?.peranan) return { ok: false, mesej: "Tiada kebenaran." };
+  if (!(await bolehBuat("urus_guru_kelas"))) return { ok: false, mesej: "Hanya pentadbir boleh padam rekod ini." };
+  sahTarikh(tarikh);
+
+  const sesi = await tahunSesiAktif();
+  const db = klienTulis();
+  try {
+    await Promise.all([
+      db.minta(
+        `pbd_kehadiran_status?tahun_sesi=eq.${sesi}&tarikh=eq.${tarikh}&kelas=eq.${encodeURIComponent(labelKelas)}`,
+        { method: "DELETE", headers: { Prefer: "return=minimal" } },
+      ),
+      db.minta(
+        `pbd_kehadiran_murid?tahun_sesi=eq.${sesi}&tarikh=eq.${tarikh}&kelas=eq.${encodeURIComponent(labelKelas)}`,
+        { method: "DELETE", headers: { Prefer: "return=minimal" } },
+      ),
+    ]);
+  } catch (e) {
+    return { ok: false, mesej: e instanceof Error ? e.message : "Gagal memadam." };
+  }
+  revalidatePath("/kawalan-kelas");
+  return { ok: true, mesej: "Rekod kehadiran hari ini dipadam." };
 }
