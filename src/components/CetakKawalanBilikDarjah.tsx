@@ -205,16 +205,48 @@ export default function CetakKawalanBilikDarjah({
   );
 }
 
-/** Baris borang daripada set waktu kelas + rekod hari itu. */
+type RekodBaris = {
+  subjek: string; masa_masuk: string | null; guru_nama: string; relief: boolean;
+  guru_relief_untuk: string | null; bil_hadir: number | null; bil_murid: number | null;
+  dicipta?: string;
+};
+
+/**
+ * Baris borang daripada set waktu kelas + rekod hari itu.
+ *
+ * DUA LARIAN padanan — bukan satu:
+ *  1. Tepat ikut `masa_masuk` (guru taip masa masuk sebenar).
+ *  2. Rekod yang TIADA masa_masuk (medan PILIHAN, selalu tertinggal kosong)
+ *     diisi ke slot KOSONG yang berbaki, ikut urutan dicipta. Tanpa larian
+ *     kedua ini, rekod sedemikian tidak pernah sepadan `masa_masuk` mana-mana
+ *     slot (rentetan kosong "" tidak sama dengan sebarang "07:30" dsb.) dan
+ *     HILANG senyap daripada jadual walaupun wujud dalam pangkalan data —
+ *     laporan pengguna 3 Okt 2026: "saya dah buat 2 rekod kehadiran, tapi
+ *     ia hanya keluar 1 sahaja."
+ */
 export function barisDariWaktu(
   senaraiWaktu: Waktu[],
-  rekod: { subjek: string; masa_masuk: string | null; guru_nama: string; relief: boolean; guru_relief_untuk: string | null; bil_hadir: number | null; bil_murid: number | null }[],
+  rekod: RekodBaris[],
 ): BarisWaktuBorang[] {
+  const dipakai = new Set<RekodBaris>();
+  const slotRekod = new Map<string, RekodBaris>();
+
+  for (const w of senaraiWaktu) {
+    if (w.rehat) continue;
+    const r = rekod.find((x) => !dipakai.has(x) && x.masa_masuk && x.masa_masuk.slice(0, 5) === w.mula);
+    if (r) { slotRekod.set(w.id, r); dipakai.add(r); }
+  }
+
+  const berbaki = rekod.filter((x) => !dipakai.has(x))
+    .sort((a, b) => (a.dicipta ?? "").localeCompare(b.dicipta ?? ""));
+  for (const w of senaraiWaktu) {
+    if (w.rehat || slotRekod.has(w.id)) continue;
+    const r = berbaki.shift();
+    if (r) slotRekod.set(w.id, r);
+  }
+
   return senaraiWaktu.map((w) => {
-    // Rekod dipadankan mengikut waktu MULA. Guru menaip masa masuk sebenar,
-    // jadi padanan tepat sahaja — meneka slot terdekat akan meletakkan
-    // subjek pada waktu yang salah.
-    const r = rekod.find((x) => (x.masa_masuk ?? "").slice(0, 5) === w.mula);
+    const r = slotRekod.get(w.id);
     /* Jam 12 SEPERTI BORANG KERTAS: waktu terakhir ditulis "12.30-1.00",
        bukan "12.30-13.00". Borang yang menulis jam 24 memaksa guru
        menterjemahnya setiap kali. */
