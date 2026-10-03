@@ -8,6 +8,7 @@ import { kelasBolehSunting } from "./guru-kelas";
 import { klienTulis } from "./supabase-pelayan";
 import { belumDipasang } from "./db-belum-sedia";
 import { sahTarikh, sahUuid } from "./sah";
+import { hariIniMY } from "@/data/tarikh-my";
 
 /**
  * Kehadiran murid satu-satu setiap hari — bahagian BAHARU dalam kad
@@ -63,7 +64,18 @@ export interface TidakHadirMurid {
 
 export interface StatusKehadiran {
   belumSedia: boolean;
+  /**
+   * Boleh SIMPAN DRAF — SESIAPA guru log masuk (bukan guru kelas sahaja).
+   * Permintaan pengguna 2 Okt 2026: "guru subjek boleh simpan perubahan
+   * sekiranya kehadiran murid telah diisi, namun jika belum diisi,
+   * seorang guru kena isi dahulu dan simpan draf." Guru subjek yang nampak
+   * murid tidak hadir semasa period mereka boleh terus tambah/kemaskini —
+   * tak perlu tunggu guru kelas.
+   */
   boleh: boolean;
+  /** Boleh SAHKAN (kuning → hijau, dibaca extension iSPEL) — GURU KELAS
+   *  SAHAJA. "Button sah kehadiran hanya guru kelas je nampak." */
+  bolehSahkan: boolean;
   disahkanOleh: string | null;
   disahkanPada: string | null;
   tidakHadir: TidakHadirMurid[];
@@ -106,11 +118,13 @@ export async function senaraiMuridKelas(labelKelas: string): Promise<MuridRoster
 
 /** Status kehadiran (draf/disahkan) bagi satu kelas + tarikh. */
 export async function statusKehadiran(tarikh: string, labelKelas: string): Promise<StatusKehadiran> {
-  const kosong = { belumSedia: false, boleh: false, disahkanOleh: null, disahkanPada: null, tidakHadir: [] };
+  const kosong = { belumSedia: false, boleh: false, bolehSahkan: false, disahkanOleh: null, disahkanPada: null, tidakHadir: [] };
   const saya = await pengguna();
   if (!saya?.peranan) return kosong;
-  if (!(await bolehUrusKelas(labelKelas))) return kosong;
   sahTarikh(tarikh);
+  // SESIAPA guru log masuk boleh simpan draf (guru subjek termasuk) — hanya
+  // SAHKAN yang dikhaskan guru kelas. Lihat nota penuh pada StatusKehadiran.
+  const bolehSahkan = await bolehUrusKelas(labelKelas);
 
   const sesi = await tahunSesiAktif();
   const db = klienTulis();
@@ -127,16 +141,80 @@ export async function statusKehadiran(tarikh: string, labelKelas: string): Promi
     ]);
     const emelSah = status[0]?.disahkan_oleh ?? null;
     return {
-      belumSedia: false, boleh: true,
+      belumSedia: false, boleh: true, bolehSahkan,
       disahkanOleh: emelSah ? await namaGuru(db, emelSah) : null,
       disahkanPada: status[0]?.disahkan_pada ?? null,
       tidakHadir,
     };
   } catch (e) {
     if (belumDipasang(e, "pbd_kehadiran_status", "pbd_kehadiran_murid")) {
-      return { belumSedia: true, boleh: true, disahkanOleh: null, disahkanPada: null, tidakHadir: [] };
+      return { belumSedia: true, boleh: true, bolehSahkan, disahkanOleh: null, disahkanPada: null, tidakHadir: [] };
     }
     return kosong;
+  }
+}
+
+export interface LogKehadiranMurid {
+  tarikh: string;
+  kelas: string;
+  disahkanOleh: string | null;
+  disahkanPada: string;
+  bilTidakHadir: number;
+}
+
+/**
+ * Senarai hari yang SUDAH DISAHKAN, untuk digabung ke "Log Terkini" di
+ * Kawalan Kelas — permintaan pengguna 2 Okt 2026: "tambah rekod kehadiran
+ * digabungkan bersama dengan rekod kawalan kelas... ia kena sentiasa tally
+ * untuk dimasukkan ke dalam borang rekod kawalan kelas."
+ *
+ * Sebelum ini Kehadiran Murid (pbd_kehadiran_status/_murid) dan Kawalan
+ * Kelas (pbd_kawalan_kelas) hidup dalam jadual BERASINGAN sepenuhnya, dan
+ * Log Terkini hanya baca yang kedua — guru kelas yang sahkan Kehadiran
+ * Murid tidak pernah nampak rekod itu dalam log, walaupun ia berjaya
+ * (extension boleh tarik), menjadikannya kelihatan "hilang".
+ *
+ * Hanya hari DISAHKAN sahaja (draf tidak disertakan — sepadan peraturan
+ * sedia ada extension hanya baca hari disahkan).
+ */
+export async function senaraiKehadiranMuridLog(tahun_sesi: number, hari: number = 30): Promise<LogKehadiranMurid[]> {
+  const saya = await pengguna();
+  if (!saya?.peranan) return [];
+
+  const sejakIso = hariIniMY(-hari);
+  const db = klienTulis();
+  try {
+    const [status, murid] = await Promise.all([
+      bacaSemua<{ tarikh: string; kelas: string; disahkan_oleh: string | null; disahkan_pada: string }>(
+        `pbd_kehadiran_status?select=tarikh,kelas,disahkan_oleh,disahkan_pada&tahun_sesi=eq.${tahun_sesi}` +
+          `&tarikh=gte.${sejakIso}&disahkan_pada=not.is.null&order=tarikh.desc`,
+      ),
+      bacaSemua<{ tarikh: string; kelas: string }>(
+        `pbd_kehadiran_murid?select=tarikh,kelas&tahun_sesi=eq.${tahun_sesi}&tarikh=gte.${sejakIso}`,
+      ),
+    ]);
+    if (!status.length) return [];
+
+    const kiraan = new Map<string, number>();
+    for (const m of murid) {
+      const kunci = `${m.tarikh}|${m.kelas}`;
+      kiraan.set(kunci, (kiraan.get(kunci) ?? 0) + 1);
+    }
+
+    // Nama guru sebenar, bukan emel mentah — satu panggilan sahaja per
+    // emel unik (bukan per baris) supaya tidak N+1 bila banyak hari.
+    const emelUnik = [...new Set(status.map((s) => s.disahkan_oleh).filter((e): e is string => !!e))];
+    const namaIkutEmel = new Map(await Promise.all(emelUnik.map(async (e) => [e, await namaGuru(db, e)] as const)));
+
+    return status.map((s) => ({
+      tarikh: s.tarikh, kelas: s.kelas,
+      disahkanOleh: s.disahkan_oleh ? (namaIkutEmel.get(s.disahkan_oleh) ?? s.disahkan_oleh) : null,
+      disahkanPada: s.disahkan_pada,
+      bilTidakHadir: kiraan.get(`${s.tarikh}|${s.kelas}`) ?? 0,
+    }));
+  } catch (e) {
+    if (belumDipasang(e, "pbd_kehadiran_status", "pbd_kehadiran_murid")) return [];
+    throw e;
   }
 }
 
@@ -151,6 +229,12 @@ export async function statusKehadiran(tarikh: string, labelKelas: string): Promi
  * tidak perlu langkah tambahan bila terjumpa kesilapan. `disahkan_pada`
  * TIDAK disentuh oleh fungsi ini — sunting kandungan tidak membatalkan
  * pengesahan; `sahkanKehadiran()` sahaja yang menetapkannya.
+ *
+ * SESIAPA guru log masuk boleh simpan draf — BUKAN guru kelas sahaja.
+ * Permintaan pengguna 2 Okt 2026: guru subjek yang nampak murid tidak
+ * hadir semasa period mereka patut boleh terus tambah/kemaskini draf,
+ * sama seperti `hantarKawalanKelas()` (log bersama semua guru). Kawalan
+ * sebenar ada pada `sahkanKehadiran()` — SAHAJA guru kelas boleh sahkan.
  */
 export async function simpanTidakHadir(
   tarikh: string, labelKelas: string,
@@ -158,7 +242,6 @@ export async function simpanTidakHadir(
 ): Promise<{ ok: boolean; mesej: string }> {
   const saya = await pengguna();
   if (!saya?.peranan) return { ok: false, mesej: "Tiada kebenaran." };
-  if (!(await bolehUrusKelas(labelKelas))) return { ok: false, mesej: "Bukan kelas anda." };
   sahTarikh(tarikh);
   senarai.forEach((s) => sahUuid(s.murid_id));
   if (senarai.length > 60) return { ok: false, mesej: "Terlalu banyak murid dalam satu senarai." };
