@@ -6,6 +6,7 @@ import {
   hantarKawalanKelas, padamKawalanKelas, suntingKawalanKelas,
   type BarisKawalanKelas,
 } from "@/lib/kawalan-kelas";
+import { type LogKehadiranMurid } from "@/lib/kehadiran-murid";
 import { cartaKehadiranHarian } from "@/lib/kawalan-kelas-carta";
 import PilihCari from "@/components/PilihCari";
 import { SUBJEK } from "@/data/subjek";
@@ -16,7 +17,7 @@ import { mulaCetak } from "@/components/cetak-mudah-alih";
 import PanelKehadiranMurid from "./PanelKehadiranMurid";
 
 export default function PanelKawalanKelas({
-  tahunSesi, kelas, namaGuruKelas, namaGuru, jadual, senarai, tarikhAwal,
+  tahunSesi, kelas, namaGuruKelas, namaGuru, jadual, senarai, senaraiKehadiran, tarikhAwal,
 }: {
   tahunSesi: number;
   kelas: string[];
@@ -26,6 +27,13 @@ export default function PanelKawalanKelas({
   /** Untuk waktu kelas pada Borang Kawalan Bilik Darjah. Null = belum ada. */
   jadual: Jadual | null;
   senarai: BarisKawalanKelas[];
+  /**
+   * Hari Kehadiran Murid yang SUDAH DISAHKAN — digabung ke Log Terkini
+   * sekali (permintaan pengguna 2 Okt 2026: "ia kena sentiasa tally").
+   * Jadual DB berasingan sepenuhnya daripada `senarai` (pbd_kawalan_kelas);
+   * lihat senaraiKehadiranMuridLog() untuk kenapa.
+   */
+  senaraiKehadiran: LogKehadiranMurid[];
   tarikhAwal: string;
 }) {
   const router = useRouter();
@@ -43,6 +51,22 @@ export default function PanelKawalanKelas({
   const [nota, setNota] = useState<{ ok: boolean; teks: string } | null>(null);
 
   const carta = useMemo(() => cartaKehadiranHarian(senarai, kelasPilih), [senarai, kelasPilih]);
+
+  /**
+   * Log Terkini GABUNGAN — Kawalan Bilik Darjah + Kehadiran Murid dalam
+   * SATU senarai disusun ikut tarikh (permintaan pengguna 2 Okt 2026:
+   * "ia kena sentiasa tally"). Dua jadual DB berasingan sepenuhnya
+   * (lihat nota senaraiKehadiranMuridLog()), jadi digabung di sini sahaja
+   * untuk paparan — bukan digabung pada sumber data.
+   */
+  type LogGabung =
+    | { jenis: "kawalan"; tarikh: string; data: BarisKawalanKelas }
+    | { jenis: "kehadiran"; tarikh: string; data: LogKehadiranMurid };
+  const logGabung = useMemo<LogGabung[]>(() => {
+    const a: LogGabung[] = senarai.map((data) => ({ jenis: "kawalan", tarikh: data.tarikh, data }));
+    const b: LogGabung[] = senaraiKehadiran.map((data) => ({ jenis: "kehadiran", tarikh: data.tarikh, data }));
+    return [...a, ...b].sort((x, y) => y.tarikh.localeCompare(x.tarikh));
+  }, [senarai, senaraiKehadiran]);
 
   /**
    * BORANG KAWALAN BILIK DARJAH — tiruan borang kertas sekolah.
@@ -297,7 +321,7 @@ export default function PanelKawalanKelas({
 
       <section className="border-t border-garis pt-8">
         <div className="flex flex-wrap items-baseline justify-between gap-2">
-          <h2 className="text-lg font-bold text-navy-800">Log Terkini ({senarai.length})</h2>
+          <h2 className="text-lg font-bold text-navy-800">Log Terkini ({logGabung.length})</h2>
           {senarai.length > 0 && (
             <button
               type="button"
@@ -341,38 +365,46 @@ export default function PanelKawalanKelas({
             { label: "Disahkan oleh", jawatan: "Penolong Kanan HEM" },
           ]}
         />
-        {senarai.length === 0 && (
+        {logGabung.length === 0 && (
           <p className="mt-4 rounded-xl border border-dashed border-slate-300 bg-white p-5 text-center text-sm text-slate-500">
-            Belum ada rekod kawalan kelas. Rekod pertama anda akan muncul di sini sebaik dihantar.
+            Belum ada rekod. Rekod pertama anda akan muncul di sini sebaik dihantar/disahkan.
           </p>
         )}
         <ul className="mt-4 space-y-2">
-          {senarai.slice(0, 40).map((b) => (
-            <li key={b.id} className="rounded-lg border border-garis bg-white p-3 text-xs">
+          {logGabung.slice(0, 40).map((item) => item.jenis === "kawalan" ? (
+            <li key={`k-${item.data.id}`} className="rounded-lg border border-garis bg-white p-3 text-xs">
               <div className="flex flex-wrap items-start justify-between gap-2">
                 <div className="min-w-0">
-                  <span className="font-semibold text-navy-800">{b.kelas}</span> · {b.subjek} ·{" "}
-                  {new Date(b.tarikh).toLocaleDateString("ms-MY")} · {b.guru_nama}
-                  {b.relief && <span className="ml-1 rounded bg-[#fdf3dc] px-1.5 py-0.5 text-[10px] font-bold text-[#9a6b06]">RELIEF</span>}
-                  {b.masalah_disiplin && <p className="mt-1 text-slate-500">⚠ {b.masalah_disiplin}</p>}
+                  <span className="font-semibold text-navy-800">{item.data.kelas}</span> · {item.data.subjek} ·{" "}
+                  {new Date(item.data.tarikh).toLocaleDateString("ms-MY")} · {item.data.guru_nama}
+                  {item.data.relief && <span className="ml-1 rounded bg-[#fdf3dc] px-1.5 py-0.5 text-[10px] font-bold text-[#9a6b06]">RELIEF</span>}
+                  {item.data.masalah_disiplin && <p className="mt-1 text-slate-500">⚠ {item.data.masalah_disiplin}</p>}
                 </div>
-                {b.boleh_urus ? (
+                {item.data.boleh_urus ? (
                   <div className="flex shrink-0 gap-2">
-                    <button type="button" disabled={sibuk} onClick={() => mulaSunting(b)}
+                    <button type="button" disabled={sibuk} onClick={() => mulaSunting(item.data)}
                       className="min-h-11 touch-manipulation rounded-lg border border-navy-700 px-3 text-xs font-bold text-navy-700 disabled:opacity-50">
                       Sunting
                     </button>
-                    <button type="button" disabled={sibuk} onClick={() => void padam(b)}
+                    <button type="button" disabled={sibuk} onClick={() => void padam(item.data)}
                       className="min-h-11 touch-manipulation rounded-lg border border-[#e7bcbc] px-3 text-xs font-bold text-red-600 disabled:opacity-50">
                       Padam
                     </button>
                   </div>
                 ) : (
                   <span className="shrink-0 text-[11px] italic text-slate-400">
-                    Hanya {b.guru_nama} atau pentadbir boleh sunting
+                    Hanya {item.data.guru_nama} atau pentadbir boleh sunting
                   </span>
                 )}
               </div>
+            </li>
+          ) : (
+            <li key={`h-${item.data.tarikh}-${item.data.kelas}`} className="rounded-lg border border-garis bg-[#f4f8fd] p-3 text-xs">
+              <span className="rounded bg-navy-800 px-1.5 py-0.5 text-[10px] font-bold text-white">KEHADIRAN MURID</span>{" "}
+              <span className="font-semibold text-navy-800">{item.data.kelas}</span> ·{" "}
+              {new Date(item.data.tarikh).toLocaleDateString("ms-MY")} ·{" "}
+              {item.data.bilTidakHadir === 0 ? "semua hadir" : `${item.data.bilTidakHadir} murid tidak hadir`} ·{" "}
+              disahkan oleh {item.data.disahkanOleh ?? "—"}
             </li>
           ))}
         </ul>

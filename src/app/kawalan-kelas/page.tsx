@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { sesiSemasa } from "@/lib/pbd";
 import { senaraiKawalanKelas } from "@/lib/kawalan-kelas";
+import { senaraiKehadiranMuridLog } from "@/lib/kehadiran-murid";
 import { namaGuruKelasSemua, namaGuruUntukPilihan } from "@/lib/guru-kelas";
 import { ambilJadual } from "@/lib/jadual";
 import { semuaKelas, semuaKelasPPKI } from "@/data/kelas";
@@ -16,8 +17,9 @@ export const metadata = { title: "Rekod Kawalan Kelas & Kehadiran" };
  */
 export default async function KawalanKelas() {
   const sesi = (await sesiSemasa())?.tahun_sesi ?? new Date().getFullYear();
-  const [k, namaGuruKelas, namaGuru, jadual] = await Promise.all([
+  const [k, kehadiranMurid, namaGuruKelas, namaGuru, jadual] = await Promise.all([
     senaraiKawalanKelas(sesi),
+    senaraiKehadiranMuridLog(sesi).catch(() => []),
     namaGuruKelasSemua().catch(() => ({}) as Record<string, string>),
     namaGuruUntukPilihan().catch(() => [] as string[]),
     ambilJadual().catch(() => null),
@@ -40,7 +42,7 @@ export default async function KawalanKelas() {
       ) : (
         <PanelKawalanKelas
           tahunSesi={sesi} kelas={kelas} namaGuruKelas={namaGuruKelas} namaGuru={namaGuru} jadual={jadual}
-          senarai={k.senarai} tarikhAwal={hariIniMY()}
+          senarai={k.senarai} senaraiKehadiran={kehadiranMurid} tarikhAwal={hariIniMY()}
         />
       )}
     </main>

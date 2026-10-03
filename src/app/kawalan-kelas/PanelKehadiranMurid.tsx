@@ -25,7 +25,7 @@ export default function PanelKehadiranMurid({ kelas, tarikh }: { kelas: string; 
   const [memuat, setMemuat] = useState(true);
   const [roster, setRoster] = useState<MuridRoster[]>([]);
   const [belumSedia, setBelumSedia] = useState(false);
-  const [boleh, setBoleh] = useState(true);
+  const [bolehSahkan, setBolehSahkan] = useState(true);
   const [disahkanPada, setDisahkanPada] = useState<string | null>(null);
   const [disahkanOleh, setDisahkanOleh] = useState<string | null>(null);
   const [draf, setDraf] = useState<{ murid_id: string; nama_murid: string; kategori: string; sebab: string }[]>([]);
@@ -41,7 +41,7 @@ export default function PanelKehadiranMurid({ kelas, tarikh }: { kelas: string; 
       if (!hidup) return;
       setRoster(r);
       setBelumSedia(s.belumSedia);
-      setBoleh(s.boleh);
+      setBolehSahkan(s.bolehSahkan);
       setDisahkanPada(s.disahkanPada);
       setDisahkanOleh(s.disahkanOleh);
       setDraf(s.tidakHadir.map((t: TidakHadirMurid) => ({ ...t })));
@@ -55,39 +55,6 @@ export default function PanelKehadiranMurid({ kelas, tarikh }: { kelas: string; 
     return (
       <div className="rounded-xl border border-[#e9d9ae] bg-[#fdf9f0] p-4 text-sm leading-relaxed text-[#7a5a12]">
         Ciri Kehadiran Murid belum dipasang — admin perlu jalankan SQL Kehadiran Murid dahulu.
-      </div>
-    );
-  }
-
-  /**
-   * Guru SUBJEK (bukan guru kelas) boleh lawat halaman Kawalan Kelas yang
-   * SAMA (untuk kiraan kehadiran per-period mereka sendiri) — tapi urusan
-   * kategori/sebab + pengesahan hari ini KERJA GURU KELAS sahaja, yang
-   * double-confirm terus dengan ibu bapa. Borang penuh dahulu TERBUKA
-   * untuk sesiapa sahaja yang lawat halaman ini walaupun pelayan menolak
-   * simpanan mereka — guru subjek isi borang dahulu baru nampak ditolak.
-   * Paparan baca-sahaja di sini elak "paksaan" mengisi kerja yang bukan
-   * tugas mereka (laporan pengguna 1 Okt 2026).
-   */
-  if (!boleh) {
-    return (
-      <div className="rounded-xl border border-garis bg-white p-4">
-        <p className="text-sm font-bold text-navy-800">Murid tidak hadir — {tarikh}</p>
-        <p className="mt-1 text-xs text-slate-500">
-          Hanya guru kelas boleh tanda &amp; sahkan kehadiran (disemak terus dengan ibu bapa). Paparan di bawah baca sahaja.
-        </p>
-        {draf.length > 0 ? (
-          <ul className="mt-3 space-y-1.5">
-            {draf.map((d) => (
-              <li key={d.murid_id} className="rounded-lg border border-garis p-3 text-sm">
-                <span className="font-semibold text-navy-800">{d.nama_murid}</span>
-                {d.kategori && <span className="ml-2 text-slate-500">— {d.kategori}{d.sebab ? ` / ${d.sebab}` : ""}</span>}
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p className="mt-3 text-sm text-slate-400">Tiada murid ditanda tidak hadir setakat ini.</p>
-        )}
       </div>
     );
   }
@@ -214,15 +181,21 @@ export default function PanelKehadiranMurid({ kelas, tarikh }: { kelas: string; 
 
       {nota && <p className={`mt-3 text-sm ${nota.ok ? "text-[#167a4b]" : "text-red-600"}`}>{nota.teks}</p>}
 
-      <div className="mt-4 flex flex-wrap gap-2">
+      <div className="mt-4 flex flex-wrap items-center gap-2">
         <button type="button" disabled={sibuk} onClick={() => void simpan()}
           className="min-h-11 touch-manipulation rounded-lg border border-navy-700 px-4 text-sm font-semibold text-navy-700 disabled:opacity-50">
           Simpan draf
         </button>
-        <button type="button" disabled={sibuk} onClick={() => void sahkan()}
-          className="min-h-11 touch-manipulation rounded-lg bg-navy-800 px-4 text-sm font-bold text-white disabled:opacity-50">
-          Sahkan Kehadiran
-        </button>
+        {bolehSahkan ? (
+          <button type="button" disabled={sibuk} onClick={() => void sahkan()}
+            className="min-h-11 touch-manipulation rounded-lg bg-navy-800 px-4 text-sm font-bold text-white disabled:opacity-50">
+            Sahkan Kehadiran
+          </button>
+        ) : (
+          <span className="text-xs italic text-slate-400">
+            Hanya guru kelas boleh sahkan — draf anda tetap tersimpan untuk mereka teruskan.
+          </span>
+        )}
       </div>
     </div>
   );
