@@ -147,7 +147,15 @@ perlu("Extension iSPEL tetap hanya membaca hari disahkan",
 perlu("Padam kehadiran kekal pentadbir sahaja",
   /export async function padamKehadiranMurid[\s\S]{0,400}bolehBuat\("urus_guru_kelas"\)/.test(kehadiranLib));
 perlu("Setiap kad log ada menu tiga titik (Sunting/Padam)",
-  (kawalanUi.match(/<MenuTitik/g) ?? []).length === 2 && kawalanUi.includes('role="menu"') && kawalanUi.includes("aria-haspopup"));
+  (kawalanUi.match(/<MenuTitik/g) ?? []).length === 1 && kawalanUi.includes('role="menu"') && kawalanUi.includes("aria-haspopup"));
+// SATU kad "REKOD KELAS" bagi setiap kelas + tarikh (pengguna, 8 Okt 2026):
+// guru yang masuk dahulu, "Kehadiran Murid" selepasnya dalam senarai pilihan.
+perlu("Log dikumpulkan sebagai kad REKOD KELAS",
+  kawalanUi.includes("REKOD KELAS") && kawalanUi.includes("useMemo<KumpulanLog[]>"));
+perlu("Sunting memilih rekod melalui senarai: guru dahulu, kehadiran kemudian",
+  /pilihanSunting = \[\.\.\.milikSaya\.map\([^\n]*\{ nilai: KEHADIRAN, label: "Kehadiran Murid" \}\]/.test(kawalanUi));
+perlu("Sunting rekod masuk kelas berlaku di dalam kad, bukan di borang atas",
+  kawalanUi.includes("<SuntingRekodMasuk") && !kawalanUi.includes("mulaSunting") && !kawalanUi.includes("window.scrollTo"));
 perlu("Padam dari log meminta pengesahan dahulu",
   (kawalanUi.match(/window\.confirm\(/g) ?? []).length >= 2);
 const guruKelasLib = baca("src/lib/guru-kelas.ts");

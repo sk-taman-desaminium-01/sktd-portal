@@ -47,8 +47,9 @@ export default function PanelKawalanKelas({
   const [bilHadir, setBilHadir] = useState("");
   const [bilMurid, setBilMurid] = useState("");
   const [sibuk, setSibuk] = useState(false);
-  const [sunting, setSunting] = useState<string | null>(null);
   const [nota, setNota] = useState<{ ok: boolean; teks: string } | null>(null);
+  /** Kad log yang sedang disunting/dipadam, dan rekod mana di dalamnya yang dipilih. */
+  const [tindakan, setTindakan] = useState<{ kunci: string; mod: "sunting" | "padam"; pilih: string } | null>(null);
   /** Kunci kad log yang menunya sedang terbuka — satu sahaja pada satu masa. */
   const [menuBuka, setMenuBuka] = useState<string | null>(null);
   /** Nota bagi tindakan dari Log Terkini — dipapar DI SITU, bukan di borang atas yang di luar skrin. */
@@ -59,19 +60,27 @@ export default function PanelKawalanKelas({
   const carta = useMemo(() => cartaKehadiranHarian(senarai, kelasPilih), [senarai, kelasPilih]);
 
   /**
-   * Log Terkini GABUNGAN — Kawalan Bilik Darjah + Kehadiran Murid dalam
-   * SATU senarai disusun ikut tarikh (permintaan pengguna 2 Okt 2026:
-   * "ia kena sentiasa tally"). Dua jadual DB berasingan sepenuhnya
-   * (lihat nota senaraiKehadiranMuridLog()), jadi digabung di sini sahaja
-   * untuk paparan — bukan digabung pada sumber data.
+   * Log Terkini — SATU KAD "REKOD KELAS" bagi setiap kelas + tarikh
+   * (permintaan pengguna 8 Okt 2026). Kad itu membawa SEMUA guru yang masuk
+   * kelas hari itu DAN kehadiran muridnya, supaya kedua-duanya "sentiasa
+   * tally" (2 Okt 2026) pada satu tempat. Dahulu setiap rekod ialah kad
+   * sendiri dan hanya kehadiran yang berlabel.
+   *
+   * Dua jadual DB kekal berasingan (lihat senaraiKehadiranMuridLog());
+   * ia dikumpulkan di sini untuk paparan sahaja.
    */
-  type LogGabung =
-    | { jenis: "kawalan"; tarikh: string; data: BarisKawalanKelas }
-    | { jenis: "kehadiran"; tarikh: string; data: LogKehadiranMurid };
-  const logGabung = useMemo<LogGabung[]>(() => {
-    const a: LogGabung[] = senarai.map((data) => ({ jenis: "kawalan", tarikh: data.tarikh, data }));
-    const b: LogGabung[] = senaraiKehadiran.map((data) => ({ jenis: "kehadiran", tarikh: data.tarikh, data }));
-    return [...a, ...b].sort((x, y) => y.tarikh.localeCompare(x.tarikh));
+  const logKelas = useMemo<KumpulanLog[]>(() => {
+    const peta = new Map<string, KumpulanLog>();
+    const ambil = (kelas: string, tarikh: string) => {
+      const kunci = `${tarikh}|${kelas}`;
+      let k = peta.get(kunci);
+      if (!k) { k = { kunci, kelas, tarikh, masuk: [], kehadiran: null }; peta.set(kunci, k); }
+      return k;
+    };
+    for (const b of senarai) ambil(b.kelas, b.tarikh).masuk.push(b);
+    for (const h of senaraiKehadiran) ambil(h.kelas, h.tarikh).kehadiran = h;
+    for (const k of peta.values()) k.masuk.sort((a, b) => (a.masa_masuk ?? "99").localeCompare(b.masa_masuk ?? "99") || a.dicipta.localeCompare(b.dicipta));
+    return [...peta.values()].sort((x, y) => y.tarikh.localeCompare(x.tarikh) || x.kelas.localeCompare(y.kelas, "ms", { numeric: true }));
   }, [senarai, senaraiKehadiran]);
 
   /**
@@ -106,13 +115,11 @@ export default function PanelKawalanKelas({
         bil_hadir: bilHadir ? Number(bilHadir) : undefined,
         bil_murid: bilMurid ? Number(bilMurid) : undefined,
       };
-      const r = sunting
-        ? await suntingKawalanKelas(sunting, input)
-        : await hantarKawalanKelas(input);
+      const r = await hantarKawalanKelas(input);
       setNota({ ok: r.ok, teks: r.mesej });
       if (r.ok) {
         setSubjek(""); setMasaMasuk(""); setRelief(false); setReliefUntuk("");
-        setMasalah(""); setBilHadir(""); setBilMurid(""); setSunting(null); router.refresh();
+        setMasalah(""); setBilHadir(""); setBilMurid(""); router.refresh();
       }
       setSibuk(false);
     } catch {
@@ -122,39 +129,19 @@ export default function PanelKawalanKelas({
     }
   }
 
-  function mulaSunting(b: BarisKawalanKelas) {
-    setSunting(b.id); setTarikh(b.tarikh); setKelasPilih(b.kelas); setSubjek(b.subjek);
-    setMasaMasuk(b.masa_masuk ?? ""); setRelief(b.relief); setReliefUntuk(b.guru_relief_untuk ?? "");
-    setMasalah(b.masalah_disiplin ?? ""); setBilHadir(b.bil_hadir == null ? "" : String(b.bil_hadir));
-    setBilMurid(b.bil_murid == null ? "" : String(b.bil_murid)); setNota(null);
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  }
-
-  function batalSunting() {
-    setSunting(null); setSubjek(""); setMasaMasuk(""); setRelief(false); setReliefUntuk("");
-    setMasalah(""); setBilHadir(""); setBilMurid(""); setNota(null);
-  }
-
   async function padam(b: BarisKawalanKelas) {
     if (!window.confirm(`Padam rekod ${b.subjek} untuk ${b.kelas}?`)) return;
     try {
       setSibuk(true); setNotaLog(null);
       const r = await padamKawalanKelas(b.id);
       setNotaLog({ ok: r.ok, teks: r.mesej });
-      if (r.ok) { if (sunting === b.id) batalSunting(); router.refresh(); }
+      if (r.ok) { setTindakan(null); router.refresh(); }
       setSibuk(false);
     } catch {
       setNotaLog({ ok: false, teks: "Sambungan terputus atau pelayan tidak menjawab. Cuba lagi." });
     } finally {
       setSibuk(false);
     }
-  }
-
-  /** Sunting kehadiran = buka hari itu dalam panel Kehadiran Murid di atas. */
-  function suntingKehadiran(h: LogKehadiranMurid) {
-    setKelasPilih(h.kelas); setTarikh(h.tarikh); setNotaLog(null);
-    // Panel hanya wujud selepas kelas ditetapkan — tunggu satu lukisan dahulu.
-    requestAnimationFrame(() => document.getElementById("kehadiran-murid")?.scrollIntoView({ behavior: "smooth", block: "start" }));
   }
 
   async function padamKehadiran(h: LogKehadiranMurid) {
@@ -164,7 +151,7 @@ export default function PanelKawalanKelas({
       setSibuk(true); setNotaLog(null);
       const r = await padamKehadiranMurid(h.tarikh, h.kelas);
       setNotaLog({ ok: r.ok, teks: r.ok ? `Rekod kehadiran ${h.kelas} pada ${tarikhMY} dipadam.` : r.mesej });
-      if (r.ok) { setVersiKehadiran((v) => v + 1); router.refresh(); }
+      if (r.ok) { setTindakan(null); setVersiKehadiran((v) => v + 1); router.refresh(); }
     } catch {
       setNotaLog({ ok: false, teks: "Sambungan terputus atau pelayan tidak menjawab. Cuba lagi." });
     } finally {
@@ -176,8 +163,7 @@ export default function PanelKawalanKelas({
     <div className="mt-6 space-y-10">
       <section className="rounded-xl border border-garis bg-white p-5">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <h2 className="text-lg font-bold text-navy-800">{sunting ? "Sunting Rekod Masuk Kelas" : "Rekod Masuk Kelas"}</h2>
-          {sunting && <button type="button" onClick={batalSunting} className="min-h-11 touch-manipulation px-1 text-xs font-semibold text-navy-700 underline">Batal sunting</button>}
+          <h2 className="text-lg font-bold text-navy-800">Rekod Masuk Kelas</h2>
         </div>
         <div className="mt-4 grid gap-4 sm:grid-cols-2">
           <Medan label="Tarikh">
@@ -247,7 +233,7 @@ export default function PanelKawalanKelas({
         {nota && <p className={`mt-3 text-sm ${nota.ok ? "text-[#167a4b]" : "text-red-600"}`}>{nota.teks}</p>}
         <button type="button" disabled={sibuk || !subjek.trim()} onClick={hantar}
           className="mt-4 min-h-11 touch-manipulation rounded-lg bg-navy-800 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">
-          {sunting ? "Simpan Perubahan" : "Simpan Rekod"}
+          Simpan Rekod
         </button>
       </section>
 
@@ -349,7 +335,7 @@ export default function PanelKawalanKelas({
 
       <section className="border-t border-garis pt-8">
         <div className="flex flex-wrap items-baseline justify-between gap-2">
-          <h2 className="text-lg font-bold text-navy-800">Log Terkini ({logGabung.length})</h2>
+          <h2 className="text-lg font-bold text-navy-800">Log Terkini ({logKelas.length})</h2>
           {senarai.length > 0 && (
             <button
               type="button"
@@ -393,53 +379,110 @@ export default function PanelKawalanKelas({
             { label: "Disahkan oleh", jawatan: "Penolong Kanan HEM" },
           ]}
         />
-        {logGabung.length === 0 && (
+        {logKelas.length === 0 && (
           <p className="mt-4 rounded-xl border border-dashed border-slate-300 bg-white p-5 text-center text-sm text-slate-500">
             Belum ada rekod. Rekod pertama anda akan muncul di sini sebaik dihantar/disahkan.
           </p>
         )}
         {notaLog && <p role="status" className={`mt-3 text-sm ${notaLog.ok ? "text-[#167a4b]" : "text-red-600"}`}>{notaLog.teks}</p>}
         <ul className="mt-4 space-y-2">
-          {logGabung.slice(0, 40).map((item) => item.jenis === "kawalan" ? (
-            <li key={`k-${item.data.id}`} className="rounded-lg border border-garis bg-white py-1.5 pl-3 pr-1 text-xs">
-              <div className="flex items-center justify-between gap-1">
-                <div className="min-w-0 py-1.5">
-                  <span className="font-semibold text-navy-800">{item.data.kelas}</span> · {item.data.subjek} ·{" "}
-                  {new Date(item.data.tarikh).toLocaleDateString("ms-MY")} · {item.data.guru_nama}
-                  {item.data.relief && <span className="ml-1 rounded bg-[#fdf3dc] px-1.5 py-0.5 text-[10px] font-bold text-[#9a6b06]">RELIEF</span>}
-                  {item.data.masalah_disiplin && <p className="mt-1 text-slate-500">⚠ {item.data.masalah_disiplin}</p>}
-                </div>
-                {item.data.boleh_urus && (
+          {logKelas.slice(0, 40).map((g) => {
+            const tarikhMY = new Date(g.tarikh).toLocaleDateString("ms-MY");
+            const milikSaya = g.masuk.filter((b) => b.boleh_urus);
+            const namaRekod = (b: BarisKawalanKelas) => `${b.guru_nama} · ${b.subjek}${b.masa_masuk ? ` · ${b.masa_masuk.slice(0, 5)}` : ""}`;
+            // Urutan disengajakan: guru yang masuk dahulu, kehadiran selepasnya.
+            const pilihanSunting = [...milikSaya.map((b) => ({ nilai: b.id, label: namaRekod(b) })), { nilai: KEHADIRAN, label: "Kehadiran Murid" }];
+            const pilihanPadam = [
+              ...milikSaya.map((b) => ({ nilai: b.id, label: namaRekod(b) })),
+              ...(g.kehadiran?.bolehPadam ? [{ nilai: KEHADIRAN, label: "Kehadiran Murid" }] : []),
+            ];
+            const aktif = tindakan?.kunci === g.kunci ? tindakan : null;
+            const pilihan = aktif?.mod === "padam" ? pilihanPadam : pilihanSunting;
+            const dipilih = aktif ? g.masuk.find((b) => b.id === aktif.pilih) ?? null : null;
+            const tutup = () => { setTindakan(null); setVersiKehadiran((v) => v + 1); router.refresh(); };
+            return (
+              <li key={g.kunci} className="rounded-lg border border-garis bg-white py-1.5 pl-3 pr-1 text-xs">
+                <div className="flex items-start justify-between gap-1">
+                  <div className="min-w-0 py-1.5">
+                    <p>
+                      <span className="rounded bg-navy-800 px-1.5 py-0.5 text-[10px] font-bold text-white">REKOD KELAS</span>{" "}
+                      <span className="font-semibold text-navy-800">{g.kelas}</span> · {tarikhMY} ·{" "}
+                      {g.masuk.length === 0 ? "tiada rekod masuk kelas" : `${g.masuk.length} rekod masuk kelas`}
+                    </p>
+                    {g.masuk.length > 0 && (
+                      <ul className="mt-1.5 space-y-1 text-slate-600">
+                        {g.masuk.map((b) => (
+                          <li key={b.id}>
+                            {namaRekod(b)}
+                            {b.relief && <span className="ml-1 rounded bg-[#fdf3dc] px-1.5 py-0.5 text-[10px] font-bold text-[#9a6b06]">RELIEF</span>}
+                            {b.masalah_disiplin && <span className="block text-slate-500">⚠ {b.masalah_disiplin}</span>}
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                    <p className="mt-1.5 text-slate-600">
+                      <span className="font-semibold text-navy-800">Kehadiran:</span>{" "}
+                      {!g.kehadiran ? "belum diisi" : (
+                        <>
+                          {g.kehadiran.bilTidakHadir === 0 ? "semua hadir" : `${g.kehadiran.bilTidakHadir} murid tidak hadir`} ·{" "}
+                          {g.kehadiran.draf ? "diisi oleh" : "disahkan oleh"} {g.kehadiran.disahkanOleh ?? "—"}
+                          {g.kehadiran.draf && <span className="ml-1 rounded bg-[#fdf3dc] px-1.5 py-0.5 text-[10px] font-bold text-[#7a5a12]">DRAF · BELUM DISAHKAN</span>}
+                        </>
+                      )}
+                    </p>
+                  </div>
                   <MenuTitik
-                    label={`Tindakan untuk rekod ${item.data.kelas} ${item.data.subjek}`}
-                    buka={menuBuka === `k-${item.data.id}`} sibuk={sibuk}
-                    tukar={(b) => setMenuBuka(b ? `k-${item.data.id}` : null)}
-                    sunting={() => mulaSunting(item.data)} padam={() => void padam(item.data)}
+                    label={`Tindakan untuk rekod kelas ${g.kelas} ${tarikhMY}`}
+                    buka={menuBuka === g.kunci} sibuk={sibuk}
+                    tukar={(b) => setMenuBuka(b ? g.kunci : null)}
+                    sunting={() => { setNotaLog(null); setTindakan({ kunci: g.kunci, mod: "sunting", pilih: pilihanSunting[0].nilai }); }}
+                    padam={pilihanPadam.length ? () => { setNotaLog(null); setTindakan({ kunci: g.kunci, mod: "padam", pilih: "" }); } : undefined}
                   />
-                )}
-              </div>
-            </li>
-          ) : (
-            <li key={`h-${item.data.tarikh}-${item.data.kelas}`} className={`rounded-lg border py-1.5 pl-3 pr-1 text-xs ${item.data.draf ? "border-[#e9d9ae] bg-[#fdf9f0]" : "border-garis bg-[#f4f8fd]"}`}>
-              <div className="flex items-center justify-between gap-1">
-                <div className="min-w-0 py-1.5">
-                  <span className="rounded bg-navy-800 px-1.5 py-0.5 text-[10px] font-bold text-white">KEHADIRAN MURID</span>{" "}
-                  {item.data.draf && <><span className="rounded bg-[#fdf3dc] px-1.5 py-0.5 text-[10px] font-bold text-[#7a5a12]">DRAF · BELUM DISAHKAN</span>{" "}</>}
-                  <span className="font-semibold text-navy-800">{item.data.kelas}</span> ·{" "}
-                  {new Date(item.data.tarikh).toLocaleDateString("ms-MY")} ·{" "}
-                  {item.data.bilTidakHadir === 0 ? "semua hadir" : `${item.data.bilTidakHadir} murid tidak hadir`} ·{" "}
-                  {item.data.draf ? "diisi oleh" : "disahkan oleh"} {item.data.disahkanOleh ?? "—"}
                 </div>
-                <MenuTitik
-                  label={`Tindakan untuk kehadiran ${item.data.kelas} ${new Date(item.data.tarikh).toLocaleDateString("ms-MY")}`}
-                  buka={menuBuka === `h-${item.data.tarikh}-${item.data.kelas}`} sibuk={sibuk}
-                  tukar={(b) => setMenuBuka(b ? `h-${item.data.tarikh}-${item.data.kelas}` : null)}
-                  sunting={() => suntingKehadiran(item.data)}
-                  padam={item.data.bolehPadam ? () => void padamKehadiran(item.data) : undefined}
-                />
-              </div>
-            </li>
-          ))}
+
+                {aktif && (
+                  <div className="mb-1.5 mr-2 mt-1 rounded-lg border border-garis bg-[#f8fafc] p-3">
+                    <div className="flex flex-wrap items-end justify-between gap-3">
+                      <label className="block min-w-0 flex-1 text-sm">
+                        <span className="mb-1 block font-semibold text-navy-800">
+                          {aktif.mod === "padam" ? "Rekod yang hendak dipadam" : "Rekod yang hendak disunting"}
+                        </span>
+                        <select
+                          value={aktif.pilih}
+                          onChange={(e) => setTindakan({ ...aktif, pilih: e.target.value })}
+                          className="block min-h-11 w-full min-w-0 max-w-full rounded-lg border border-garis bg-white px-3 py-2 text-sm"
+                        >
+                          {aktif.mod === "padam" && <option value="">— Pilih rekod —</option>}
+                          {pilihan.map((p) => <option key={p.nilai} value={p.nilai}>{p.label}</option>)}
+                        </select>
+                      </label>
+                      <button type="button" onClick={tutup}
+                        className="min-h-11 touch-manipulation rounded-lg border border-garis bg-white px-4 text-sm font-semibold text-navy-800">
+                        Tutup
+                      </button>
+                    </div>
+
+                    {aktif.mod === "padam" ? (
+                      <button type="button" disabled={sibuk || !aktif.pilih}
+                        onClick={() => { if (aktif.pilih === KEHADIRAN) { if (g.kehadiran) void padamKehadiran(g.kehadiran); } else if (dipilih) void padam(dipilih); }}
+                        className="mt-3 min-h-11 w-full touch-manipulation rounded-lg bg-red-600 px-4 text-sm font-semibold text-white disabled:opacity-50 sm:w-auto">
+                        Padam rekod ini
+                      </button>
+                    ) : aktif.pilih === KEHADIRAN ? (
+                      <div className="mt-3">
+                        <PanelKehadiranMurid key={`log-${g.kunci}`} kelas={g.kelas} tarikh={g.tarikh} />
+                      </div>
+                    ) : dipilih ? (
+                      <SuntingRekodMasuk
+                        key={dipilih.id} baris={dipilih} tahunSesi={tahunSesi} kelas={kelas} namaGuru={namaGuru}
+                        siap={(mesej) => { setNotaLog({ ok: true, teks: mesej }); setTindakan(null); router.refresh(); }}
+                      />
+                    ) : null}
+                  </div>
+                )}
+              </li>
+            );
+          })}
         </ul>
       </section>
     </div>
@@ -452,6 +495,102 @@ function Medan({ label, children }: { label: string; children: React.ReactNode }
       <span className="mb-1 block font-semibold text-navy-800">{label}</span>
       {children}
     </label>
+  );
+}
+
+/** Nilai pilihan "Kehadiran Murid" dalam senarai rekod sesuatu kad. */
+const KEHADIRAN = "kehadiran";
+
+/** Satu kad Log Terkini: semua rekod masuk kelas + kehadiran bagi SATU kelas pada SATU tarikh. */
+interface KumpulanLog {
+  kunci: string; kelas: string; tarikh: string;
+  masuk: BarisKawalanKelas[];
+  kehadiran: LogKehadiranMurid | null;
+}
+
+/**
+ * Sunting SATU rekod masuk kelas, di dalam kad lognya sendiri.
+ *
+ * Dahulu Sunting memuatkan rekod ke borang "Rekod Masuk Kelas" di ATAS
+ * halaman dan menatal ke sana — pentadbir hilang tempat dalam log. Kini
+ * borang kecil ini terbuka di bawah kad, dengan keadaannya sendiri, dan
+ * borang atas kekal untuk rekod BAHARU sahaja.
+ */
+function SuntingRekodMasuk({ baris, tahunSesi, kelas, namaGuru, siap }: {
+  baris: BarisKawalanKelas; tahunSesi: number; kelas: string[]; namaGuru: string[];
+  siap: (mesej: string) => void;
+}) {
+  const [tarikh, setTarikh] = useState(baris.tarikh);
+  const [kelasPilih, setKelasPilih] = useState(baris.kelas);
+  const [subjek, setSubjek] = useState(baris.subjek);
+  const [masaMasuk, setMasaMasuk] = useState(baris.masa_masuk?.slice(0, 5) ?? "");
+  const [relief, setRelief] = useState(baris.relief);
+  const [reliefUntuk, setReliefUntuk] = useState(baris.guru_relief_untuk ?? "");
+  const [masalah, setMasalah] = useState(baris.masalah_disiplin ?? "");
+  const [bilHadir, setBilHadir] = useState(baris.bil_hadir == null ? "" : String(baris.bil_hadir));
+  const [bilMurid, setBilMurid] = useState(baris.bil_murid == null ? "" : String(baris.bil_murid));
+  const [sibuk, setSibuk] = useState(false);
+  const [ralat, setRalat] = useState<string | null>(null);
+  const medan = "block w-full min-w-0 max-w-full rounded-lg border border-garis bg-white px-3 py-2 text-sm";
+
+  async function simpan() {
+    try {
+      setSibuk(true); setRalat(null);
+      const r = await suntingKawalanKelas(baris.id, {
+        tahun_sesi: tahunSesi, tarikh, kelas: kelasPilih, subjek,
+        masa_masuk: masaMasuk, relief, guru_relief_untuk: reliefUntuk, masalah_disiplin: masalah,
+        bil_hadir: bilHadir ? Number(bilHadir) : undefined,
+        bil_murid: bilMurid ? Number(bilMurid) : undefined,
+      });
+      if (r.ok) siap(r.mesej); else setRalat(r.mesej);
+    } catch {
+      setRalat("Sambungan terputus atau pelayan tidak menjawab. Cuba lagi.");
+    } finally {
+      setSibuk(false);
+    }
+  }
+
+  return (
+    <div className="mt-3">
+      <p className="text-sm font-semibold text-navy-800">Guru masuk: {baris.guru_nama}</p>
+      <div className="mt-3 grid gap-3 sm:grid-cols-2">
+        <Medan label="Tarikh">
+          <input type="date" value={tarikh} onChange={(e) => setTarikh(e.target.value)} className={medan} />
+        </Medan>
+        <Medan label="Kelas">
+          <PilihCari id={`sunting-kelas-${baris.id}`} label="Kelas" sembunyiLabel nilai={kelasPilih} tukar={setKelasPilih} placeholder="Taip kelas, cth: 4 bes" pilihan={kelas.map((k) => ({ nilai: k, label: k }))} />
+        </Medan>
+        <Medan label="Subjek">
+          <PilihCari id={`sunting-subjek-${baris.id}`} label="Mata pelajaran" sembunyiLabel nilai={subjek} tukar={setSubjek} placeholder="Taip mata pelajaran…" pilihan={SUBJEK.map((x) => ({ nilai: x.nama, label: x.nama, nota: x.kod }))} />
+        </Medan>
+        <Medan label="Masa Masuk">
+          <input type="time" value={masaMasuk} onChange={(e) => setMasaMasuk(e.target.value)} className={medan} />
+        </Medan>
+        <Medan label="Bilangan Hadir">
+          <input type="number" min={0} value={bilHadir} onChange={(e) => setBilHadir(e.target.value)} className={medan} />
+        </Medan>
+        <Medan label="Jumlah Murid Kelas">
+          <input type="number" min={0} value={bilMurid} onChange={(e) => setBilMurid(e.target.value)} className={medan} />
+        </Medan>
+      </div>
+      <label className="mt-3 flex min-h-11 items-center gap-2 text-sm">
+        <input type="checkbox" checked={relief} onChange={(e) => setRelief(e.target.checked)} />
+        Ganti/Relief guru yang tidak hadir
+      </label>
+      {relief && (
+        <PilihCari id={`sunting-relief-${baris.id}`} label="Ganti untuk guru" nilai={reliefUntuk} tukar={setReliefUntuk} placeholder="Taip nama guru…" pilihan={namaGuru.map((n) => ({ nilai: n, label: n }))} />
+      )}
+      <div className="mt-3">
+        <Medan label="Masalah Disiplin Dalam Kelas (jika ada)">
+          <textarea value={masalah} onChange={(e) => setMasalah(e.target.value)} rows={2} className={medan} />
+        </Medan>
+      </div>
+      {ralat && <p role="alert" className="mt-3 text-sm text-red-600">{ralat}</p>}
+      <button type="button" disabled={sibuk || !subjek.trim()} onClick={simpan}
+        className="mt-3 min-h-11 w-full touch-manipulation rounded-lg bg-navy-800 px-4 text-sm font-semibold text-white disabled:opacity-50 sm:w-auto">
+        {sibuk ? "Menyimpan…" : "Simpan Perubahan"}
+      </button>
+    </div>
   );
 }
 
