@@ -172,8 +172,15 @@ export interface LogKehadiranMurid {
   tarikh: string;
   kelas: string;
   disahkanOleh: string | null;
-  disahkanPada: string;
+  disahkanPada: string | null;
   bilTidakHadir: number;
+  /**
+   * DRAF — murid tidak hadir sudah diisi tetapi guru kelas belum sahkan.
+   * `disahkanOleh` ketika itu ialah nama orang yang MENGISI draf. Ditambah
+   * 8 Okt 2026: draf dahulu hanya kelihatan jika kelas DAN tarikhnya dipilih
+   * semula di panel atas, jadi guru menyangka draf mereka hilang.
+   */
+  draf: boolean;
   /** Pentadbir/admin sahaja — sama seperti `padamKehadiranMurid()`. */
   bolehPadam: boolean;
 }
@@ -190,8 +197,9 @@ export interface LogKehadiranMurid {
  * Murid tidak pernah nampak rekod itu dalam log, walaupun ia berjaya
  * (extension boleh tarik), menjadikannya kelihatan "hilang".
  *
- * Hanya hari DISAHKAN sahaja (draf tidak disertakan — sepadan peraturan
- * sedia ada extension hanya baca hari disahkan).
+ * DRAF turut disenaraikan sejak 8 Okt 2026, berlabel jelas `draf: true` —
+ * supaya guru nampak apa yang belum disahkan. Extension iSPEL tidak
+ * terjejas: `GET /api/kehadiran` tetap hanya membaca hari yang disahkan.
  *
  * SIAPA NAMPAK APA (8 Okt 2026) — sama seperti `senaraiKawalanKelas()`:
  * pentadbir semua kelas; guru kelas kelasnya sendiri; guru lain hanya hari
@@ -204,7 +212,7 @@ export async function senaraiKehadiranMuridLog(tahun_sesi: number, hari: number 
   const sejakIso = hariIniMY(-hari);
   const db = klienTulis();
   try {
-    const [semuaStatus, murid, kelasSaya_, bolehPadam] = await Promise.all([
+    const [disahkan, murid, kelasSaya_, bolehPadam] = await Promise.all([
       bacaSemua<{ tarikh: string; kelas: string; disahkan_oleh: string | null; disahkan_pada: string }>(
         `pbd_kehadiran_status?select=tarikh,kelas,disahkan_oleh,disahkan_pada&tahun_sesi=eq.${tahun_sesi}` +
           `&tarikh=gte.${sejakIso}&disahkan_pada=not.is.null&order=tarikh.desc,kelas.asc`,
@@ -215,15 +223,20 @@ export async function senaraiKehadiranMuridLog(tahun_sesi: number, hari: number 
       kelasBolehSunting(),
       bolehBuat("urus_guru_kelas"),
     ]);
-    if (!semuaStatus.length) return [];
-
     const kiraan = new Map<string, number>();
     const sayaIsi = new Set<string>();
+    const sudahSah = new Set(disahkan.map((s) => `${s.tarikh}|${s.kelas}`));
+    // Draf = ada murid tidak hadir, tiada pengesahan. Draf "semua hadir"
+    // tidak meninggalkan sebarang baris, jadi ia memang tiada untuk dipapar.
+    const draf = new Map<string, { tarikh: string; kelas: string; disahkan_oleh: string | null; disahkan_pada: null }>();
     for (const m of murid) {
       const kunci = `${m.tarikh}|${m.kelas}`;
       kiraan.set(kunci, (kiraan.get(kunci) ?? 0) + 1);
       if (m.dicipta_oleh === saya.emel) sayaIsi.add(kunci);
+      if (!sudahSah.has(kunci) && !draf.has(kunci)) draf.set(kunci, { tarikh: m.tarikh, kelas: m.kelas, disahkan_oleh: m.dicipta_oleh, disahkan_pada: null });
     }
+    const semuaStatus: { tarikh: string; kelas: string; disahkan_oleh: string | null; disahkan_pada: string | null }[] = [...disahkan, ...draf.values()];
+    if (!semuaStatus.length) return [];
     const kelasSaya = kelasSaya_ === null ? null : new Set(kelasSaya_.map((k) => k.trim().toUpperCase()));
     const status = kelasSaya === null ? semuaStatus : semuaStatus.filter((s) =>
       kelasSaya.has(s.kelas.trim().toUpperCase()) || s.disahkan_oleh === saya.emel || sayaIsi.has(`${s.tarikh}|${s.kelas}`));
@@ -238,6 +251,7 @@ export async function senaraiKehadiranMuridLog(tahun_sesi: number, hari: number 
       tarikh: s.tarikh, kelas: s.kelas,
       disahkanOleh: s.disahkan_oleh ? (namaIkutEmel.get(s.disahkan_oleh) ?? s.disahkan_oleh) : null,
       disahkanPada: s.disahkan_pada,
+      draf: s.disahkan_pada === null,
       bilTidakHadir: kiraan.get(`${s.tarikh}|${s.kelas}`) ?? 0,
       bolehPadam,
     }));
