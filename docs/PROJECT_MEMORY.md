@@ -507,3 +507,11 @@ Keputusan pengguna — MENGGANTIKAN "log bersama semua guru" yang asal:
   panel atas. Draf "semua hadir" tiada baris, jadi tiada kad. Extension iSPEL
   TIDAK terjejas — `/api/kehadiran` tetap hanya memulangkan hari disahkan.
   "Kelas yang diisi" = rekod yang guru itu SENDIRI isi (disahkan pengguna).
+- **Log Terkini = SATU kad "REKOD KELAS" setiap kelas + tarikh** (pengguna,
+  8 Okt 2026 — menggantikan kad berasingan bagi setiap rekod). Kad menyenaraikan
+  semua guru yang masuk kelas hari itu dan status kehadiran (disahkan / DRAF /
+  belum diisi). Menu ⋮ → Sunting/Padam membuka panel DI DALAM kad dengan senarai
+  pilihan rekod: guru yang masuk dahulu, "Kehadiran Murid" selepasnya. Sunting
+  rekod masuk kelas berlaku di situ (`SuntingRekodMasuk`), BUKAN di borang atas
+  — borang atas kini untuk rekod baharu sahaja. Padam memerlukan rekod dipilih
+  dahulu, kemudian pengesahan; tiada "padam seluruh hari".
