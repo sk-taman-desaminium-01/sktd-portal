@@ -1,12 +1,12 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   hantarKawalanKelas, padamKawalanKelas, suntingKawalanKelas,
   type BarisKawalanKelas,
 } from "@/lib/kawalan-kelas";
-import { type LogKehadiranMurid } from "@/lib/kehadiran-murid";
+import { padamKehadiranMurid, type LogKehadiranMurid } from "@/lib/kehadiran-murid";
 import { cartaKehadiranHarian } from "@/lib/kawalan-kelas-carta";
 import PilihCari from "@/components/PilihCari";
 import { SUBJEK } from "@/data/subjek";
@@ -49,6 +49,12 @@ export default function PanelKawalanKelas({
   const [sibuk, setSibuk] = useState(false);
   const [sunting, setSunting] = useState<string | null>(null);
   const [nota, setNota] = useState<{ ok: boolean; teks: string } | null>(null);
+  /** Kunci kad log yang menunya sedang terbuka — satu sahaja pada satu masa. */
+  const [menuBuka, setMenuBuka] = useState<string | null>(null);
+  /** Nota bagi tindakan dari Log Terkini — dipapar DI SITU, bukan di borang atas yang di luar skrin. */
+  const [notaLog, setNotaLog] = useState<{ ok: boolean; teks: string } | null>(null);
+  /** Dinaikkan selepas padam, supaya panel Kehadiran Murid memuat semula hari yang sama. */
+  const [versiKehadiran, setVersiKehadiran] = useState(0);
 
   const carta = useMemo(() => cartaKehadiranHarian(senarai, kelasPilih), [senarai, kelasPilih]);
 
@@ -132,13 +138,35 @@ export default function PanelKawalanKelas({
   async function padam(b: BarisKawalanKelas) {
     if (!window.confirm(`Padam rekod ${b.subjek} untuk ${b.kelas}?`)) return;
     try {
-      setSibuk(true); setNota(null);
+      setSibuk(true); setNotaLog(null);
       const r = await padamKawalanKelas(b.id);
-      setNota({ ok: r.ok, teks: r.mesej });
+      setNotaLog({ ok: r.ok, teks: r.mesej });
       if (r.ok) { if (sunting === b.id) batalSunting(); router.refresh(); }
       setSibuk(false);
     } catch {
-      setNota({ ok: false, teks: "Sambungan terputus atau pelayan tidak menjawab. Cuba lagi." });
+      setNotaLog({ ok: false, teks: "Sambungan terputus atau pelayan tidak menjawab. Cuba lagi." });
+    } finally {
+      setSibuk(false);
+    }
+  }
+
+  /** Sunting kehadiran = buka hari itu dalam panel Kehadiran Murid di atas. */
+  function suntingKehadiran(h: LogKehadiranMurid) {
+    setKelasPilih(h.kelas); setTarikh(h.tarikh); setNotaLog(null);
+    // Panel hanya wujud selepas kelas ditetapkan — tunggu satu lukisan dahulu.
+    requestAnimationFrame(() => document.getElementById("kehadiran-murid")?.scrollIntoView({ behavior: "smooth", block: "start" }));
+  }
+
+  async function padamKehadiran(h: LogKehadiranMurid) {
+    const tarikhMY = new Date(h.tarikh).toLocaleDateString("ms-MY");
+    if (!window.confirm(`Padam rekod kehadiran ${h.kelas} pada ${tarikhMY}? Tindakan ini tidak boleh dipatah balik.`)) return;
+    try {
+      setSibuk(true); setNotaLog(null);
+      const r = await padamKehadiranMurid(h.tarikh, h.kelas);
+      setNotaLog({ ok: r.ok, teks: r.ok ? `Rekod kehadiran ${h.kelas} pada ${tarikhMY} dipadam.` : r.mesej });
+      if (r.ok) { setVersiKehadiran((v) => v + 1); router.refresh(); }
+    } catch {
+      setNotaLog({ ok: false, teks: "Sambungan terputus atau pelayan tidak menjawab. Cuba lagi." });
     } finally {
       setSibuk(false);
     }
@@ -224,10 +252,10 @@ export default function PanelKawalanKelas({
       </section>
 
       {kelasPilih && (
-        <section>
+        <section id="kehadiran-murid" className="scroll-mt-4">
           <h2 className="text-lg font-bold text-navy-800">Kehadiran Murid — {kelasPilih}</h2>
           <div className="mt-4">
-            <PanelKehadiranMurid key={`${kelasPilih}-${tarikh}`} kelas={kelasPilih} tarikh={tarikh} />
+            <PanelKehadiranMurid key={`${kelasPilih}-${tarikh}-${versiKehadiran}`} kelas={kelasPilih} tarikh={tarikh} />
           </div>
         </section>
       )}
@@ -370,41 +398,45 @@ export default function PanelKawalanKelas({
             Belum ada rekod. Rekod pertama anda akan muncul di sini sebaik dihantar/disahkan.
           </p>
         )}
+        {notaLog && <p role="status" className={`mt-3 text-sm ${notaLog.ok ? "text-[#167a4b]" : "text-red-600"}`}>{notaLog.teks}</p>}
         <ul className="mt-4 space-y-2">
           {logGabung.slice(0, 40).map((item) => item.jenis === "kawalan" ? (
-            <li key={`k-${item.data.id}`} className="rounded-lg border border-garis bg-white p-3 text-xs">
-              <div className="flex flex-wrap items-start justify-between gap-2">
-                <div className="min-w-0">
+            <li key={`k-${item.data.id}`} className="rounded-lg border border-garis bg-white py-1.5 pl-3 pr-1 text-xs">
+              <div className="flex items-center justify-between gap-1">
+                <div className="min-w-0 py-1.5">
                   <span className="font-semibold text-navy-800">{item.data.kelas}</span> · {item.data.subjek} ·{" "}
                   {new Date(item.data.tarikh).toLocaleDateString("ms-MY")} · {item.data.guru_nama}
                   {item.data.relief && <span className="ml-1 rounded bg-[#fdf3dc] px-1.5 py-0.5 text-[10px] font-bold text-[#9a6b06]">RELIEF</span>}
                   {item.data.masalah_disiplin && <p className="mt-1 text-slate-500">⚠ {item.data.masalah_disiplin}</p>}
                 </div>
-                {item.data.boleh_urus ? (
-                  <div className="flex shrink-0 gap-2">
-                    <button type="button" disabled={sibuk} onClick={() => mulaSunting(item.data)}
-                      className="min-h-11 touch-manipulation rounded-lg border border-navy-700 px-3 text-xs font-bold text-navy-700 disabled:opacity-50">
-                      Sunting
-                    </button>
-                    <button type="button" disabled={sibuk} onClick={() => void padam(item.data)}
-                      className="min-h-11 touch-manipulation rounded-lg border border-[#e7bcbc] px-3 text-xs font-bold text-red-600 disabled:opacity-50">
-                      Padam
-                    </button>
-                  </div>
-                ) : (
-                  <span className="shrink-0 text-[11px] italic text-slate-400">
-                    Hanya {item.data.guru_nama} atau pentadbir boleh sunting
-                  </span>
+                {item.data.boleh_urus && (
+                  <MenuTitik
+                    label={`Tindakan untuk rekod ${item.data.kelas} ${item.data.subjek}`}
+                    buka={menuBuka === `k-${item.data.id}`} sibuk={sibuk}
+                    tukar={(b) => setMenuBuka(b ? `k-${item.data.id}` : null)}
+                    sunting={() => mulaSunting(item.data)} padam={() => void padam(item.data)}
+                  />
                 )}
               </div>
             </li>
           ) : (
-            <li key={`h-${item.data.tarikh}-${item.data.kelas}`} className="rounded-lg border border-garis bg-[#f4f8fd] p-3 text-xs">
-              <span className="rounded bg-navy-800 px-1.5 py-0.5 text-[10px] font-bold text-white">KEHADIRAN MURID</span>{" "}
-              <span className="font-semibold text-navy-800">{item.data.kelas}</span> ·{" "}
-              {new Date(item.data.tarikh).toLocaleDateString("ms-MY")} ·{" "}
-              {item.data.bilTidakHadir === 0 ? "semua hadir" : `${item.data.bilTidakHadir} murid tidak hadir`} ·{" "}
-              disahkan oleh {item.data.disahkanOleh ?? "—"}
+            <li key={`h-${item.data.tarikh}-${item.data.kelas}`} className="rounded-lg border border-garis bg-[#f4f8fd] py-1.5 pl-3 pr-1 text-xs">
+              <div className="flex items-center justify-between gap-1">
+                <div className="min-w-0 py-1.5">
+                  <span className="rounded bg-navy-800 px-1.5 py-0.5 text-[10px] font-bold text-white">KEHADIRAN MURID</span>{" "}
+                  <span className="font-semibold text-navy-800">{item.data.kelas}</span> ·{" "}
+                  {new Date(item.data.tarikh).toLocaleDateString("ms-MY")} ·{" "}
+                  {item.data.bilTidakHadir === 0 ? "semua hadir" : `${item.data.bilTidakHadir} murid tidak hadir`} ·{" "}
+                  disahkan oleh {item.data.disahkanOleh ?? "—"}
+                </div>
+                <MenuTitik
+                  label={`Tindakan untuk kehadiran ${item.data.kelas} ${new Date(item.data.tarikh).toLocaleDateString("ms-MY")}`}
+                  buka={menuBuka === `h-${item.data.tarikh}-${item.data.kelas}`} sibuk={sibuk}
+                  tukar={(b) => setMenuBuka(b ? `h-${item.data.tarikh}-${item.data.kelas}` : null)}
+                  sunting={() => suntingKehadiran(item.data)}
+                  padam={item.data.bolehPadam ? () => void padamKehadiran(item.data) : undefined}
+                />
+              </div>
             </li>
           ))}
         </ul>
@@ -419,5 +451,57 @@ function Medan({ label, children }: { label: string; children: React.ReactNode }
       <span className="mb-1 block font-semibold text-navy-800">{label}</span>
       {children}
     </label>
+  );
+}
+
+/**
+ * MENU TIGA TITIK pada hujung kad log — Sunting dan Padam.
+ *
+ * Sebelum ini memadam rekod kehadiran memerlukan pentadbir mengisi semula
+ * tarikh dan kelas di borang atas hanya untuk MENCARI rekod itu (laporan
+ * pengguna 8 Okt 2026). Tindakan kini duduk pada rekod itu sendiri.
+ *
+ * `padam` tiada = pengguna tidak dibenarkan memadam; butang itu tidak
+ * dilukis. Pelayan tetap menyemak kuasa — ini hanya paparan.
+ */
+function MenuTitik({ label, buka, tukar, sunting, padam, sibuk }: {
+  label: string; buka: boolean; tukar: (buka: boolean) => void;
+  sunting: () => void; padam?: () => void; sibuk: boolean;
+}) {
+  useEffect(() => {
+    if (!buka) return;
+    const tutup = (e: KeyboardEvent) => { if (e.key === "Escape") tukar(false); };
+    window.addEventListener("keydown", tutup);
+    return () => window.removeEventListener("keydown", tutup);
+  }, [buka, tukar]);
+
+  return (
+    <div className="relative shrink-0">
+      <button type="button" aria-label={label} aria-haspopup="menu" aria-expanded={buka} disabled={sibuk}
+        onClick={() => tukar(!buka)}
+        className="grid h-11 w-11 touch-manipulation place-items-center rounded-lg text-navy-800 hover:bg-navy-50 disabled:opacity-50">
+        <svg aria-hidden="true" viewBox="0 0 4 18" className="h-[18px] w-1 fill-current">
+          <circle cx="2" cy="2" r="2" /><circle cx="2" cy="9" r="2" /><circle cx="2" cy="16" r="2" />
+        </svg>
+      </button>
+      {buka && (
+        <>
+          {/* Tekan di luar menutup menu, tanpa pendengar pada seluruh dokumen. */}
+          <button type="button" aria-hidden="true" tabIndex={-1} onClick={() => tukar(false)} className="fixed inset-0 z-10 cursor-default" />
+          <div role="menu" className="absolute right-0 top-full z-20 mt-1 w-36 overflow-hidden rounded-lg border border-garis bg-white py-1 shadow-lg">
+            <button type="button" role="menuitem" onClick={() => { tukar(false); sunting(); }}
+              className="block min-h-11 w-full touch-manipulation px-4 text-left text-sm font-semibold text-navy-800 hover:bg-navy-50">
+              Sunting
+            </button>
+            {padam && (
+              <button type="button" role="menuitem" onClick={() => { tukar(false); padam(); }}
+                className="block min-h-11 w-full touch-manipulation px-4 text-left text-sm font-semibold text-red-600 hover:bg-red-50">
+                Padam
+              </button>
+            )}
+          </div>
+        </>
+      )}
+    </div>
   );
 }

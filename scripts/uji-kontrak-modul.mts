@@ -128,6 +128,23 @@ perlu("Kedua-dua borang kawalan kelas ditujukan kepada PK HEM",
   !kawalanUi.includes("Penolong Kanan Pentadbiran"));
 perlu("Nama guru relief dipilih, bukan ditaip bebas",
   kawalanUi.includes("kawalan-relief") && kawalanUi.includes("PilihCari"));
+
+/* Log Terkini ditapis IKUT PERANAN di pelayan (keputusan pengguna 8 Okt 2026):
+   pentadbir semua kelas · guru kelas kelasnya + rekod sendiri · guru lain
+   rekod sendiri. Penapis di skrin sahaja = baris kelas lain tetap sampai ke
+   pelayar (peraturan keras #12). */
+perlu("Log kawalan kelas ditapis dalam pertanyaan, bukan di skrin",
+  kawalan.includes("async function tapisIkutPeranan") && kawalan.includes("${sejakIso}${tapis}&order=") &&
+  kawalan.includes("if (tapis === null) return"));
+const kehadiranLib = baca("src/lib/kehadiran-murid.ts");
+perlu("Log kehadiran ditapis ikut kelas guru di pelayan",
+  /kelasSaya === null \? semuaStatus : semuaStatus\.filter/.test(kehadiranLib) && kehadiranLib.includes("sayaIsi.has("));
+perlu("Padam kehadiran kekal pentadbir sahaja",
+  /export async function padamKehadiranMurid[\s\S]{0,400}bolehBuat\("urus_guru_kelas"\)/.test(kehadiranLib));
+perlu("Setiap kad log ada menu tiga titik (Sunting/Padam)",
+  (kawalanUi.match(/<MenuTitik/g) ?? []).length === 2 && kawalanUi.includes('role="menu"') && kawalanUi.includes("aria-haspopup"));
+perlu("Padam dari log meminta pengesahan dahulu",
+  (kawalanUi.match(/window\.confirm\(/g) ?? []).length >= 2);
 const guruKelasLib = baca("src/lib/guru-kelas.ts");
 perlu("Senarai nama guru untuk pilihan wujud", guruKelasLib.includes("namaGuruUntukPilihan"));
 perlu("Senarai itu memulangkan NAMA sahaja, bukan emel",

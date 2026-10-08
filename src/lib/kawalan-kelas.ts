@@ -9,6 +9,7 @@ import { belumDipasang } from "./db-belum-sedia";
 import { hantar } from "./notifikasi";
 import { hariIniMY } from "@/data/tarikh-my";
 import { sahInt } from "./sah";
+import { kelasBolehSunting } from "./guru-kelas";
 
 /**
  * Rekod Kawalan Kelas & Kehadiran (permintaan pengguna G) — kad baharu.
@@ -27,9 +28,30 @@ import { sahInt } from "./sah";
  * sana. Dan borang DELIMa sendiri tidak kemas, jadi kedua-dua borang —
  * kawalan kelas DAN kehadiran — dibina di sini.
  *
- * BACAAN DIBUKA kepada semua guru log masuk — ini log BERSAMA
- * ("kebersamaan dengan para guru"), bukan rekod sulit seperti Disiplin.
+ * SIAPA NAMPAK APA (keputusan pengguna 8 Okt 2026 — menggantikan "log
+ * bersama semua guru" yang asal):
+ *   · pentadbir/admin  → semua kelas
+ *   · guru kelas       → kelasnya sendiri + rekod yang dia sendiri isi
+ *   · guru lain        → rekod yang dia sendiri isi sahaja
+ * Ditapis dalam PERTANYAAN, bukan di skrin: baris kelas lain tidak pernah
+ * sampai ke pelayar (peraturan keras #12).
  */
+
+/**
+ * Penapis PostgREST bagi peraturan di atas. `""` = tiada had (pentadbir);
+ * `null` = tiada apa-apa yang boleh dilihat.
+ */
+async function tapisIkutPeranan(sayaId: string | null): Promise<string | null> {
+  const kelasSaya = await kelasBolehSunting();
+  if (kelasSaya === null) return "";
+  const syarat: string[] = [];
+  if (sayaId) syarat.push(`guru_id.eq.${sayaId}`);
+  // Label kelas datang daripada daftar kita sendiri, tetapi tetap dipetik:
+  // nama kelas mengandungi ruang, dan koma akan memecahkan `in.(…)`.
+  const label = kelasSaya.filter((k) => !/["\\]/.test(k));
+  if (label.length) syarat.push(`kelas.in.(${label.map((k) => `"${k}"`).join(",")})`);
+  return syarat.length ? `&or=${encodeURIComponent(`(${syarat.join(",")})`)}` : null;
+}
 
 export interface BarisKawalanKelas {
   id: string;
@@ -119,10 +141,12 @@ export async function senaraiKawalanKelas(
   const sejakIso = hariIniMY(-hari);
 
   try {
+    const tapis = await tapisIkutPeranan(saya.id ?? null);
+    if (tapis === null) return { belumSedia: false, senarai: [] };
     const senarai = (await bacaSemua<BarisKawalanKelas>(
       `pbd_kawalan_kelas?select=id,guru_id,tahun_sesi,tarikh,kelas,guru_nama,subjek,masa_masuk,relief,` +
         `guru_relief_untuk,masalah_disiplin,bil_hadir,bil_murid,dicipta` +
-        `&tahun_sesi=eq.${tahun_sesi}&tarikh=gte.${sejakIso}&order=tarikh.desc,dicipta.desc,id.asc`,
+        `&tahun_sesi=eq.${tahun_sesi}&tarikh=gte.${sejakIso}${tapis}&order=tarikh.desc,dicipta.desc,id.asc`,
     )) as BarisKawalanKelas[];
     const urusSemua = await bolehBuat("urus_guru_kelas");
     return { belumSedia: false, senarai: senarai.map((b) => ({ ...b, boleh_urus: urusSemua || b.guru_id === saya.id })) };

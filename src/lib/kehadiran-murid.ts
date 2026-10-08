@@ -174,6 +174,8 @@ export interface LogKehadiranMurid {
   disahkanOleh: string | null;
   disahkanPada: string;
   bilTidakHadir: number;
+  /** Pentadbir/admin sahaja — sama seperti `padamKehadiranMurid()`. */
+  bolehPadam: boolean;
 }
 
 /**
@@ -190,6 +192,10 @@ export interface LogKehadiranMurid {
  *
  * Hanya hari DISAHKAN sahaja (draf tidak disertakan — sepadan peraturan
  * sedia ada extension hanya baca hari disahkan).
+ *
+ * SIAPA NAMPAK APA (8 Okt 2026) — sama seperti `senaraiKawalanKelas()`:
+ * pentadbir semua kelas; guru kelas kelasnya sendiri; guru lain hanya hari
+ * yang dia sendiri sahkan atau isi. Ditapis di pelayan.
  */
 export async function senaraiKehadiranMuridLog(tahun_sesi: number, hari: number = 30): Promise<LogKehadiranMurid[]> {
   const saya = await pengguna();
@@ -198,22 +204,30 @@ export async function senaraiKehadiranMuridLog(tahun_sesi: number, hari: number 
   const sejakIso = hariIniMY(-hari);
   const db = klienTulis();
   try {
-    const [status, murid] = await Promise.all([
+    const [semuaStatus, murid, kelasSaya_, bolehPadam] = await Promise.all([
       bacaSemua<{ tarikh: string; kelas: string; disahkan_oleh: string | null; disahkan_pada: string }>(
         `pbd_kehadiran_status?select=tarikh,kelas,disahkan_oleh,disahkan_pada&tahun_sesi=eq.${tahun_sesi}` +
-          `&tarikh=gte.${sejakIso}&disahkan_pada=not.is.null&order=tarikh.desc`,
+          `&tarikh=gte.${sejakIso}&disahkan_pada=not.is.null&order=tarikh.desc,kelas.asc`,
       ),
-      bacaSemua<{ tarikh: string; kelas: string }>(
-        `pbd_kehadiran_murid?select=tarikh,kelas&tahun_sesi=eq.${tahun_sesi}&tarikh=gte.${sejakIso}`,
+      bacaSemua<{ tarikh: string; kelas: string; dicipta_oleh: string | null }>(
+        `pbd_kehadiran_murid?select=tarikh,kelas,dicipta_oleh&tahun_sesi=eq.${tahun_sesi}&tarikh=gte.${sejakIso}&order=tarikh.desc,kelas.asc,murid_id.asc`,
       ),
+      kelasBolehSunting(),
+      bolehBuat("urus_guru_kelas"),
     ]);
-    if (!status.length) return [];
+    if (!semuaStatus.length) return [];
 
     const kiraan = new Map<string, number>();
+    const sayaIsi = new Set<string>();
     for (const m of murid) {
       const kunci = `${m.tarikh}|${m.kelas}`;
       kiraan.set(kunci, (kiraan.get(kunci) ?? 0) + 1);
+      if (m.dicipta_oleh === saya.emel) sayaIsi.add(kunci);
     }
+    const kelasSaya = kelasSaya_ === null ? null : new Set(kelasSaya_.map((k) => k.trim().toUpperCase()));
+    const status = kelasSaya === null ? semuaStatus : semuaStatus.filter((s) =>
+      kelasSaya.has(s.kelas.trim().toUpperCase()) || s.disahkan_oleh === saya.emel || sayaIsi.has(`${s.tarikh}|${s.kelas}`));
+    if (!status.length) return [];
 
     // Nama guru sebenar, bukan emel mentah — satu panggilan sahaja per
     // emel unik (bukan per baris) supaya tidak N+1 bila banyak hari.
@@ -225,6 +239,7 @@ export async function senaraiKehadiranMuridLog(tahun_sesi: number, hari: number 
       disahkanOleh: s.disahkan_oleh ? (namaIkutEmel.get(s.disahkan_oleh) ?? s.disahkan_oleh) : null,
       disahkanPada: s.disahkan_pada,
       bilTidakHadir: kiraan.get(`${s.tarikh}|${s.kelas}`) ?? 0,
+      bolehPadam,
     }));
   } catch (e) {
     if (belumDipasang(e, "pbd_kehadiran_status", "pbd_kehadiran_murid")) return [];
