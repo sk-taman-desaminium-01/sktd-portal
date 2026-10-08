@@ -139,6 +139,11 @@ perlu("Log kawalan kelas ditapis dalam pertanyaan, bukan di skrin",
 const kehadiranLib = baca("src/lib/kehadiran-murid.ts");
 perlu("Log kehadiran ditapis ikut kelas guru di pelayan",
   /kelasSaya === null \? semuaStatus : semuaStatus\.filter/.test(kehadiranLib) && kehadiranLib.includes("sayaIsi.has("));
+perlu("Draf kehadiran dipapar dalam log, berlabel jelas",
+  kehadiranLib.includes("draf: s.disahkan_pada === null") && kawalanUi.includes("DRAF · BELUM DISAHKAN"));
+// Draf TIDAK BOLEH sampai ke iSPEL: laluan extension tetap hanya hari disahkan.
+perlu("Extension iSPEL tetap hanya membaca hari disahkan",
+  /if \(!status\.disahkanPada\) \{\s*return Response\.json\(\{ disahkan: false, tidakHadir: \[\] \}/.test(baca("src/app/api/kehadiran/route.ts")));
 perlu("Padam kehadiran kekal pentadbir sahaja",
   /export async function padamKehadiranMurid[\s\S]{0,400}bolehBuat\("urus_guru_kelas"\)/.test(kehadiranLib));
 perlu("Setiap kad log ada menu tiga titik (Sunting/Padam)",

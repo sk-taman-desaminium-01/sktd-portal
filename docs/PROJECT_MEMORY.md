@@ -501,4 +501,9 @@ Keputusan pengguna — MENGGANTIKAN "log bersama semua guru" yang asal:
   hari itu dalam panel Kehadiran Murid (kelas + tarikh diisi sendiri);
   Padam kekal PENTADBIR SAHAJA dan meminta pengesahan. Pelayan menyemak
   kuasa semula — menu hanyalah paparan.
-
+- **Draf kehadiran dipapar dalam Log Terkini** (8 Okt 2026), kad kuning
+  berlabel "DRAF · BELUM DISAHKAN · diisi oleh …", tapisan peranan yang sama.
+  Sebelum ini draf hanya kelihatan jika kelas DAN tarikhnya dipilih semula di
+  panel atas. Draf "semua hadir" tiada baris, jadi tiada kad. Extension iSPEL
+  TIDAK terjejas — `/api/kehadiran` tetap hanya memulangkan hari disahkan.
+  "Kelas yang diisi" = rekod yang guru itu SENDIRI isi (disahkan pengguna).

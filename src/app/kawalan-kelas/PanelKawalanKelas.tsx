@@ -420,14 +420,15 @@ export default function PanelKawalanKelas({
               </div>
             </li>
           ) : (
-            <li key={`h-${item.data.tarikh}-${item.data.kelas}`} className="rounded-lg border border-garis bg-[#f4f8fd] py-1.5 pl-3 pr-1 text-xs">
+            <li key={`h-${item.data.tarikh}-${item.data.kelas}`} className={`rounded-lg border py-1.5 pl-3 pr-1 text-xs ${item.data.draf ? "border-[#e9d9ae] bg-[#fdf9f0]" : "border-garis bg-[#f4f8fd]"}`}>
               <div className="flex items-center justify-between gap-1">
                 <div className="min-w-0 py-1.5">
                   <span className="rounded bg-navy-800 px-1.5 py-0.5 text-[10px] font-bold text-white">KEHADIRAN MURID</span>{" "}
+                  {item.data.draf && <><span className="rounded bg-[#fdf3dc] px-1.5 py-0.5 text-[10px] font-bold text-[#7a5a12]">DRAF · BELUM DISAHKAN</span>{" "}</>}
                   <span className="font-semibold text-navy-800">{item.data.kelas}</span> ·{" "}
                   {new Date(item.data.tarikh).toLocaleDateString("ms-MY")} ·{" "}
                   {item.data.bilTidakHadir === 0 ? "semua hadir" : `${item.data.bilTidakHadir} murid tidak hadir`} ·{" "}
-                  disahkan oleh {item.data.disahkanOleh ?? "—"}
+                  {item.data.draf ? "diisi oleh" : "disahkan oleh"} {item.data.disahkanOleh ?? "—"}
                 </div>
                 <MenuTitik
                   label={`Tindakan untuk kehadiran ${item.data.kelas} ${new Date(item.data.tarikh).toLocaleDateString("ms-MY")}`}
