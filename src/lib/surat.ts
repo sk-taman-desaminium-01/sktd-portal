@@ -9,6 +9,7 @@ import { belumDipasang } from "./db-belum-sedia";
 import { senaraiPentadbirUntukSemua } from "./pentadbir";
 import { SEKOLAH } from "@/data/sekolah";
 import { bacaSemua } from "./baca-semua";
+import { padatkanTandatangan } from "./padat-tandatangan";
 
 /**
  * Borang Sekolah — surat rasmi ringkas & Borang Kebenaran Gambar
@@ -197,6 +198,9 @@ export async function hantarSuratGambar(input: {
 }): Promise<HasilSurat> {
   if (input.tandatangan_url && (!/^data:image\/png;base64,[A-Za-z0-9+/]+=*$/.test(input.tandatangan_url) || input.tandatangan_url.length > 150_000))
     return { ok: false, mesej: "Tandatangan tidak sah. Lukis atau muat naik semula." };
+  let tandatangan: string | null = null;
+  try { if (input.tandatangan_url) tandatangan = padatkanTandatangan(input.tandatangan_url); }
+  catch (e) { return { ok: false, mesej: e instanceof Error ? e.message : "Tandatangan tidak sah." }; }
   const saya = await pengguna();
   if (!saya?.peranan) return { ok: false, mesej: "Tiada kebenaran." };
   const muridNama = input.muridNama.trim();
@@ -221,7 +225,7 @@ export async function hantarSuratGambar(input: {
         pemohon_id: saya.id,
         pemohon_nama: saya.nama ?? saya.emel,
         pemohon_emel: saya.emel,
-        tandatangan_url: input.tandatangan_url,
+        tandatangan_url: tandatangan,
         data: {
           penjagaNama: input.penjagaNama.trim(), penjagaKp: input.penjagaKp, alamat: input.alamat.trim(), telefon: input.telefon.trim(), muridKp: input.muridKp,
           muridNama, muridKelas, bersetuju: input.bersetuju,

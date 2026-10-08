@@ -97,9 +97,8 @@ yang sudah dimuktamadkan tidak diperkenalkan semula sebagai pepijat.
 - OCR ZIP besar menggunakan CPU/RAM peranti. Worker OCR digunakan semula dan
   fail diproses berurutan untuk mengurangkan penggunaan; jangan pindahkan fail
   murid mentah ke storan pelayan tanpa keperluan.
-- Tandatangan kini boleh mencapai 350 KB setiap borang dalam pangkalan data.
-  Apabila jumlah borang meningkat besar, pindahkan imej tandatangan ke Supabase
-  Storage dan simpan URL sahaja.
+- Tandatangan: lihat "Tandatangan padat (8 Okt 2026)" di bawah — nota lama
+  "350 KB setiap borang" tidak lagi benar.
 - Wrangler kadang-kadang memberi amaran semasa cuba melampirkan semula domain
   `sktd.edu.my`, tetapi aset/Worker berjaya dimuat naik dan domain hidup memberi
   HTTP 200. Betulkan `zone_id` Wrangler jika konfigurasi domain perlu diubah.
@@ -451,3 +450,31 @@ longgarkan: padanan yang salah memberi seorang guru kuasa menyunting jadual
 dan rekod kelas orang lain — lebih buruk daripada tidak padan langsung.
 11 kes (positif DAN negatif) dikunci dalam `uji:jadual`.
 
+## Tandatangan padat (8 Okt 2026) — sasaran 50,000 borang
+
+Pengguna menjangka sehingga **50,000 borang**. PNG kanvas pelayar ialah RGBA
+32-bit, 10–40 KB sebaris dalam `borang_jawapan.data` / `pbd_surat.tandatangan_url`
+→ 50,000 borang = 0.7–2 GB, melebihi kuota 500 MB (pangkalan data penuh =
+READ-ONLY, semua tulisan berhenti).
+
+**`src/lib/padat-tandatangan.ts` — di PELAYAN, satu tempat.** Setiap laluan
+tulis memanggil `padatkanTandatangan()` sebelum menyimpan: `hantarAkuan`
+(borang aktiviti), `surat-awam.ts` dan `surat.ts` (kebenaran gambar),
+`naikTandaTangan`. Ia menyahkod PNG dengan `node:zlib` (tiada pustaka imej),
+memotong ketat, mengecil ke ≤ 360 × 120 px dan mengekod semula sebagai PNG
+berpalet 2-bit (satu warna dakwat, 4 tahap legap). Hasilnya masih PNG biasa —
+`<img>`, cetakan dan PDF tidak diubah.
+
+- Diukur: tandatangan biasa 11–14 KB → **±2 KB** (6×); foto padat 108 KB → 4.6 KB (20×+).
+- **Had keras 5,000 aksara** (`HAD_TANDATANGAN_PADAT`). Coretan yang terlalu
+  padat turun ke 1-bit, kemudian mengecil, sehingga had dipatuhi.
+- Anggaran: 50,000 borang × ±3 KB sebaris ≈ **150 MB ≈ 30% kuota**. Kes
+  terburuk mutlak (setiap tandatangan pada had) ≈ 285 MB.
+- JANGAN pindahkan pemadatan ke pelayar sahaja: pelayar boleh menghantar apa
+  sahaja (cache lama, permintaan buatan). Pelayan ialah penjamin saiz.
+- Dikunci oleh `npm run uji:tandatangan` (23 semakan: saiz, lima penapis PNG,
+  latar putih lama, idempoten, input buruk, dan setiap laluan tulis).
+- Pada 8 Okt 2026 `pbd_surat` dan `borang_jawapan` masih **0 baris** di
+  pengeluaran, jadi tiada baris lama yang perlu dipadatkan semula.
+- Jika suatu hari perlu lebih ruang: dasar SIMPANAN (buang jawapan aktiviti
+  yang sudah lama tamat selepas diarkib PDF) — itu keputusan pengguna, belum dibuat.
