@@ -152,8 +152,11 @@ perlu("Setiap kad log ada menu tiga titik (Sunting/Padam)",
 // guru yang masuk dahulu, "Kehadiran Murid" selepasnya dalam senarai pilihan.
 perlu("Log dikumpulkan sebagai kad REKOD KELAS",
   kawalanUi.includes("REKOD KELAS") && kawalanUi.includes("useMemo<KumpulanLog[]>"));
-perlu("Sunting memilih rekod melalui senarai: guru dahulu, kehadiran kemudian",
-  /pilihanSunting = \[\.\.\.milikSaya\.map\([^\n]*\{ nilai: KEHADIRAN, label: "Kehadiran Murid" \}\]/.test(kawalanUi));
+// TAB, bukan senarai juntai (pengguna, 8 Okt 2026): Rekod Masuk dahulu, Kehadiran kedua.
+perlu("Kad log guna dua tab: Rekod Masuk, kemudian Kehadiran",
+  kawalanUi.includes('[["masuk", "Rekod Masuk"], ["kehadiran", "Kehadiran"]]') &&
+  kawalanUi.includes('role="tablist"') && kawalanUi.includes('role="tabpanel"') && !kawalanUi.includes("<select"));
+perlu("Tab aktif bersambung dengan panel (tiada garis bawah)", kawalanUi.includes("-mb-px border-garis border-b-white bg-white"));
 perlu("Sunting rekod masuk kelas berlaku di dalam kad, bukan di borang atas",
   kawalanUi.includes("<SuntingRekodMasuk") && !kawalanUi.includes("mulaSunting") && !kawalanUi.includes("window.scrollTo"));
 perlu("Padam dari log meminta pengesahan dahulu",

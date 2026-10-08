@@ -510,8 +510,10 @@ Keputusan pengguna — MENGGANTIKAN "log bersama semua guru" yang asal:
 - **Log Terkini = SATU kad "REKOD KELAS" setiap kelas + tarikh** (pengguna,
   8 Okt 2026 — menggantikan kad berasingan bagi setiap rekod). Kad menyenaraikan
   semua guru yang masuk kelas hari itu dan status kehadiran (disahkan / DRAF /
-  belum diisi). Menu ⋮ → Sunting/Padam membuka panel DI DALAM kad dengan senarai
-  pilihan rekod: guru yang masuk dahulu, "Kehadiran Murid" selepasnya. Sunting
+  belum diisi). Menu ⋮ → Sunting/Padam membuka panel DI DALAM kad dengan DUA
+  TAB berbentuk kad (tab aktif tiada garis bawah, bersambung dengan panel):
+  "Rekod Masuk" dahulu, "Kehadiran" kedua. BUKAN senarai juntai — pengguna
+  menolaknya. Beberapa guru dalam satu hari dipilih melalui butang cip. Sunting
   rekod masuk kelas berlaku di situ (`SuntingRekodMasuk`), BUKAN di borang atas
   — borang atas kini untuk rekod baharu sahaja. Padam memerlukan rekod dipilih
   dahulu, kemudian pengesahan; tiada "padam seluruh hari".

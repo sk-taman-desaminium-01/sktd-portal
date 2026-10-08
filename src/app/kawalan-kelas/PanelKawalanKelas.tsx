@@ -49,7 +49,7 @@ export default function PanelKawalanKelas({
   const [sibuk, setSibuk] = useState(false);
   const [nota, setNota] = useState<{ ok: boolean; teks: string } | null>(null);
   /** Kad log yang sedang disunting/dipadam, dan rekod mana di dalamnya yang dipilih. */
-  const [tindakan, setTindakan] = useState<{ kunci: string; mod: "sunting" | "padam"; pilih: string } | null>(null);
+  const [tindakan, setTindakan] = useState<{ kunci: string; mod: "sunting" | "padam"; tab: TabLog; pilih: string } | null>(null);
   /** Kunci kad log yang menunya sedang terbuka — satu sahaja pada satu masa. */
   const [menuBuka, setMenuBuka] = useState<string | null>(null);
   /** Nota bagi tindakan dari Log Terkini — dipapar DI SITU, bukan di borang atas yang di luar skrin. */
@@ -390,15 +390,15 @@ export default function PanelKawalanKelas({
             const tarikhMY = new Date(g.tarikh).toLocaleDateString("ms-MY");
             const milikSaya = g.masuk.filter((b) => b.boleh_urus);
             const namaRekod = (b: BarisKawalanKelas) => `${b.guru_nama} · ${b.subjek}${b.masa_masuk ? ` · ${b.masa_masuk.slice(0, 5)}` : ""}`;
-            // Urutan disengajakan: guru yang masuk dahulu, kehadiran selepasnya.
-            const pilihanSunting = [...milikSaya.map((b) => ({ nilai: b.id, label: namaRekod(b) })), { nilai: KEHADIRAN, label: "Kehadiran Murid" }];
-            const pilihanPadam = [
-              ...milikSaya.map((b) => ({ nilai: b.id, label: namaRekod(b) })),
-              ...(g.kehadiran?.bolehPadam ? [{ nilai: KEHADIRAN, label: "Kehadiran Murid" }] : []),
-            ];
             const aktif = tindakan?.kunci === g.kunci ? tindakan : null;
-            const pilihan = aktif?.mod === "padam" ? pilihanPadam : pilihanSunting;
-            const dipilih = aktif ? g.masuk.find((b) => b.id === aktif.pilih) ?? null : null;
+            const dipilih = aktif ? milikSaya.find((b) => b.id === aktif.pilih) ?? null : null;
+            const bolehPadamApaApa = milikSaya.length > 0 || !!g.kehadiran?.bolehPadam;
+            // Buka pada tab yang ADA isinya: rekod masuk jika ada milik pengguna, kalau tidak kehadiran.
+            const buka = (mod: "sunting" | "padam") => {
+              const tab: TabLog = milikSaya.length > 0 ? "masuk" : "kehadiran";
+              setNotaLog(null);
+              setTindakan({ kunci: g.kunci, mod, tab, pilih: milikSaya.length === 1 ? milikSaya[0].id : "" });
+            };
             const tutup = () => { setTindakan(null); setVersiKehadiran((v) => v + 1); router.refresh(); };
             return (
               <li key={g.kunci} className="rounded-lg border border-garis bg-white py-1.5 pl-3 pr-1 text-xs">
@@ -435,49 +435,102 @@ export default function PanelKawalanKelas({
                     label={`Tindakan untuk rekod kelas ${g.kelas} ${tarikhMY}`}
                     buka={menuBuka === g.kunci} sibuk={sibuk}
                     tukar={(b) => setMenuBuka(b ? g.kunci : null)}
-                    sunting={() => { setNotaLog(null); setTindakan({ kunci: g.kunci, mod: "sunting", pilih: pilihanSunting[0].nilai }); }}
-                    padam={pilihanPadam.length ? () => { setNotaLog(null); setTindakan({ kunci: g.kunci, mod: "padam", pilih: "" }); } : undefined}
+                    sunting={() => buka("sunting")}
+                    padam={bolehPadamApaApa ? () => buka("padam") : undefined}
                   />
                 </div>
 
                 {aktif && (
-                  <div className="mb-1.5 mr-2 mt-1 rounded-lg border border-garis bg-[#f8fafc] p-3">
-                    <div className="flex flex-wrap items-end justify-between gap-3">
-                      <label className="block min-w-0 flex-1 text-sm">
-                        <span className="mb-1 block font-semibold text-navy-800">
-                          {aktif.mod === "padam" ? "Rekod yang hendak dipadam" : "Rekod yang hendak disunting"}
-                        </span>
-                        <select
-                          value={aktif.pilih}
-                          onChange={(e) => setTindakan({ ...aktif, pilih: e.target.value })}
-                          className="block min-h-11 w-full min-w-0 max-w-full rounded-lg border border-garis bg-white px-3 py-2 text-sm"
-                        >
-                          {aktif.mod === "padam" && <option value="">— Pilih rekod —</option>}
-                          {pilihan.map((p) => <option key={p.nilai} value={p.nilai}>{p.label}</option>)}
-                        </select>
-                      </label>
-                      <button type="button" onClick={tutup}
-                        className="min-h-11 touch-manipulation rounded-lg border border-garis bg-white px-4 text-sm font-semibold text-navy-800">
-                        Tutup
+                  <div className="mb-1.5 mr-2 mt-1">
+                    {/* TAB BERBENTUK KAD: tab aktif tiada garis bawah, jadi ia
+                        bersambung dengan panel di bawahnya seperti fail berlabel.
+                        Menggantikan senarai juntai — satu tekan, bukan dua
+                        (permintaan pengguna 8 Okt 2026). */}
+                    <div className="flex items-end gap-1">
+                      <div role="tablist" aria-label={`${aktif.mod === "padam" ? "Padam" : "Sunting"} rekod kelas ${g.kelas} ${tarikhMY}`} className="flex min-w-0 flex-1 gap-1">
+                        {([["masuk", "Rekod Masuk"], ["kehadiran", "Kehadiran"]] as const).map(([tab, nama]) => {
+                          const terpilih = aktif.tab === tab;
+                          return (
+                            <button key={tab} type="button" role="tab" aria-selected={terpilih}
+                              id={`tab-${g.kunci}-${tab}`} aria-controls={`panel-${g.kunci}`}
+                              onClick={() => setTindakan({ ...aktif, tab })}
+                              className={`relative min-h-11 touch-manipulation rounded-t-lg border px-4 text-sm font-semibold ${
+                                terpilih
+                                  ? "z-10 -mb-px border-garis border-b-white bg-white text-navy-800"
+                                  : "border-transparent text-slate-500 hover:text-navy-800"
+                              }`}>
+                              {nama}
+                              {tab === "masuk" && g.masuk.length > 0 && <span className="ml-1.5 text-xs font-normal text-slate-500">{g.masuk.length}</span>}
+                            </button>
+                          );
+                        })}
+                      </div>
+                      <button type="button" onClick={tutup} aria-label="Tutup"
+                        className="mb-1 grid h-9 w-9 shrink-0 touch-manipulation place-items-center rounded-lg text-slate-500 hover:bg-navy-50 hover:text-navy-800">
+                        <svg aria-hidden="true" viewBox="0 0 14 14" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M1 1l12 12M13 1L1 13" /></svg>
                       </button>
                     </div>
 
-                    {aktif.mod === "padam" ? (
-                      <button type="button" disabled={sibuk || !aktif.pilih}
-                        onClick={() => { if (aktif.pilih === KEHADIRAN) { if (g.kehadiran) void padamKehadiran(g.kehadiran); } else if (dipilih) void padam(dipilih); }}
-                        className="mt-3 min-h-11 w-full touch-manipulation rounded-lg bg-red-600 px-4 text-sm font-semibold text-white disabled:opacity-50 sm:w-auto">
-                        Padam rekod ini
-                      </button>
-                    ) : aktif.pilih === KEHADIRAN ? (
-                      <div className="mt-3">
-                        <PanelKehadiranMurid key={`log-${g.kunci}`} kelas={g.kelas} tarikh={g.tarikh} />
-                      </div>
-                    ) : dipilih ? (
-                      <SuntingRekodMasuk
-                        key={dipilih.id} baris={dipilih} tahunSesi={tahunSesi} kelas={kelas} namaGuru={namaGuru}
-                        siap={(mesej) => { setNotaLog({ ok: true, teks: mesej }); setTindakan(null); router.refresh(); }}
-                      />
-                    ) : null}
+                    <div role="tabpanel" id={`panel-${g.kunci}`} aria-labelledby={`tab-${g.kunci}-${aktif.tab}`}
+                      className={`rounded-b-lg rounded-tr-lg border border-garis bg-white p-3 ${aktif.tab === "masuk" ? "" : "rounded-tl-lg"}`}>
+                      {aktif.tab === "kehadiran" ? (
+                        aktif.mod === "sunting" ? (
+                          <PanelKehadiranMurid key={`log-${g.kunci}`} kelas={g.kelas} tarikh={g.tarikh} />
+                        ) : !g.kehadiran ? (
+                          <p className="text-sm text-slate-500">Kehadiran hari ini belum diisi — tiada apa untuk dipadam.</p>
+                        ) : !g.kehadiran.bolehPadam ? (
+                          <p className="text-sm text-slate-500">Hanya pentadbir boleh memadam rekod kehadiran.</p>
+                        ) : (
+                          <>
+                            <p className="text-sm text-slate-600">
+                              Kehadiran {g.kelas} pada {tarikhMY}: {g.kehadiran.bilTidakHadir === 0 ? "semua hadir" : `${g.kehadiran.bilTidakHadir} murid tidak hadir`}.
+                            </p>
+                            <button type="button" disabled={sibuk} onClick={() => void padamKehadiran(g.kehadiran!)}
+                              className="mt-3 min-h-11 w-full touch-manipulation rounded-lg bg-red-600 px-4 text-sm font-semibold text-white disabled:opacity-50 sm:w-auto">
+                              Padam kehadiran hari ini
+                            </button>
+                          </>
+                        )
+                      ) : milikSaya.length === 0 ? (
+                        <p className="text-sm text-slate-500">
+                          {g.masuk.length === 0 ? "Belum ada rekod masuk kelas untuk hari ini." : "Rekod masuk kelas hanya boleh diubah oleh guru yang mengisinya atau pentadbir."}
+                        </p>
+                      ) : (
+                        <>
+                          {/* Beberapa guru masuk kelas yang sama: pilih dengan
+                              satu tekan. Satu rekod sahaja = terus dibuka. */}
+                          {milikSaya.length > 1 && (
+                            <div className="flex flex-wrap gap-2" role="group" aria-label="Guru yang masuk kelas">
+                              {milikSaya.map((b) => (
+                                <button key={b.id} type="button" aria-pressed={aktif.pilih === b.id}
+                                  onClick={() => setTindakan({ ...aktif, pilih: b.id })}
+                                  className={`min-h-11 touch-manipulation rounded-lg border px-3 text-left text-xs font-semibold ${
+                                    aktif.pilih === b.id ? "border-navy-800 bg-navy-800 text-white" : "border-garis bg-white text-navy-800 hover:bg-navy-50"
+                                  }`}>
+                                  {namaRekod(b)}
+                                </button>
+                              ))}
+                            </div>
+                          )}
+                          {!dipilih ? (
+                            <p className="mt-3 text-sm text-slate-500">Pilih guru di atas.</p>
+                          ) : aktif.mod === "padam" ? (
+                            <>
+                              <p className={`text-sm text-slate-600 ${milikSaya.length > 1 ? "mt-3" : ""}`}>{namaRekod(dipilih)}</p>
+                              <button type="button" disabled={sibuk} onClick={() => void padam(dipilih)}
+                                className="mt-3 min-h-11 w-full touch-manipulation rounded-lg bg-red-600 px-4 text-sm font-semibold text-white disabled:opacity-50 sm:w-auto">
+                                Padam rekod ini
+                              </button>
+                            </>
+                          ) : (
+                            <SuntingRekodMasuk
+                              key={dipilih.id} baris={dipilih} tahunSesi={tahunSesi} kelas={kelas} namaGuru={namaGuru}
+                              siap={(mesej) => { setNotaLog({ ok: true, teks: mesej }); setTindakan(null); router.refresh(); }}
+                            />
+                          )}
+                        </>
+                      )}
+                    </div>
                   </div>
                 )}
               </li>
@@ -498,8 +551,8 @@ function Medan({ label, children }: { label: string; children: React.ReactNode }
   );
 }
 
-/** Nilai pilihan "Kehadiran Murid" dalam senarai rekod sesuatu kad. */
-const KEHADIRAN = "kehadiran";
+/** Dua tab dalam kad log: rekod masuk kelas dahulu, kehadiran murid kedua. */
+type TabLog = "masuk" | "kehadiran";
 
 /** Satu kad Log Terkini: semua rekod masuk kelas + kehadiran bagi SATU kelas pada SATU tarikh. */
 interface KumpulanLog {
