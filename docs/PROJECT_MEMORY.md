@@ -478,3 +478,27 @@ berpalet 2-bit (satu warna dakwat, 4 tahap legap). Hasilnya masih PNG biasa —
   pengeluaran, jadi tiada baris lama yang perlu dipadatkan semula.
 - Jika suatu hari perlu lebih ruang: dasar SIMPANAN (buang jawapan aktiviti
   yang sudah lama tamat selepas diarkib PDF) — itu keputusan pengguna, belum dibuat.
+
+## Log Terkini Kawalan Kelas: siapa nampak apa (8 Okt 2026)
+
+Keputusan pengguna — MENGGANTIKAN "log bersama semua guru" yang asal:
+
+| Siapa | Nampak dalam Log Terkini |
+|---|---|
+| Pentadbir / admin | Semua kelas |
+| Guru kelas | Kelasnya sendiri + rekod yang dia sendiri isi di kelas lain |
+| Guru lain | Rekod yang dia sendiri isi sahaja |
+
+- Ditapis DI PELAYAN: `tapisIkutPeranan()` dalam `src/lib/kawalan-kelas.ts`
+  (penapis `or=` PostgREST) dan `senaraiKehadiranMuridLog()` (kelas sendiri,
+  atau hari yang dia sahkan/isi — `dicipta_oleh`). Jangan pindah ke skrin.
+- Kesan sampingan yang DISEDARI: carta kehadiran, Borang Kawalan Bilik Darjah
+  dan cetakan "Rekod Kawalan Kelas" dibina daripada senarai yang sama, jadi
+  guru bukan guru kelas hanya melihat rekodnya sendiri di situ juga. Guru
+  kelas dan pentadbir (yang mencetak borang itu) tetap melihat semuanya.
+- **Menu tiga titik** (`MenuTitik`) di hujung setiap kad log: Sunting + Padam.
+  Kawalan kelas: pemilik rekod atau pentadbir. Kehadiran: Sunting membuka
+  hari itu dalam panel Kehadiran Murid (kelas + tarikh diisi sendiri);
+  Padam kekal PENTADBIR SAHAJA dan meminta pengesahan. Pelayan menyemak
+  kuasa semula — menu hanyalah paparan.
+

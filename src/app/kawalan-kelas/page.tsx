@@ -12,8 +12,8 @@ export const metadata = { title: "Rekod Kawalan Kelas & Kehadiran" };
 
 
 /**
- * Rekod Kawalan Kelas & Kehadiran (permintaan G) — kad baharu, log
- * BERSAMA semua guru (bukan sulit seperti Disiplin).
+ * Rekod Kawalan Kelas & Kehadiran (permintaan G). Sejak 8 Okt 2026 log
+ * ditapis ikut peranan di pelayan — lihat `src/lib/kawalan-kelas.ts`.
  */
 export default async function KawalanKelas() {
   const sesi = (await sesiSemasa())?.tahun_sesi ?? new Date().getFullYear();
@@ -31,7 +31,7 @@ export default async function KawalanKelas() {
       <Link href="/" className="text-sm text-slate-500 hover:text-navy-700">← Portal</Link>
       <h1 className="mt-3 text-2xl font-bold text-navy-800">Rekod Kawalan Kelas & Kehadiran</h1>
       <p className="mt-1 text-sm leading-relaxed text-slate-500">
-        Log bersama — siapa masuk kelas, subjek, relief, dan bilangan kehadiran harian.
+        Siapa masuk kelas, subjek, relief, dan bilangan kehadiran harian.
       </p>
 
       {k.belumSedia ? (
