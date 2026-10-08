@@ -11,6 +11,7 @@ import { bacaSenaraiMurid } from "./kenal-murid";
 import { hariIniMY } from "./bilik";
 import { semakAkuan, namaSepadan, type AktivitiBorang, type AkuanAktiviti, type JawapanAktiviti } from "@/data/borang-aktiviti";
 import { hantar } from "./notifikasi";
+import { padatkanTandatangan } from "./padat-tandatangan";
 const uuid = (s: string) => /^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(s);
 const hash = (s: string) => createHash("sha256").update(s).digest("hex");
 
@@ -161,6 +162,9 @@ export async function aktivitiAwam(id?:string) {
 export async function hantarAkuan(id:string, data: AkuanAktiviti, lamanPerangkap="") {
  try {
   if(lamanPerangkap || !uuid(id) || !semakAkuan(data)) throw new Error("Lengkapkan semua medan dan jawapan kesihatan.");
+  // Dipadatkan SEBELUM giliran diambil: tandatangan yang tidak boleh dibaca
+  // tidak patut memakan satu cubaan harian penjaga.
+  const tandatangan = data.tandatangan ? padatkanTandatangan(data.tandatangan) : undefined;
   const h=await headers();
   // Header platform dipercayai; jangan menerima IP daripada badan borang.
   const ip=h.get("x-vercel-forwarded-for")?.split(",")[0]?.trim() || h.get("x-real-ip") || "tidak-diketahui";
@@ -177,7 +181,7 @@ export async function hantarAkuan(id:string, data: AkuanAktiviti, lamanPerangkap
   // pendek) supaya salah taip kecil tidak menolak penjaga yang sah.
   if(!p[0] || !namaSepadan(p[0].nama, data.muridNama)) throw new Error("Murid ini tiada dalam senarai peserta yang dipilih jurulatih/pengurus, atau nama dan No. MyKid tidak sepadan. Semak dengan pengurus pasukan.");
   // Nama dan kelas rasmi daripada daftar ePBD — bukan taipan penjaga.
-  const rekod: AkuanAktiviti = { ...data, muridNama: p[0].nama, kelas: p[0].kelas };
+  const rekod: AkuanAktiviti = { ...data, muridNama: p[0].nama, kelas: p[0].kelas, tandatangan };
   const resit=randomBytes(32).toString("hex");
   await db.minta("borang_jawapan",{method:"POST",headers:{Prefer:"return=minimal"},body:JSON.stringify({aktiviti_id:id,murid_id:p[0].murid_id,data:rekod,resit_hash:hash(resit)})});
   await hantar({

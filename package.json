@@ -24,6 +24,7 @@
     "uji:kuasa": "node --experimental-strip-types --no-warnings scripts/uji-kuasa.mts",
     "uji:borang-awam": "node --experimental-strip-types --no-warnings scripts/uji-borang-awam.mts",
     "uji:kuota": "node --experimental-strip-types --no-warnings scripts/uji-kuota.mts",
+    "uji:tandatangan": "node --experimental-strip-types --no-warnings scripts/uji-tandatangan.mts",
     "kaji:jadual-pdf": "node --experimental-strip-types --no-warnings scripts/kaji-jadual-pdf.mts"
   },
   "dependencies": {

@@ -9,6 +9,7 @@ import { tahunSesiAktif } from "./sesi-aktif";
 import { hantar, emelIkutPeranan } from "./notifikasi";
 import type { DataSuratGambar } from "./surat";
 import { namaSepadan } from "@/data/borang-aktiviti";
+import { padatkanTandatangan } from "./padat-tandatangan";
 
 export interface InputKebenaranGambarAwam {
   penjagaNama: string;
@@ -100,6 +101,10 @@ export async function hantarKebenaranGambarAwam(input: InputKebenaranGambarAwam)
     if (!input.tandatangan_url || !/^data:image\/png;base64,[A-Za-z0-9+/]+=*$/.test(input.tandatangan_url) || input.tandatangan_url.length > 150_000) {
       gagal("Tandatangan ibu bapa atau penjaga diperlukan.");
     }
+    // ±2 KB selepas dipadatkan, bukan 10–40 KB: lihat padat-tandatangan.ts.
+    let tandatangan: string;
+    try { tandatangan = padatkanTandatangan(input.tandatangan_url!); }
+    catch (e) { gagal(e instanceof Error ? e.message : "Tandatangan tidak dapat diproses."); }
 
     const kepala = await headers();
     const ip = kepala.get("x-vercel-forwarded-for")?.split(",")[0]?.trim() || kepala.get("x-real-ip") || "tidak-diketahui";
@@ -137,7 +142,7 @@ export async function hantarKebenaranGambarAwam(input: InputKebenaranGambarAwam)
       body: JSON.stringify({
         jenis: "gambar", status: "selesai", tajuk: `Kebenaran Gambar — ${muridNama}`,
         pemohon_id: null, pemohon_nama: penjagaNama, pemohon_emel: pemilik,
-        tandatangan_url: input.tandatangan_url, data,
+        tandatangan_url: tandatangan, data,
       }),
     })) as { id: string; dicipta: string }[];
     if (!disimpan[0]?.id) gagal("Borang telah diterima tetapi nombor rekod tidak dapat disahkan. Hubungi pihak sekolah.");

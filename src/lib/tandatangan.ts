@@ -1,6 +1,7 @@
 "use server";
 
 import { pengguna } from "./akses";
+import { padatkanTandatangan } from "./padat-tandatangan";
 
 
 /**
@@ -25,7 +26,7 @@ export async function naikTandaTangan(data: FormData): Promise<{ ok: boolean; me
     if (!bait.subarray(0, 8).equals(Buffer.from([137,80,78,71,13,10,26,10])))
       return { ok: false, mesej: "Fail PNG tidak sah." };
     // Disimpan bersama rekod borang terlindung, bukan bucket media awam.
-    return { ok: true, mesej: "Tandatangan sedia untuk disimpan bersama borang.", url: `data:image/png;base64,${bait.toString("base64")}` };
+    return { ok: true, mesej: "Tandatangan sedia untuk disimpan bersama borang.", url: padatkanTandatangan(`data:image/png;base64,${bait.toString("base64")}`) };
   } catch (e) {
     return { ok: false, mesej: e instanceof Error ? e.message : "Muat naik gagal." };
   }

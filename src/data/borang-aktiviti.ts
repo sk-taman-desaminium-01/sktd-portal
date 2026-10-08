@@ -15,6 +15,9 @@ export interface AkuanAktiviti {
  * 10–40 KB. Had lama 350 KB dikira: 2,252 murid × 350 KB = 770 MB setahun,
  * iaitu LEBIH BESAR daripada kuota 500 MB pangkalan data percuma — dan
  * pangkalan data yang penuh MENGUNCI sistem, bukan memperlahankannya.
+ *
+ * Ini had apa yang DITERIMA daripada pelayar. Yang DISIMPAN jauh lebih
+ * kecil: pelayan memadatkannya ke ±2 KB (`src/lib/padat-tandatangan.ts`).
  */
 export const HAD_TANDATANGAN = 150_000;
 export function semakAkuan(x: unknown): x is AkuanAktiviti {
