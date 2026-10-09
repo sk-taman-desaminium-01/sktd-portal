@@ -536,3 +536,17 @@ surat kiriman rasmi", supaya maklumat penting boleh ditonjolkan.
   (`teksBiasa`) di klien DAN pelayan (`cms.ts`).
 - Tiada garis bawah: set yang sama seperti surat (tebal, italik, coret) sahaja.
 
+## Surat Akuan Waris: dua muka KIRI–KANAN + nama aktiviti pada tajuk (9 Okt 2026)
+
+Pepijat sebenar yang ditemui pengguna melalui bahan LADAP: `CetakAkuan` dicetak
+dengan dua mukanya ATAS–BAWAH, sedangkan borang asal (`rujukan-borang/SURAT
+KEBENARAN WARIS.pdf`) ialah A4 melintang, kiri–kanan. Punca: grid diletakkan
+pada akar `#akuan-cetak`, dan `mulaCetak()` + CSS halaman pratonton memaksa
+akar dokumen `display:block`. Grid kini pada bekas dalam `.dua-muka`.
+
+- JANGAN letak `display:grid/flex` pada elemen akar mana-mana dokumen cetak
+  (elemen ber-`data-cetak-kertas`) — ia akan dipadam. Guna bekas dalam.
+- Garis di bawah "SURAT AKUAN KEBENARAN WARIS MENYERTAI" DIISI nama aktiviti
+  (arahan pengguna), bukan dibiarkan kosong.
+- Dikunci oleh `uji:cetak` (22 semakan).
+

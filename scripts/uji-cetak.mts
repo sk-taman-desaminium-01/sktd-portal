@@ -42,8 +42,18 @@ for (const [nama, fail] of [["Media", media], ["Disiplin", disiplin], ["Slip PBD
   perlu(`${nama} isytihar A4 potret`, fail.includes('data-cetak-kertas="portrait"'));
 }
 
+// Surat Akuan Waris: DUA MUKA KIRI–KANAN (A4 melintang), dan garis tajuk diisi nama aktiviti.
+// Grid pada akar dokumen dipadam oleh mulaCetak (display:block) — ia mesti pada bekas dalam.
+{
+  const akuanSrc = baca("src/components/CetakAkuan.tsx");
+  perlu("Surat Akuan: grid dua muka pada bekas dalam, bukan akar dokumen",
+    /#akuan-cetak \.dua-muka \{ display: grid; grid-template-columns: 1fr 1fr/.test(akuanSrc) &&
+    !/#akuan-cetak \{[^}]*display: grid/.test(akuanSrc) && akuanSrc.includes('<div className="dua-muka">'));
+  perlu("Surat Akuan: garis tajuk diisi nama aktiviti",
+    akuanSrc.includes('<p className="garis-tajuk">{a.nama.toUpperCase()}</p>'));
+}
 if (gagal.length) {
   console.error(`Kontrak cetakan gagal:\n${gagal.map((x) => `- ${x}`).join("\n")}`);
   process.exit(1);
 }
-console.log("Kontrak cetakan: 20 semakan lulus.");
+console.log("Kontrak cetakan: 22 semakan lulus.");
