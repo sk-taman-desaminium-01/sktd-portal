@@ -65,7 +65,12 @@ export default function CetakAkuan({
     <div id="akuan-cetak" data-cetak-kertas="landscape">
       <style>{`
         #akuan-cetak { box-sizing: border-box; width: 277mm; min-height: 190mm; margin: 0 auto; background: #fff; color: #000;
-          display: grid; grid-template-columns: 1fr 1fr; column-gap: 9mm; padding: 2mm 0; font-family: Arial, Helvetica, sans-serif; font-size: 7.3pt; line-height: 1.25; }
+          padding: 2mm 0; font-family: Arial, Helvetica, sans-serif; font-size: 7.3pt; line-height: 1.25; }
+        /* DUA MUKA KIRI–KANAN pada satu helaian A4 melintang, seperti borang asal.
+           Grid diletakkan pada bekas DALAM, bukan pada #akuan-cetak: mulaCetak()
+           dan halaman pratonton memaksa akar dokumen menjadi display:block, dan
+           itu pernah menyusun dua muka ini ATAS–BAWAH (laporan pengguna 9 Okt 2026). */
+        #akuan-cetak .dua-muka { display: grid; grid-template-columns: 1fr 1fr; column-gap: 9mm; }
         #akuan-cetak * { box-sizing: border-box; }
         #akuan-cetak p { margin: 0; }
         #akuan-cetak .u { display: inline-block; border-bottom: .6pt solid #000; min-height: 1.25em; padding: 0 1mm; vertical-align: bottom; overflow-wrap: anywhere; }
@@ -79,7 +84,8 @@ export default function CetakAkuan({
         #akuan-cetak .kepala .sek b { font-size: 7.8pt; }
         #akuan-cetak .kepala .hub { font-size: 6.6pt; line-height: 1.35; align-self: end; }
         #akuan-cetak .tajuk-w { margin-top: 1mm; text-align: center; font-weight: 700; font-size: 8.2pt; }
-        #akuan-cetak .garis-tajuk { width: 62%; margin: .6mm auto 0; border-bottom: .6pt solid #000; height: 3.2mm; }
+        #akuan-cetak .garis-tajuk { width: fit-content; min-width: 62%; max-width: 100%; margin: .6mm auto 0; padding: 0 2mm; border-bottom: .6pt solid #000;
+          min-height: 3.6mm; text-align: center; font-weight: 700; font-size: 8.2pt; line-height: 1.3; overflow-wrap: anywhere; }
         #akuan-cetak .anak { margin-left: 11mm; }
         #akuan-cetak .prog { display: grid; grid-template-columns: 30mm 3mm 1fr; row-gap: .6mm; margin: 1.2mm 0 0 16mm; width: 100mm; }
         #akuan-cetak .prog .u { display: block; font-size: 7.4pt; }
@@ -107,6 +113,7 @@ export default function CetakAkuan({
         @media print { #akuan-cetak { width: 100%; } }
       `}</style>
 
+      <div className="dua-muka">
       {/* ======================= MUKA KIRI ======================= */}
       <section>
         <header className="kepala">
@@ -126,7 +133,9 @@ export default function CetakAkuan({
           <img src={aset("/logo-sktd.png")} alt="Lencana SK Taman Desaminium" />
         </header>
         <p className="tajuk-w">SURAT AKUAN KEBENARAN WARIS MENYERTAI</p>
-        <div className="garis-tajuk" />
+        {/* Garis di bawah tajuk DIISI nama aktiviti (arahan pengguna): pada borang
+            kertas ia ditulis tangan di sini, bukan dibiarkan kosong. */}
+        <p className="garis-tajuk">{a.nama.toUpperCase()}</p>
 
         <p className="baris"><span className="tetap">Saya</span><span className="u">{namaPenjaga}</span>
           <span className="tetap">No. Kad Pengenalan</span><span className="u" style={{ flex: "0 0 30mm" }}>{d.penjagaKp}</span></p>
@@ -234,6 +243,7 @@ export default function CetakAkuan({
         </div>
         <p style={{ marginTop: "3.4mm", fontWeight: 700 }}>*Potong yang mana tidak berkenaan</p>
       </section>
+      </div>
     </div>
     </div>
   </>;
