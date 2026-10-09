@@ -517,3 +517,22 @@ Keputusan pengguna — MENGGANTIKAN "log bersama semua guru" yang asal:
   rekod masuk kelas berlaku di situ (`SuntingRekodMasuk`), BUKAN di borang atas
   — borang atas kini untuk rekod baharu sahaja. Padam memerlukan rekod dipilih
   dahulu, kemudian pengesahan; tiada "padam seluruh hari".
+
+## Format teks pos = format surat rasmi (9 Okt 2026)
+
+Permintaan pengguna: penulisan pos (pengumuman/aktiviti) "selaras macam buat
+surat kiriman rasmi", supaya maklumat penting boleh ditonjolkan.
+
+- Borang pos (`/admin/pos`) guna `EditorIsiSurat` dengan `mod="pos"`: butang
+  B / I / S dan penanda gaya WhatsApp yang SAMA (`*tebal*` `_italik_` `~coret~`).
+  Mod pos tiada had satu muka A4, tiada petua nombor perenggan, dan pratontonnya
+  perenggan biasa. Teks yang disalin dari WhatsApp mengekalkan formatnya.
+- Laman awam menghurainya dalam `sktd-web/src/components/TeksPos.tsx` melalui
+  `sktd-web/src/lib/format-teks.ts` — fail KEMBAR kepada `src/data/isi-surat.ts`
+  (pecahFormat, teksBiasa). `uji:kontrak-modul` gagal jika kedua-duanya berbeza.
+- Format dihurai DAHULU, pautan dikesan dalam setiap kepingan — `*laman.my*`
+  menjadi pautan tebal. Kekal sebagai nod React; tiada HTML mentah disuntik.
+- Ringkasan kad (200 aksara) dan tajuk automatik dibuang penandanya
+  (`teksBiasa`) di klien DAN pelayan (`cms.ts`).
+- Tiada garis bawah: set yang sama seperti surat (tebal, italik, coret) sahaja.
+

@@ -6,6 +6,7 @@ import { klienTulis } from "./supabase-pelayan";
 import { binaSemulaLamanAwam } from "./bina-semula";
 import { hantar } from "./notifikasi";
 import { sahUuid } from "./sah";
+import { teksBiasa } from "@/data/isi-surat";
 
 export type Keutamaan = "segera" | "utama" | "biasa";
 export type Status = "draf" | "terbit";
@@ -71,7 +72,8 @@ export async function ambilPos(id: string): Promise<(PosCms & { kandungan: strin
 /** Ringkasan automatik daripada kandungan — potong pada 200 aksara (permintaan L). */
 function auto200(kandungan: string | null): string | null {
   if (!kandungan) return null;
-  const rata = kandungan.replace(/\s+/g, " ").trim();
+  // Penanda format (*tebal* _italik_ ~coret~) dibuang: ringkasan ialah teks biasa.
+  const rata = teksBiasa(kandungan).replace(/\s+/g, " ").trim();
   if (rata.length <= 200) return rata || null;
   return `${rata.slice(0, 199).trimEnd()}…`;
 }
