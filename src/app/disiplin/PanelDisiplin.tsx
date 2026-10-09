@@ -333,7 +333,7 @@ function CetakLembaga({ senarai }: { senarai: BarisDisiplin[] }) {
       `}</style>
       <header className="border-b-2 border-black pb-2 text-center text-[11pt]">
         <h1 className="font-bold uppercase">{SEKOLAH.namaPenuh}</h1>
-        <p>{SEKOLAH.hubungi.alamat.split("\n").join(", ")}</p>
+        <p>{SEKOLAH.hubungi.alamat.split("\n").map((b) => b.trim().replace(/,+$/, "")).join(", ")}</p>
       </header>
       <p className="mt-4 text-center text-[12pt] font-bold uppercase">
         Laporan Lembaga Disiplin — Borang A/2
