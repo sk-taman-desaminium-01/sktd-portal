@@ -328,6 +328,20 @@ perlu("Waktu diambil dari set kelas, bukan disenaraikan tetap",
 perlu("Mata pelajaran dipilih, bukan ditaip bebas",
   baca("src/app/kawalan-kelas/PanelKawalanKelas.tsx").includes("kawalan-subjek"));
 
+
+/* Penulisan pos selaras dengan surat rasmi (pengguna, 9 Okt 2026): butang
+   B / I / S yang sama, dan laman awam menghurai penanda yang sama. */
+const borangPos = baca("src/app/admin/pos/BorangPos.tsx");
+perlu("Borang pos guna editor berformat yang sama seperti surat rasmi",
+  borangPos.includes('<EditorIsiSurat') && borangPos.includes('mod="pos"') && !borangPos.includes("<textarea"));
+perlu("Ringkasan pos dibuang penanda format (klien dan pelayan)",
+  borangPos.includes("teksBiasa(kandungan)") && baca("src/lib/cms.ts").includes("teksBiasa(kandungan)"));
+{
+  // KEMBAR: peraturan format di laman awam mesti SAMA dengan portal.
+  const potong = (t: string) => t.slice(t.indexOf("export interface KepingTeks"));
+  const web = readFileSync(resolve(akar, "../sktd-web/src/lib/format-teks.ts"), "utf8");
+  perlu("Peraturan format laman awam sama dengan portal (fail kembar)", potong(web).trim() === potong(baca("src/data/isi-surat.ts")).trim());
+}
 if (gagal.length) {
   console.error(`Kontrak modul gagal:\n${gagal.map((x) => `- ${x}`).join("\n")}`);
   process.exit(1);

@@ -115,3 +115,11 @@ export function pecahFormat(teks: string, asas: Omit<KepingTeks, "teks"> = { teb
   return keluar;
 }
 
+/**
+ * Teks TANPA penanda format — untuk ringkasan kad, tajuk automatik dan
+ * metadata. Tanpanya "*PENTING*" muncul dengan asterisk mentah pada kad
+ * laman awam dan dalam pratonton WhatsApp.
+ */
+export function teksBiasa(teks: string): string {
+  return pecahFormat(teks).map((k) => k.teks).join("");
+}

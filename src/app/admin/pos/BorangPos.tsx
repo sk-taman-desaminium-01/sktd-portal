@@ -9,6 +9,8 @@ import {
   kecilkanGambar, bolehDikecilkan, ceritaKecil, bait, HAD_GAMBAR_BAIT,
 } from "@/lib/kecilkan-gambar";
 import { pautGambar } from "@/data/pautan-gambar";
+import EditorIsiSurat from "@/components/EditorIsiSurat";
+import { teksBiasa } from "@/data/isi-surat";
 
 type Jenis = "pengumuman" | "aktiviti";
 
@@ -58,7 +60,7 @@ export default function BorangPos({
   }
 
   function auto200(): string {
-    const rata = kandungan.replace(/\s+/g, " ").trim();
+    const rata = teksBiasa(kandungan).replace(/\s+/g, " ").trim();
     return rata.length <= 200 ? rata : `${rata.slice(0, 200)}…`;
   }
 
@@ -95,7 +97,7 @@ export default function BorangPos({
   function tekanDraf() {
     // Draf tidak perlu tajuk sempurna — ambil dari kandungan sahaja supaya
     // menulis boleh disambung kemudian tanpa disekat oleh medan wajib.
-    const auto = tajuk.trim() || kandungan.trim().slice(0, 60) || "(draf tanpa tajuk)";
+    const auto = tajuk.trim() || teksBiasa(kandungan).trim().slice(0, 60) || "(draf tanpa tajuk)";
     void hantarStatus("draf", auto);
   }
 
@@ -150,13 +152,15 @@ export default function BorangPos({
           </ul>
         )}
 
-        <textarea
-          value={kandungan}
-          onChange={(e) => setKandungan(e.target.value)}
-          rows={6}
-          placeholder="Apa yang berlaku di sekolah?"
-          className="mt-4 w-full resize-y rounded-lg border border-garis px-3 py-2.5 text-sm"
-        />
+        {/* SAMA seperti isi surat rasmi: B / I / S, penanda gaya WhatsApp.
+            Laman awam menghurainya dengan peraturan yang sama (sktd-web
+            src/lib/format-teks.ts) — ubah satu, ubah yang lain. */}
+        <div className="mt-4">
+          <EditorIsiSurat
+            mod="pos" nilai={kandungan} ubah={setKandungan} rows={6} labelAria="Isi pos"
+            placeholder={"Apa yang berlaku di sekolah?\n\nTarikh : *24 Oktober 2026*\nMasa : *8.00 pagi*"}
+          />
+        </div>
         <p className="mt-1 text-xs text-slate-500">
           Ringkasan pada kad ditulis automatik daripada ayat pertama (maks. 200 aksara).
         </p>
