@@ -193,6 +193,31 @@ if (sqlAduan.length) {
   gagal.push("Fail SQL berisiko gagal dihurai:\n" + sqlAduan.map((x) => `    ${x}`).join("\n"));
 }
 
+/* ---------------------------------------------------------------------- */
+/* Halaman AWAM: tiada pramuat pautan                                      */
+/* ---------------------------------------------------------------------- */
+/* Halaman yang dibuka ORANG RAMAI (ibu bapa mengisi borang) ialah satu-
+   satunya tempat bilangan pengguna boleh melonjak ke puluhan ribu. Diukur
+   dalam Chrome 11 Okt 2026: `<Link>` biasa pada /borang menghantar EMPAT
+   permintaan pramuat bagi setiap paparan — setiap satu dikira terhadap had
+   harian Worker Cloudflare (100,000) DAN had bulanan Vercel (1,000,000;
+   lebih = digantung 30 hari) — untuk halaman yang kebanyakannya tidak
+   diklik. Pada halaman kakitangan pramuat dikekalkan: 150 orang, bukan 50,000. */
+{
+  const awam = [join(akar, "src/app/borang"), join(akar, "src/app/kebenaran")];
+  const aduan: string[] = [];
+  for (const dir of awam) {
+    for (const f of failTsx(dir)) {
+      if (/[\\/]urus[\\/]/.test(f)) continue; // halaman pentadbir, bukan awam
+      const isi = readFileSync(f, "utf8");
+      for (const m of isi.matchAll(/<Link\b[^>]*>/g)) {
+        if (!/prefetch=\{false\}/.test(m[0])) aduan.push(`${relative(akar, f)}: ${m[0].slice(0, 70)}`);
+      }
+    }
+  }
+  if (aduan.length) gagal.push("Halaman awam mesti guna <Link prefetch={false}>:\n" + aduan.map((x) => `    ${x}`).join("\n"));
+}
+
 if (gagal.length) {
   console.error(`Kontrak kuota gagal:\n${gagal.map((x) => `- ${x}`).join("\n")}`);
   process.exit(1);

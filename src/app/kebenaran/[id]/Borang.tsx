@@ -41,7 +41,7 @@ export default function Borang({ aktivitiId }: { aktivitiId: string }) {
   }
 
   if (resit) {
-    return <section className="mt-5 rounded-2xl border border-[#b9ddca] bg-[#edf8f2] p-5"><h2 className="font-bold text-[#145f42]">Akuan berjaya diterima</h2><p className="mt-2 text-sm text-[#145f42]">{nota}</p><Link className="mt-4 inline-flex min-h-11 items-center rounded-lg bg-navy-800 px-5 py-2.5 text-sm font-bold text-white" href={`/kebenaran/resit/${resit}`}>Pratonton dan cetak borang</Link><p className="mt-3 text-xs text-slate-600">Simpan pautan resit secara peribadi. Pautan sah selama 90 hari.</p></section>;
+    return <section className="mt-5 rounded-2xl border border-[#b9ddca] bg-[#edf8f2] p-5"><h2 className="font-bold text-[#145f42]">Akuan berjaya diterima</h2><p className="mt-2 text-sm text-[#145f42]">{nota}</p><Link prefetch={false} className="mt-4 inline-flex min-h-11 items-center rounded-lg bg-navy-800 px-5 py-2.5 text-sm font-bold text-white" href={`/kebenaran/resit/${resit}`}>Pratonton dan cetak borang</Link><p className="mt-3 text-xs text-slate-600">Simpan pautan resit secara peribadi. Pautan sah selama 90 hari.</p></section>;
   }
 
   return (

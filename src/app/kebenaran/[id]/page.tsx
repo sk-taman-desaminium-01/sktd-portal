@@ -12,7 +12,7 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
   if (!aktiviti) notFound();
   return (
     <main className="mx-auto min-h-screen max-w-3xl px-4 py-8 sm:px-6 sm:py-12">
-      <Link href="/borang/aktiviti" className="text-sm font-medium text-slate-600 underline underline-offset-4">← Senarai aktiviti</Link>
+      <Link prefetch={false} href="/borang/aktiviti" className="text-sm font-medium text-slate-600 underline underline-offset-4">← Senarai aktiviti</Link>
       <h1 className="mt-5 text-2xl font-bold leading-tight text-navy-800 sm:text-3xl">Surat Akuan Penyertaan Aktiviti</h1>
       <section className="mt-5 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
         <h2 className="text-lg font-bold leading-snug text-navy-800">{aktiviti.nama}</h2>

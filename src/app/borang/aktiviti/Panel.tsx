@@ -165,7 +165,7 @@ export default function Panel({ senarai, skop }: { senarai: AktivitiBorang[]; sk
             <p className="mt-1 text-sm text-slate-500">{peserta.length} peserta dipilih · {jawapan.length} akuan diterima</p>
           </div>
           <div className="flex flex-wrap gap-x-4 gap-y-2 text-sm">
-            <Link href={`/kebenaran/${pilih.id}`} target="_blank" className="font-semibold text-navy-700 underline">Pautan untuk ibu bapa ↗</Link>
+            <Link prefetch={false} href={`/kebenaran/${pilih.id}`} target="_blank" className="font-semibold text-navy-700 underline">Pautan untuk ibu bapa ↗</Link>
             {pilih.aktif && <button disabled={sibuk} onClick={() => void tutup()} className="underline">Tutup penerimaan borang</button>}
             <button disabled={sibuk} onClick={padam} className="text-[#8f2424] underline">Padam aktiviti</button>
           </div>
