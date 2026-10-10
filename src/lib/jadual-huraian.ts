@@ -414,26 +414,21 @@ export function binaDrafDariGrid(
 
 /* ------------------------------------------- draf dari KOORDINAT PDF ----- */
 
-/** Serpihan teks dengan kedudukannya. Sama bentuk dengan `ItemTeks`. */
-export interface Kedudukan { str: string; x: number; y: number; w?: number }
+/**
+ * Serpihan teks dengan kedudukannya. Sama bentuk dengan `ItemTeks`.
+ *
+ * `h` (tinggi fon) dan `f` (nama fon) pilihan: PDF memberinya, OCR tidak.
+ * Bila ada, `f` membezakan SUBJEK (fon tebal besar) daripada NAMA GURU (fon
+ * condong kecil) tanpa perlu meneka daripada teksnya.
+ */
+export interface Kedudukan { str: string; x: number; y: number; w?: number; h?: number; f?: string }
 
 const RE_MASA = /(\d{1,2})[:.](\d{2})\s*[-–]\s*(\d{1,2})[:.](\d{2})/;
+const RE_REHAT = /^(rehat|rest|break|recess)$/i;
 
-/**
- * Bina draf daripada KOORDINAT teks PDF.
- *
- * KENAPA CARA INI WUJUD: jadual aSc — yang sekolah ini gunakan — tidak
- * berbentuk baris-dan-lajur yang kemas. Label hari ("Mo", "Tu") duduk pada
- * barisnya SENDIRI di lajur kiri, manakala subjek dan nama guru berada pada
- * baris yang berlainan di bawahnya. Penghurai grid menganggap satu sel = satu
- * baris + satu lajur, jadi ia mengenal pasti SIFAR daripada 45 slot pada fail
- * sebenar sekolah. Penghurai teks rata lagi teruk: teks keluar mengikut
- * susunan ia disimpan, bukan susunan ia kelihatan.
- *
- * Koordinat menyelesaikannya: setiap hari menduduki JALUR y, setiap waktu
- * menduduki JALUR x. Sel ialah persilangan kedua-duanya — sama seperti yang
- * dilihat mata.
- */
+/** Label kumpulan kecil yang aSc cetak pada petak: bukan subjek, bukan guru. */
+const RE_LABEL_VARIAN = /^(quran|jawi|ulum|moral\s*-\s*[qju])$/i;
+
 /**
  * Huruf komponen Pendidikan Islam daripada teks petak.
  *
@@ -442,240 +437,285 @@ const RE_MASA = /(\d{1,2})[:.](\d{2})\s*[-–]\s*(\d{1,2})[:.](\d{2})/;
  * diterima; huruf itu sama kerana kedua-dua kumpulan berpecah serentak.
  */
 function varianDariTeks(teks: string): string | null {
-  const m = /\((Q|J|U)\)/i.exec(teks) ?? /\bMORAL\s*-\s*(Q|J|U)\b/i.exec(teks);
+  const m = /\((Q|J|U)\)/i.exec(teks) ?? /\bMORAL\s*-\s*(Q|J|U)\b/i.exec(teks)
+    ?? /^\s*(Q)URAN\s*$/i.exec(teks) ?? /^\s*(J)AWI\s*$/i.exec(teks) ?? /^\s*(U)LUM\s*$/i.exec(teks);
   return m ? m[1].toUpperCase() : null;
 }
 
+/** Nilai yang paling kerap; seri dimenangi yang muncul dahulu. */
+function terkerap<T>(senarai: T[]): T | undefined {
+  const kira = new Map<T, number>();
+  for (const v of senarai) kira.set(v, (kira.get(v) ?? 0) + 1);
+  let terbaik: [T, number] | undefined;
+  for (const e of kira) if (!terbaik || e[1] > terbaik[1]) terbaik = e;
+  return terbaik?.[0];
+}
+
+/**
+ * Cantum baris-baris nama guru dalam SATU petak menjadi satu nama.
+ *
+ * aSc mematahkan nama yang tidak muat, dengan tiga rupa — semuanya diukur
+ * pada jadual Tahun 4–6 (16.8.2026):
+ *   · "AKRAM /" ⏎ "IRHAMI /" ⏎ "IBRAHIM"   pemisah dikekalkan
+ *   · "SYAKIRAH / JAZMA" ⏎ "RASHIDAH"      pemisah DIGUGURKAN pada patahan
+ *   · "ABDURRAHM" ⏎ "AN"                   SATU nama dipatah di tengah
+ * Yang ketiga dikenali daripada ekornya: satu–dua huruf sahaja, di bawah
+ * baris yang cuma satu perkataan.
+ */
+function cantumGuru(kepingan: Kedudukan[]): string {
+  const susun = [...kepingan].sort((a, b) => (Math.abs(b.y - a.y) > 3 ? b.y - a.y : a.x - b.x));
+  let keluar = "";
+  let dulu: Kedudukan | null = null;
+  for (const k of susun) {
+    const t = k.str.trim();
+    if (!t) continue;
+    if (!dulu) keluar = t;
+    else if (Math.abs(dulu.y - k.y) <= 3 || /\/\s*$/.test(keluar) || /^\//.test(t)) keluar += ` ${t}`;
+    else {
+      // Ekor satu–dua huruf selepas perkataan tunggal = nama dipatah di
+      // tengah. LEBAR baris atas tidak boleh dijadikan tanda: "HALIMATUN"
+      // memenuhi petak sempit tetapi baris di bawahnya ("AMALINA") ialah
+      // guru LAIN — diukur pada 4 USAHA, yang terbaca "HALIMATUNAMALINA".
+      const tengahKata = !/[\s/]/.test(dulu.str.trim()) && /^[A-Za-z]{1,2}$/.test(t);
+      keluar += tengahKata ? t : ` / ${t}`;
+    }
+    dulu = k;
+  }
+  return keluar.replace(/\s*\/\s*/g, " / ").replace(/\s+/g, " ").trim();
+}
+
+/**
+ * Bina draf daripada KOORDINAT teks PDF.
+ *
+ * KENAPA CARA INI WUJUD: jadual aSc — yang sekolah ini gunakan — tidak
+ * berbentuk baris-dan-lajur yang kemas. Label hari ("Mo", "Tu") duduk pada
+ * barisnya SENDIRI di lajur kiri, manakala subjek dan nama guru berada pada
+ * baris yang berlainan. Koordinat menyelesaikannya: setiap hari menduduki
+ * JALUR y, setiap waktu menduduki JALUR x, dan petak ialah persilangannya.
+ *
+ * DITULIS SEMULA 11 Okt 2026 selepas jadual Tahun 4–6 (16.8.2026) dibaca
+ * salah walaupun kiraannya "48/50". Empat punca, semuanya diukur pada fail
+ * itu, dan setiap satu kini dikira daripada geometri — bukan diteka:
+ *
+ *  1. SEMPADAN BARIS HARI. Dahulu: titik tengah antara dua label hari. Tetapi
+ *     garis dasar label besar duduk DI BAWAH pusat barisnya, jadi sempadan
+ *     itu ~12pt terlalu rendah — baris guru teratas petak PAI/Moral hari
+ *     Selasa (y 394.4) jatuh ke hari Isnin (sempadan sebenar 405). Kini pusat
+ *     baris dikira daripada label, dan baris = pusat ± separuh tinggi.
+ *
+ *  2. NAMA GURU IKUT TEPI KANAN, bukan pusat teks. aSc merapatkan nama guru
+ *     ke tepi KANAN petak; nama panjang melimpah ke KIRI ke atas petak jiran.
+ *     Padanan ikut pusat memberi nama itu kepada jiran — itulah "guru
+ *     tertukar". Lajur yang mengandungi tepi kanan nama = lajur terakhir
+ *     petak pemiliknya.
+ *
+ *  3. LEBAR PETAK. Pusat subjek + tepi kanan guru memberi rentang tepat
+ *     (1, 2, 3 atau 4 waktu) — pusat sahaja tidak membezakan 1 daripada 3.
+ *
+ *  4. PETAK DUA TINGKAT (Pendidikan Islam di atas, Moral di bawah) dibahagi
+ *     pada PUSAT BARIS. Dalam bentuk ini guru Moral dicetak DI ATAS perkataan
+ *     "P. MORAL", jadi membahagi pada kedudukan perkataan itu memberi guru
+ *     Moral kepada PAI. Dan dalam petak sempit "P. MORAL" patah menjadi
+ *     "P. MOR" ⏎ "AL" — dua serpihan yang mesti dicantum sebelum dipadankan.
+ */
 export function binaDrafDariKedudukan(
   halaman: Kedudukan[][],
   senaraiWaktu: Waktu[],
 ): HasilHuraian | null {
   const waktuPdP = senaraiWaktu.filter((w) => !w.rehat);
   const jumlah = waktuPdP.length * HARI.length;
+  const kanan = (i: Kedudukan) => i.x + (i.w ?? 0);
+  const tengah = (i: Kedudukan) => i.x + (i.w ?? 0) / 2;
 
   for (const item of halaman) {
     // --- Lajur waktu: dikenali daripada sel julat masa ("01:00 - 01:30") ---
     const lajurMasa = item
       .filter((i) => RE_MASA.test(i.str))
       .sort((a, b) => a.x - b.x);
-    // --- Baris hari: label pendek yang memadankan nama hari ---
-    const labelHari = item
-      .filter((i) => i.str.trim().length <= 12 && padanHari(i.str) !== null)
-      .sort((a, b) => b.y - a.y); // atas ke bawah
+    if (lajurMasa.length < 3) continue;
 
-    if (lajurMasa.length < 3 || labelHari.length < 3) continue;
-
-    // Sempadan jalur hari: titik tengah antara label berturutan. Jalur
-    // pertama bermula sedikit di ATAS labelnya, kerana baris subjek hari itu
-    // selalunya berada di atas label (label duduk di tengah bloknya).
-    const sempadan: number[] = [];
-    for (let i = 0; i < labelHari.length - 1; i++) {
-      sempadan.push((labelHari[i].y + labelHari[i + 1].y) / 2);
-    }
-    const jalurHari = labelHari.map((l, i) => ({
-      hari: padanHari(l.str)!,
-      atas: i === 0 ? Infinity : sempadan[i - 1],
-      bawah: i === labelHari.length - 1 ? -Infinity : sempadan[i],
-    }));
+    // --- Baris hari: label pendek di KIRI lajur waktu pertama ---
+    const adalahLabelHari = (i: Kedudukan) =>
+      i.str.trim().length <= 12 && padanHari(i.str) !== null && tengah(i) < lajurMasa[0].x;
+    const labelHari = item.filter(adalahLabelHari).sort((a, b) => b.y - a.y); // atas ke bawah
+    if (labelHari.length < 3) continue;
 
     // PUSAT setiap lajur, dikira dari label masa itu sendiri: label
-    // dipusatkan dalam lajurnya, jadi pusat label = pusat lajur. Mengukurnya
-    // begini bermakna tiada nombor ajaib — ia menyesuaikan diri dengan
-    // sebarang saiz fon atau susun atur.
-    const pusatLajur = lajurMasa.map((m) => m.x + (m.w ?? 0) / 2);
-    const lebarLajur =
-      pusatLajur.length > 1
-        ? (pusatLajur[pusatLajur.length - 1] - pusatLajur[0]) / (pusatLajur.length - 1)
-        : 60;
+    // dipusatkan dalam lajurnya, jadi pusat label = pusat lajur.
+    const pusatLajur = lajurMasa.map(tengah);
+    const L = pusatLajur.length > 1
+      ? (pusatLajur[pusatLajur.length - 1] - pusatLajur[0]) / (pusatLajur.length - 1)
+      : 60;
+    const kiriLajur = (i: number) => pusatLajur[i] - L / 2;
+    const kananLajur = (i: number) => pusatLajur[i] + L / 2;
+    /** Lajur yang mengandungi titik x; -1 jika di luar jadual. */
+    const lajurPada = (x: number): number => {
+      for (let i = 0; i < pusatLajur.length; i++) if (x > kiriLajur(i) && x <= kananLajur(i)) return i;
+      return -1;
+    };
+
+    // Tinggi baris = jarak antara label hari berturutan (yang terkecil, supaya
+    // hari yang tiada labelnya tidak menggandakan tinggi itu).
+    const jarak: number[] = [];
+    for (let i = 0; i < labelHari.length - 1; i++) {
+      const d = labelHari[i].y - labelHari[i + 1].y;
+      if (d > 1) jarak.push(d);
+    }
+    const T = jarak.length > 0 ? Math.min(...jarak) : 90;
+    // Label dipusatkan menegak dalam barisnya; garis dasarnya duduk kira-kira
+    // sepertiga tinggi fon di bawah pusat itu (diukur: 11.2pt bagi fon 33pt,
+    // iaitu 0.12 daripada tinggi baris bila tinggi fon tidak diketahui).
+    const pusatBaris = (l: Kedudukan) => l.y + (l.h ? l.h * 0.34 : T * 0.12);
 
     // Jangan ambil apa-apa dari baris masa ke atas — itu kepala jadual.
     const hadAtas = Math.max(...lajurMasa.map((m) => m.y));
 
-    const sel = new Map<string, Kedudukan[]>();
+    // Fon SUBJEK: fon yang paling kerap membawa teks subjek. Dengan itu
+    // serpihan seperti "P. MOR" dan "AL" dikenali sebagai subjek walaupun
+    // teksnya sendiri tidak memadankan apa-apa.
+    const badan = item.filter((i) =>
+      i.y < hadAtas && !RE_MASA.test(i.str) && !adalahLabelHari(i) && !RE_REHAT.test(i.str.trim()));
+    const fonSubjek = terkerap(
+      badan.filter((i) => i.f && padanSubjek(i.str) !== null).map((i) => i.f!),
+    );
+    const adalahSubjek = (i: Kedudukan) =>
+      fonSubjek ? i.f === fonSubjek : padanSubjek(i.str) !== null;
 
-    /** Lajur yang pusatnya berada dalam separuh lebar dari pusat teks. */
-    const lajurDekat = (pusat: number): number[] => {
-      const keluar: number[] = [];
-      for (let i = 0; i < pusatLajur.length; i++) {
-        if (Math.abs(pusatLajur[i] - pusat) <= lebarLajur * 0.6) keluar.push(i);
-      }
-      return keluar;
-    };
-
-    // Kumpul item mengikut jalur hari dahulu. Sempadan sel hanya boleh
-    // dikira dengan melihat SELURUH baris itu sekaligus — lihat nota
-    // "SEL TIGA WAKTU" di bawah.
-    const ikutHari = new Map<string, Kedudukan[]>();
-    for (const it of item) {
-      if (it.y >= hadAtas) continue;
-      if (RE_MASA.test(it.str)) continue;
-      if (it.str.trim().length <= 12 && padanHari(it.str) !== null) continue;
-      // Label rehat dilukis sebagai teks besar MERENTASI lajur rehat. Tanpa
-      // baris ini ia jatuh ke dalam sel jiran dan berakhir sebagai sebahagian
-      // NAMA GURU — "SYAIFUL / ANIS SYUHADA REHAT" pada fail sebenar sekolah.
-      if (/^(rehat|rest|break|recess)$/i.test(it.str.trim())) continue;
-
-      const h = jalurHari.find((j) => it.y <= j.atas && it.y > j.bawah);
-      if (!h) continue;
-      const senarai = ikutHari.get(h.hari) ?? [];
-      senarai.push(it);
-      ikutHari.set(h.hari, senarai);
-    }
-
-    for (const [namaHari, senarai] of ikutHari) {
-      /* SEL BERGABUNG DIKIRA, BUKAN DITEKA.
-         aSc memusatkan teks dalam selnya. Diukur pada fail sebenar sekolah:
-           · sel tunggal  → pusat teks jatuh TEPAT pada pusat lajur
-                            (PMZ 425.0 vs pusat lajur 425)
-           · sel bergabung→ pusat teks jatuh TEPAT pada titik tengah antara
-                            dua pusat lajur (BM 240.75 vs titik tengah 241)
-         Jadi sel dimiliki oleh setiap lajur yang pusatnya berada dalam
-         0.6 lebar lajur dari pusat teks: itu merangkumi kedua-dua lajur bagi
-         sel bergabung (jarak setengah lebar) dan hanya satu bagi sel tunggal
-         (jiran berada satu lebar penuh, di luar julat). */
-      const asas = new Map<Kedudukan, number[]>();
-      const dimiliki = new Set<number>();
-      for (const it of senarai) {
-        const milik = lajurDekat(it.x + (it.w ?? 0) / 2);
-        asas.set(it, milik);
-        if (padanSubjek(it.str) !== null) for (const i of milik) dimiliki.add(i);
-      }
-
-      /* SEL TIGA WAKTU — kenapa peraturan pusat sahaja tidak cukup.
-         Sel yang merentang TIGA waktu meletakkan pusat teksnya TEPAT pada
-         pusat lajur tengah, yang kelihatan sama persis dengan sel tunggal.
-         Diukur pada 1 INOVATIF: "BM" Isnin merentang waktu 2–4, pusatnya 278
-         iaitu pusat lajur 3, jadi waktu 2 dan 4 tertinggal kosong — 42/45
-         dan bukan 44/45.
-
-         Lebar TEKS tidak membantu (teks lebih sempit daripada sel). Tetapi
-         aSc merapatkan NAMA GURU ke tepi KANAN sel, jadi tepi itu boleh
-         DIUKUR: ambil tepi kanan bukan-subjek yang terdekat di kanan pusat
-         teks, kemudian cerminkan pusat untuk mendapat tepi kiri.
-         Disahkan pada kelima-lima sel baris Isnin 1 INOVATIF, termasuk sel
-         tunggal dan sel dua waktu.
-
-         Ia hanya boleh MELUASKAN, dan hanya ke dalam lajur yang belum dimiliki
-         subjek lain — jadi ia tidak boleh mencuri slot yang sudah betul, dan
-         tidak boleh mengisi waktu lapang yang memang kosong. */
-      const tepiKanan = senarai
-        .filter((i) => padanSubjek(i.str) === null)
-        .map((i) => i.x + (i.w ?? 0))
-        .sort((a, b) => a - b);
-
-      for (const it of senarai) {
-        let milik = asas.get(it) ?? [];
-        if (padanSubjek(it.str) !== null && tepiKanan.length > 0) {
-          const pusat = it.x + (it.w ?? 0) / 2;
-          const kanan = tepiKanan.find((r) => r >= pusat);
-          if (kanan !== undefined) {
-            const kiri = 2 * pusat - kanan;
-            const toleransi = lebarLajur * 0.15;
-            const rentang: number[] = [];
-            for (let i = 0; i < pusatLajur.length; i++) {
-              const c = pusatLajur[i];
-              if (c >= kiri - toleransi && c <= kanan + toleransi) rentang.push(i);
-            }
-            const tambahan = rentang.filter((i) => !dimiliki.has(i));
-            const gabung = [...new Set([...milik, ...tambahan])].sort((a, b) => a - b);
-            // Mesti bersambung dengan lajur asalnya; lompatan bermakna sel
-            // jiran yang tiada gurunya, bukan sel yang lebih lebar.
-            if (milik.length > 0 && gabung.length > milik.length &&
-                gabung[gabung.length - 1] - gabung[0] === gabung.length - 1) {
-              milik = gabung;
-              for (const i of milik) dimiliki.add(i);
-            }
-          }
-        }
-        if (milik.length === 0) continue;
-        for (const idx of milik) {
-          const kunci = `${namaHari}|${idx}`;
-          sel.set(kunci, [...(sel.get(kunci) ?? []), it]);
-        }
-      }
-    }
-
-    // --- Tukar sel kepada slot ---
     const hari: KelasJadual["hari"] = {};
+    /** kod subjek → nama guru, SATU entri bagi setiap waktu yang diajar. */
     const kutipan = new Map<string, string[]>();
+    const guruSlot: { hari: Hari; id: string; kod: string; guru: string }[] = [];
     let dikenal = 0;
     let tidakDikenali = 0;
 
-    for (const [kunci, kepingan] of sel) {
-      const [namaHari, idxStr] = kunci.split("|");
-      const idx = Number(idxStr);
-      // Lajur masa termasuk rehat; senarai waktu kita juga. Padanan ikut
-      // URUTAN, jadi kedua-duanya sejajar tanpa perlu meneka waktu mana rehat.
-      const w = senaraiWaktu[idx];
-      if (!w || w.rehat) continue;
+    for (const label of labelHari) {
+      const h = padanHari(label.str)!;
+      if (hari[h]) continue; // label hari yang sama dua kali: yang pertama dipakai
+      const pusatY = pusatBaris(label);
+      const baris = badan.filter((i) => i.y > pusatY - T / 2 && i.y <= pusatY + T / 2);
 
-      /* LABEL VARIAN bukan nama guru.
-         aSc menulis label kumpulan kecil di atas setiap petak: "QURAN",
-         "JAWI", "ULUM". Ia bukan subjek (padanSubjek memulangkan null), jadi
-         ia jatuh ke dalam teks yang dibaca sebagai NAMA GURU — diukur pada
-         1 EFEKTIF, guru PAI terbaca "quran saffa natrah". Ia juga terbawa
-         merentasi sempadan baris kerana label duduk tinggi dalam petaknya. */
-      /* Perkataan penuh "QURAN"/"JAWI"/"ULUM" ialah SALINAN huruf dalam
-         kurungan yang aSc cetak di atas petak. Hurufnya diambil di bawah;
-         perkataan penuhnya dibuang kerana ia bukan subjek dan bukan nama
-         guru, dan ia terbawa merentasi sempadan baris (label duduk tinggi
-         dalam petaknya). */
-      const bersih = kepingan.filter((k) => !/^(quran|jawi|ulum)$/i.test(k.str.trim()));
-      if (bersih.length === 0) { tidakDikenali++; continue; }
+      const labelVarian = baris.filter((i) => RE_LABEL_VARIAN.test(i.str.trim()));
+      const isi = baris.filter((i) => !RE_LABEL_VARIAN.test(i.str.trim()));
 
-      const h = namaHari as Hari;
-
-      /* DUA SUBJEK SERENTAK DALAM SATU PETAK.
-         Pendidikan Islam dan Pendidikan Moral berjalan pada waktu yang SAMA:
-         murid Islam ke satu kelas, murid bukan Islam ke kelas lain. Jadual
-         sekolah mencetaknya sebagai satu petak dibahagi dua tingkat, PI di
-         atas dan MORAL di bawah, setiap satu dengan gurunya.
-         Diukur pada 1 EFEKTIF: tanpa pengasingan ini, MORAL hilang terus DAN
-         nama gurunya bercantum ke dalam nama guru PI. */
-      const tanda = bersih
-        .map((k) => ({ k, kod: padanSubjek(k.str) }))
-        .filter((a): a is { k: Kedudukan; kod: string } => a.kod !== null)
-        .sort((a, b) => b.k.y - a.k.y);
-      const kodAtas = tanda[0]?.kod ?? null;
-      const pemisah = tanda.find((a) => a.kod !== kodAtas);
-
-      if (kodAtas && pemisah) {
-        const atas = bersih.filter((p) => p.y > pemisah.k.y);
-        const bawah = bersih.filter((p) => p.y <= pemisah.k.y);
-        const teksAtas = atas.map((p) => p.str).join(" ");
-        const teksBawah = bawah.map((p) => p.str).join(" ");
-        const varian = varianDariTeks(teksAtas) ?? varianDariTeks(teksBawah);
-        hari[h] = {
-          ...(hari[h] ?? {}),
-          [w.id]: { subjek: kodAtas, seiring: pemisah.kod, ...(varian ? { varian } : {}) },
-        };
-        dikenal++;
-        for (const [kod, teks] of [[kodAtas, teksAtas], [pemisah.kod, teksBawah]] as const) {
-          const guru = namaGuruDariSel(teks, kod);
-          if (guru) kutipan.set(kod, [...(kutipan.get(kod) ?? []), guru]);
+      // --- Subjek: cantum serpihan yang patah baris ("P. MOR" ⏎ "AL") ---
+      interface Subjek { teks: string; c: number; y: number; bawah: number; tinggi: number; kod: string | null }
+      const subjek: Subjek[] = [];
+      for (const s of isi.filter(adalahSubjek).sort((a, b) => b.y - a.y)) {
+        const c = tengah(s);
+        const tinggi = s.h ?? 16;
+        const induk = fonSubjek
+          ? subjek.find((u) => Math.abs(u.c - c) <= 2 && u.bawah - s.y > 0 && u.bawah - s.y <= u.tinggi * 1.4)
+          : undefined;
+        if (induk) {
+          const rapat = induk.teks + s.str.trim();
+          induk.teks = padanSubjek(rapat) !== null ? rapat : `${induk.teks} ${s.str.trim()}`;
+          induk.bawah = s.y;
+          induk.kod = padanSubjek(induk.teks);
+        } else {
+          subjek.push({ teks: s.str.trim(), c, y: s.y, bawah: s.y, tinggi, kod: padanSubjek(s.str) });
         }
-        continue;
+      }
+      const guru = isi.filter((i) => !adalahSubjek(i));
+      /** Lajur tempat setiap nama guru BERAKHIR = lajur terakhir petaknya. */
+      const hujungGuru = new Set(guru.map((g) => lajurPada(kanan(g) - 1)).filter((i) => i >= 0));
+
+      // --- Rentang setiap subjek: [a..b] ---
+      const tol = L * 0.2;
+      const rentang = (s: Subjek): [number, number] | null => {
+        const calon: [number, number][] = [];
+        for (let n = 1; n <= 4; n++) {
+          for (let a = 0; a + n - 1 < pusatLajur.length; a++) {
+            const b = a + n - 1;
+            if (Math.abs((pusatLajur[a] + pusatLajur[b]) / 2 - s.c) > tol) continue;
+            // Petak tidak merentasi rehat, dan tidak menelan subjek lain.
+            let sah = true;
+            for (let i = a; i <= b; i++) if (senaraiWaktu[i]?.rehat && n > 1) sah = false;
+            for (const o of subjek) {
+              if (o === s || Math.abs(o.c - s.c) <= tol) continue;
+              if (o.c > kiriLajur(a) && o.c < kananLajur(b)) sah = false;
+            }
+            if (sah) calon.push([a, b]);
+          }
+        }
+        if (calon.length === 0) return null;
+        return calon.find(([, b]) => hujungGuru.has(b)) ?? calon[0];
+      };
+
+      // --- Petak: subjek yang berkongsi rentang ialah tingkat-tingkat SATU petak ---
+      interface Petak { a: number; b: number; tingkat: Subjek[] }
+      const petak: Petak[] = [];
+      for (const s of subjek) {
+        const r = rentang(s);
+        if (!r) continue;
+        const ada = petak.find((p) => p.a <= r[1] && r[0] <= p.b);
+        if (ada) ada.tingkat.push(s);
+        else petak.push({ a: r[0], b: r[1], tingkat: [s] });
       }
 
-      const teks = bersih.map((p) => p.str).join(" ");
-      const kod = padanSubjek(teks);
-      if (!kod) {
-        // Ada teks di sel ini tetapi kita tidak tahu ia subjek apa. INI
-        // kegagalan; sel yang langsung tiada teks bukan.
-        tidakDikenali++;
-        continue;
+      const dilitupi = new Set<number>();
+      for (const p of petak) {
+        for (let i = p.a; i <= p.b; i++) dilitupi.add(i);
+        p.tingkat.sort((x, y) => y.y - x.y);
+        const atas = p.tingkat[0];
+        const bawah = p.tingkat.find((t) => t.kod !== atas.kod && t.kod !== null);
+        const milik = guru.filter((g) => {
+          const e = lajurPada(kanan(g) - 1);
+          return e >= p.a && e <= p.b;
+        });
+        const teksLabel = labelVarian
+          .filter((v) => { const e = lajurPada(tengah(v)); return e >= p.a && e <= p.b; })
+          .map((v) => v.str);
+        const varian = [...p.tingkat.map((t) => t.teks), ...teksLabel]
+          .map(varianDariTeks).find((v) => v !== null) ?? null;
+
+        // Dua tingkat dibahagi pada PUSAT BARIS — lihat nota 4 di atas.
+        const namaAtas = cantumGuru(bawah ? milik.filter((g) => g.y > pusatY) : milik);
+        const namaBawah = bawah ? cantumGuru(milik.filter((g) => g.y <= pusatY)) : "";
+        const bersih = (teks: string, kod: string) =>
+          !teks ? null : fonSubjek ? kemasNama(teks) : namaGuruDariSel(teks, kod);
+
+        for (let i = p.a; i <= p.b; i++) {
+          const w = senaraiWaktu[i];
+          if (!w || w.rehat) continue;
+          if (!atas.kod) { tidakDikenali++; continue; }
+          hari[h] = {
+            ...(hari[h] ?? {}),
+            [w.id]: {
+              subjek: atas.kod,
+              ...(bawah?.kod ? { seiring: bawah.kod } : {}),
+              ...(varian ? { varian } : {}),
+            },
+          };
+          dikenal++;
+          const gAtas = bersih(namaAtas, atas.kod);
+          if (gAtas) {
+            kutipan.set(atas.kod, [...(kutipan.get(atas.kod) ?? []), gAtas]);
+            guruSlot.push({ hari: h, id: w.id, kod: atas.kod, guru: gAtas });
+          }
+          const gBawah = bawah?.kod ? bersih(namaBawah, bawah.kod) : null;
+          if (gBawah) kutipan.set(bawah!.kod!, [...(kutipan.get(bawah!.kod!) ?? []), gBawah]);
+        }
       }
 
-      const varian = varianDariTeks(teks);
-      hari[h] = { ...(hari[h] ?? {}), [w.id]: { subjek: kod, ...(varian ? { varian } : {}) } };
-      dikenal++;
-
-      const guru = namaGuruDariSel(teks, kod);
-      if (guru) kutipan.set(kod, [...(kutipan.get(kod) ?? []), guru]);
+      // Ada teks pada waktu PdP yang tiada petak memilikinya: itu kegagalan
+      // sebenar, dan pentadbir mesti diberitahu — bukan disenyapkan.
+      const yatim = new Set<number>();
+      for (const g of guru) {
+        const e = lajurPada(kanan(g) - 1);
+        if (e >= 0 && !dilitupi.has(e) && senaraiWaktu[e] && !senaraiWaktu[e].rehat) yatim.add(e);
+      }
+      tidakDikenali += yatim.size;
     }
 
     if (dikenal > 0) {
       const guruSubjek = guruTerbanyak(kutipan);
+      // Waktu yang gurunya BERBEZA daripada guru lazim subjek itu membawa
+      // namanya sendiri (`Slot.guru`). Contoh sebenar: PAI 4 SUKSES diajar
+      // "SYAKIRAH" pada Rabu tetapi "SYAKIRAH / JAZMA / RASHIDAH" pada Khamis.
+      for (const g of guruSlot) {
+        const slot = hari[g.hari]?.[g.id];
+        if (slot && slot.subjek === g.kod && guruSubjek[g.kod] !== g.guru) slot.guru = g.guru;
+      }
       return {
         draf: { hari, ...(Object.keys(guruSubjek).length > 0 ? { guruSubjek } : {}) },
         dikenal,

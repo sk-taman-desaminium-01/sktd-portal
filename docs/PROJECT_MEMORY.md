@@ -1,6 +1,6 @@
 # Memori kesinambungan SKTD
 
-Kemas kini terakhir: **22 September 2026** (audit Claude selepas sesi Codex/Copilot/Gemini). Fail ini ialah rekod bersama untuk
+Kemas kini terakhir: **11 Oktober 2026** (audit Claude selepas sesi Codex/Copilot/Gemini). Fail ini ialah rekod bersama untuk
 Claude dan Codex. Baca sebelum mengubah portal atau laman awam supaya keputusan
 yang sudah dimuktamadkan tidak diperkenalkan semula sebagai pepijat.
 
@@ -570,3 +570,37 @@ Organisasi, Borang Kawalan Bilik Darjah.
   berlencana ditambah mengikut peraturan di atas — buang jika pengguna minta.
 - SEMAK borang rujukan/lama sebelum membina dokumen cetak: itulah yang terlepas.
 
+
+## Jadual Waktu: penghurai kedudukan ditulis semula (11 Okt 2026)
+
+Teguran pengguna: jadual Tahap 2 (`TAHUN 4/5/6 16.8.pdf`) disalin salah —
+Moral, guru tertukar, subjek tertukar — walaupun sistem melapor "48/50".
+**Kiraan slot bukan bukti betul.** Empat punca dalam `binaDrafDariKedudukan`
+(`src/lib/jadual-huraian.ts`), semuanya kini dikira daripada geometri:
+
+1. **Sempadan baris hari** dahulu titik tengah antara dua label hari; garis
+   dasar label besar duduk di bawah pusat barisnya, jadi sempadan ~12pt
+   terlalu rendah dan baris guru teratas petak PAI/Moral jatuh ke hari
+   SEBELUMNYA. Kini: pusat baris = label.y + 0.34 × tinggi fon, baris = ± T/2.
+2. **Nama guru ikut TEPI KANAN**, bukan pusat teks. aSc merapatkan nama ke
+   kanan petak; nama panjang melimpah ke kiri ke atas petak jiran.
+3. **Lebar petak** = pusat subjek + lajur tempat nama guru berakhir.
+4. **Petak dua tingkat dibahagi pada PUSAT BARIS.** Dalam bentuk Tahap 2 guru
+   Moral dicetak DI ATAS "P. MORAL"; dan "P. MORAL" patah jadi "P. MOR" ⏎ "AL"
+   dalam petak sempit.
+
+- `ItemTeks` kini membawa `h` (tinggi fon) dan `f` (nama fon) dari PDF. `f`
+  membezakan subjek (tebal) daripada guru (condong). Tanpa `f` (OCR, ujian
+  lama) penghurai jatuh semula kepada padanan teks. **Jangan buang medan itu.**
+- **`Slot.guru` kini DIISI** bila guru waktu itu berbeza daripada guru lazim
+  subjek dalam kelas itu (cth. PAI: "SYAKIRAH" vs "SYAKIRAH / JAZMA /
+  RASHIDAH"). Laman awam sudah memaparnya. Panel admin tiada medan per-waktu,
+  jadi menaip nama pada "Guru subjek" MEMBUANG tindihan subjek itu.
+- Baris nama guru yang patah: "/" di hujung → sambung; ekor 1–2 huruf selepas
+  satu perkataan → cantum rapat (AINISSYAHIR+A); selain itu → guru LAIN (" / ").
+  Lebar baris BUKAN tanda patah tengah perkataan (HALIMATUN ⏎ AMALINA).
+- **Cara sahkan fail baharu:** bandingkan dengan GARISAN petak PDF (PyMuPDF
+  `get_drawings`), bukan dengan mata dan bukan dengan kiraan. 11 Okt: 1,297
+  slot Tahun 4–6 dan 1,320 slot `JW KELAS PETANG 31.7.2026.pdf`, sifar beza.
+- Data Tahap 2 yang tersimpan sebelum 11 Okt dibaca dengan penghurai lama —
+  **mesti dimuat naik semula**.

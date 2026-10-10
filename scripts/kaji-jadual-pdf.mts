@@ -30,7 +30,7 @@ if (!laluan) {
   process.exit(2);
 }
 
-interface Kedudukan { str: string; x: number; y: number; w: number }
+interface Kedudukan { str: string; x: number; y: number; w: number; h?: number; f?: string }
 
 const { getDocumentProxy } = await import("unpdf");
 const pdf = await getDocumentProxy(new Uint8Array(readFileSync(laluan)));
@@ -42,7 +42,11 @@ for (let i = 1; i <= pdf.numPages; i++) {
   const item: Kedudukan[] = [];
   for (const it of isi.items) {
     if (!("str" in it) || typeof it.str !== "string" || it.str.trim() === "") continue;
-    item.push({ str: it.str, x: it.transform[4], y: it.transform[5], w: it.width });
+    // `h` dan `f` WAJIB dihantar — sama seperti src/lib/baca-dokumen.ts. Tanpa
+    // nama fon, penghurai jatuh ke mod tekaan dan alat ini melaporkan hasil
+    // yang berbeza daripada apa yang portal sebenarnya baca.
+    item.push({ str: it.str, x: it.transform[4], y: it.transform[5], w: it.width,
+                h: (it as { height?: number }).height, f: (it as { fontName?: string }).fontName });
   }
   muka.push(item);
 }
