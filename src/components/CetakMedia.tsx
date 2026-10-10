@@ -26,6 +26,11 @@ function pecahBaris(teks: string, n: number, had: number): string[] {
 }
 
 export default function CetakMedia({ surat, data: d, kepala }: { surat: BarisSurat; data: DataSuratGambar; kepala: KepalaSurat }) {
+  // Nama guru kelas datang daripada akaun e-mel sekolah, yang menambah penanda
+  // akaun di hujungnya ("… KPM-Guru"). Pada borang ia bukan sebahagian nama, dan
+  // dengannya nama panjang TERPOTONG di hujung garis ("… ZAHARI KP"). Penanda
+  // dibuang, dan nama yang masih panjang dikecilkan — tidak pernah dipotong.
+  const guruKelas = (d.guruKelasNama ?? "").replace(/\s+(KPM|IPG|JPN|PPD)-[\p{L}]+\s*$/iu, "").trim().toUpperCase();
   const tahun = surat.dicipta.slice(0, 4);
   const tarikh = (() => {
     const t = new Date(surat.dicipta);
@@ -139,7 +144,7 @@ export default function CetakMedia({ surat, data: d, kepala }: { surat: BarisSur
 
       <div className="m-ttd" style={{ marginTop: "8mm" }}>
         <span>Tandatangan:</span><span className="m-garis">{" "}</span>
-        <span>Nama Penuh (Huruf Besar):</span><span className="m-garis">{d.guruKelasNama?.toUpperCase() || " "}</span>
+        <span>Nama Penuh (Huruf Besar):</span><span className="m-garis" style={guruKelas.length > 30 ? { fontSize: `${Math.max(7, (11.5 * 30) / guruKelas.length).toFixed(1)}pt` } : undefined}>{guruKelas || " "}</span>
         <span>Tarikh:</span><span className="m-garis">{" "}</span>
         <span>Cap Rasmi Sekolah:</span><span className="m-garis">{" "}</span>
       </div>
