@@ -10,7 +10,7 @@ import { semakSaiz } from "@/data/had-fail";
 import { sediaMuatan, normalkanFail } from "@/data/muatan-pelayar";
 import { bacaImbasanJadual, failOcrJadual, pdfTanpaTeks } from "@/data/ocr-pelayar";
 import {
-  HARI, NAMA_HARI, NAMA_SESI, SESI, jamPapar, setUntukKelas, tahunKelas,
+  HARI, NAMA_HARI, NAMA_SESI, SESI, jamPapar, setUntukKelas, tahunKelas, gabungGuruSubjek,
   type Hari, type Jadual, type Sesi, type SetWaktu, type Waktu, type KelasJadual, type Slot,
 } from "@/data/jadual-jenis";
 import PilihCari from "@/components/PilihCari";
@@ -228,7 +228,7 @@ export default function PanelJadual({
       // Nama guru yang DIBACA dari fail menang, kerana ia datang terus dari
       // dokumen rasmi. Nama yang sudah ditaip dikekalkan untuk subjek yang
       // fail itu tidak menyebutnya, supaya kerja sebelum ini tidak hilang.
-      const guruSubjek = { ...(k?.guruSubjek ?? {}), ...(draf.guruSubjek ?? {}) };
+      const guruSubjek = gabungGuruSubjek(k?.guruSubjek, draf);
       return {
         ...j,
         kelas: {

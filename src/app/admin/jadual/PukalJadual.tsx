@@ -321,6 +321,13 @@ export default function PukalJadual() {
                       >
                         {b.mesej}
                       </span>
+                      {/* Keraguan penghurai sendiri. Kiraan slot di atas boleh
+                          penuh sedangkan isinya salah — ini yang memberitahu. */}
+                      {b.amaran?.map((t) => (
+                        <span key={t} className="mt-0.5 block text-xs font-semibold text-[#7a5a12]">
+                          ⚠ Semak: {t}
+                        </span>
+                      ))}
                     </span>
                   </button>
                 </div>

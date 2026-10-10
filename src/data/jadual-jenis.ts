@@ -342,3 +342,31 @@ export function jamPapar(hhmm: string): string {
   const jam12 = j % 12 === 0 ? 12 : j % 12;
   return `${jam12}:${String(m).padStart(2, "0")} ${petang ? "ptg" : "pg"}`;
 }
+
+/**
+ * Gabung nama guru sedia ada dengan yang baru dibaca dari fail.
+ *
+ * Nama yang DIBACA menang. Nama lama dikekalkan HANYA untuk subjek yang
+ * masih ada dalam jadual baharu tetapi failnya tidak menyebut gurunya —
+ * itu kerja taip pentadbir yang tidak patut hilang.
+ *
+ * Nama lama bagi subjek yang TIADA lagi dalam jadual baharu dibuang. Dahulu
+ * ia dikekalkan, dan itulah cara bacaan salah bertahan: "PM: asc jadual
+ * waktu parames" kekal dalam data kelas walaupun selepas fail dibaca semula
+ * dengan betul, menunggu untuk muncul sebaik Moral dipilih pada mana-mana waktu.
+ */
+export function gabungGuruSubjek(
+  lama: Record<string, string> | undefined,
+  baru: KelasJadual,
+): Record<string, string> {
+  const dipakai = new Set<string>();
+  for (const slotHari of Object.values(baru.hari)) {
+    for (const sl of Object.values(slotHari ?? {})) {
+      dipakai.add(sl.subjek);
+      if (sl.seiring) dipakai.add(sl.seiring);
+    }
+  }
+  const keluar: Record<string, string> = {};
+  for (const [kod, nama] of Object.entries(lama ?? {})) if (dipakai.has(kod)) keluar[kod] = nama;
+  return { ...keluar, ...(baru.guruSubjek ?? {}) };
+}

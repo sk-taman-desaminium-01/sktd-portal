@@ -52,3 +52,15 @@ Data API (termasuk oleh kunci rahsia portal):
     -- grant select on public.web_sesuatu to anon;
 
 Jaring keselamatan sedia ada: `supabase/geran-data-api.sql` (repo `sktd`).
+
+## Jadual Waktu: kiraan slot BUKAN bukti betul (11 Okt 2026)
+
+Penghurai jadual PDF (`src/lib/jadual-huraian.ts`) pernah melapor "48/50 slot"
+untuk jadual yang 353 waktunya salah — Moral hilang, guru bertukar antara petak.
+
+- Tahap 1 (petang) dan Tahap 2 (pagi, berhimpit) BERBEZA rupa. Sebarang
+  perubahan penghurai mesti lulus `npm run uji:jadual` (mengunci kedua-duanya)
+  DAN `npm run sahih:jadual -- fail.pdf` pada fail sebenar kedua-dua tahap.
+- Jangan buang `h`/`f` daripada `ItemTeks`, jangan senyapkan
+  `HasilHuraian.amaran`, jangan padan nama guru ikut pusat teks (ikut TEPI
+  KANAN petak). Butiran: `docs/PROJECT_MEMORY.md`.

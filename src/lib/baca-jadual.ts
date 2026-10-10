@@ -7,7 +7,7 @@ import type { MuatanFail } from "@/data/fail-base64";
 import { bacaMuatan, adaMuatan } from "./muatan";
 import { setUntukKelas, type KelasJadual, type Waktu } from "@/data/jadual-jenis";
 import { kesanKelas, semuaKelasDalam } from "@/data/kesan-kelas";
-import { binaDraf, binaDrafDariGrid, binaDrafDariKedudukan } from "./jadual-huraian";
+import { binaDraf, binaDrafDariGrid, binaDrafDariKedudukan, type HasilHuraian } from "./jadual-huraian";
 import { bacaDokumen } from "./baca-dokumen";
 import { ambilJadual } from "./jadual";
 
@@ -151,8 +151,9 @@ async function jalankan(kelas: string, muatan: MuatanFail): Promise<HasilBaca> {
     : dok.grid.length > 0
       ? binaDrafDariGrid(dok.grid, senaraiWaktu)
       : null;
-  const { draf, dikenal, jumlah, kosong, tidakDikenali } =
-    dariKedudukan ?? dariGrid ?? binaDraf(dok.teks, senaraiWaktu);
+  const dihurai = dariKedudukan ?? dariGrid ?? binaDraf(dok.teks, senaraiWaktu);
+  const { draf, dikenal, jumlah, kosong, tidakDikenali } = dihurai;
+  const semuaAmaran = [...dok.amaran, ...(dihurai.amaran ?? [])];
   const bersih = dok.teks;
   const kaedah = dariKedudukan
     ? "kedudukan dalam PDF"
@@ -166,7 +167,7 @@ async function jalankan(kelas: string, muatan: MuatanFail): Promise<HasilBaca> {
     teks: bersih.slice(0, 4000),
     draf,
     keyakinan: { dikenal, jumlah },
-    amaran: dok.amaran.length > 0 ? dok.amaran : undefined,
+    amaran: semuaAmaran.length > 0 ? semuaAmaran : undefined,
     mesej:
       dikenal === 0
         ? "Fail dibaca, tetapi tiada subjek dikenal pasti. Isi grid secara manual."
@@ -183,6 +184,15 @@ async function jalankan(kelas: string, muatan: MuatanFail): Promise<HasilBaca> {
 
 
 /* ------------------------------------------------------- muat naik PUKAL */
+
+/** Amaran penghurai dalam bentuk yang dipapar pada baris hasil pukal. */
+function amaranHuraian(h: HasilHuraian): { amaran?: string[] } {
+  const a = [
+    ...(h.tidakDikenali > 0 ? [`${h.tidakDikenali} waktu ada teks yang tidak dapat dibaca.`] : []),
+    ...(h.amaran ?? []),
+  ];
+  return a.length > 0 ? { amaran: a.slice(0, 8) } : {};
+}
 
 export interface HasilPukal {
   nama: string;
@@ -203,6 +213,13 @@ export interface HasilPukal {
    */
   waktu?: Waktu[];
   keyakinan?: { dikenal: number; jumlah: number };
+  /**
+   * Perkara yang penghurai SENDIRI ragui pada muka ini — teks tanpa petak,
+   * petak tanpa guru, guru yang sama pada PAI dan Moral. Dipapar SEBELUM
+   * simpan. "48/50 slot" pernah dipapar untuk jadual yang salah; nombor itu
+   * tidak boleh lagi menjadi satu-satunya isyarat.
+   */
+  amaran?: string[];
   /**
    * Nama guru kelas seperti TERCETAK pada kepala muka jadual.
    *
@@ -302,6 +319,7 @@ export async function bacaJadualPukal(muatan: MuatanFail): Promise<HasilPukal> {
       draf: hasil.draf,
       waktu: senaraiWaktu,
       keyakinan: { dikenal: hasil.dikenal, jumlah: hasil.jumlah },
+      ...amaranHuraian(hasil),
       mesej:
         hasil.dikenal > 0
           ? `${hasil.dikenal} slot dibaca`
@@ -442,7 +460,7 @@ export async function bacaJadualPukalBanyak(muatan: MuatanFail): Promise<HasilPu
       }
 
       const hasil =
-        (item?.length ? binaDrafDariKedudukan([item], senaraiWaktu) : null) ??
+        (item?.length ? binaDrafDariKedudukan([item], senaraiWaktu, dok.item) : null) ??
         (grid?.length ? binaDrafDariGrid([grid], senaraiWaktu) : null) ??
         binaDraf(teksMuka, senaraiWaktu);
 
@@ -453,6 +471,7 @@ export async function bacaJadualPukalBanyak(muatan: MuatanFail): Promise<HasilPu
         draf: hasil.draf,
         waktu: senaraiWaktu,
         keyakinan: { dikenal: hasil.dikenal, jumlah: hasil.jumlah },
+        ...amaranHuraian(hasil),
         mesej:
           hasil.dikenal > 0
             ? `${hasil.dikenal} slot dibaca`
