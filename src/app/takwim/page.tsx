@@ -1,4 +1,4 @@
-import Link from "next/link";
+import Link from "@/components/Pautan";
 import { pengguna } from "@/lib/akses";
 import { barisIkutKod, dokumenTerkini } from "@/lib/pengurusan";
 import { leraiTakwim } from "@/lib/takwim";

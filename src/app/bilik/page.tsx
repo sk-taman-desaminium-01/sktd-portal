@@ -1,4 +1,4 @@
-import Link from "next/link";
+import Link from "@/components/Pautan";
 import { papanBilik } from "@/lib/tindakan-bilik";
 import { papanInventori } from "@/lib/tindakan-inventori";
 import { baki } from "@/data/inventori";

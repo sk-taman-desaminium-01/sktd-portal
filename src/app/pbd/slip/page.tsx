@@ -1,4 +1,4 @@
-import Link from "next/link";
+import Link from "@/components/Pautan";
 import { SEKOLAH } from "@/data/sekolah";
 import { slipKelas } from "@/lib/tindakan-pbd";
 import { kuasaPbd, kelasBerisi, sesiSemasa } from "@/lib/pbd";

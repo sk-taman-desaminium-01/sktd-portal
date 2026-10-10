@@ -9,7 +9,7 @@ import { NAMA_PERANAN } from "@/lib/peranan";
 import { pengguna } from "@/lib/akses";
 import { kelasBolehSunting } from "@/lib/guru-kelas";
 import { boleh } from "@/lib/peranan";
-import Link from "next/link";
+import Link from "@/components/Pautan";
 
 /**
  * Hab Portal Kakitangan — padanan `skrinPortal()` dalam mockup yang dibekukan.

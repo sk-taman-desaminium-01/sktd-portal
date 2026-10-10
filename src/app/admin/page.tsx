@@ -1,4 +1,4 @@
-import Link from "next/link";
+import Link from "@/components/Pautan";
 import { senaraiPos } from "@/lib/cms";
 import { pengguna } from "@/lib/akses";
 import { boleh } from "@/lib/peranan";

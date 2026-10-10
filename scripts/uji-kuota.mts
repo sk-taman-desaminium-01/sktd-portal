@@ -218,6 +218,17 @@ if (sqlAduan.length) {
   if (aduan.length) gagal.push("Halaman awam mesti guna <Link prefetch={false}>:\n" + aduan.map((x) => `    ${x}`).join("\n"));
 }
 
+/* Setiap pautan dalaman melalui `Pautan` (pramuat bila ada minat sahaja). */
+{
+  const terus = failTsx(join(akar, "src"))
+    .filter((f) => !f.endsWith(join("components", "Pautan.tsx")))
+    .filter((f) => /from\s+["']next\/link["']/.test(readFileSync(f, "utf8")))
+    .map((f) => relative(akar, f));
+  if (terus.length) gagal.push('Import "@/components/Pautan", bukan "next/link":\n' + terus.map((x) => `    ${x}`).join("\n"));
+  const laju = baca("src/components/Laju.tsx");
+  perlu("Laju.tsx tidak mempraterjemah halaman portal (tidak pernah diaktifkan)", !/^\s*prerender\s*:/m.test(laju));
+}
+
 if (gagal.length) {
   console.error(`Kontrak kuota gagal:\n${gagal.map((x) => `- ${x}`).join("\n")}`);
   process.exit(1);

@@ -1,4 +1,4 @@
-import Link from "next/link";
+import Link from "@/components/Pautan";
 import { ambilJadual } from "@/lib/jadual";
 import { kelasBolehSunting } from "@/lib/guru-kelas";
 import { bolehBuat } from "@/lib/akses";

@@ -1,4 +1,4 @@
-import Link from "next/link";
+import Link from "@/components/Pautan";
 import { PANITIA } from "@/data/panitia";
 import { pengguna } from "@/lib/akses";
 import { kuasaPbd } from "@/lib/pbd";

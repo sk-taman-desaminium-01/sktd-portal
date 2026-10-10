@@ -1,4 +1,4 @@
-import Link from "next/link";
+import Link from "@/components/Pautan";
 import { hariIniMY } from "@/lib/bilik";
 import { sesiSemasa } from "@/lib/pbd";
 import { senaraiRosterRmt, hadirRmtTarikh, kelasBolehUrusRosterRmt } from "@/lib/rmt";

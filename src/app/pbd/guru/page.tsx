@@ -1,4 +1,4 @@
-import Link from "next/link";
+import Link from "@/components/Pautan";
 import { kuasaPbd, sesiSemasa, kelasBerisi } from "@/lib/pbd";
 import PemilihPbdGuru from "./PemilihPbdGuru";
 

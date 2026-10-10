@@ -1,4 +1,4 @@
-import Link from "next/link";
+import Link from "@/components/Pautan";
 import { notFound } from "next/navigation";
 import { kadAsal } from "@/data/bahagian";
 import { BAHAGIAN } from "@/data/bahagian";

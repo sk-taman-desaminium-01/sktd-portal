@@ -682,7 +682,15 @@ Worker** (±900,000). Dua jalan, kedua-duanya keputusan pengguna, BELUM dibuat:
    sama R2 ditolak pada 24 Sep.
 2. Sebarkan borang besar merentas beberapa hari / ikut tahun.
 
-**Belum diukur (perlu log masuk):** paparan hab kakitangan. `Laju.tsx`
-(speculation rules `prerender` pada hover) kemungkinan tidak dipakai oleh
-navigasi `<Link>` (Next memintas klik), jadi setiap hover mungkin satu SSR
-terbuang. Ukur dalam Chrome berlog masuk sebelum mengubahnya.
+**Halaman kakitangan — diukur dalam Chrome pengguna yang berlog masuk:**
+- Hab: 6 permintaan pramuat RSC sebelum apa-apa disentuh (2 bagi setiap
+  pautan dalam skrin); Urus Laman 10; menatal hab memramuat semua 17 kad.
+- SETIAP klik ialah navigasi dalam-app (penanda `window` kekal;
+  `activationStart` = 0 pada /admin dan /pejabat). Jadi peraturan
+  `prerender` dalam `Laju.tsx` TIDAK PERNAH diaktifkan — ia DIBUANG. Sama ada
+  ia benar-benar menghantar permintaan semasa hover tidak dapat diperhati
+  dari tab; ia dibuang kerana ia tidak boleh memberi faedah.
+- **`src/components/Pautan.tsx`** menggantikan `next/link` di SEMUA fail:
+  pramuat bermula bila kursor/jari/fokus menyentuh pautan (corak dokumen Next,
+  `02-guides/prefetching.md`). `prefetch` yang ditulis jelas dihormati.
+  `uji:kuota` mematahkan jika mana-mana fail mengimport `next/link` terus.

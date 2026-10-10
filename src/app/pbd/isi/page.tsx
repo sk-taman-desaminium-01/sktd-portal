@@ -1,4 +1,4 @@
-import Link from "next/link";
+import Link from "@/components/Pautan";
 import { senaraiIsi } from "@/lib/tindakan-pbd";
 import { labelKelas } from "@/lib/pbd";
 import PanelIsi from "./PanelIsi";

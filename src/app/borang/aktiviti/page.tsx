@@ -1,4 +1,4 @@
-import Link from "next/link";
+import Link from "@/components/Pautan";
 import { aktivitiAwam } from "@/lib/borang-aktiviti";
 import { julatTarikh } from "@/data/borang-aktiviti";
 
