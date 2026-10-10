@@ -1,4 +1,4 @@
-import Link from "next/link";
+import Link from "@/components/Pautan";
 import { bacaKuota, type JadualSaiz } from "@/lib/kuota";
 
 export const metadata = { title: "Kuota Sistem" };

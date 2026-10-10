@@ -1,4 +1,4 @@
-import Link from "next/link";
+import Link from "@/components/Pautan";
 import { senaraiPentadbir } from "@/lib/pentadbir";
 import PanelPentadbir from "./PanelPentadbir";
 

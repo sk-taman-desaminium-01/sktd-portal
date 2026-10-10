@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
+import Link from "@/components/Pautan";
 import { useRouter } from "next/navigation";
 import { simpanPos, padamPos, type HasilSimpan, type PosCms, type Keutamaan } from "@/lib/cms";
 import { naikMedia } from "@/lib/media";

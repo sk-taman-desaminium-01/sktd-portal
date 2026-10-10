@@ -1,4 +1,4 @@
-import Link from "next/link";
+import Link from "@/components/Pautan";
 import { senaraiGuruKelas } from "@/lib/guru-kelas";
 import { senaraiAkses } from "@/lib/akses-urus";
 import { senaraiTugasan } from "@/lib/tugasan";

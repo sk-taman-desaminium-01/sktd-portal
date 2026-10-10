@@ -1,4 +1,4 @@
-import Link from "next/link";
+import Link from "@/components/Pautan";
 import { senaraiSuratPejabat, kepalaSurat } from "@/lib/surat";
 import PanelPejabat from "./PanelPejabat";
 

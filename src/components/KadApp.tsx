@@ -1,4 +1,4 @@
-import Link from "next/link";
+import Link from "@/components/Pautan";
 import type { KadPortal } from "@/data/bahagian";
 import type { StatusApp } from "@/data/sekolah";
 import { aset } from "@/lib/laluan";

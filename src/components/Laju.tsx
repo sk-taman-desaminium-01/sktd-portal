@@ -17,10 +17,23 @@
  * menurunkannya menjadi pramuat sahaja. Kedua-duanya lebih baik daripada
  * bermula dari sifar selepas klik.
  */
+/*
+ * `prerender` untuk "/portal/*" DIBUANG pada 11 Okt 2026.
+ *
+ * Diukur dalam Chrome berlog masuk: setiap klik pautan dalam portal ialah
+ * navigasi DALAM-APP — Next memintas klik itu dan mengambil RSC sendiri.
+ * Pelayar tidak pernah melakukan navigasi dokumen, jadi halaman yang
+ * dipraterjemah TIDAK PERNAH diaktifkan (`activationStart` kekal 0 pada
+ * kedua-dua ujian: /admin dan /pejabat). Peraturan itu hanya boleh
+ * menghasilkan SSR penuh yang dibuang bagi setiap kursor yang berlegar —
+ * terhadap had Vercel 1,000,000 permintaan dan 4 jam CPU sebulan. Tiada
+ * `<a>` biasa ke halaman portal dalam kod; kelajuan kini datang daripada
+ * `Pautan` (pramuat RSC bila kursor atau jari menyentuh pautan).
+ *
+ * Yang tinggal ialah pautan KELUAR ke laman awam: itu memang navigasi
+ * dokumen, jadi pramuat pelayar benar-benar dipakai.
+ */
 const PERATURAN = {
-  prerender: [
-    { where: { href_matches: "/portal/*" }, eagerness: "moderate" },
-  ],
   prefetch: [
     { where: { href_matches: "https://sktd.edu.my/*" }, eagerness: "moderate" },
   ],

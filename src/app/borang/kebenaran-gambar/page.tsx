@@ -1,4 +1,4 @@
-import Link from "next/link";
+import Link from "@/components/Pautan";
 import { semuaKelas, semuaKelasPPKI } from "@/data/kelas";
 import { kepalaSurat } from "@/lib/surat";
 import BorangKebenaranGambar from "./BorangKebenaranGambar";

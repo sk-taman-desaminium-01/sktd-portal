@@ -1,4 +1,4 @@
-import Link from "next/link";
+import Link from "@/components/Pautan";
 
 /** Halaman tidak wujud — pautan lama, resit tamat tempoh, atau salah taip. */
 export default function TidakJumpa() {

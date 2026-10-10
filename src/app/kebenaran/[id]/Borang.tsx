@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
+import Link from "@/components/Pautan";
 import { PENYAKIT, type AkuanAktiviti } from "@/data/borang-aktiviti";
 import { hantarAkuan } from "@/lib/borang-aktiviti";
 import TandaTangan from "@/components/TandaTangan";

@@ -1,4 +1,4 @@
-import Link from "next/link";
+import Link from "@/components/Pautan";
 import { modulAktivitiSedia, senaraiAktivitiSaya, skopAktivitiSaya } from "@/lib/borang-aktiviti";
 import Panel from "../Panel";
 

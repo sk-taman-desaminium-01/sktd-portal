@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import Link from "next/link";
+import Link from "@/components/Pautan";
 import {
   ciptaAktiviti, tambahPesertaAktiviti, pesertaAktiviti, jawapanAktiviti, tutupAktiviti,
   suntingAktiviti, padamAktiviti, padamJawapanAktiviti, cariMuridAktiviti, tambahPesertaPilih,

@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import Link from "@/components/Pautan";
 import { useEffect, useState } from "react";
 import {
   notifikasiSaya, tandaDibacaTindakan, padamNotifikasiTindakan,

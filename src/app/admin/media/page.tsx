@@ -1,4 +1,4 @@
-import Link from "next/link";
+import Link from "@/components/Pautan";
 import { senaraiMedia } from "@/lib/media";
 import PanelMedia from "./PanelMedia";
 

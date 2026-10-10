@@ -1,4 +1,4 @@
-import Link from "next/link";
+import Link from "@/components/Pautan";
 import { SEKOLAH } from "@/data/sekolah";
 import { ambilCarta } from "@/lib/tindakan-carta";
 import PanelCarta from "./PanelCarta";
