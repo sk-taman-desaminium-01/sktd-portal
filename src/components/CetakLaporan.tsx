@@ -1,7 +1,7 @@
 "use client";
 
 import { SEKOLAH } from "@/data/sekolah";
-import { aset } from "@/lib/laluan";
+import KepalaCetak from "./KepalaCetak";
 
 /**
  * BORANG LAPORAN RASMI — satu susun atur untuk semua modul.
@@ -100,22 +100,7 @@ export default function CetakLaporan({
         #${id} .kaki { margin-top: 8mm; font-size: 7pt; color: #444; text-align: right; }
       `}</style>
 
-      <header className="kepala">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={aset("/logo-jata-negara.png")} alt="" />
-        <div className="sek">
-          <b>{SEKOLAH.namaPenuh.toUpperCase()}</b><br />
-          LESTARI PERDANA, 43300 SERI KEMBANGAN<br />
-          SELANGOR DARUL EHSAN
-        </div>
-        <div className="hub">
-          Tel : {SEKOLAH.hubungi.telefon}<br />
-          Kod Sekolah : BBA 8284<br />
-          {SEKOLAH.hubungi.emel}
-        </div>
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={aset("/logo-sktd.png")} alt="" />
-      </header>
+      <KepalaCetak />
 
       <p className="tajuk">{tajuk}</p>
       {subtajuk && <p className="subtajuk">{subtajuk}</p>}

@@ -4,7 +4,7 @@
  * sebelum commit. Tambah satu semakan di sini setiap kali modul baharu
  * menggunakan kolum, kekangan unik atau RPC baharu.
  */
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -85,8 +85,26 @@ perlu("Pembetulan edisi guna tulisan berkelompok",
  * sekolah hanya wujud di satu tempat.
  * ------------------------------------------------------------------ */
 const cetakLaporan = baca("src/components/CetakLaporan.tsx");
-perlu("Borang laporan membawa logo jata negara", cetakLaporan.includes("logo-jata-negara.png"));
-perlu("Borang laporan membawa lencana sekolah", cetakLaporan.includes("logo-sktd.png"));
+perlu("Borang laporan membawa logo jata negara", cetakLaporan.includes("<KepalaCetak />"));
+perlu("Borang laporan membawa lencana sekolah", cetakLaporan.includes("<KepalaCetak />"));
+// LENCANA PADA SETIAP DOKUMEN CETAK (teguran pengguna 10 Okt 2026: slip ePBD tiada lencana).
+// Dikecualikan dengan sengaja: Kebenaran Gambar (format KPM) dan muka Perakuan Kesihatan.
+perlu("Kepala borang bersama membawa Jata dan lencana", /logo-jata-negara\.png[\s\S]*logo-sktd\.png/.test(baca("src/components/KepalaCetak.tsx")));
+for (const [nama, fail, bil] of [
+  ["Slip PBD dan UASA", "src/app/pbd/slip/PanelSlip.tsx", 2], ["Laporan Lembaga Disiplin", "src/app/disiplin/PanelDisiplin.tsx", 1],
+  ["Carta organisasi", "src/app/admin/carta/PanelCarta.tsx", 1], ["Borang Kawalan Bilik Darjah", "src/components/CetakKawalanBilikDarjah.tsx", 1],
+] as const) perlu(`${nama}: kepala berlencana`, (baca(fail).match(/<KepalaCetak \/>/g) ?? []).length === bil);
+perlu("Surat Akuan Waris membawa lencana", baca("src/components/CetakAkuan.tsx").includes("logo-sktd.png"));
+{
+  // Dokumen cetak BAHARU mesti membawa kepala berlencana atau dikecualikan di sini dengan sebab.
+  const DIKECUALIKAN = ["CetakMedia.tsx"];                       // lampiran KPM
+  const SENDIRI = ["CetakSurat.tsx", "CetakAkuan.tsx", "KepalaCetak.tsx"];   // kepala sendiri, berlencana
+  const semak = (dir: string): string[] => readdirSync(resolve(akar, dir), { withFileTypes: true }).flatMap((e) =>
+    e.isDirectory() ? semak(`${dir}/${e.name}`) : e.name.endsWith(".tsx") ? [`${dir}/${e.name}`] : []);
+  const tanpa = semak("src").filter((f) => baca(f).includes("data-cetak-kertas") &&
+    ![...DIKECUALIKAN, ...SENDIRI].some((n) => f.endsWith(n)) && !baca(f).includes("<KepalaCetak />"));
+  perlu(`Setiap dokumen cetak membawa lencana (tanpa: ${tanpa.join(", ") || "tiada"})`, tanpa.length === 0);
+}
 perlu("Borang laporan ada ruang tandatangan", cetakLaporan.includes("tandatangan"));
 perlu("Baris jadual tidak dipotong antara muka surat", cetakLaporan.includes("break-inside: avoid"));
 perlu("Tajuk lajur diulang pada setiap muka", cetakLaporan.includes("table-header-group"));

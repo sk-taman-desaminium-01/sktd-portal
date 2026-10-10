@@ -1,6 +1,7 @@
 "use client";
 
 import type { Waktu } from "@/data/jadual-jenis";
+import KepalaCetak from "./KepalaCetak";
 
 /**
  * BORANG KAWALAN BILIK DARJAH — tiruan borang kertas sekolah.
@@ -107,7 +108,8 @@ export default function CetakKawalanBilikDarjah({
         #${id} .dua { display: grid; grid-template-columns: 1fr 1fr; gap: 4mm; }
       `}</style>
 
-      <p className="tajuk">BORANG KAWALAN BILIK DARJAH</p>
+      <KepalaCetak />
+      <p className="tajuk" style={{ marginTop: "4mm" }}>BORANG KAWALAN BILIK DARJAH</p>
 
       <div className="kepala">
         <div>

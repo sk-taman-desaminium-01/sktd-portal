@@ -550,3 +550,23 @@ akar dokumen `display:block`. Grid kini pada bekas dalam `.dua-muka`.
   (arahan pengguna), bukan dibiarkan kosong.
 - Dikunci oleh `uji:cetak` (22 semakan).
 
+## Lencana sekolah pada SETIAP dokumen cetak (10 Okt 2026)
+
+Teguran pengguna: slip ePBD dicetak tanpa lencana sekolah ("lencana penting";
+slip lama dalam gpi membawanya). Audit mendapati LIMA dokumen menulis kepala
+sendiri tanpa lencana: Slip PBD, Slip UASA, Laporan Lembaga Disiplin, Carta
+Organisasi, Borang Kawalan Bilik Darjah.
+
+- **`src/components/KepalaCetak.tsx` — SATU kepala borang** (Jata · nama &
+  alamat · hubungi · lencana), gaya sebaris. `CetakLaporan` juga kini memakainya.
+  Dokumen cetak baharu: letak `<KepalaCetak />`, jangan tulis kepala sendiri.
+- **Dikecualikan dengan sengaja (pengguna):** Kebenaran Gambar (`CetakMedia`,
+  format lampiran KPM) dan muka Perakuan Kesihatan dalam `CetakAkuan` — muka
+  Surat Akuan di sebelahnya sudah berlencana, pada helaian A4 melintang yang sama.
+  `CetakSurat` ada kepala surat sendiri (Jata, lencana, TS25).
+- `uji:kontrak-modul` mengimbas SETIAP fail ber-`data-cetak-kertas` dan gagal
+  jika ada yang tiada `<KepalaCetak />` dan tidak tersenarai sebagai pengecualian.
+- Borang Kawalan Bilik Darjah dahulu meniru borang kertas tanpa kepala; kepala
+  berlencana ditambah mengikut peraturan di atas — buang jika pengguna minta.
+- SEMAK borang rujukan/lama sebelum membina dokumen cetak: itulah yang terlepas.
+
