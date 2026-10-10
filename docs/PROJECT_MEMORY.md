@@ -638,3 +638,51 @@ mengikut waktu, dan "asc jadual waktu" bocor ke dalam nama).
 - **`gabungGuruSubjek`** (`src/data/jadual-jenis.ts`): nama lama bagi subjek
   yang tiada lagi dalam jadual baharu DIBUANG semasa simpan.
 - Selepas deploy: **muat naik semula KEEMPAT-EMPAT fail** (petang + Tahun 4–6).
+
+## Kapasiti pada 50,000 pengguna: had PERMINTAAN, bukan saiz (11 Okt 2026)
+
+Pengguna melihat `/admin/kuota` (DB 3.3%, storan 0.2%) dan bertanya apa jadi
+pada 50,000 pengguna. Jawapan yang diukur: **dua bar itu hampir tidak
+bergerak dengan bilangan pengguna** (±13 MB daripada 16.7 MB ialah mesin
+Supabase; jadual kita bertambah 0.9 MB dalam 17 hari). Yang sempit dahulu
+ialah had yang halaman itu tidak tunjuk — disahkan dengan dokumen rasmi:
+
+| Had (percuma) | Angka | Bila lebih |
+|---|---|---|
+| Cloudflare Workers | **100,000 permintaan/hari** (set semula tengah malam UTC) | ralat 1027: portal, borang awam, /api, /img BERHENTI; laman statik kekal |
+| Vercel Hobby | **1,000,000 permintaan CDN** + 1,000,000 invokasi + **4 jam CPU** sebulan | ciri itu digantung **30 hari** |
+| Supabase | 5 GB egress/bulan, 500 MB DB | Storage berhenti / READ-ONLY |
+
+`run_worker_first` merangkumi `/portal/*`, jadi SETIAP permintaan portal —
+termasuk 12–14 bundle `_next/static` yang sudah dicache di tepi — ialah satu
+invokasi Worker. Cache tepi menjimatkan Vercel, BUKAN kiraan Worker.
+
+**Diukur dalam Chrome (bukan curl) pada `/portal/borang`:** 20 permintaan
+Worker, 8 sampai ke Vercel: dokumen, `logo-sktd.png` 215 KB, `ikon-192.png`,
+manifest (ketiga-tiganya `must-revalidate` → ditanya SETIAP paparan), dan 4
+pramuat `<Link>` untuk halaman yang belum diklik.
+
+**Dipotong hari ini:**
+- Worker (`sktd-web/worker/index.ts`): fail awam di akar `/portal/` dan
+  `/portal/app-ikon/` (png/ico/svg/webp/webmanifest) dicache sehari di tepi dan
+  dalam pelayar. Corak sengaja sempit — JANGAN luaskan kepada halaman atau API.
+- Halaman awam (`src/app/borang`, `src/app/kebenaran`, kecuali `urus/`):
+  `<Link prefetch={false}>`. `uji:kuota` mematahkan jika ada yang tertinggal.
+  Halaman kakitangan KEKAL berpramuat — 150 orang, dan kelajuan itu keputusan
+  16 Sep.
+- `logo-sktd-144.png` (40 KB) untuk kepala halaman borang; `logo-sktd.png`
+  (215 KB) kekal untuk cetakan.
+- `/admin/kuota` kini menyenaraikan had-had di atas dengan pautan papan pemuka.
+
+**Kapasiti selepas potongan (anggaran):** ±18 permintaan Worker bagi peranti
+baharu, 3–4 permintaan Vercel bagi satu borang → ±5,000 keluarga SEHARI,
+±250,000 borang sebulan. **50,000 orang dalam SATU hari masih melebihi had
+Worker** (±900,000). Dua jalan, kedua-duanya keputusan pengguna, BELUM dibuat:
+1. Workers Paid USD 5/bulan (10 juta permintaan/bulan) — perlu kad; sebab yang
+   sama R2 ditolak pada 24 Sep.
+2. Sebarkan borang besar merentas beberapa hari / ikut tahun.
+
+**Belum diukur (perlu log masuk):** paparan hab kakitangan. `Laju.tsx`
+(speculation rules `prerender` pada hover) kemungkinan tidak dipakai oleh
+navigasi `<Link>` (Next memintas klik), jadi setiap hover mungkin satu SSR
+terbuang. Ukur dalam Chrome berlog masuk sebelum mengubahnya.

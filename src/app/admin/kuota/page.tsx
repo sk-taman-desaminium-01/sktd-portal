@@ -117,6 +117,43 @@ export default async function KuotaPage() {
         </>
       )}
 
+      {/* HAD YANG TIDAK TERPAPAR DI ATAS.
+          Dua bar di atas hampir tidak bergerak bila pengguna bertambah —
+          yang bergerak ialah BILANGAN PERMINTAAN, dan itu tidak boleh dibaca
+          dari dalam pangkalan data. Halaman ini pernah berkata "Selamat"
+          tanpa menyebutnya; itu separuh cerita. */}
+      <div className="mt-8 rounded-xl border border-[#e6d3a3] bg-[#fdf7e7] p-4 text-sm leading-relaxed text-slate-700">
+        <h2 className="text-base font-bold text-navy-800">Had yang TIDAK terpapar di atas</h2>
+        <p className="mt-1">
+          Pangkalan data dan storan hampir tidak bertambah bila ramai orang
+          membuka laman. Yang bertambah ialah <b>bilangan permintaan</b> — dan
+          itulah yang akan sempit dahulu pada hari ramai ibu bapa mengisi borang.
+        </p>
+        <ul className="mt-3 space-y-2">
+          <li>
+            <b>Cloudflare Worker — 100,000 permintaan sehari.</b> Portal, borang
+            awam dan gambar pos semuanya melaluinya. Lebih daripada itu, semuanya
+            berhenti (ralat 1027) sehingga 8 pagi waktu Malaysia esoknya. Laman
+            awam biasa tidak terjejas.{" "}
+            <a href="https://dash.cloudflare.com/?to=/:account/workers-and-pages" target="_blank" rel="noreferrer" className="font-semibold text-navy-800 underline underline-offset-2">Cloudflare → Workers → Metrics</a>
+          </li>
+          <li>
+            <b>Vercel — 1,000,000 permintaan dan 4 jam CPU sebulan.</b> Lebih
+            daripada itu, portal digantung sehingga 30 hari.{" "}
+            <a href="https://vercel.com/dashboard/usage" target="_blank" rel="noreferrer" className="font-semibold text-navy-800 underline underline-offset-2">Vercel → Usage</a>
+          </li>
+          <li>
+            <b>Supabase — 5 GB lebar jalur sebulan.</b> Lihat nota di bawah.
+          </li>
+        </ul>
+        <p className="mt-3 text-xs text-slate-600">
+          Anggaran, diukur dalam Chrome pada 11 Okt 2026: seorang ibu bapa yang
+          membuka dan menghantar satu borang menggunakan kira-kira 18 permintaan
+          Worker (kali pertama) dan 3–4 permintaan Vercel. Itu lebih kurang
+          5,000 keluarga sehari, atau 250,000 borang sebulan.
+        </p>
+      </div>
+
       {/* Egress tidak boleh diukur dari dalam pangkalan data — jangan
           berpura-pura ia boleh. Katakan di mana ia berada. */}
       <div className="mt-8 rounded-xl border border-garis bg-navy-50/40 p-4 text-sm leading-relaxed text-slate-600">

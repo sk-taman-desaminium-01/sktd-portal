@@ -12,7 +12,7 @@ export const metadata = {
 export default async function KebenaranGambar() {
   return (
     <main className="mx-auto min-h-screen max-w-3xl px-4 py-8 sm:px-6 sm:py-12">
-      <Link href="/borang" className="text-sm font-medium text-slate-600 underline underline-offset-4">← Borang Sekolah</Link>
+      <Link prefetch={false} href="/borang" className="text-sm font-medium text-slate-600 underline underline-offset-4">← Borang Sekolah</Link>
       <h1 className="mt-5 text-2xl font-bold leading-tight text-navy-800 sm:text-3xl">Kebenaran Gambar</h1>
       <p className="mt-3 text-sm leading-relaxed text-slate-600">
         Lengkapkan keputusan kebenaran ibu bapa atau penjaga. Nama, kelas dan MyKid murid akan dipadankan dengan daftar sekolah tanpa memaparkan senarai murid kepada orang awam.

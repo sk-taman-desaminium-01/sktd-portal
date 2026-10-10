@@ -17,7 +17,7 @@ export default async function AktivitiAwam() {
   const senarai = await aktivitiAwam();
   return (
     <main className="mx-auto min-h-screen max-w-2xl px-4 py-8 sm:px-6 sm:py-12">
-      <Link href="/borang" className="text-sm font-medium text-slate-600 underline underline-offset-4">← Borang Sekolah</Link>
+      <Link prefetch={false} href="/borang" className="text-sm font-medium text-slate-600 underline underline-offset-4">← Borang Sekolah</Link>
       <h1 className="mt-5 text-2xl font-bold leading-tight text-navy-800 sm:text-3xl">Surat Akuan Penyertaan Aktiviti</h1>
       <p className="mt-3 text-sm leading-relaxed text-slate-600">Hanya aktiviti yang sedang dibuka dipaparkan. Pilih aktiviti anak atau jagaan anda untuk mengisi akuan.</p>
 
@@ -25,7 +25,7 @@ export default async function AktivitiAwam() {
         <ul className="mt-6 space-y-3">
           {senarai.map((aktiviti) => (
             <li key={aktiviti.id}>
-              <Link href={`/kebenaran/${aktiviti.id}`} className="block rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:border-navy-700 hover:shadow-md">
+              <Link prefetch={false} href={`/kebenaran/${aktiviti.id}`} className="block rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:border-navy-700 hover:shadow-md">
                 <h2 className="font-bold leading-snug text-navy-800">{aktiviti.nama}</h2>
                 <dl className="mt-3 grid gap-1 text-sm text-slate-600 sm:grid-cols-[7rem_1fr]">
                   <dt className="font-semibold">Tarikh</dt><dd>{julatTarikh(aktiviti.tarikh, aktiviti.tarikh_tamat, false)}</dd>

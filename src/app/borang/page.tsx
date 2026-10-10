@@ -28,7 +28,7 @@ export default function BorangAwam() {
       <a href="https://sktd.edu.my" className="text-sm font-medium text-slate-600 underline underline-offset-4">← Laman utama sekolah</a>
       <header className="mt-6 flex items-center gap-4 rounded-2xl bg-navy-800 p-5 text-white shadow-sm sm:p-7">
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={aset("/logo-sktd.png")} alt="Lencana SK Taman Desaminium" className="h-16 w-16 shrink-0 object-contain sm:h-20 sm:w-20" />
+        <img src={aset("/logo-sktd-144.png")} alt="Lencana SK Taman Desaminium" className="h-16 w-16 shrink-0 object-contain sm:h-20 sm:w-20" />
         <div className="min-w-0">
           <p className="text-xs font-semibold uppercase tracking-[.16em] text-white/75">SK Taman Desaminium</p>
           <h1 className="mt-1 text-2xl font-bold leading-tight sm:text-3xl">Borang Sekolah</h1>
@@ -39,7 +39,7 @@ export default function BorangAwam() {
       <ul className="mt-6 grid gap-4 sm:grid-cols-2">
         {BORANG.map((borang) => (
           <li key={borang.href}>
-            <Link href={borang.href} className="flex h-full min-h-44 flex-col rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:border-navy-700 hover:shadow-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-navy-700">
+            <Link prefetch={false} href={borang.href} className="flex h-full min-h-44 flex-col rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:border-navy-700 hover:shadow-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-navy-700">
               <span aria-hidden="true" className="flex h-11 w-11 items-center justify-center rounded-xl bg-navy-800 text-xs font-bold text-white">{borang.ikon}</span>
               <h2 className="mt-4 text-lg font-bold leading-snug text-navy-800">{borang.tajuk}</h2>
               <p className="mt-2 flex-1 text-sm leading-relaxed text-slate-600">{borang.huraian}</p>
