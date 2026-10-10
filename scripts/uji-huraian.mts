@@ -5,7 +5,7 @@
  * Tiada Supabase, tiada Clerk, tiada fail sebenar — hanya logik tulen.
  */
 import { padanSubjek, binaDraf, binaDrafDariGrid, binaDrafDariKedudukan, namaGuruDariSel, padanHari } from "../src/lib/jadual-huraian.ts";
-import { SET_LALAI, TAHUN_SET_LALAI, naikTarafJadual, setUntukKelas } from "../src/data/jadual-jenis.ts";
+import { SET_LALAI, TAHUN_SET_LALAI, naikTarafJadual, setUntukKelas, gabungGuruSubjek } from "../src/data/jadual-jenis.ts";
 import { KOD_SUBJEK, namaSubjek } from "../src/data/subjek.ts";
 import { kadIkutBahagian } from "../src/data/bahagian.ts";
 import { semuaKelasDalam, kesanKelas } from "../src/data/kesan-kelas.ts";
@@ -482,6 +482,85 @@ const patah = (atas: string, bawah: string) => binaDrafDariKedudukan([[
 ]], r4)!.draf.guruSubjek?.PAI;
 semak("nama dipatah tengah perkataan dicantum rapat", patah("AINISSYAHIR", "A"), "AINISSYAHIRA");
 semak("dua guru pada dua baris TIDAK dicantum rapat", patah("HALIMATUN", "AMALINA"), "HALIMATUN / AMALINA");
+
+console.log("\n— pengawal: bacaan yang meragukan TIDAK lulus senyap —");
+semak("jadual sah tidak mencetuskan amaran", hT2.amaran, undefined);
+const asasT2 = (isi: object[]) => [
+  ...T2X.map((x, i) => ({ str: T2M[i], x, y: 503.4, w: T2W[i], h: 9, f: "f1" })),
+  { str: "Mo", x: 27.2, y: 440.4, w: 46.6, h: 33.6, f: "f1" },
+  { str: "Tu", x: 31.0, y: 346.8, w: 39.2, h: 33.6, f: "f1" },
+  { str: "We", x: 25.4, y: 253.1, w: 50.4, h: 33.6, f: "f1" },
+  ...isi,
+] as Parameters<typeof binaDrafDariKedudukan>[0][number];
+const barisPenuh = [
+  { str: "PER", x: 103.2, y: 446.3, w: 34.4, h: 17.1, f: S }, { str: "AZWAN", x: 114.1, y: 412.0, w: 34.4, h: 9.5, f: G },
+  { str: "SN", x: 202.9, y: 446.3, w: 23.5, h: 17.1, f: S }, { str: "KAVITHA", x: 230.3, y: 412.0, w: 40.7, h: 9.5, f: G },
+  { str: "PK", x: 297.1, y: 446.3, w: 23.5, h: 17.1, f: S }, { str: "M.JEREMI", x: 291.6, y: 412.0, w: 45.3, h: 9.5, f: G },
+  { str: "SEJ", x: 701.2, y: 446.3, w: 31.6, h: 17.1, f: S }, { str: "AMIRULLAH", x: 719.0, y: 412.0, w: 54.3, h: 9.5, f: G },
+];
+// Petak BM tanpa nama guru, sedangkan semua petak lain berguru.
+const tanpaGuru = binaDrafDariKedudukan([asasT2([...barisPenuh,
+  { str: "BM", x: 578.3, y: 446.3, w: 26.2, h: 17.1, f: S }])], r4)!;
+semak("petak tanpa guru dilaporkan", (tanpaGuru.amaran ?? []).some((a) => /tanpa nama guru/.test(a) && /BM/.test(a)), true);
+// Nama guru yang tiada petak memilikinya (waktu 8–9 kosong).
+const yatimT2 = binaDrafDariKedudukan([asasT2([...barisPenuh,
+  { str: "TM SUKRI", x: 602.5, y: 412.0, w: 45.2, h: 9.5, f: G }])], r4)!;
+semak("teks tanpa petak dilaporkan", (yatimT2.amaran ?? []).some((a) => /TM SUKRI/.test(a)), true);
+semak("teks tanpa petak dikira tidak dikenali", yatimT2.tidakDikenali > 0, true);
+// Guru yang sama terbaca pada PAI dan Moral = dua tingkat bercampur.
+const campur = binaDrafDariKedudukan([asasT2([...barisPenuh,
+  { str: "ROSLE", x: 614.0, y: 394.4 + 93.6, w: 33.8, h: 9.5, f: G },
+  { str: "PAI", x: 577.7, y: 376.1 + 93.6, w: 27.8, h: 17.1, f: S },
+  { str: "ROSLE", x: 608.2, y: 347.6 + 93.6, w: 39.6, h: 9.5, f: G },
+  { str: "P. MORAL", x: 551.0, y: 329.2 + 93.6, w: 81.3, h: 17.1, f: S }])], r4)!;
+semak("guru sama pada PAI dan Moral dilaporkan", (campur.amaran ?? []).some((a) => /ROSLE/.test(a) && /Moral/.test(a)), true);
+// Kod kelas di tempat nama guru ("6 EFK*" bagi Perhimpunan 6 EFEKTIF).
+const kodKelas = binaDrafDariKedudukan([asasT2([...barisPenuh.slice(2),
+  { str: "PER", x: 103.2, y: 446.3, w: 34.4, h: 17.1, f: S }, { str: "6 EFK*", x: 118, y: 412.0, w: 30, h: 9.5, f: G }])], r4)!;
+semak("kod kelas bukan nama guru", kodKelas.draf.guruSubjek?.PERHIMPUNAN, undefined);
+semak("kod kelas tidak mencetuskan amaran palsu", kodKelas.amaran, undefined);
+
+console.log("\n— nama dua perkataan yang patah baris: dokumen sendiri yang menentukan —");
+// Sekolah ini ada guru "ANIS" DAN "ANIS SYUHADA". "ADHLINA / ANIS" ⏎ "SYUHADA"
+// ialah dua orang; yang memutuskannya ialah nama utuh pada muka LAIN.
+const mukaPatah = asasT2([...barisPenuh.slice(2),
+  { str: "PAI", x: 106.3, y: 446.3, w: 27.8, h: 17.1, f: S },
+  { str: "ADHLINA / ANIS", x: 88, y: 422.8, w: 60, h: 9.5, f: G },
+  { str: "SYUHADA", x: 108, y: 412.0, w: 40, h: 9.5, f: G }]);
+const mukaLain = asasT2([{ str: "ANIS SYUHADA", x: 100, y: 412.0, w: 48, h: 9.5, f: G }]);
+semak("tanpa bukti: dianggap guru berlainan",
+  binaDrafDariKedudukan([mukaPatah], r4)!.draf.guruSubjek?.PAI, "ADHLINA / ANIS / SYUHADA");
+semak("dengan nama utuh pada muka lain: satu orang",
+  binaDrafDariKedudukan([mukaPatah], r4, [mukaPatah, mukaLain])!.draf.guruSubjek?.PAI, "ADHLINA / ANIS SYUHADA");
+
+console.log("\n— Tahap 1 kekal betul: bentuk petang, DENGAN dan TANPA maklumat fon —");
+// Jadual petang yang sama (1 EFEKTIF) melalui KEDUA-DUA laluan: PDF sebenar
+// membawa fon; OCR dan data lama tidak. Kedua-duanya mesti memberi hasil sama.
+const denganFon = itemPM.map((i) => ({ ...i, h: /^(Mo|Tu|We)$/.test(i.str) ? 33 : 12,
+  f: /^(Mo|Tu|We)$|\d:\d/.test(i.str) ? "f1" : padanSubjek(i.str) !== null ? "fS" : "fG" }));
+for (const [nama, data] of [["tanpa fon", itemPM], ["dengan fon", denganFon]] as const) {
+  const hsl = binaDrafDariKedudukan([data], r1)!;
+  const sl = (hsl.draf.hari.isnin ?? {})[pdp3[4].id];
+  semak(`${nama}: PAI + Moral satu slot`, [sl?.subjek, sl?.seiring, sl?.varian], ["PAI", "PM", "Q"]);
+  semak(`${nama}: guru PAI`, hsl.draf.guruSubjek?.PAI, "SAFFA' / NATRAH");
+  semak(`${nama}: guru Moral`, hsl.draf.guruSubjek?.PM, "KALAIVANI");
+}
+// Input rosak atau kosong tidak boleh menjatuhkan muat naik pukal.
+const rosak: Parameters<typeof binaDrafDariKedudukan>[0][] = [
+  [], [[]], [[{ str: "", x: NaN, y: NaN }]], [[{ str: "Mo", x: 1, y: 1 }, { str: "PAI", x: 1, y: 1 }]],
+  [asasT2([])], [asasT2([{ str: "PAI", x: -500, y: 446, w: 10, h: 17, f: S }])],
+];
+let jatuh = 0;
+for (const r of rosak) { try { binaDrafDariKedudukan(r, r4); binaDrafDariKedudukan(r, r1); } catch { jatuh++; } }
+semak("input rosak/kosong tidak melontar ralat", jatuh, 0);
+
+console.log("\n— nama guru basi tidak bertahan selepas baca semula —");
+const gabung = gabungGuruSubjek(
+  { PM: "asc jadual waktu parames", RBT: "FATHIYAH AMALINA / RAFIDAH", SEJ: "DITAIP PENTADBIR" },
+  { hari: { isnin: { p1: { subjek: "RBT" }, p2: { subjek: "SEJ" } } }, guruSubjek: { RBT: "HUSNI" } });
+semak("nama dari fail menggantikan yang lama", gabung.RBT, "HUSNI");
+semak("nama ditaip dikekalkan bila fail senyap", gabung.SEJ, "DITAIP PENTADBIR");
+semak("nama subjek yang tiada lagi dibuang", gabung.PM, undefined);
 
 /* ------------------------------------------------------------------ *
  * GURU KELAS DARIPADA BUKU PENGURUSAN

@@ -6,7 +6,7 @@ import { pastikanBoleh, pengguna } from "./akses";
 import { kelasBolehSunting } from "./guru-kelas";
 import { klienTulis } from "./supabase-pelayan";
 import { binaSemulaLamanAwam } from "./bina-semula";
-import { JADUAL_KOSONG, naikTarafJadual, type Jadual, type KelasJadual, type SetWaktu } from "@/data/jadual-jenis";
+import { JADUAL_KOSONG, naikTarafJadual, type Jadual, type KelasJadual, type SetWaktu, gabungGuruSubjek } from "@/data/jadual-jenis";
 
 /**
  * Jadual Waktu — baca dan simpan.
@@ -127,7 +127,7 @@ export async function simpanJadualBanyak(
     // Nama guru yang sudah ada dikekalkan untuk subjek yang fail baharu
     // tidak menyebutnya — sama seperti muat naik satu fail.
     const lama = kelas[m.kelas];
-    const guruSubjek = { ...(lama?.guruSubjek ?? {}), ...(m.data.guruSubjek ?? {}) };
+    const guruSubjek = gabungGuruSubjek(lama?.guruSubjek, m.data);
     kelas[m.kelas] = {
       hari: m.data.hari,
       ...(Object.keys(guruSubjek).length > 0 ? { guruSubjek } : {}),

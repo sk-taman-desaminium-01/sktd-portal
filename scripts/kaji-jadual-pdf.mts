@@ -72,7 +72,7 @@ for (let i = 0; i < muka.length; i++) {
   const kelas = semuaKelasDalam(muka[i].map((t) => t.str).join(" "));
   let terbaik: { id: string; dikenal: number; jumlah: number } | null = null;
   for (const set of setDicuba) {
-    const d = binaDrafDariKedudukan([muka[i]], set.senarai);
+    const d = binaDrafDariKedudukan([muka[i]], set.senarai, muka);
     if (!d) continue;
     if (!terbaik || d.dikenal > terbaik.dikenal) {
       terbaik = { id: set.id, dikenal: d.dikenal, jumlah: d.jumlah };

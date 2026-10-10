@@ -166,6 +166,17 @@ export interface HasilHuraian {
   kosong: number;
   /** Ada teks tetapi subjeknya tidak dikenali. Inilah kegagalan sebenar. */
   tidakDikenali: number;
+  /**
+   * Perkara yang MESTI disemak mata manusia sebelum disimpan.
+   *
+   * Wujud kerana kiraan slot terbukti bukan bukti: jadual Tahap 2 dilapor
+   * "48/50" sedangkan Moral hilang dan guru bertukar antara petak. Setiap
+   * amaran di sini ialah PELANGGARAN satu sifat yang jadual sah sentiasa
+   * penuhi — teks yang tidak dimiliki mana-mana petak, petak tanpa guru,
+   * dua petak bertindih. Bacaan yang salah hampir mustahil melepasi
+   * semuanya serentak. Kosong = tiada yang dikesan.
+   */
+  amaran?: string[];
 }
 
 /* ----------------------------------------------------------------- hari */
@@ -459,10 +470,17 @@ function terkerap<T>(senarai: T[]): T | undefined {
  *   · "AKRAM /" ⏎ "IRHAMI /" ⏎ "IBRAHIM"   pemisah dikekalkan
  *   · "SYAKIRAH / JAZMA" ⏎ "RASHIDAH"      pemisah DIGUGURKAN pada patahan
  *   · "ABDURRAHM" ⏎ "AN"                   SATU nama dipatah di tengah
- * Yang ketiga dikenali daripada ekornya: satu–dua huruf sahaja, di bawah
- * baris yang cuma satu perkataan.
+ * Yang ketiga dikenali daripada ekornya: baris bawah BERMULA dengan satu–dua
+ * huruf sahaja ("AN", atau "AN / SHUZAN"), di bawah baris satu perkataan.
+ *
+ * Dan yang keempat, dari jadual petang: "ADHLINA / ANIS" ⏎ "SYUHADA" ialah
+ * DUA orang (Adhlina, Anis Syuhada), bukan tiga — nama dua perkataan dipatah
+ * pada ruangnya. Sekolah ini ada guru "ANIS" DAN guru "ANIS SYUHADA", jadi
+ * tiada peraturan ejaan boleh membezakannya. Yang membezakan ialah dokumen
+ * itu sendiri: `namaBerganda` mengandungi setiap nama berbilang perkataan
+ * yang tercetak UTUH pada satu baris di mana-mana dalam fail.
  */
-function cantumGuru(kepingan: Kedudukan[]): string {
+function cantumGuru(kepingan: Kedudukan[], namaBerganda: Set<string>): string {
   const susun = [...kepingan].sort((a, b) => (Math.abs(b.y - a.y) > 3 ? b.y - a.y : a.x - b.x));
   let keluar = "";
   let dulu: Kedudukan | null = null;
@@ -476,8 +494,11 @@ function cantumGuru(kepingan: Kedudukan[]): string {
       // tengah. LEBAR baris atas tidak boleh dijadikan tanda: "HALIMATUN"
       // memenuhi petak sempit tetapi baris di bawahnya ("AMALINA") ialah
       // guru LAIN — diukur pada 4 USAHA, yang terbaca "HALIMATUNAMALINA".
-      const tengahKata = !/[\s/]/.test(dulu.str.trim()) && /^[A-Za-z]{1,2}$/.test(t);
-      keluar += tengahKata ? t : ` / ${t}`;
+      const tengahKata = !/[\s/]/.test(dulu.str.trim()) && /^[A-Za-z]{1,2}(\s*\/|$)/.test(t);
+      const hujung = keluar.split("/").pop()!.trim();
+      const pangkal = t.split("/")[0].trim();
+      const satuNama = namaBerganda.has(`${hujung} ${pangkal}`.toUpperCase());
+      keluar += tengahKata ? t : satuNama ? ` ${t}` : ` / ${t}`;
     }
     dulu = k;
   }
@@ -521,7 +542,23 @@ function cantumGuru(kepingan: Kedudukan[]): string {
 export function binaDrafDariKedudukan(
   halaman: Kedudukan[][],
   senaraiWaktu: Waktu[],
+  /**
+   * SEMUA muka dokumen, bila `halaman` hanya satu daripadanya. Digunakan
+   * untuk mengenal nama guru berbilang perkataan (lihat `cantumGuru`) —
+   * nama yang patah pada muka ini mungkin tercetak utuh pada muka lain.
+   */
+  seluruhDokumen: Kedudukan[][] = halaman,
 ): HasilHuraian | null {
+  const namaBerganda = new Set<string>();
+  for (const muka of seluruhDokumen) {
+    for (const i of muka) {
+      if (i.str.includes(":")) continue; // "Guru kelas : NAMA PENUH BIN …"
+      for (const n of i.str.split("/")) {
+        const t = n.replace(/\s+/g, " ").trim().toUpperCase();
+        if (/^[A-Z.']+( [A-Z.']+)+$/.test(t)) namaBerganda.add(t);
+      }
+    }
+  }
   const waktuPdP = senaraiWaktu.filter((w) => !w.rehat);
   const jumlah = waktuPdP.length * HARI.length;
   const kanan = (i: Kedudukan) => i.x + (i.w ?? 0);
@@ -587,6 +624,9 @@ export function binaDrafDariKedudukan(
     const guruSlot: { hari: Hari; id: string; kod: string; guru: string }[] = [];
     let dikenal = 0;
     let tidakDikenali = 0;
+    const amaran: string[] = [];
+    let petakBerguru = 0;
+    const petakTanpaGuru: string[] = [];
 
     for (const label of labelHari) {
       const h = padanHari(label.str)!;
@@ -646,10 +686,20 @@ export function binaDrafDariKedudukan(
       const petak: Petak[] = [];
       for (const s of subjek) {
         const r = rentang(s);
-        if (!r) continue;
+        if (!r) {
+          tidakDikenali++;
+          amaran.push(`${NAMA_HARI[h]}: "${s.teks}" tidak dapat ditempatkan pada mana-mana waktu.`);
+          continue;
+        }
         const ada = petak.find((p) => p.a <= r[1] && r[0] <= p.b);
-        if (ada) ada.tingkat.push(s);
-        else petak.push({ a: r[0], b: r[1], tingkat: [s] });
+        if (ada) {
+          // Tingkat SATU petak berkongsi rentang yang sama persis. Rentang
+          // yang hanya bertindih sebahagian bermakna salah satunya salah.
+          if (ada.a !== r[0] || ada.b !== r[1]) {
+            amaran.push(`${NAMA_HARI[h]}: "${s.teks}" bertindih dengan "${ada.tingkat[0].teks}" — semak waktu ${ada.a + 1}–${ada.b + 1}.`);
+          }
+          ada.tingkat.push(s);
+        } else petak.push({ a: r[0], b: r[1], tingkat: [s] });
       }
 
       const dilitupi = new Set<number>();
@@ -658,6 +708,9 @@ export function binaDrafDariKedudukan(
         p.tingkat.sort((x, y) => y.y - x.y);
         const atas = p.tingkat[0];
         const bawah = p.tingkat.find((t) => t.kod !== atas.kod && t.kod !== null);
+        if (new Set(p.tingkat.map((t) => t.kod)).size > 2) {
+          amaran.push(`${NAMA_HARI[h]} waktu ${p.a + 1}: lebih daripada dua subjek dalam satu petak (${p.tingkat.map((t) => t.teks).join(", ")}) — hanya dua disimpan.`);
+        }
         const milik = guru.filter((g) => {
           const e = lajurPada(kanan(g) - 1);
           return e >= p.a && e <= p.b;
@@ -669,10 +722,19 @@ export function binaDrafDariKedudukan(
           .map(varianDariTeks).find((v) => v !== null) ?? null;
 
         // Dua tingkat dibahagi pada PUSAT BARIS — lihat nota 4 di atas.
-        const namaAtas = cantumGuru(bawah ? milik.filter((g) => g.y > pusatY) : milik);
-        const namaBawah = bawah ? cantumGuru(milik.filter((g) => g.y <= pusatY)) : "";
+        const namaAtas = cantumGuru(bawah ? milik.filter((g) => g.y > pusatY) : milik, namaBerganda);
+        const namaBawah = bawah ? cantumGuru(milik.filter((g) => g.y <= pusatY), namaBerganda) : "";
+        // Digit atau "*" bermakna KOD KELAS, bukan orang: aSc mencetak
+        // "6 EFK*" di tempat nama guru bagi Perhimpunan 6 EFEKTIF.
         const bersih = (teks: string, kod: string) =>
-          !teks ? null : fonSubjek ? kemasNama(teks) : namaGuruDariSel(teks, kod);
+          !teks || /[\d*]/.test(teks) ? null : fonSubjek ? kemasNama(teks) : namaGuruDariSel(teks, kod);
+        if (atas.kod) {
+          const tempat = `${NAMA_HARI[h]} waktu ${p.a + 1} (${atas.teks})`;
+          if (namaAtas) petakBerguru++; else petakTanpaGuru.push(tempat);
+          if (bawah?.kod) {
+            if (namaBawah) petakBerguru++; else petakTanpaGuru.push(`${NAMA_HARI[h]} waktu ${p.a + 1} (${bawah.teks})`);
+          }
+        }
 
         for (let i = p.a; i <= p.b; i++) {
           const w = senaraiWaktu[i];
@@ -702,9 +764,19 @@ export function binaDrafDariKedudukan(
       const yatim = new Set<number>();
       for (const g of guru) {
         const e = lajurPada(kanan(g) - 1);
-        if (e >= 0 && !dilitupi.has(e) && senaraiWaktu[e] && !senaraiWaktu[e].rehat) yatim.add(e);
+        if (dilitupi.has(e)) continue;
+        if (e >= 0 && senaraiWaktu[e] && !senaraiWaktu[e].rehat) yatim.add(e);
+        amaran.push(`${NAMA_HARI[h]}: teks "${g.str.trim()}" tidak dimiliki mana-mana petak.`);
       }
       tidakDikenali += yatim.size;
+    }
+
+    // PETAK TANPA GURU. Dalam jadual aSc setiap petak membawa nama gurunya.
+    // Bila kebanyakan petak berguru tetapi beberapa tidak, hampir pasti nama
+    // itu telah diberi kepada petak JIRAN — iaitu rupa sebenar "guru tertukar".
+    // Jadual yang memang tiada nama guru langsung tidak mencetuskan ini.
+    if (petakBerguru > 0 && petakTanpaGuru.length > 0 && petakBerguru >= petakTanpaGuru.length * 4) {
+      amaran.push(`Petak tanpa nama guru: ${petakTanpaGuru.slice(0, 6).join("; ")}${petakTanpaGuru.length > 6 ? "; …" : ""}.`);
     }
 
     if (dikenal > 0) {
@@ -715,6 +787,19 @@ export function binaDrafDariKedudukan(
       for (const g of guruSlot) {
         const slot = hari[g.hari]?.[g.id];
         if (slot && slot.subjek === g.kod && guruSubjek[g.kod] !== g.guru) slot.guru = g.guru;
+      }
+      // Guru yang sama mengajar Pendidikan Islam DAN Moral dalam kelas yang
+      // sama tidak berlaku — kedua-duanya berjalan serentak. Kalau ia muncul,
+      // dua tingkat satu petak telah bercampur.
+      const tokenNama = (n?: string) => new Set((n ?? "").toUpperCase().split(/\s*\/\s*/).filter(Boolean));
+      const pai = tokenNama(guruSubjek.PAI);
+      for (const n of tokenNama(guruSubjek.PM)) {
+        if (pai.has(n)) amaran.push(`"${n}" terbaca sebagai guru Pendidikan Islam DAN Moral — semak petak dua tingkat.`);
+      }
+      for (const [kod, n] of Object.entries(guruSubjek)) {
+        if (/jadual|\basc\b|rehat/i.test(n) || padanSubjek(n) !== null) {
+          amaran.push(`Nama guru ${kod} kelihatan bukan nama: "${n}".`);
+        }
       }
       return {
         draf: { hari, ...(Object.keys(guruSubjek).length > 0 ? { guruSubjek } : {}) },
@@ -727,6 +812,7 @@ export function binaDrafDariKedudukan(
         // tidak wujud.
         kosong: Math.max(0, jumlah - dikenal - tidakDikenali),
         tidakDikenali,
+        ...(amaran.length > 0 ? { amaran: [...new Set(amaran)] } : {}),
       };
     }
   }

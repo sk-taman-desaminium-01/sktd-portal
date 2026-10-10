@@ -604,3 +604,37 @@ Moral, guru tertukar, subjek tertukar — walaupun sistem melapor "48/50".
   slot Tahun 4–6 dan 1,320 slot `JW KELAS PETANG 31.7.2026.pdf`, sifar beza.
 - Data Tahap 2 yang tersimpan sebelum 11 Okt dibaca dengan penghurai lama —
   **mesti dimuat naik semula**.
+
+### Pusingan kedua, 11 Okt 2026 — pengawal supaya ia tidak berulang
+
+Pengguna melapor nama guru masih salah (Rosle pada PAI, ustaz/ustazah pada
+RBT dan BC, Moral hilang). Punca: **data hidup masih simpanan 10 Okt** yang
+dibaca penghurai lama — belum dimuat naik semula. Audit data hidup lawan PDF:
+Tahap 2 **353/1,296 waktu salah**; Tahap 1 **120/1,320 salah** (nama guru
+sahaja: satu-guru-setiap-subjek tidak dapat menyimpan guru yang berbeza
+mengikut waktu, dan "asc jadual waktu" bocor ke dalam nama).
+
+- **TAHAP 1 DAN TAHAP 2 BERBEZA RUPA — kedua-duanya diuji setiap kali.**
+  Tahap 1 (petang): petak PAI/Moral lebar, guru DI BAWAH subjek, label
+  "P.ISLAM (Q)" / "MORAL-Q" / "QURAN". Tahap 2 (pagi): berhimpit — petak PAI/
+  Moral selebar SATU waktu, "P. MORAL" patah dua baris, guru DI ATAS
+  "P. MORAL", nama guru patah tiga baris. Perubahan untuk satu mesti disahkan
+  pada yang satu lagi: `uji:jadual` mengunci kedua-dua bentuk, dengan dan
+  tanpa maklumat fon.
+- **`npm run sahih:jadual -- fail.pdf`** (`scripts/sahih-jadual.py` + `.mts`,
+  perlu `pip install pymupdf`): membandingkan bacaan portal dengan GARISAN
+  petak PDF, waktu demi waktu. WAJIB untuk rupa jadual baharu. Keempat-empat
+  fail sekolah: 2,616 waktu, sifar beza.
+- **`HasilHuraian.amaran`** — penghurai melaporkan keraguannya sendiri dan
+  ia dipapar pada baris hasil pukal SEBELUM simpan: teks tanpa petak, petak
+  tanpa guru (tanda nama diberi kepada jiran), dua petak bertindih, lebih dua
+  subjek sepetak, guru yang sama pada PAI dan Moral, nama yang bukan nama.
+  Jadual sah menghasilkan SIFAR amaran; jangan longgarkan untuk menyenyapkan.
+- **Nama dua perkataan yang patah baris** ("ADHLINA / ANIS" ⏎ "SYUHADA"):
+  sekolah ada guru ANIS dan guru ANIS SYUHADA. Diputuskan oleh dokumen —
+  nama itu tercetak utuh di muka lain (`seluruhDokumen`, parameter ketiga).
+- **Kod kelas bukan guru:** aSc mencetak "6 EFK*" di tempat guru Perhimpunan.
+  Teks berdigit atau ber-"*" tidak disimpan sebagai nama.
+- **`gabungGuruSubjek`** (`src/data/jadual-jenis.ts`): nama lama bagi subjek
+  yang tiada lagi dalam jadual baharu DIBUANG semasa simpan.
+- Selepas deploy: **muat naik semula KEEMPAT-EMPAT fail** (petang + Tahun 4–6).
