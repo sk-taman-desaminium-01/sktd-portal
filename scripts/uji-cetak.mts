@@ -52,8 +52,15 @@ for (const [nama, fail] of [["Media", media], ["Disiplin", disiplin], ["Slip PBD
   perlu("Surat Akuan: garis tajuk diisi nama aktiviti",
     akuanSrc.includes('<p className="garis-tajuk">{a.nama.toUpperCase()}</p>'));
 }
+// Kebenaran Gambar: nama guru kelas tanpa penanda akaun ("KPM-Guru") dan tidak terpotong;
+// tandatangan ibu bapa dicetak pada muka 5.
+{
+  const media = baca("src/components/CetakMedia.tsx");
+  perlu("Kebenaran Gambar: penanda akaun dibuang daripada nama guru kelas", media.includes("(KPM|IPG|JPN|PPD)-") && media.includes("{guruKelas || "));
+  perlu("Kebenaran Gambar: tandatangan ibu bapa dicetak", /m-ttd-img[\s\S]{0,200}surat\.tandatangan_url &&[\s\S]{0,160}<img src=\{surat\.tandatangan_url\}/.test(media));
+}
 if (gagal.length) {
   console.error(`Kontrak cetakan gagal:\n${gagal.map((x) => `- ${x}`).join("\n")}`);
   process.exit(1);
 }
-console.log("Kontrak cetakan: 22 semakan lulus.");
+console.log("Kontrak cetakan: 24 semakan lulus.");
