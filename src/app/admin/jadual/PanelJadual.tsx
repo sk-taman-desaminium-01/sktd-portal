@@ -11,7 +11,7 @@ import { sediaMuatan, normalkanFail } from "@/data/muatan-pelayar";
 import { bacaImbasanJadual, failOcrJadual, pdfTanpaTeks } from "@/data/ocr-pelayar";
 import {
   HARI, NAMA_HARI, NAMA_SESI, SESI, jamPapar, setUntukKelas, tahunKelas,
-  type Hari, type Jadual, type Sesi, type SetWaktu, type Waktu,
+  type Hari, type Jadual, type Sesi, type SetWaktu, type Waktu, type KelasJadual, type Slot,
 } from "@/data/jadual-jenis";
 import PilihCari from "@/components/PilihCari";
 
@@ -141,7 +141,20 @@ export default function PanelJadual({
       // guru yang kosong di bawah subjek.
       if (nama.trim()) guru[kod] = nama.trim();
       else delete guru[kod];
-      return { ...j, kelas: { ...j.kelas, [pilih]: { ...k, guruSubjek: guru } } };
+      // Nama yang ditaip di sini ialah keputusan pentadbir untuk SUBJEK itu,
+      // jadi ia membuang nama per-waktu yang dibaca dari fail (`Slot.guru`).
+      // Kalau tidak, waktu itu terus memapar nama lama di laman awam sedangkan
+      // skrin ini — yang tiada medan per-waktu — menunjukkan nama baharu.
+      const hari: KelasJadual["hari"] = {};
+      for (const [h, slotHari] of Object.entries(k.hari) as [Hari, Record<string, Slot>][]) {
+        hari[h] = Object.fromEntries(Object.entries(slotHari ?? {}).map(([id, sl]) => {
+          if (sl.subjek !== kod || !sl.guru) return [id, sl];
+          const lain = { ...sl };
+          delete lain.guru;
+          return [id, lain];
+        }));
+      }
+      return { ...j, kelas: { ...j.kelas, [pilih]: { ...k, hari, guruSubjek: guru } } };
     });
   }
 

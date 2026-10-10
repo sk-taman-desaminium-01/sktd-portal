@@ -383,6 +383,107 @@ semak("kod biasa tidak terjejas", kodSlot({ subjek: "BM" }), "BM");
 semak("nama dipapar penuh", namaSlot({ subjek: "PAI", varian: "Q", seiring: "PM" }), "Pendidikan Islam (Quran) / Pendidikan Moral");
 
 /* ------------------------------------------------------------------ *
+ * JADUAL TAHAP 2 (16.8.2026) — EMPAT KESILAPAN YANG DIKUNCI
+ *
+ * Koordinat SEBENAR dari 4 EFEKTIF (TAHUN 4 16.8.pdf, muka 2), baris Isnin
+ * dan Selasa. Sistem melaporkan "48/50" untuk kelas ini sedangkan isinya
+ * salah: Moral hari Selasa berpindah ke Isnin di atas BM, Moral hari Isnin
+ * hilang, dan nama guru bertukar antara petak. Bentuknya berbeza daripada
+ * jadual petang:
+ *   · petak PAI/Moral sempit SATU waktu, dengan "P. MORAL" patah dua baris
+ *   · guru Moral dicetak DI ATAS perkataan "P. MORAL", bukan di bawahnya
+ *   · baris guru teratas petak Selasa (y 394.4) berada di atas titik tengah
+ *     antara label "Mo" dan "Tu" (393.6) — sempadan lama memberinya kepada Isnin
+ * ------------------------------------------------------------------ */
+console.log("\n— jadual Tahap 2: PAI/Moral petak sempit, guru ikut tepi kanan —");
+const T2X = [98.6, 161.4, 224.3, 287.0, 349.8, 410.2, 470.4, 533.2, 596.0, 658.8, 721.6];
+const T2W = [43.3, 43.3, 43.3, 43.3, 43.3, 48.4, 53.4, 53.4, 53.4, 53.4, 53.4];
+const T2M = ["7:30 - 8:00","8:00 - 8:30","8:30 - 9:00","9:00 - 9:30","9:30 - 9:50","9:50 - 10:20",
+             "10:20 - 10:50","10:50 - 11:20","11:20 - 11:50","11:50 - 12:20","12:20 - 12:50"];
+const S = "f2", G = "f3"; // fon subjek (tebal) dan fon guru (condong)
+const itemT2 = [
+  ...T2X.map((x, i) => ({ str: T2M[i], x, y: 503.4, w: T2W[i], h: 9, f: "f1" })),
+  { str: "Mo", x: 27.2, y: 440.4, w: 46.6, h: 33.6, f: "f1" },
+  { str: "LOKMAN", x: 422.5, y: 478.1, w: 40.0, h: 9.5, f: G },
+  { str: "PAI", x: 420.7, y: 469.7, w: 27.8, h: 17.1, f: S },
+  { str: "PAI", x: 483.5, y: 469.7, w: 27.8, h: 17.1, f: S },
+  { str: "IRHAMI", x: 429.4, y: 467.3, w: 33.1, h: 9.5, f: G },
+  { str: "AKRAM", x: 428.8, y: 456.5, w: 33.8, h: 9.5, f: G },
+  { str: "LOKMAN", x: 485.3, y: 456.5, w: 40.0, h: 9.5, f: G },
+  { str: "PER", x: 103.2, y: 446.3, w: 34.4, h: 17.1, f: S },
+  { str: "SN", x: 202.9, y: 446.3, w: 23.5, h: 17.1, f: S },
+  { str: "PK", x: 297.1, y: 446.3, w: 23.5, h: 17.1, f: S },
+  { str: "BM", x: 578.3, y: 446.3, w: 26.2, h: 17.1, f: S },
+  { str: "SEJ", x: 701.2, y: 446.3, w: 31.6, h: 17.1, f: S },
+  { str: "P. MOR", x: 407.9, y: 432.0, w: 53.6, h: 15.4, f: S },
+  { str: "P. MOR", x: 470.6, y: 432.0, w: 53.6, h: 15.4, f: S },
+  { str: "AL", x: 424.6, y: 414.8, w: 20.2, h: 15.4, f: S },
+  { str: "AL", x: 487.3, y: 414.8, w: 20.2, h: 15.4, f: S },
+  { str: "AZWAN", x: 114.1, y: 412.0, w: 34.4, h: 9.5, f: G },
+  { str: "KAVITHA", x: 230.3, y: 412.0, w: 40.7, h: 9.5, f: G },
+  { str: "M.JEREMI", x: 291.6, y: 412.0, w: 45.3, h: 9.5, f: G },
+  { str: "TM SUKRI", x: 602.5, y: 412.0, w: 45.2, h: 9.5, f: G },
+  { str: "AMIRULLAH", x: 719.0, y: 412.0, w: 54.3, h: 9.5, f: G },
+  { str: "SAUDAH", x: 422.9, y: 409.7, w: 39.6, h: 9.5, f: G },
+  { str: "SAUDAH", x: 485.6, y: 409.7, w: 39.6, h: 9.5, f: G },
+  { str: "LOKMAN / IRHAMI /", x: 561.5, y: 394.4, w: 86.4, h: 9.5, f: G },
+  { str: "AKRAM", x: 614.0, y: 383.6, w: 33.8, h: 9.5, f: G },
+  { str: "PAI", x: 577.7, y: 376.1, w: 27.8, h: 17.1, f: S },
+  { str: "PSV", x: 135.1, y: 352.6, w: 33.5, h: 17.1, f: S },
+  { str: "PJ", x: 235.7, y: 352.6, w: 20.6, h: 17.1, f: S },
+  { str: "PMZ", x: 291.1, y: 352.6, w: 35.2, h: 17.1, f: S },
+  { str: "BI", x: 457.3, y: 352.6, w: 16.7, h: 17.1, f: S },
+  { str: "MT", x: 704.9, y: 352.6, w: 24.3, h: 17.1, f: S },
+  { str: "SAUDAH", x: 608.2, y: 347.6, w: 39.6, h: 9.5, f: G },
+  { str: "Tu", x: 31.0, y: 346.8, w: 39.2, h: 33.6, f: "f1" },
+  { str: "P. MORAL", x: 551.0, y: 329.2, w: 81.3, h: 17.1, f: S },
+  { str: "ATIQAH", x: 172.9, y: 318.4, w: 35.3, h: 9.5, f: G },
+  { str: "M.JEREMI", x: 228.8, y: 318.4, w: 45.3, h: 9.5, f: G },
+  { str: "PARAMES", x: 290.4, y: 318.4, w: 46.4, h: 9.5, f: G },
+  { str: "HEMALATHA", x: 464.2, y: 318.4, w: 58.0, h: 9.5, f: G },
+  { str: "AZWAN", x: 739.0, y: 318.4, w: 34.4, h: 9.5, f: G },
+  { str: "We", x: 25.4, y: 253.1, w: 50.4, h: 33.6, f: "f1" },
+  { str: "BM", x: 138.7, y: 259.0, w: 26.2, h: 17.1, f: S },
+  { str: "TM SUKRI", x: 163.0, y: 224.6, w: 45.2, h: 9.5, f: G },
+  { str: "REHAT", x: 383.2, y: 207.7, w: 113.8, h: 40, f: "f1" },
+  { str: "aSc Jadual Waktu", x: 702.6, y: 21.7, w: 77.3, h: 9.7, f: "f1" },
+];
+const r4 = SET_LALAI.find((s) => s.id === "pagi-r4")!.senarai; // waktu 5 = rehat
+const hT2 = binaDrafDariKedudukan([itemT2], r4)!;
+const isT2 = hT2.draf.hari.isnin ?? {}, slT2 = hT2.draf.hari.selasa ?? {};
+const kodT2 = (hr: typeof isT2) => r4.map((w) => (w.rehat ? "R" : hr[w.id] ? kodSlot(hr[w.id]) : "-")).join(" ");
+semak("Isnin dibaca tepat", kodT2(isT2),
+  "PERHIMPUNAN SAINS SAINS PJPK R PAI+PM PAI+PM BM BM SEJ SEJ");
+semak("Selasa dibaca tepat", kodT2(slT2),
+  "PSV PSV PJPK PMZ R BI BI PAI+PM PAI+PM MM MM");
+semak("Moral Selasa TIDAK berpindah ke atas BM hari Isnin", isT2.p8?.seiring, undefined);
+semak("guru Moral = yang dicetak di atas 'P. MORAL'", hT2.draf.guruSubjek?.PM, "SAUDAH");
+semak("guru PAI dicantum merentas baris patah", hT2.draf.guruSubjek?.PAI, "LOKMAN / IRHAMI / AKRAM");
+semak("waktu PAI yang gurunya lain membawa namanya sendiri", isT2.p7?.guru, "LOKMAN");
+semak("waktu dengan guru lazim tiada tindihan", isT2.p6?.guru, undefined);
+semak("nama bertitik kekal utuh", hT2.draf.guruSubjek?.PJPK, "M.JEREMI");
+semak("nama dua perkataan kekal utuh", hT2.draf.guruSubjek?.BM, "TM SUKRI");
+semak("guru BI tidak mengambil nama jiran", hT2.draf.guruSubjek?.BI, "HEMALATHA");
+semak("kaki muka 'aSc Jadual Waktu' bukan nama guru",
+  Object.values(hT2.draf.guruSubjek ?? {}).some((n) => /asc|jadual/i.test(n)), false);
+semak("tiada petak tidak dikenali", hT2.tidakDikenali, 0);
+
+// Nama SATU guru yang dipatah di tengah perkataan, lawan DUA guru berlainan.
+const patah = (atas: string, bawah: string) => binaDrafDariKedudukan([[
+  ...T2X.map((x, i) => ({ str: T2M[i], x, y: 503.4, w: T2W[i], h: 9, f: "f1" })),
+  { str: "Mo", x: 27.2, y: 440.4, w: 46.6, h: 33.6, f: "f1" },
+  { str: "PAI", x: 106.3, y: 446.3, w: 27.8, h: 17.1, f: S },
+  { str: atas, x: 100, y: 422.8, w: 48, h: 9.5, f: G },
+  { str: bawah, x: 130, y: 412.0, w: 18, h: 9.5, f: G },
+  { str: "Tu", x: 31.0, y: 346.8, w: 39.2, h: 33.6, f: "f1" },
+  { str: "BM", x: 107, y: 352.6, w: 26.2, h: 17.1, f: S },
+  { str: "We", x: 25.4, y: 253.1, w: 50.4, h: 33.6, f: "f1" },
+  { str: "BM", x: 107, y: 259.0, w: 26.2, h: 17.1, f: S },
+]], r4)!.draf.guruSubjek?.PAI;
+semak("nama dipatah tengah perkataan dicantum rapat", patah("AINISSYAHIR", "A"), "AINISSYAHIRA");
+semak("dua guru pada dua baris TIDAK dicantum rapat", patah("HALIMATUN", "AMALINA"), "HALIMATUN / AMALINA");
+
+/* ------------------------------------------------------------------ *
  * GURU KELAS DARIPADA BUKU PENGURUSAN
  *
  * Bentuk SEBENAR, disalin daripada buku sekolah (m.73–75):
