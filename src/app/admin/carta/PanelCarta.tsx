@@ -5,6 +5,7 @@ import MuatTurun, { barisCsv, turunkanTeks } from "@/components/MuatTurun";
 import { mulaCetak } from "@/components/cetak-mudah-alih";
 import { suntingNod, padamNod, ambilCarta } from "@/lib/tindakan-carta";
 import type { NodCarta } from "@/data/carta";
+import KepalaCetak from "@/components/KepalaCetak";
 
 /**
  * Carta organisasi — lihat, betulkan, muat turun.
@@ -172,7 +173,8 @@ export default function PanelCarta({ punca, tahun, namaSekolah, semuaDisahkan }:
 
       <div id="carta-cetak" data-cetak-kertas="portrait" className="mt-4">
         <div className="hidden print:block">
-          <h1 className="text-center text-lg font-bold">Carta Organisasi</h1>
+          <KepalaCetak />
+          <h1 className="mt-3 text-center text-lg font-bold">Carta Organisasi</h1>
           <p className="mt-0.5 text-center text-sm">
             {namaSekolah} · {tahun}
           </p>

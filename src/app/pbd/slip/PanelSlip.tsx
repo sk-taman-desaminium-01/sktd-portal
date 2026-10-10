@@ -6,6 +6,7 @@ import { mulaCetak } from "@/components/cetak-mudah-alih";
 import { simpanUlasanMurid, type BarisSlip } from "@/lib/tindakan-pbd";
 import { namaSubjek } from "@/data/subjek";
 import { TAHAP } from "@/data/tahap";
+import KepalaCetak from "@/components/KepalaCetak";
 
 /**
  * Slip PBD — apa yang guru kelas semak, dan apa yang ibu bapa terima.
@@ -24,12 +25,13 @@ import { TAHAP } from "@/data/tahap";
  */
 
 export default function PanelSlip({
-  tahun, kelas, tahunSesi, namaSekolah, baris, subjekAda, subjekUasa, uasaAktif,
+  tahun, kelas, tahunSesi, baris, subjekAda, subjekUasa, uasaAktif,
 }: {
   tahun: number;
   kelas: string;
   tahunSesi: number;
-  namaSekolah: string;
+  /** Tidak lagi dicetak di sini: nama sekolah datang daripada `KepalaCetak` (kepala borang berlencana). */
+  namaSekolah?: string;
   baris: BarisSlip[];
   subjekAda: string[];
   subjekUasa: string[];
@@ -202,12 +204,12 @@ export default function PanelSlip({
       <div id="slip-pbd-cetak" data-cetak-kertas="portrait" className="hidden print:block">
         {data.map((b) => (
           <section key={b.pendaftaran_id} className="satu-slip">
-            <header className="border-b-2 border-black pb-2 text-center">
-              <h1 className="text-sm font-bold uppercase">{namaSekolah}</h1>
-              <p className="mt-0.5 text-xs">
-                Laporan Pentaksiran Bilik Darjah (PBD) · Sesi {tahunSesi}
-              </p>
-            </header>
+            {/* Kepala borang sekolah dengan LENCANA — pada SETIAP slip, kerana
+                setiap slip pergi kepada keluarga yang berbeza. */}
+            <KepalaCetak />
+            <p className="mt-2 text-center text-xs font-bold uppercase">
+              Laporan Pentaksiran Bilik Darjah (PBD) · Sesi {tahunSesi}
+            </p>
 
             <div className="mt-3 text-xs">
               <p><b>Nama:</b> {b.nama}</p>
@@ -266,10 +268,8 @@ export default function PanelSlip({
         <div id="slip-uasa-cetak" data-cetak-kertas="portrait" className="hidden print:block">
           {data.map((b) => (
             <section key={b.pendaftaran_id} className="satu-slip">
-              <header className="border-b-2 border-black pb-2 text-center">
-                <h1 className="text-sm font-bold uppercase">{namaSekolah}</h1>
-                <p className="mt-0.5 text-xs">Slip UASA Tahun 6 · Sesi {tahunSesi}</p>
-              </header>
+              <KepalaCetak />
+              <p className="mt-2 text-center text-xs font-bold uppercase">Slip UASA Tahun 6 · Sesi {tahunSesi}</p>
               <div className="mt-3 text-xs">
                 <p><b>Nama:</b> {b.nama}</p>
                 <p className="mt-0.5"><b>Kelas:</b> {label}</p>
