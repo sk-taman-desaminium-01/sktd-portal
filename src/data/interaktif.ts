@@ -43,6 +43,14 @@ export const SUMBER_LAMAN = [
 ] as const;
 export type SumberLaman = (typeof SUMBER_LAMAN)[number]["kod"];
 
+/** Tahun murid. 0 = sesuai untuk semua tahun. */
+export const TAHUN_LAMAN = [
+  { kod: 1, nama: "Tahun 1" }, { kod: 2, nama: "Tahun 2" }, { kod: 3, nama: "Tahun 3" },
+  { kod: 4, nama: "Tahun 4" }, { kod: 5, nama: "Tahun 5" }, { kod: 6, nama: "Tahun 6" },
+  { kod: 0, nama: "Semua tahun" },
+] as const;
+export const namaTahun = (t: number | null) => TAHUN_LAMAN.find((x) => x.kod === t)?.nama ?? "";
+
 /** Mata pelajaran berpanitia + Kokurikulum + Lain-lain. */
 export const SUBJEK_LAMAN: string[] = [
   ...SUBJEK.filter((s) => s.panitia).map((s) => s.nama),
@@ -143,6 +151,7 @@ export interface LamanInteraktif {
   subdomain: string;
   tajuk: string;
   subjek: string;
+  tahun: number | null;
   jenis: JenisLaman;
   sumber: SumberLaman;
   pautan: string | null;

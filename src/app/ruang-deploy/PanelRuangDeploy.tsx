@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { unzipSync } from "fflate";
 import {
   HAD_FAIL, HAD_KOD_BAIT, HAD_LAMAN_BAIT, HAD_LAMAN_BULAN, HAD_LAMAN_MB,
-  JENIS_LAMAN, SUBJEK_LAMAN, SUMBER_LAMAN,
+  JENIS_LAMAN, SUBJEK_LAMAN, SUMBER_LAMAN, TAHUN_LAMAN, namaTahun,
   cadangSubdomain, laluanSah, perkataan, semakPautan, semakSubdomain, semakTajuk,
   type JenisLaman, type LamanInteraktif, type SumberLaman,
 } from "@/data/interaktif";
@@ -116,7 +116,7 @@ function MukaDepan({ html, src, tajuk }: { html?: string | null; src?: string; t
   );
 }
 
-const KOSONG = { tajuk: "", subjek: "", jenis: "" as JenisLaman | "", subdomain: "", sumber: "fail" as SumberLaman, pautan: "" };
+const KOSONG = { tajuk: "", subjek: "", tahun: "", jenis: "" as JenisLaman | "", subdomain: "", sumber: "fail" as SumberLaman, pautan: "" };
 
 export default function PanelRuangDeploy({
   namaAwal, saya, semua, bulanIni,
@@ -154,7 +154,7 @@ export default function PanelRuangDeploy({
     ? (saizKod > HAD_KOD_BAIT ? `Kod ini ${mb(saizKod)}. Had ialah ${HAD_KOD_BAIT / 1048576} MB.`
       : !/<[a-z!]/i.test(kod) ? "Ini bukan kod HTML. Salin seluruh kod bermula dengan <!DOCTYPE html> atau <html>." : null)
     : null;
-  const sedia = !kerja && nama.trim().length >= 2 && !!b.tajuk && !sTajuk && !!b.subjek && !!b.jenis
+  const sedia = !kerja && nama.trim().length >= 2 && !!b.tajuk && !sTajuk && !!b.subjek && b.tahun !== "" && !!b.jenis
     && (!!sunting || (!!b.subdomain && !sSub))
     && (b.sumber === "fail" ? (!perluFail || !!fail) && !salahFail
       : b.sumber === "kod" ? !!kod.trim() && !sKod
@@ -182,7 +182,7 @@ export default function PanelRuangDeploy({
     setFail(null);
     setSalahFail("");
     setNama(l.pemilik_nama);
-    setB({ tajuk: l.tajuk, subjek: l.subjek, jenis: l.jenis, subdomain: l.subdomain, sumber: l.sumber, pautan: l.pautan ?? "" });
+    setB({ tajuk: l.tajuk, subjek: l.subjek, tahun: l.tahun === null ? "" : String(l.tahun), jenis: l.jenis, subdomain: l.subdomain, sumber: l.sumber, pautan: l.pautan ?? "" });
     setKod("");
     if (l.sumber === "kod") {
       void ambilKod(l.id).then((r) => (r.ok && r.kod !== undefined ? setKod(r.kod) : setSalahFail(r.mesej)));
@@ -218,7 +218,7 @@ export default function PanelRuangDeploy({
     const sub = sunting?.subdomain ?? b.subdomain;
     try {
       const r = await sediaLaman({
-        id: sunting?.id, nama, tajuk: b.tajuk, subjek: b.subjek, jenis: b.jenis as JenisLaman,
+        id: sunting?.id, nama, tajuk: b.tajuk, subjek: b.subjek, tahun: Number(b.tahun), jenis: b.jenis as JenisLaman,
         subdomain: sub, sumber: b.sumber, pautan: b.pautan,
         fail: failBaru?.map((f) => ({ laluan: f.laluan, saiz: f.data.size })),
       });
@@ -328,12 +328,19 @@ export default function PanelRuangDeploy({
           {b.tajuk ? mesej(sTajuk, `${perkataan(b.tajuk).length} perkataan`) : <p className="text-xs text-slate-500">2 atau 3 perkataan sahaja.</p>}
         </label>
 
-        <div className="grid gap-4 sm:grid-cols-2">
+        <div className="grid gap-4 sm:grid-cols-3">
           <label className="grid gap-1.5">
             <span className={label}>Mata pelajaran</span>
             <select id="rd-subjek" className={medan} value={b.subjek} onChange={(e) => ubah({ subjek: e.target.value })}>
               <option value="">Pilih mata pelajaran</option>
               {SUBJEK_LAMAN.map((s) => <option key={s}>{s}</option>)}
+            </select>
+          </label>
+          <label className="grid gap-1.5">
+            <span className={label}>Tahun</span>
+            <select id="rd-tahun" className={medan} value={b.tahun} onChange={(e) => ubah({ tahun: e.target.value })}>
+              <option value="">Pilih tahun</option>
+              {TAHUN_LAMAN.map((t) => <option key={t.kod} value={String(t.kod)}>{t.nama}</option>)}
             </select>
           </label>
           <label className="grid gap-1.5">
@@ -451,6 +458,7 @@ export default function PanelRuangDeploy({
           {!hasil?.ok && (
             <div className="flex flex-wrap gap-1.5 text-xs font-bold">
               <span className={`rounded-full bg-white/10 px-2.5 py-1 ${b.subjek ? "" : "text-white/40"}`}>{b.subjek || "Mata pelajaran"}</span>
+              <span className={`rounded-full bg-white/10 px-2.5 py-1 ${b.tahun !== "" ? "" : "text-white/40"}`}>{b.tahun !== "" ? namaTahun(Number(b.tahun)) : "Tahun"}</span>
               <span className={`rounded-full px-2.5 py-1 ${b.jenis === "game" ? "bg-emas text-navy-900" : "bg-white/10"} ${b.jenis ? "" : "text-white/40"}`}>{b.jenis ? namaJenis(b.jenis) : "Jenis"}</span>
             </div>
           )}
@@ -542,7 +550,7 @@ function SenaraiLaman({
                   {l.subdomain}.sktd.edu.my
                 </a>
                 <p className="text-xs text-slate-500">
-                  {l.subjek} · {namaJenis(l.jenis)}{onGantung ? ` · ${l.pemilik_nama}` : ""}{l.saiz ? ` · ${mb(l.saiz)}` : ""}
+                  {l.subjek}{l.tahun !== null ? ` · ${namaTahun(l.tahun)}` : ""} · {namaJenis(l.jenis)}{onGantung ? ` · ${l.pemilik_nama}` : ""}{l.saiz ? ` · ${mb(l.saiz)}` : ""}
                 </p>
               </div>
               {sahPadam === l.id ? (
