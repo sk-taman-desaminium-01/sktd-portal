@@ -165,6 +165,16 @@ export const KAD_TAMBAHAN: KadBaharu[] = [
       + "Minit dan tindakan susulan TIDAK disimpan di sini.",
   },
   {
+    // Terus di bawah Takwim (permintaan pengguna, 19 Okt 2026). Setiap guru
+    // boleh menerbitkan laman sendiri; pentadbir turut menggantung/memadam.
+    id: "ruang-deploy", bahagian: "pentadbiran",
+    nama: "Ruang Deploy", ikon: "RDP", warna: "#0f6b4f",
+    fungsi: "Terbitkan game atau nota interaktif HTML ke alamat sendiri di sktd.edu.my.",
+    domain: "sktd.edu.my/portal/ruang-deploy", pautan: "/ruang-deploy", status: "sedia",
+    catatan: "Laman yang diterbitkan dipapar kepada umum di Ruang Pembelajaran Interaktif, "
+      + "sktd.edu.my/interaktif.",
+  },
+  {
     id: "tempahan", bahagian: "pentadbiran",
     nama: "Tempahan & Inventori", ikon: "BLK", warna: "#2b5f8a",
     fungsi: "Tempah bilik khas, dan minta peralatan ICT untuk tempahan itu.",
