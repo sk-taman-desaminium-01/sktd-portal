@@ -706,6 +706,7 @@ Keputusan pengguna — JANGAN diregresikan:
 - Tiada log masuk tambahan; log masuk portal sudah memastikan emel MOE.
 - Nama projek **2–3 perkataan**; subdomain tanpa tanda sempang.
 - Sumber: fail .html/.zip, tampal kod HTML, pautan workers.dev/pages.dev, atau pautan Canva.
+- Dropdown **tahun** (Tahun 1–6, atau 0 = Semua tahun) — WAJIB; tapisan tahun di laman awam turut memapar "Semua tahun".
 - Dropdown mata pelajaran + jenis (**Permainan** / Nota Interaktif) — label "Permainan", bukan "Game"; kod DB kekal `game`.
 - Had **5 laman baharu sebulan** setiap guru, dikira dari `web_interaktif_log` (padam tidak memulihkan kuota).
 - Guru boleh **Sunting** (tukar fail/pautan, alamat kekal) dan **Padam** laman sendiri.

@@ -8,7 +8,7 @@ import { klienTulis } from "./supabase-pelayan";
 import { sahUuid } from "./sah";
 import {
   BALDI_INTERAKTIF, HAD_FAIL, HAD_KOD_BAIT, HAD_LAMAN_BAIT, HAD_LAMAN_BULAN, HAD_LAMAN_MB,
-  JENIS_LAMAN, SUBJEK_LAMAN, SUMBER_LAMAN,
+  JENIS_LAMAN, SUBJEK_LAMAN, SUMBER_LAMAN, TAHUN_LAMAN,
   awalBulanMy, laluanSah, semakPautan, semakSubdomain, semakTajuk, sumberFail,
   type LamanInteraktif, type JenisLaman, type SumberLaman,
 } from "@/data/interaktif";
@@ -33,7 +33,7 @@ import {
  * mana-mana laman — disemak di SINI, bukan dengan menyembunyikan butang.
  */
 
-const LAJUR = "id,subdomain,tajuk,subjek,jenis,sumber,pautan,saiz,pemilik_nama,status,created_at,updated_at";
+const LAJUR = "id,subdomain,tajuk,subjek,tahun,jenis,sumber,pautan,saiz,pemilik_nama,status,created_at,updated_at";
 
 interface Baris extends LamanInteraktif {
   pemilik_emel: string;
@@ -164,6 +164,7 @@ export interface InputLaman {
   nama: string;
   tajuk: string;
   subjek: string;
+  tahun: number;
   jenis: JenisLaman;
   subdomain: string;
   sumber: SumberLaman;
@@ -188,6 +189,7 @@ export async function sediaLaman(input: InputLaman): Promise<Hasil> {
     const salahTajuk = semakTajuk(tajuk);
     if (salahTajuk) return { ok: false, mesej: salahTajuk };
     if (!SUBJEK_LAMAN.includes(input.subjek)) return { ok: false, mesej: "Pilih mata pelajaran." };
+    if (!TAHUN_LAMAN.some((t) => t.kod === input.tahun)) return { ok: false, mesej: "Pilih tahun." };
     if (!JENIS_LAMAN.some((j) => j.kod === input.jenis)) return { ok: false, mesej: "Pilih jenis laman." };
     if (!SUMBER_LAMAN.some((s) => s.kod === input.sumber)) return { ok: false, mesej: "Pilih sumber laman." };
 
@@ -223,7 +225,7 @@ export async function sediaLaman(input: InputLaman): Promise<Hasil> {
       }
     }
 
-    const asas = { tajuk, subjek: input.subjek, jenis: input.jenis, pemilik_nama: nama, updated_at: new Date().toISOString() };
+    const asas = { tajuk, subjek: input.subjek, tahun: input.tahun, jenis: input.jenis, pemilik_nama: nama, updated_at: new Date().toISOString() };
 
     /* --- Sumber pautan: terus terbit --- */
     if (!sumberFail(input.sumber)) {
