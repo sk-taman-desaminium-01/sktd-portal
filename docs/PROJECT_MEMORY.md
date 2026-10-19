@@ -694,3 +694,27 @@ Worker** (±900,000). Dua jalan, kedua-duanya keputusan pengguna, BELUM dibuat:
   pramuat bermula bila kursor/jari/fokus menyentuh pautan (corak dokumen Next,
   `02-guides/prefetching.md`). `prefetch` yang ditulis jelas dihormati.
   `uji:kuota` mematahkan jika mana-mana fail mengimport `next/link` terus.
+
+## Ruang Deploy — laman interaktif guru (19 Okt 2026)
+
+Kad **Ruang Deploy** (`/ruang-deploy`, bahagian Pengurusan & Pentadbiran, terus
+di bawah Takwim). Guru menerbitkan game/nota HTML ke `<nama>.sktd.edu.my`;
+awam melihatnya di `sktd.edu.my/interaktif/`. Dokumen penuh + langkah
+pentadbir: `sktd/docs/ruang-deploy/cadangan.md`. SQL: `sktd/supabase/ruang-deploy.sql`.
+
+Keputusan pengguna — JANGAN diregresikan:
+- Tiada log masuk tambahan; log masuk portal sudah memastikan emel MOE.
+- Nama projek **2–3 perkataan**; subdomain tanpa tanda sempang.
+- Sumber: fail .html/.zip, tampal kod HTML, pautan workers.dev/pages.dev, atau pautan Canva.
+- Dropdown mata pelajaran + jenis (**Permainan** / Nota Interaktif) — label "Permainan", bukan "Game"; kod DB kekal `game`.
+- Had **5 laman baharu sebulan** setiap guru, dikira dari `web_interaktif_log` (padam tidak memulihkan kuota).
+- Guru boleh **Sunting** (tukar fail/pautan, alamat kekal) dan **Padam** laman sendiri.
+- Muka depan di laman awam = skrin pertama laman itu (iframe dikecilkan), bukan gambar yang dimuat naik.
+
+Teknikal:
+- Muat naik terus pelayar → Storage (`sediaLaman` → PUT bertandatangan → `sahkanLaman`).
+  Folder versi baharu setiap muat naik; versi lama kekal hidup sehingga yang baharu disahkan.
+- `pemilik_emel` tidak pernah dihantar ke pelayar; anon hanya digeran lajur paparan.
+- Subdomain dihidangkan Worker **berasingan** `sktd-interaktif` (`sktd-web/interaktif-worker/`),
+  kerana Worker `sktd-web` ialah aset-dahulu dan `run_worker_first` ikut laluan, bukan hos.
+- `DIKHASKAN` wujud di DUA tempat (portal `src/data/interaktif.ts` dan Worker) — kemas kini kedua-duanya.
