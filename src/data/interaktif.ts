@@ -60,6 +60,8 @@ export const DIKHASKAN = [
   "portal", "epbd", "payibg", "bkgk", "clerk", "accounts", "clkmail", "deploy",
   "sekolah", "sktd", "pengumuman", "aktiviti", "interaktif", "jadual", "guru",
   "pentadbir", "ppd", "jpn", "moe", "kpm", "delima", "login", "masuk",
+  // Subdomain hidup milik projek lain (Cloudflare Pages) — JANGAN dihidangkan di sini.
+  "funrun",
 ];
 
 const KASAR = ["bodoh", "babi", "sial", "celaka", "bangang", "bengap", "pukimak", "lancau", "puki"];
