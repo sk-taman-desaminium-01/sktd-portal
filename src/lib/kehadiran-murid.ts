@@ -108,11 +108,18 @@ async function bolehUrusKelas(labelKelas: string): Promise<boolean> {
   return kelasSaya.includes(labelKelas.trim().toUpperCase()) || kelasSaya.includes(labelKelas.trim());
 }
 
-/** Senarai murid aktif dalam satu kelas, untuk `PilihCari` tandakan tidak hadir. */
+/**
+ * Senarai murid aktif dalam satu kelas, untuk `PilihCari` tandakan tidak hadir.
+ *
+ * SESIAPA guru log masuk — bukan guru kelas sahaja. Dahulu fungsi ini
+ * memulangkan [] bagi guru bukan guru kelas, jadi guru subjek yang masuk
+ * kelas nampak panel kosong tanpa ruang tambah murid (laporan pengguna
+ * 20 Okt 2026), walaupun simpanTidakHadir() sudah membenarkan mereka sejak
+ * 2 Okt. Kawalan sebenar kekal pada sahkanKehadiran() (guru kelas sahaja).
+ */
 export async function senaraiMuridKelas(labelKelas: string): Promise<MuridRoster[]> {
   const saya = await pengguna();
   if (!saya?.peranan) return [];
-  if (!(await bolehUrusKelas(labelKelas))) return [];
 
   const pecah = pecahLabelKelas(labelKelas);
   if (!pecah) return [];
@@ -124,6 +131,30 @@ export async function senaraiMuridKelas(labelKelas: string): Promise<MuridRoster
       `&tahun=eq.${pecah.tahun}&kelas=eq.${encodeURIComponent(pecah.kelas)}&order=pbd_murid(nama).asc`,
   )) as { murid_id: string; pbd_murid: { nama: string } }[];
   return baris.map((b) => ({ murid_id: b.murid_id, nama: b.pbd_murid.nama }));
+}
+
+/**
+ * Jumlah murid aktif dalam kelas, ikut data murid (pbd_pendaftaran) —
+ * "Jumlah Murid Kelas" dalam borang Kawalan Kelas diisi automatik daripada
+ * ini, bukan ditaip guru (permintaan pengguna 20 Okt 2026). Kiraan sahaja,
+ * tiada nama dihantar ke pelayar. `null` = data murid tiada / gagal dibaca
+ * → borang jatuh balik ke taipan manual.
+ */
+export async function bilanganMuridKelas(labelKelas: string): Promise<number | null> {
+  const saya = await pengguna();
+  if (!saya?.peranan) return null;
+  const pecah = pecahLabelKelas(labelKelas);
+  if (!pecah) return null;
+  try {
+    const sesi = await tahunSesiAktif();
+    const baris = (await klienTulis().minta(
+      `pbd_pendaftaran?select=murid_id&tahun_sesi=eq.${sesi}&status=in.(aktif,pindah_masuk,ulang)` +
+        `&tahun=eq.${pecah.tahun}&kelas=eq.${encodeURIComponent(pecah.kelas)}`,
+    )) as { murid_id: string }[];
+    return baris.length || null;
+  } catch {
+    return null;
+  }
 }
 
 /** Status kehadiran (draf/disahkan) bagi satu kelas + tarikh. */

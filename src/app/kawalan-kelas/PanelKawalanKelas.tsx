@@ -6,7 +6,7 @@ import {
   hantarKawalanKelas, padamKawalanKelas, suntingKawalanKelas,
   type BarisKawalanKelas,
 } from "@/lib/kawalan-kelas";
-import { padamKehadiranMurid, type LogKehadiranMurid } from "@/lib/kehadiran-murid";
+import { padamKehadiranMurid, bilanganMuridKelas, type LogKehadiranMurid } from "@/lib/kehadiran-murid";
 import { cartaKehadiranHarian } from "@/lib/kawalan-kelas-carta";
 import PilihCari from "@/components/PilihCari";
 import { SUBJEK } from "@/data/subjek";
@@ -46,8 +46,20 @@ export default function PanelKawalanKelas({
   const [masalah, setMasalah] = useState("");
   const [bilHadir, setBilHadir] = useState("");
   const [bilMurid, setBilMurid] = useState("");
+  /** Jumlah murid ikut data murid setiap kelas — tiada/`null` = tiada data, guru taip sendiri. */
+  const [jumlahIkutKelas, setJumlahIkutKelas] = useState<Record<string, number | null>>({});
+  const jumlahAuto = jumlahIkutKelas[kelasPilih] ?? null;
   const [sibuk, setSibuk] = useState(false);
   const [nota, setNota] = useState<{ ok: boolean; teks: string } | null>(null);
+
+  useEffect(() => {
+    if (!kelasPilih) return;
+    let hidup = true;
+    bilanganMuridKelas(kelasPilih)
+      .then((n) => { if (hidup) setJumlahIkutKelas((p) => ({ ...p, [kelasPilih]: n })); })
+      .catch(() => {});
+    return () => { hidup = false; };
+  }, [kelasPilih]);
   /** Kad log yang sedang disunting/dipadam, dan rekod mana di dalamnya yang dipilih. */
   const [tindakan, setTindakan] = useState<{ kunci: string; mod: "sunting" | "padam"; tab: TabLog; pilih: string } | null>(null);
   /** Kunci kad log yang menunya sedang terbuka — satu sahaja pada satu masa. */
@@ -113,7 +125,7 @@ export default function PanelKawalanKelas({
         masa_masuk: masaMasuk, relief, guru_relief_untuk: reliefUntuk,
         masalah_disiplin: masalah,
         bil_hadir: bilHadir ? Number(bilHadir) : undefined,
-        bil_murid: bilMurid ? Number(bilMurid) : undefined,
+        bil_murid: jumlahAuto ?? (bilMurid ? Number(bilMurid) : undefined),
       };
       const r = await hantarKawalanKelas(input);
       setNota({ ok: r.ok, teks: r.mesej });
@@ -198,8 +210,13 @@ export default function PanelKawalanKelas({
               className="block w-full min-w-0 max-w-full rounded-lg border border-garis px-3 py-2 text-sm" />
           </Medan>
           <Medan label="Jumlah Murid Kelas">
-            <input type="number" min={0} value={bilMurid} onChange={(e) => setBilMurid(e.target.value)}
-              className="block w-full min-w-0 max-w-full rounded-lg border border-garis px-3 py-2 text-sm" />
+            {jumlahAuto !== null ? (
+              <input type="number" value={jumlahAuto} readOnly title="Automatik ikut data murid kelas"
+                className="block w-full min-w-0 max-w-full rounded-lg border border-garis bg-slate-50 px-3 py-2 text-sm text-slate-600" />
+            ) : (
+              <input type="number" min={0} value={bilMurid} onChange={(e) => setBilMurid(e.target.value)}
+                className="block w-full min-w-0 max-w-full rounded-lg border border-garis px-3 py-2 text-sm" />
+            )}
           </Medan>
         </div>
 
