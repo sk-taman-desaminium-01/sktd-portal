@@ -708,7 +708,7 @@ Keputusan pengguna — JANGAN diregresikan:
 - Sumber: fail .html/.zip, tampal kod HTML, pautan workers.dev/pages.dev, atau pautan Canva.
 - Dropdown **tahun** (Tahun 1–6, atau 0 = Semua tahun) — WAJIB; tapisan tahun di laman awam turut memapar "Semua tahun".
 - Dropdown mata pelajaran + jenis (**Permainan** / Nota Interaktif) — label "Permainan", bukan "Game"; kod DB kekal `game`.
-- Had **5 laman baharu sebulan** setiap guru, dikira dari `web_interaktif_log` (padam tidak memulihkan kuota).
+- Had **5 laman baharu sebulan** setiap guru, dikira dari laman yang masih wujud dalam `web_interaktif` (padam memulangkan kuota, 20 Okt 2026). Tahun: 1–6, 7 = Prasekolah, 8 = PPKI, 0 = Semua tahun.
 - Guru boleh **Sunting** (tukar fail/pautan, alamat kekal) dan **Padam** laman sendiri.
 - Muka depan di laman awam = skrin pertama laman itu (iframe dikecilkan), bukan gambar yang dimuat naik.
 

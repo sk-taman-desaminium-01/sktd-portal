@@ -129,10 +129,14 @@ async function ambilBaris(id: string): Promise<Baris | null> {
 }
 
 /** Laman milik pengguna semasa, dan (bagi pentadbir) semua laman guru. */
-/** Bilangan laman BAHARU yang guru ini terbitkan bulan ini (waktu Malaysia). */
+/**
+ * Bilangan laman BAHARU guru ini bulan ini (waktu Malaysia) yang MASIH wujud.
+ * Dikira daripada web_interaktif, bukan log, supaya memadam laman memulangkan
+ * kuota (permintaan pengguna, 20 Okt 2026). Laman digantung masih dikira.
+ */
 async function kiraBulanIni(emel: string): Promise<number> {
   const baris = (await klienTulis().minta(
-    `web_interaktif_log?pemilik_emel=eq.${encodeURIComponent(emel)}&created_at=gte.${awalBulanMy().toISOString()}&select=id`,
+    `web_interaktif?pemilik_emel=eq.${encodeURIComponent(emel)}&status=neq.muat_naik&created_at=gte.${awalBulanMy().toISOString()}&select=id`,
   )) as unknown[];
   return baris.length;
 }
