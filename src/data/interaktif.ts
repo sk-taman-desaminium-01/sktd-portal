@@ -18,8 +18,8 @@ export const HAD_LAMAN_MB = 10;
 export const HAD_LAMAN_BAIT = HAD_LAMAN_MB * 1024 * 1024;
 /**
  * Laman BAHARU setiap guru setiap bulan (permintaan pengguna, 19 Okt 2026).
- * Dikira daripada log terbit, jadi memadam laman tidak membuka semula kuota
- * bulan itu. Sunting laman sedia ada tidak dikira.
+ * Dikira daripada laman yang masih wujud, jadi memadam laman memulangkan
+ * kuota (20 Okt 2026). Sunting laman sedia ada tidak dikira.
  */
 export const HAD_LAMAN_BULAN = 5;
 /** Kod HTML yang ditampal terus ke dalam borang. */
@@ -43,11 +43,12 @@ export const SUMBER_LAMAN = [
 ] as const;
 export type SumberLaman = (typeof SUMBER_LAMAN)[number]["kod"];
 
-/** Tahun murid. 0 = sesuai untuk semua tahun. */
+/** Tahun murid. 7 = Prasekolah, 8 = PPKI, 0 = sesuai untuk semua tahun. */
 export const TAHUN_LAMAN = [
+  { kod: 7, nama: "Prasekolah" },
   { kod: 1, nama: "Tahun 1" }, { kod: 2, nama: "Tahun 2" }, { kod: 3, nama: "Tahun 3" },
   { kod: 4, nama: "Tahun 4" }, { kod: 5, nama: "Tahun 5" }, { kod: 6, nama: "Tahun 6" },
-  { kod: 0, nama: "Semua tahun" },
+  { kod: 8, nama: "PPKI" }, { kod: 0, nama: "Semua tahun" },
 ] as const;
 export const namaTahun = (t: number | null) => TAHUN_LAMAN.find((x) => x.kod === t)?.nama ?? "";
 
