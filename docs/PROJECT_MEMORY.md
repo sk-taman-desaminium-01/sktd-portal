@@ -518,6 +518,23 @@ Keputusan pengguna — MENGGANTIKAN "log bersama semua guru" yang asal:
   — borang atas kini untuk rekod baharu sahaja. Padam memerlukan rekod dipilih
   dahulu, kemudian pengesahan; tiada "padam seluruh hari".
 
+## Kehadiran Murid: guru yang masuk kelas boleh isi (20 Okt 2026)
+
+Pepijat: `senaraiMuridKelas()` memulangkan `[]` bagi guru BUKAN guru kelas,
+jadi guru subjek yang masuk kelas nampak panel Kehadiran Murid KOSONG — tiada
+ruang tambah murid, tiada mesej. Sedangkan `simpanTidakHadir()` sudah
+membenarkan semua guru sejak 2 Okt. Semakan dibuang; SAHKAN kekal guru kelas.
+
+- "Jumlah Murid Kelas" dalam borang Kawalan Kelas = automatik
+  (`bilanganMuridKelas()`, kiraan pbd_pendaftaran). "Bilangan Hadir" kekal
+  diisi guru — pengguna tegas, jangan diautomatikkan.
+- Panel kini memapar mesej bila senarai murid kelas kosong.
+- **Audit 20 Okt** semua `kelasBolehSunting()`: Disiplin, RMT, cadangan murid,
+  PBD (mesej jelas), Guru Kelas, Jadual, Slip, `/api/kehadiran` (403 jelas) —
+  semuanya sengaja/tidak senyap. Hanya Kehadiran Murid yang terjejas.
+- **Peraturan #11** (GEMINI.md / copilot-instructions.md): sekat pada TULIS,
+  bukan pada SENARAI; senarai kosong mesti menerangkan sebabnya.
+
 ## Format teks pos = format surat rasmi (9 Okt 2026)
 
 Permintaan pengguna: penulisan pos (pengumuman/aktiviti) "selaras macam buat
