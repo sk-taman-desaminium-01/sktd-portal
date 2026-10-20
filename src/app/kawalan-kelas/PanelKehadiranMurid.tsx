@@ -173,6 +173,15 @@ export default function PanelKehadiranMurid({ kelas, tarikh }: { kelas: string; 
         </ul>
       )}
 
+      {/* Jangan biar panel kosong tanpa sebab — guru menyangka sistem rosak
+          (laporan pengguna 20 Okt 2026). Senarai kosong = data murid kelas
+          ini belum dimuat naik, bukan "tiada kebenaran". */}
+      {roster.length === 0 && (
+        <p className="mt-3 rounded-lg bg-[#fdf9f0] px-3 py-2 text-xs text-[#7a5a12]">
+          Senarai murid {kelas} belum ada dalam sistem. Minta guru kelas atau admin muat naik data murid dahulu.
+        </p>
+      )}
+
       {belumDitambah.length > 0 && (
         <div className="mt-3 flex flex-wrap items-end gap-2">
           <div className="min-w-0 flex-1">

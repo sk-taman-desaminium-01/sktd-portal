@@ -34,6 +34,7 @@ Repo `gpi`/`erpm` (eGPI) TIDAK BOLEH disentuh. `sktd-mockup` dibekukan.
 8. Cetakan borang meniru PDF asal dalam `sktd-portal/rujukan-borang/` SEBIJIK (ayat, ejaan, susunan, A4). Borang kesihatan TANPA logo MSS.
 9. Isi surat rasmi: gaya WhatsApp `*tebal*` `_italik_` `~coret~`; nombor perenggan DITAIP guru.
 10. Naik tahun (1 Jan) mesti membawa status `ulang` dan boleh dipatah balik sepenuhnya.
+11. Fungsi baca yang menyokong borang SEMUA guru jangan disekat senyap dengan semakan guru kelas (`kelasBolehSunting`/`bolehUrusKelas`) — kawal pada tindakan TULIS/SAHKAN, bukan pada senarai. Bila senarai kosong, paparkan sebabnya; jangan biar panel kosong.
 
 ### Khusus repo ini (sktd-portal)
 - Ujian: `npx tsc --noEmit && npx eslint src --quiet` dan semua `npm run uji:*` (16 suite) — kesemuanya mesti lulus.
