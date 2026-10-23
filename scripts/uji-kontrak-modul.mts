@@ -95,7 +95,9 @@ for (const [nama, fail, bil] of [
   ["Carta organisasi", "src/app/admin/carta/PanelCarta.tsx", 1], ["Borang Kawalan Bilik Darjah", "src/components/CetakKawalanBilikDarjah.tsx", 1],
 ] as const) perlu(`${nama}: kepala berlencana`, (baca(fail).match(/<KepalaCetak \/>/g) ?? []).length === bil);
 perlu("Surat Akuan Waris membawa lencana", baca("src/components/CetakAkuan.tsx").includes("logo-sktd.png"));
-perlu("Borang Keberhasilan membawa lencana", baca("src/components/CetakKeberhasilan.tsx").includes("logo-sktd.png"));
+perlu("Borang Keberhasilan hanya membawa logo KPM (keputusan pengguna 23 Okt)",
+  baca("src/components/CetakKeberhasilan.tsx").includes("logo-kpm.png")
+  && !baca("src/components/CetakKeberhasilan.tsx").includes("logo-sktd.png"));
 {
   // e-Keberhasilan: guru/kerani/AKP biasa nampak borang SENDIRI sahaja;
   // hanya Pentadbir & Admin Mutlak membaca semua (keputusan pengguna 23 Okt 2026).
@@ -113,7 +115,8 @@ perlu("Borang Keberhasilan membawa lencana", baca("src/components/CetakKeberhasi
 {
   // Dokumen cetak BAHARU mesti membawa kepala berlencana atau dikecualikan di sini dengan sebab.
   const DIKECUALIKAN = ["CetakMedia.tsx"];                       // lampiran KPM
-  const SENDIRI = ["CetakSurat.tsx", "CetakAkuan.tsx", "KepalaCetak.tsx", "CetakKeberhasilan.tsx"];   // kepala sendiri, berlencana
+  // Keberhasilan: templat KPM sahaja, tanpa lencana sekolah (23 Okt 2026).
+  const SENDIRI = ["CetakSurat.tsx", "CetakAkuan.tsx", "KepalaCetak.tsx", "CetakKeberhasilan.tsx"];
   const semak = (dir: string): string[] => readdirSync(resolve(akar, dir), { withFileTypes: true }).flatMap((e) =>
     e.isDirectory() ? semak(`${dir}/${e.name}`) : e.name.endsWith(".tsx") ? [`${dir}/${e.name}`] : []);
   const tanpa = semak("src").filter((f) => baca(f).includes("data-cetak-kertas") &&

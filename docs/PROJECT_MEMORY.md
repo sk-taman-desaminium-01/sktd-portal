@@ -738,6 +738,14 @@ Teknikal:
 - `DIKHASKAN` wujud di DUA tempat (portal `src/data/interaktif.ts` dan Worker) — kemas kini kedua-duanya.
 ## e-Keberhasilan — Borang Keberhasilan PBPPP dua hala (23 Okt 2026)
 
+- **Print header exception (owner, 23 Oct):** Borang Keberhasilan uses the
+  KPM logo only. Remove the SKTD crest from this form's preview/print header;
+  keep the KPM logo centered above its ministry name. This supersedes the
+  earlier all-documents crest rule for this form only.
+  Validation: print contracts 24 passed, module/kuota contracts passed;
+  synthetic React HTML confirms one KPM image and unchanged table content.
+  Phone/laptop screenshots unavailable: built-in browser not available.
+
 - **Fixed bidang (owner, 23 Oct, updated):** Pentadbiran, Kurikulum,
   Hal Ehwal Murid, Kokurikulum, Tugas Sampingan, in that order.
   Pentadbiran is inserted above Kurikulum for existing and new forms;

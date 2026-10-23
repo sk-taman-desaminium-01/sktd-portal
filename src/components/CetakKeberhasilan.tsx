@@ -63,7 +63,7 @@ export default function CetakKeberhasilan({
         #${id} .kb-kepala { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px; }
         #${id} .kb-tajuk { font-weight: 700; font-size: 13px; line-height: 1.5; }
         #${id} .kb-lg { text-align: center; font-weight: 700; font-size: 10px; width: 180px; }
-        #${id} .kb-logo { display: flex; justify-content: center; align-items: center; gap: 10px; margin-bottom: 4px; }
+        #${id} .kb-logo { display: flex; justify-content: center; align-items: center; margin-bottom: 4px; }
         #${id} .kb-lg img { display: block; width: auto; height: 52px; object-fit: contain; }
         #${id} table { border-collapse: collapse; width: 100%; table-layout: fixed; background: #fff; color: #000; }
         #${id} td { border: 1px solid #000; padding: 4px 5px; vertical-align: top; overflow-wrap: anywhere; background: #fff; color: #000; }
@@ -85,13 +85,9 @@ export default function CetakKeberhasilan({
           <div>TAHUN <u>{borang.tahun}</u></div>
         </div>
         <div className="kb-lg">
-          {/* Lencana sekolah pada SETIAP dokumen cetak (keputusan 10 Okt 2026),
-              di sebelah logo KPM templat rasmi. */}
           <div className="kb-logo">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={aset("/logo-kpm.png")} alt="Kementerian Pendidikan Malaysia" />
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={aset("/logo-sktd.png")} alt="Lencana SK Taman Desaminium" />
           </div>
           KEMENTERIAN PENDIDIKAN MALAYSIA
         </div>
