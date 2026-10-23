@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import PilihCari, { type PilihanCari } from "@/components/PilihCari";
-import { tetapPenilai, tetapPpAkp, type BarisPantau, type CalonPP, type OrangPeranan } from "@/lib/keberhasilan";
+import { tetapPenilai, tetapPpAkp, type DataHalaman, type CalonPP, type OrangPeranan } from "@/lib/keberhasilan";
 import { BTN_UTAMA, Chip, INPUT, KAD } from "./alat";
 
 type Pilihan = { pp1: string; pp2: string };
@@ -23,14 +23,14 @@ const sepadan = (nama: string, cari: string) => {
 };
 
 /** Pemerhati (pentadbir/admin) menetapkan PP1 dan PP2 bagi setiap PYD. */
-export default function TetapanPenilai({ guru, calon, pantau, selepasSimpan }: {
-  guru: OrangPeranan[]; calon: CalonPP | null; pantau: BarisPantau[]; selepasSimpan: () => void;
+export default function TetapanPenilai({ guru, calon, penilai, selepasSimpan }: {
+  guru: OrangPeranan[]; calon: CalonPP | null; penilai: DataHalaman["penilai"]; selepasSimpan: () => void;
 }) {
   const awal = useMemo(() => {
     const m: Record<string, Pilihan> = {};
-    for (const r of pantau) m[r.pyd.id] = { pp1: r.pp1?.id ?? "", pp2: r.pp2?.id ?? "" };
+    for (const r of penilai) m[r.pyd_id] = { pp1: r.pp1?.id ?? "", pp2: r.pp2?.id ?? "" };
     return m;
-  }, [pantau]);
+  }, [penilai]);
   const [asal, setAsal] = useState<Record<string, Pilihan>>(awal);
   const [nilai, setNilai] = useState<Record<string, Pilihan>>(awal);
   const [keadaan, setKeadaan] = useState<Record<string, Keadaan>>({});

@@ -3,7 +3,6 @@
 import { randomUUID } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { pengguna } from "./akses";
-import { boleh } from "./peranan";
 import { klienTulis } from "./supabase-pelayan";
 import { bacaSemua } from "./baca-semua";
 import { belumDipasang } from "./db-belum-sedia";
@@ -30,12 +29,14 @@ import {
  * dihantar `peribadi`, dan No. K/P hanya dihantar kepada PYD sendiri
  * (peraturan keras #12 — apa yang sampai ke pelayar = awam).
  *
- * Pemerhati (`urus_guru_kelas`: pentadbir & admin) boleh menetapkan penilai
- * dan melihat RINGKASAN kemajuan semua PYD (peringkat, skor, lewat) — tetapi
- * TIDAK teks sasaran, markah terperinci, ulasan atau bukti. Penilaian ialah
- * urusan PYD dan PP yang dilantik; menjadi pentadbir tidak menjadikan
- * seseorang penilai. Pentadbir yang perlu membaca borang ditetapkan sebagai
- * PP1/PP2 orang itu.
+ * SIAPA NAMPAK APA (keputusan pengguna 23 Okt 2026):
+ *  · Guru, kerani & AKP biasa — borang SENDIRI sahaja.
+ *  · PP yang dilantik — borang sendiri + PYD yang dinilainya.
+ *  · Pentadbir & Admin Mutlak (`lihatSemua`) — SEMUA borang, baca sahaja
+ *    (PEMERHATI), kecuali yang mereka nilai sebagai PP.
+ *  · Hanya Pentadbir & Admin Mutlak menetapkan PP (Tetapan penilai). Admin
+ *    biasa TIADA akses — keputusan pengguna 23 Okt 2026. Pentadbir menjadi
+ *    calon PP secara automatik; kerani/AKP perlu dilantik.
  */
 
 const BUCKET = "ekb-bukti";
@@ -50,6 +51,9 @@ const SAMBUNGAN = /\.(pdf|png|jpe?g|webp|heic|docx?|xlsx?|pptx?|csv|txt)$/i;
 const MESEJ_BELUM = "Modul e-Keberhasilan belum dipasang — admin perlu jalankan SQL `20261023_keberhasilan.sql` sekali.";
 
 export type PerananLihat = PerananEkb | "PEMERHATI";
+
+/** Pentadbir & Admin Mutlak sahaja: membaca borang semua orang DAN menetapkan PP. */
+const lihatSemua = (p: string | null | undefined) => p === "pentadbir" || p === "admin_mutlak";
 /** `konflik: true` = versi borang berubah sejak dibaca; pelayar perlu muat semula. */
 export type Hasil<T = object> = ({ ok: true } & T) | { ok: false; mesej: string; konflik?: boolean };
 
@@ -89,7 +93,10 @@ export interface DataHalaman {
   /** Null hanya bila pengguna tiada baris pbd_guru (maka tiada borang sendiri). */
   borangSaya: BorangPenuh | null;
   pantau: BarisPantau[];
+  /** Boleh menetapkan PP (tab Tetapan penilai) — Pentadbir & Admin Mutlak sahaja. */
   pemerhati: boolean;
+  /** Penetapan PP semasa bagi setiap PYD — untuk tab Tetapan penilai sahaja. */
+  penilai: { pyd_id: string; pp1: Orang | null; pp2: Orang | null }[];
   /** Diisi untuk pemerhati sahaja — senarai PYD dalam Tetapan penilai. */
   guru: OrangPeranan[];
   /** Diisi untuk pemerhati sahaja — siapa BOLEH dipilih sebagai PP. */
@@ -173,7 +180,7 @@ async function konteks(borangId: string, pemerhatiDibenarkan = false) {
   if (saya.id && saya.id === b.pyd_id) peranan = "PYD";
   else if (saya.id && p?.pp1_id === saya.id) peranan = "PP1";
   else if (saya.id && p?.pp2_id === saya.id) peranan = "PP2";
-  else if (pemerhatiDibenarkan && boleh(saya.peranan, "urus_guru_kelas")) peranan = "PEMERHATI";
+  else if (pemerhatiDibenarkan && lihatSemua(saya.peranan)) peranan = "PEMERHATI";
   if (!peranan) throw new Error("Anda bukan PYD atau penilai bagi borang ini.");
   return { saya, b, p: p ?? null, peranan };
 }
@@ -210,10 +217,10 @@ async function borangPenuh(b: BarisBorang, p: BarisPenilai | null, peranan: Pera
 /** Data halaman /keberhasilan: borang saya + senarai PYD yang saya nilai. */
 export async function dataKeberhasilan(): Promise<DataHalaman> {
   const tahun = tahunIni(), hariIni = hariIniMY();
-  const kosong: DataHalaman = { tahun, hariIni, belumSedia: false, borangSaya: null, pantau: [], pemerhati: false, guru: [], calon: null };
+  const kosong: DataHalaman = { tahun, hariIni, belumSedia: false, borangSaya: null, pantau: [], pemerhati: false, penilai: [], guru: [], calon: null };
   const saya = await pengguna();
   if (!saya?.peranan) return kosong;
-  const pemerhati = boleh(saya.peranan, "urus_guru_kelas");
+  const pemerhati = lihatSemua(saya.peranan);
   const db = klienTulis();
   try {
     // Borang sendiri dicipta pada lawatan pertama — tiada butang "mula".
@@ -234,28 +241,32 @@ export async function dataKeberhasilan(): Promise<DataHalaman> {
       if (b) borangSaya = await borangPenuh(b, p ?? null, "PYD");
     }
 
-    // Siapa yang saya nilai. Pemerhati melihat semua penetapan.
-    const penilai = pemerhati
+    // Penetapan PP: semua (untuk lihatSemua/Tetapan) atau yang saya nilai sahaja.
+    const semua = lihatSemua(saya.peranan);
+    const penilai = semua || pemerhati
       ? await bacaSemua<BarisPenilai>(`ekb_penilai?select=*&tahun=eq.${tahun}&order=pyd_id.asc`)
       : saya.id
         ? await bacaSemua<BarisPenilai>(`ekb_penilai?select=*&tahun=eq.${tahun}&or=(pp1_id.eq.${saya.id},pp2_id.eq.${saya.id})&order=pyd_id.asc`)
         : [];
-    const pydIds = penilai.map((p) => p.pyd_id).filter((id) => id !== saya.id);
-    const borang = pydIds.length
-      ? await bacaSemua<BarisBorang>(`ekb_borang?select=id,tahun,pyd_id,versi,bidang,peringkat&tahun=eq.${tahun}&pyd_id=in.(${pydIds.join(",")})&order=id.asc`)
-      : [];
+    // Borang yang muncul di Pantau: semua (Pentadbir/Admin Mutlak) atau yang saya nilai.
+    const pydIds = penilai.filter((p) => p.pp1_id === saya.id || p.pp2_id === saya.id).map((p) => p.pyd_id).filter((id) => id !== saya.id);
+    const borang = semua
+      ? (await bacaSemua<BarisBorang>(`ekb_borang?select=id,tahun,pyd_id,versi,bidang,peringkat&tahun=eq.${tahun}&order=id.asc`)).filter((b) => b.pyd_id !== saya.id)
+      : pydIds.length
+        ? await bacaSemua<BarisBorang>(`ekb_borang?select=id,tahun,pyd_id,versi,bidang,peringkat&tahun=eq.${tahun}&pyd_id=in.(${pydIds.join(",")})&order=id.asc`)
+        : [];
     const ids = borang.map((b) => b.id);
     const [ulasan, bukti, nama] = await Promise.all([
       ids.length ? bacaSemua<{ borang_id: string; sasaran_id: string; oleh_peranan: string }>(`ekb_ulasan?select=borang_id,sasaran_id,oleh_peranan&borang_id=in.(${ids.join(",")})&order=dicipta.asc,id.asc`) : [],
       ids.length ? bacaSemua<{ borang_id: string }>(`ekb_bukti?select=borang_id&borang_id=in.(${ids.join(",")})&order=id.asc`) : [],
-      namaGuru(penilai.flatMap((p) => [p.pyd_id, p.pp1_id, p.pp2_id])),
+      namaGuru([...borang.map((b) => b.pyd_id), ...penilai.flatMap((p) => [p.pyd_id, p.pp1_id, p.pp2_id])]),
     ]);
     const akhir = new Map<string, string>();
     for (const u of ulasan) akhir.set(`${u.borang_id}:${u.sasaran_id}`, u.oleh_peranan);
     const orang = (id: string | null): Orang | null => (id && nama.get(id) ? { id, nama: nama.get(id)!.nama } : null);
 
     const pantau: BarisPantau[] = borang.map((b) => {
-      const p = penilai.find((x) => x.pyd_id === b.pyd_id)!;
+      const p = penilai.find((x) => x.pyd_id === b.pyd_id) ?? { tahun, pyd_id: b.pyd_id, pp1_id: null, pp2_id: null };
       const peranan: PerananLihat = p.pp1_id === saya.id ? "PP1" : p.pp2_id === saya.id ? "PP2" : "PEMERHATI";
       const bf = keBorang(b as BarisBorang, peranan);
       return {
@@ -276,7 +287,8 @@ export async function dataKeberhasilan(): Promise<DataHalaman> {
         calonPP().then((c) => (saya.peranan === "admin_mutlak" ? c : { ...c, mutlakTiadaRekod: 0 })),
       ])
       : [[], null];
-    return { tahun, hariIni, belumSedia: false, borangSaya, pantau, pemerhati, guru, calon };
+    const tetapan = pemerhati ? penilai.map((p) => ({ pyd_id: p.pyd_id, pp1: orang(p.pp1_id), pp2: orang(p.pp2_id) })) : [];
+    return { tahun, hariIni, belumSedia: false, borangSaya, pantau, pemerhati, penilai: tetapan, guru, calon };
   } catch (e) {
     if (belumDipasang(e, "ekb_borang", "ekb_penilai", "ekb_ulasan", "ekb_bukti", "ekb_log")) return { ...kosong, belumSedia: true, mesej: MESEJ_BELUM };
     throw e;
@@ -286,7 +298,7 @@ export async function dataKeberhasilan(): Promise<DataHalaman> {
 /** Buka borang orang lain (PP1/PP2/pemerhati) — atau borang sendiri. */
 export async function bukaBorang(borangId: string): Promise<Hasil<{ data: BorangPenuh }>> {
   try {
-    const { b, p, peranan } = await konteks(borangId);
+    const { b, p, peranan } = await konteks(borangId, true);
     return { ok: true, data: await borangPenuh(b, p, peranan) };
   } catch (e) {
     return { ok: false, mesej: mesej(e, "Gagal membuka borang.") };
@@ -510,7 +522,7 @@ export async function buangBukti(buktiId: string): Promise<Hasil<{ versi: number
 export async function pautanBukti(buktiId: string): Promise<Hasil<{ url: string }>> {
   try {
     const r = await barisBukti(buktiId);
-    await konteks(r.borang_id); // PYD, PP1 atau PP2 sahaja — bukti tidak untuk pemerhati
+    await konteks(r.borang_id, true); // PYD, PP1, PP2, atau Pentadbir/Admin Mutlak (baca sahaja)
     const { url, kepala } = tetapan();
     const res = await fetch(`${url}/storage/v1/object/sign/${BUCKET}/${r.laluan}`, {
       method: "POST", headers: { ...kepala, "Content-Type": "application/json" },
@@ -560,7 +572,7 @@ async function calonPP(): Promise<CalonPP> {
 export async function tetapPpAkp(input: { guruId: string; aktif: boolean }): Promise<Hasil> {
   try {
     const saya = await pengguna();
-    if (!saya?.peranan || !boleh(saya.peranan, "urus_guru_kelas")) return { ok: false, mesej: "Tiada kebenaran." };
+    if (!saya?.peranan || !lihatSemua(saya.peranan)) return { ok: false, mesej: "Hanya Pentadbir dan Admin Mutlak boleh menetapkan PP." };
     const guruId = sahUuid(input.guruId, "Kakitangan");
     const db = klienTulis();
     if (input.aktif) {
@@ -595,7 +607,7 @@ export async function tetapPpAkp(input: { guruId: string; aktif: boolean }): Pro
 export async function tetapPenilai(input: { pydId: string; pp1Id: string | null; pp2Id: string | null }): Promise<Hasil> {
   try {
     const saya = await pengguna();
-    if (!saya?.peranan || !boleh(saya.peranan, "urus_guru_kelas")) return { ok: false, mesej: "Tiada kebenaran." };
+    if (!saya?.peranan || !lihatSemua(saya.peranan)) return { ok: false, mesej: "Hanya Pentadbir dan Admin Mutlak boleh menetapkan PP." };
     const pydId = sahUuid(input.pydId, "PYD");
     const pp1 = input.pp1Id ? sahUuid(input.pp1Id, "PP1") : null;
     const pp2 = input.pp2Id ? sahUuid(input.pp2Id, "PP2") : null;

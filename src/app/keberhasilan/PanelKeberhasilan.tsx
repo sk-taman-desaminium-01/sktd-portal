@@ -72,7 +72,7 @@ export default function PanelKeberhasilan({ data }: { data: DataHalaman }) {
   }
 
   /* ---- pratonton: borang yang dipilih (draf ditindih bila sedang disunting) ---- */
-  const pvId = pv ?? saya.penuh?.borang.id ?? semak.penuh?.borang.id ?? data.pantau.find((r) => r.peranan !== "PEMERHATI")?.borang_id ?? null;
+  const pvId = pv ?? saya.penuh?.borang.id ?? semak.penuh?.borang.id ?? data.pantau[0]?.borang_id ?? null;
   let pvBorang: Borang | null = null;
   let pvPeranan: PerananLihat = "PYD";
   if (pvId && pvId === saya.penuh?.borang.id) { pvBorang = saya.borangLihat; pvPeranan = "PYD"; }
@@ -92,7 +92,7 @@ export default function PanelKeberhasilan({ data }: { data: DataHalaman }) {
 
   const pilihanPv = [
     ...(data.borangSaya ? [{ nilai: data.borangSaya.borang.id, label: "Borang saya" }] : []),
-    ...data.pantau.filter((r) => r.peranan !== "PEMERHATI").map((r) => ({ nilai: r.borang_id, label: r.pyd.nama })),
+    ...data.pantau.map((r) => ({ nilai: r.borang_id, label: r.pyd.nama })),
   ];
 
   /* ---- aktiviti ---- */
@@ -186,7 +186,7 @@ export default function PanelKeberhasilan({ data }: { data: DataHalaman }) {
         )}
 
         {tab === "panduan" && <Panduan tahun={data.tahun} />}
-        {tab === "tetapan" && data.pemerhati && <TetapanPenilai guru={data.guru} calon={data.calon} pantau={data.pantau} selepasSimpan={() => router.refresh()} />}
+        {tab === "tetapan" && data.pemerhati && <TetapanPenilai guru={data.guru} calon={data.calon} penilai={data.penilai} selepasSimpan={() => router.refresh()} />}
       </div>
     </div>
   );
