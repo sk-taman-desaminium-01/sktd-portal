@@ -228,6 +228,21 @@ export const KAD_TAMBAHAN: KadBaharu[] = [
       + "ada), masalah disiplin dalam kelas, dan kehadiran murid hari itu.",
   },
 
+  {
+    // e-Keberhasilan (permintaan 16 Okt 2026): Borang Keberhasilan PBPPP
+    // DUA HALA — PYD mengisi untuk diri sendiri, PP1/PP2 memantau dan
+    // mengesahkan dalam borang yang sama. Prototaip: artifact
+    // Cx6Ds6XCUrb2Jj7JMAY2kE (`docs/prototaip/e-keberhasilan-v1.html`).
+    // TIADA `perlu`: setiap kakitangan ialah PYD pada borangnya sendiri.
+    id: "keberhasilan", bahagian: "pentadbiran",
+    nama: "e-Keberhasilan", ikon: "EKB", warna: "#8a6a1f",
+    fungsi: "Borang Keberhasilan PBPPP — isi sasaran, PP1 sahkan, PP2 perakui.",
+    domain: "portal.sktd.edu.my/keberhasilan", pautan: "/keberhasilan", status: "sedia",
+    akses: "Semua kakitangan · PP1/PP2 ditetapkan pentadbir",
+    catatan: "Empat peringkat: penetapan sasaran, penilaian pertama, semakan sasaran "
+      + "dan penilaian akhir. Skor akhir dimasukkan sendiri ke ePrestasi.",
+  },
+
   /* --- Kurikulum --- */
   // SATU KAD, dua konsep di dalamnya (keputusan pengguna, 17 Sep 2026).
   //

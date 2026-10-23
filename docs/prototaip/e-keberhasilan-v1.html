@@ -1,0 +1,911 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>e-Keberhasilan SKTD</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@75..100,500..800&family=Public+Sans:ital,wght@0,400..700;1,400&family=JetBrains+Mono:wght@500;600&display=swap">
+<style>
+/* Layout: navy band header carrying the role switch; every borang opens on a 4-stage PBPPP rail (penetapan → P1 → semakan → akhir) whose state decides who may edit what. PP gets a monitoring ledger, PYD gets their own form. */
+:root{
+  --bg:#eef2f7; --surface:#ffffff; --surface-2:#f5f8fc; --line:#d9e0ea; --line-2:#b7c3d4;
+  --fg:#0f1f33; --muted:#5a6b80;
+  --navy:#0b2545; --navy-2:#123561; --navy-fg:#eaf1fb; --navy-muted:#9db3d1; --navy-line:#21406b;
+  --accent:#1b4a80; --accent-fg:#ffffff; --accent-soft:#e6eefa;
+  --emas:#c9a24b; --emas-ink:#8a6a1f; --emas-soft:#f6edd6;
+  --ok:#17733f; --ok-soft:#dcf2e4; --warn:#9a5600; --warn-soft:#fff0d1; --bad:#b3261e; --bad-soft:#fde3e1; --info:#5b3fa8; --info-soft:#ece6fb;
+  --paper:#ffffff; --paper-ink:#000000; --paper-cyan:#ccffff;
+  --f-display:"Archivo","Arial Narrow",Arial,sans-serif;
+  --f-ui:"Public Sans","Segoe UI",Arial,sans-serif;
+  --f-mono:"JetBrains Mono",ui-monospace,Menlo,Consolas,monospace;
+  --r:10px; --shadow:0 1px 2px rgba(11,37,69,.06),0 4px 16px rgba(11,37,69,.06);
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0a1422; --surface:#111e30; --surface-2:#15253a; --line:#22344d; --line-2:#34496a;
+  --fg:#e6edf6; --muted:#93a5bd;
+  --navy:#06101d; --navy-2:#0d1d33; --navy-fg:#eaf1fb; --navy-muted:#8ea6c6; --navy-line:#1a2f4d;
+  --accent:#7fb0ec; --accent-fg:#06213f; --accent-soft:#16304f;
+  --emas:#e0bd68; --emas-ink:#e0bd68; --emas-soft:#3a2f15;
+  --ok:#6fd49b; --ok-soft:#14321f; --warn:#f0b35a; --warn-soft:#382a12; --bad:#ff8a80; --bad-soft:#3b1917; --info:#b9a5f5; --info-soft:#2a2347;
+  --shadow:0 1px 2px rgba(0,0,0,.4); color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0a1422; --surface:#111e30; --surface-2:#15253a; --line:#22344d; --line-2:#34496a;
+  --fg:#e6edf6; --muted:#93a5bd;
+  --navy:#06101d; --navy-2:#0d1d33; --navy-fg:#eaf1fb; --navy-muted:#8ea6c6; --navy-line:#1a2f4d;
+  --accent:#7fb0ec; --accent-fg:#06213f; --accent-soft:#16304f;
+  --emas:#e0bd68; --emas-ink:#e0bd68; --emas-soft:#3a2f15;
+  --ok:#6fd49b; --ok-soft:#14321f; --warn:#f0b35a; --warn-soft:#382a12; --bad:#ff8a80; --bad-soft:#3b1917; --info:#b9a5f5; --info-soft:#2a2347;
+  --shadow:0 1px 2px rgba(0,0,0,.4); color-scheme:dark}
+
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
+body{background:var(--bg);color:var(--fg);font-family:var(--f-ui);font-size:15px;line-height:1.5;margin:0;overflow-x:clip}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--navy)}
+button,input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+h1,h2,h3,h4{font-family:var(--f-display);font-stretch:85%;margin:0;line-height:1.15;text-wrap:balance}
+.num{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+.gut{padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.wrap{max-width:1180px;margin:0 auto}
+
+/* ---- header ---- */
+.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;background:var(--navy);color:var(--navy-fg);border-bottom:1px solid var(--navy-line)}
+.top .wrap{display:flex;flex-wrap:wrap;align-items:center;gap:10px 18px;padding-block:10px}
+.brand{display:flex;align-items:center;gap:10px;min-width:0}
+.brand svg{flex:0 0 34px;width:34px;height:34px}
+.brand b{display:block;font-family:var(--f-display);font-stretch:80%;font-size:20px;font-weight:750;letter-spacing:.01em;line-height:1}
+.brand small{display:block;color:var(--navy-muted);font-size:12px;letter-spacing:.04em;text-transform:uppercase;margin-top:3px}
+.grow{flex:1 1 auto}
+.as{display:flex;align-items:center;gap:8px;min-width:0}
+.as label{font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--navy-muted)}
+.as select{background:var(--navy-2);color:var(--navy-fg);border:1px solid var(--navy-line);border-radius:8px;padding:7px 10px;max-width:68vw;font-size:14px}
+.linklite{background:none;border:0;color:var(--navy-muted);font-size:13px;text-decoration:underline;cursor:pointer;padding:4px}
+.tabs-band{background:var(--navy-2);border-bottom:1px solid var(--navy-line)}
+.tabs{display:flex;gap:2px;overflow-x:auto;scrollbar-width:none}
+.tabs::-webkit-scrollbar{display:none}
+.tab{background:none;border:0;color:var(--navy-muted);padding:11px 14px;font-weight:600;font-size:14px;white-space:nowrap;cursor:pointer;border-bottom:3px solid transparent;display:flex;align-items:center;gap:7px}
+.tab[aria-selected="true"]{color:var(--navy-fg);border-bottom-color:var(--emas)}
+.tab:hover{color:var(--navy-fg)}
+.badge{background:var(--emas);color:#1c1400;border-radius:999px;font-size:11px;font-weight:700;min-width:19px;height:19px;display:inline-grid;place-items:center;padding:0 5px}
+
+main.wrap{padding-block:22px 64px;display:grid;gap:18px}
+.demo-note{font-size:13px;color:var(--muted);display:flex;flex-wrap:wrap;gap:6px 12px;align-items:center}
+
+/* ---- primitives ---- */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;border:1px solid var(--line-2);background:var(--surface);border-radius:8px;padding:8px 13px;font-weight:600;font-size:14px;cursor:pointer;line-height:1.2}
+.btn:hover{border-color:var(--accent)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-fg)}
+.btn.gold{background:var(--emas);border-color:var(--emas);color:#1c1400}
+.btn.ghost{background:transparent;border-color:transparent;color:var(--muted)}
+.btn.ghost:hover{color:var(--fg);border-color:var(--line)}
+.btn.danger{color:var(--bad);border-color:transparent;background:transparent}
+.btn.danger.on{background:var(--bad);color:#fff;border-color:var(--bad)}
+.btn.sm{padding:5px 9px;font-size:13px}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.chip{display:inline-flex;align-items:center;gap:5px;border-radius:999px;padding:2px 9px;font-size:12px;font-weight:600;background:var(--surface-2);color:var(--muted);border:1px solid var(--line);white-space:nowrap}
+.chip.ok{background:var(--ok-soft);color:var(--ok);border-color:transparent}
+.chip.warn{background:var(--warn-soft);color:var(--warn);border-color:transparent}
+.chip.bad{background:var(--bad-soft);color:var(--bad);border-color:transparent}
+.chip.info{background:var(--info-soft);color:var(--info);border-color:transparent}
+.chip.acc{background:var(--accent-soft);color:var(--accent);border-color:transparent}
+.chip.gold{background:var(--emas-soft);color:var(--emas-ink);border-color:transparent}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow)}
+fieldset{border:1px solid var(--line);border-radius:var(--r);background:var(--surface);margin:0;padding:14px 16px 16px;min-width:0}
+legend{font-family:var(--f-display);font-stretch:85%;font-weight:700;font-size:15px;padding:0 6px;letter-spacing:.02em;text-transform:uppercase;color:var(--muted)}
+.field{display:grid;gap:4px;min-width:0}
+.field label,.lab{font-size:12px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--muted)}
+input[type=text],input:not([type]),select,textarea{width:100%;min-width:0;border:1px solid var(--line-2);border-radius:8px;background:var(--surface);padding:8px 10px;font-size:16px}
+textarea{resize:vertical;line-height:1.45}
+input:disabled,textarea:disabled,select:disabled{background:var(--surface-2);color:var(--muted)}
+.ro{padding:6px 0;min-height:1.5em;white-space:pre-wrap;overflow-wrap:anywhere}
+.ro.empty{color:var(--muted);font-style:italic}
+.grid-pyd{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px}
+.actions{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+
+/* ---- stage rail ---- */
+.rail{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:0;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);overflow:hidden}
+.step{display:flex;gap:10px;padding:12px 14px;border-right:1px solid var(--line);position:relative;min-width:0}
+.step:last-child{border-right:0}
+.step .dot{flex:0 0 28px;height:28px;border-radius:50%;display:grid;place-items:center;font-family:var(--f-mono);font-weight:600;font-size:13px;border:2px solid var(--line-2);color:var(--muted);background:var(--surface)}
+.step b{display:block;font-size:14px;line-height:1.25}
+.step small{display:block;color:var(--muted);font-size:12px;margin-top:3px}
+.step .chip{margin-top:5px}
+.step.s-sah1 .dot,.step.s-sah2 .dot{background:var(--ok);border-color:var(--ok);color:var(--surface)}
+.step.s-dihantar .dot{border-color:var(--info);color:var(--info)}
+.step.s-dipulang .dot{border-color:var(--bad);color:var(--bad)}
+.step.cur{background:var(--accent-soft)}
+.step.cur::after{content:"";position:absolute;left:0;right:0;bottom:0;height:3px;background:var(--emas)}
+.step.s-kunci{opacity:.6}
+
+/* ---- action panel ---- */
+.actpanel{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:14px 20px;align-items:start;padding:16px 18px;border-radius:var(--r);border:1px solid var(--line);background:var(--surface)}
+.actpanel.need{border-color:var(--emas);background:linear-gradient(0deg,var(--emas-soft),var(--emas-soft)),var(--surface)}
+.actpanel.back{border-color:var(--bad);background:var(--bad-soft)}
+.actpanel h3{font-size:19px}
+.actpanel p{margin:4px 0 0;color:var(--muted);max-width:68ch}
+.checks{list-style:none;margin:10px 0 0;padding:0;display:grid;gap:4px;font-size:14px}
+.checks li{display:flex;gap:7px;align-items:baseline}
+.checks .y{color:var(--ok);font-weight:700}
+.checks .n{color:var(--bad);font-weight:700}
+.actpanel .side{display:grid;gap:8px;justify-items:end;min-width:0}
+.pulang-box{grid-column:1/-1;display:grid;gap:8px}
+.quote{border-left:3px solid var(--bad);padding:4px 10px;margin-top:8px;font-style:italic;color:var(--fg)}
+
+/* ---- scoreband ---- */
+.scoreband{display:grid;grid-template-columns:repeat(2,minmax(0,1fr)) minmax(0,1.3fr);gap:0;background:var(--navy);color:var(--navy-fg);border-radius:var(--r);overflow:hidden}
+.sb{display:grid;grid-template-columns:auto 1fr;grid-template-rows:auto auto;column-gap:14px;padding:14px 16px;border-right:1px solid var(--navy-line);align-items:center}
+.sb-label{grid-column:1/-1;font-size:12px;letter-spacing:.07em;text-transform:uppercase;color:var(--navy-muted)}
+.sb-skor{font-family:var(--f-display);font-stretch:75%;font-size:52px;font-weight:800;line-height:1;color:var(--emas)}
+.sb-skor.none{color:var(--navy-muted)}
+.meter{display:flex;gap:3px}
+.meter span{flex:1;height:22px;border-radius:4px;background:var(--navy-2);display:grid;place-items:center;font-family:var(--f-mono);font-size:11px;color:var(--navy-muted);border:1px solid var(--navy-line)}
+.meter .on{background:var(--navy-line);color:var(--navy-fg)}
+.meter .cur{background:var(--emas);color:#1c1400;border-color:var(--emas);font-weight:700}
+.sb-stats{font-size:12.5px;color:var(--navy-muted);margin-top:6px}
+.sb-stats b{color:var(--navy-fg)}
+.sb-meta{display:flex;flex-wrap:wrap;gap:6px;align-content:center;padding:14px 16px}
+.sb-meta .chip{background:var(--navy-2);color:var(--navy-fg);border-color:var(--navy-line)}
+.sb-meta .chip.warn{background:var(--warn-soft);color:var(--warn)}
+.sb-meta .chip.ok{background:var(--ok-soft);color:var(--ok)}
+
+/* ---- bidang & sasaran ---- */
+.bidang{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);overflow:hidden}
+.bidang-head{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:10px 14px;background:var(--surface-2);border-bottom:1px solid var(--line)}
+.bidang-head input{flex:1 1 260px;font-family:var(--f-display);font-stretch:85%;font-weight:700;font-size:16px;text-transform:uppercase;letter-spacing:.02em}
+.bidang-head h3{flex:1 1 260px;font-size:16px;text-transform:uppercase;letter-spacing:.02em}
+.sas{display:grid;grid-template-columns:34px minmax(0,1fr);gap:12px;padding:14px;border-bottom:1px solid var(--line)}
+.sas:last-child{border-bottom:0}
+.sas.gugur .sas-body>*:not(.sas-tools){opacity:.55}
+.sas .no{font-family:var(--f-mono);font-weight:600;font-size:15px;width:30px;height:30px;border-radius:7px;background:var(--accent-soft);color:var(--accent);display:grid;place-items:center}
+.sas-body{display:grid;gap:10px;min-width:0}
+.teks-ro{font-size:15.5px;line-height:1.5;overflow-wrap:anywhere}
+.hints{display:flex;flex-wrap:wrap;gap:5px}
+.evals{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.eval{border:1px solid var(--line);border-radius:8px;padding:10px 12px;display:grid;gap:7px;background:var(--surface-2);min-width:0}
+.eval.open{background:var(--surface);border-color:var(--accent)}
+.eval h4{font-size:13px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.eval .row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.eval .mark{width:92px;flex:0 0 92px;font-family:var(--f-mono);text-align:center}
+.eval .row select{width:auto;flex:0 0 auto}
+.markro{font-family:var(--f-mono);font-weight:600;font-size:17px}
+.asal{font-size:12px;color:var(--warn)}
+.sas-tools{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.confirm{display:inline-flex;align-items:center;gap:6px;font-size:13px;color:var(--bad);flex-wrap:wrap}
+.add-row{padding:10px 14px;background:var(--surface-2)}
+.empty{padding:22px 16px;text-align:center;color:var(--muted);display:grid;gap:8px;justify-items:center}
+
+/* bukti */
+.bukti{display:grid;gap:5px}
+.file{display:flex;align-items:center;gap:8px;font-size:13.5px;min-width:0}
+.file svg{flex:0 0 16px;width:16px;height:16px;stroke:var(--muted);fill:none;stroke-width:1.8}
+.file span.n{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.file small{color:var(--muted);white-space:nowrap}
+.upl{display:inline-flex;align-items:center;gap:6px;font-size:13px;color:var(--accent);font-weight:600;cursor:pointer}
+.upl input{position:absolute;width:1px;height:1px;opacity:0}
+
+/* thread */
+details.thread{border-top:1px dashed var(--line);padding-top:8px}
+details.thread summary{cursor:pointer;font-size:13.5px;font-weight:600;color:var(--accent);display:flex;gap:7px;align-items:center;list-style:none}
+details.thread summary::-webkit-details-marker{display:none}
+details.thread summary::before{content:"▸";font-size:11px;transition:transform .15s}
+details.thread[open] summary::before{transform:rotate(90deg)}
+.msgs{display:grid;gap:8px;margin:10px 0}
+.m{display:grid;grid-template-columns:30px minmax(0,1fr);gap:8px;font-size:14px}
+.av{width:30px;height:30px;border-radius:50%;display:grid;place-items:center;font-size:11px;font-weight:700;background:var(--accent-soft);color:var(--accent)}
+.av.pp1{background:var(--emas-soft);color:var(--emas-ink)}
+.av.pp2{background:var(--info-soft);color:var(--info)}
+.m .h{font-size:12px;color:var(--muted)}
+.m .h b{color:var(--fg)}
+.m .t{overflow-wrap:anywhere}
+.reply{display:flex;gap:8px;align-items:flex-end}
+.reply textarea{flex:1}
+
+/* ---- pantau ---- */
+.tiles{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+.tile{padding:14px 16px;display:grid;gap:2px}
+.tile .k{font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:600}
+.tile .v{font-family:var(--f-display);font-stretch:75%;font-weight:800;font-size:40px;line-height:1.05}
+.tile .s{font-size:13px;color:var(--muted)}
+.tile.hot{border-color:var(--emas);background:linear-gradient(0deg,var(--emas-soft),var(--emas-soft)),var(--surface)}
+.tile.hot .v{color:var(--emas-ink)}
+.tile.badv .v{color:var(--bad)}
+.filters{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.fbtn{border:1px solid var(--line-2);background:var(--surface);border-radius:999px;padding:6px 12px;font-size:13.5px;font-weight:600;cursor:pointer}
+.fbtn[aria-pressed="true"]{background:var(--navy);color:var(--navy-fg);border-color:var(--navy)}
+.ledger{display:grid}
+.lrow{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(0,1.5fr) 128px minmax(0,1fr) auto;gap:14px;align-items:center;padding:13px 16px;border-bottom:1px solid var(--line)}
+.lrow:last-child{border-bottom:0}
+.lrow.head{font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:600;padding-block:9px;background:var(--surface-2)}
+.lrow .nm b{display:block;font-size:15px}
+.lrow .nm small{color:var(--muted);font-size:13px}
+.track{display:grid;grid-template-columns:repeat(4,1fr);gap:3px}
+.track i{height:9px;border-radius:3px;background:var(--line)}
+.track i.sah2{background:var(--ok)}
+.track i.sah1{background:linear-gradient(90deg,var(--ok) 50%,var(--line) 50%)}
+.track i.dihantar{background:var(--info)}
+.track i.dipulang{background:var(--bad)}
+.track i.draf{background:var(--line-2)}
+.track-l{font-size:12.5px;color:var(--muted);margin-top:5px;display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.skr{font-size:13px;color:var(--muted)}
+.skr b{font-family:var(--f-mono);font-size:16px;color:var(--fg)}
+.flags{display:flex;flex-wrap:wrap;gap:5px}
+.legend{display:flex;flex-wrap:wrap;gap:12px;font-size:12.5px;color:var(--muted)}
+.legend span{display:inline-flex;align-items:center;gap:5px}
+.legend i{width:16px;height:8px;border-radius:2px;display:inline-block}
+
+/* ---- head for PP review ---- */
+.revhead{display:flex;flex-wrap:wrap;gap:10px 16px;align-items:center}
+.revhead h2{font-size:24px}
+.revhead small{color:var(--muted);display:block}
+
+/* ---- aktiviti ---- */
+.log{display:grid}
+.log .e{display:grid;grid-template-columns:30px minmax(0,1fr) auto;gap:10px;padding:11px 16px;border-bottom:1px solid var(--line);align-items:start;font-size:14px}
+.log .e:last-child{border-bottom:0}
+.log .e time{font-size:12.5px;color:var(--muted);white-space:nowrap}
+.log .e .w{font-size:12.5px;color:var(--muted)}
+
+/* ---- panduan ---- */
+.guide{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:14px}
+.guide .card{padding:16px 18px}
+.guide h3{font-size:19px;margin-bottom:6px}
+.guide p,.guide li{color:var(--fg);max-width:65ch}
+.parts{display:grid;gap:8px;margin-top:8px}
+.parts div{display:grid;grid-template-columns:26px 1fr;gap:8px}
+.parts b{width:24px;height:24px;border-radius:6px;background:var(--emas-soft);color:var(--emas-ink);display:grid;place-items:center;font-family:var(--f-mono)}
+.tbl-wrap{overflow-x:auto}
+table.mini{border-collapse:collapse;width:100%;font-size:14px}
+table.mini th,table.mini td{border-bottom:1px solid var(--line);padding:6px 8px;text-align:left;vertical-align:top}
+table.mini th{font-size:12px;letter-spacing:.05em;text-transform:uppercase;color:var(--muted)}
+
+/* ---- paper (official form look stays black-on-white in both themes) ---- */
+.pv-bar{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.paper-wrap{overflow-x:auto;background:var(--surface-2);border:1px solid var(--line);border-radius:var(--r);padding:16px}
+.paper{background:var(--paper);color:var(--paper-ink);width:1080px;padding:26px 28px;font:11px/1.35 Arial,Helvetica,sans-serif;margin:0 auto;box-shadow:var(--shadow)}
+.paper .ph{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px}
+.paper .ph .t{font-weight:700;font-size:13px;line-height:1.5}
+.paper .ph .lg{text-align:center;font-weight:700;font-size:10px;width:180px}
+.paper .ph .lg i{display:block;width:48px;height:48px;margin:0 auto 4px;border:2px solid var(--paper-ink);border-radius:50%}
+.paper table{border-collapse:collapse;width:100%;table-layout:fixed}
+.paper td{border:1px solid var(--paper-ink);padding:4px 5px;vertical-align:top;overflow-wrap:anywhere}
+.paper .cy{background:var(--paper-cyan);font-weight:700}
+.paper .c{text-align:center;vertical-align:middle}
+.paper .nb{border:0}
+.paper .gap{height:10px}
+.paper .blk{background:var(--paper-ink)}
+.paper .sig td{height:34px;font-size:10px}
+
+/* ---- dialog & toast ---- */
+dialog{border:1px solid var(--line);border-radius:14px;background:var(--surface);color:var(--fg);padding:0;width:min(640px,calc(100vw - 32px));box-shadow:0 20px 60px rgba(0,0,0,.3)}
+dialog::backdrop{background:rgba(6,16,29,.55)}
+.dlg{padding:18px 20px;display:grid;gap:12px}
+.grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.out{border:1px dashed var(--line-2);border-radius:8px;padding:10px 12px;min-height:48px;background:var(--surface-2)}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(20px + env(safe-area-inset-bottom,0px));background:var(--navy);color:var(--navy-fg);padding:10px 16px;border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.25);z-index:50;font-size:14px;max-width:calc(100vw - 32px)}
+
+@media (max-width:900px){
+  .tiles{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .lrow{grid-template-columns:minmax(0,1fr) auto;gap:8px 12px}
+  .lrow.head{display:none}
+  .lrow .trk{grid-column:1/-1;order:3}
+  .lrow .skr{order:2}
+  .lrow .flags{grid-column:1/-1;order:4}
+  .lrow .go{order:5;grid-column:1/-1;justify-self:start}
+  .scoreband{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .sb-meta{grid-column:1/-1;border-top:1px solid var(--navy-line)}
+}
+@media (max-width:760px){
+  .rail{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .step:nth-child(2){border-right:0}
+  .step:nth-child(-n+2){border-bottom:1px solid var(--line)}
+  .evals{grid-template-columns:1fr}
+  .actpanel{grid-template-columns:1fr}
+  .actpanel .side{justify-items:start}
+  .grid2{grid-template-columns:1fr}
+}
+@media (max-width:440px){
+  .sb{padding:12px}
+  .sb-skor{font-size:42px}
+  .sas{grid-template-columns:1fr;gap:8px}
+  .rail{grid-template-columns:1fr}
+  .step{border-right:0;border-bottom:1px solid var(--line)}
+  .step:last-child{border-bottom:0}
+  .tile .v{font-size:34px}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+
+<header class="top">
+  <div class="wrap gut">
+    <div class="brand">
+      <svg viewBox="0 0 36 36" aria-hidden="true"><path d="M18 2l13 5v10c0 8-5.6 14.3-13 17C10.6 31.3 5 25 5 17V7z" fill="var(--emas)"/><path d="M18 6l9.5 3.6v7.6c0 6-4 10.8-9.5 13C12.5 28 8.5 23.2 8.5 17.2V9.6z" fill="var(--navy-2)"/><path d="M12.5 18.5l3.6 3.6 7.4-8" stroke="var(--emas)" stroke-width="2.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <div><b>e-Keberhasilan SKTD</b><small>Borang Keberhasilan PBPPP · 2026</small></div>
+    </div>
+    <span class="grow"></span>
+    <div class="as">
+      <label for="as">Lihat sebagai</label>
+      <select id="as"></select>
+    </div>
+  </div>
+  <div class="tabs-band"><nav class="tabs wrap gut" id="tabs" role="tablist" aria-label="Menu"></nav></div>
+</header>
+
+<main class="wrap gut" id="view"></main>
+
+<dialog id="dlg-builder">
+  <form class="dlg" method="dialog" id="builder-form">
+    <h3>Pembina sasaran</h3>
+    <div class="grid2">
+      <div class="field"><label for="b-kk">a. Kata kerja</label>
+        <select id="b-kk"><option>Memastikan</option><option>Mencapai</option><option>Menghasilkan</option><option>Meningkatkan</option><option>Mengurangkan</option><option>Menyelesaikan</option></select></div>
+      <div class="field"><label for="b-ukur">b. Penyata ukuran</label><input type="text" id="b-ukur" placeholder="28 daripada 35 orang murid 4 Bestari"></div>
+      <div class="field"><label for="b-tujuan">c. Tujuan sasaran</label><input type="text" id="b-tujuan" placeholder="mencapai sekurang-kurangnya TP3 bagi Matematik"></div>
+      <div class="field"><label for="b-peringkat">d. Peringkat (jika ada)</label><input type="text" id="b-peringkat" placeholder="dalam PBD akhir tahun"></div>
+    </div>
+    <div class="field"><span class="lab">Sasaran</span><div class="out" id="b-out"></div></div>
+    <div class="field"><label for="b-bidang">Masukkan ke bidang</label><select id="b-bidang"></select></div>
+    <div class="actions"><button class="btn primary" id="b-insert" type="button">Masukkan sasaran</button><button class="btn" value="cancel" type="submit">Tutup</button></div>
+  </form>
+</dialog>
+
+<div class="toast" id="toast" hidden role="status"></div>
+
+<script>
+(() => {
+"use strict";
+const $ = (s, el = document) => el.querySelector(s);
+const $$ = (s, el = document) => [...el.querySelectorAll(s)];
+const uid = () => Math.random().toString(36).slice(2, 9);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+
+const STATUS = ["KEKAL", "PINDA", "GUGUR", "TAMBAH"];
+const SKOR_BAND = [[81, 5], [61, 4], [41, 3], [21, 2], [0, 1]];
+const KATA_KERJA = /^(memastikan|mencapai|menghasilkan|meningkatkan|mengurangkan|menyelesaikan|membangunkan|melaksanakan|menyediakan|melahirkan|mewujudkan)\b/i;
+const RUTIN = /\b(menghadiri|memeriksa buku|menulis rancangan|mengemas kini hrmis|mencuci|menghias|bertugas sebagai)\b/i;
+const STAGES = [
+  { k: "penetapan", t: "Penetapan sasaran", tutup: "2026-01-31", pyd: "Tulis sekurang-kurangnya 5 sasaran yang boleh diukur.", pp: "Pastikan setiap sasaran ada kata kerja, ukuran dan tujuan." },
+  { k: "p1", t: "Penilaian pertama", tutup: "2026-07-31", pyd: "Isi pencapaian semasa, cadangan markah dan muat naik bukti.", pp: "Banding markah dengan bukti. Ubah markah jika perlu sebelum sahkan." },
+  { k: "semakan", t: "Semakan sasaran", tutup: "2026-08-15", pyd: "Cadangkan status KEKAL, PINDA, GUGUR atau TAMBAH. Pinda teks sasaran jika perlu.", pp: "Muktamadkan status setiap sasaran." },
+  { k: "akhir", t: "Penilaian akhir", tutup: "2026-11-30", pyd: "Isi pencapaian akhir, cadangan markah dan bukti.", pp: "Sahkan markah akhir. Skor dimasukkan ke e-Prestasi." },
+];
+const ST_LABEL = { kunci: "Belum dibuka", draf: "Draf PYD", dihantar: "Menunggu PP1", dipulang: "Dipulangkan", sah1: "Disahkan PP1", sah2: "Diperakui PP2" };
+const ST_CHIP = { kunci: "", draf: "", dihantar: "info", dipulang: "bad", sah1: "ok", sah2: "ok" };
+const SAH = s => s === "sah1" || s === "sah2";
+const todayISO = () => { const d = new Date(); return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10); };
+const KEY = "ekb-sktd-demo-v1", UIKEY = "ekb-sktd-ui-v1";
+
+/* ---------------- data contoh (nama rekaan) ---------------- */
+function S(teks, p1 = "", m1 = "", status = "KEKAL", p2 = "", m2 = "") {
+  return { id: uid(), teks, p1, m1: String(m1 ?? ""), status, p2, m2: String(m2 ?? ""), catatan: "", bukti: [], ulasan: [] };
+}
+const P = (s, hantar, sah1, sah2) => ({ s, hantar: hantar || null, sah1: sah1 || null, sah2: sah2 || null, pulang: null });
+const F = (nama, kb, peringkat, tarikh) => ({ id: uid(), nama, saiz: kb * 1024, peringkat, tarikh });
+const U = (oleh, teks, masa) => ({ id: uid(), oleh, teks, masa });
+
+function generik(o) {
+  const [a1, a2, a3, a4, a5, a6] = o.m1, [b1, b2, b3, b4, b5, b6] = o.m2;
+  const mid = (m, sas) => Math.round(sas * (Number(m) || 0) / 100);
+  return [
+    { id: uid(), nama: "PEMBELAJARAN DAN PEMUDAHCARAAN (PDPC)", sasaran: [
+      S(`Memastikan ${o.sas} daripada ${o.n} orang murid **${o.kelas}** mencapai sekurang-kurangnya Tahap Penguasaan (TP) 3 bagi mata pelajaran ${o.subj} dalam PBD akhir tahun.`,
+        a1 ? `PBD pertengahan tahun: ${mid(a1, o.sas)}/${o.n} murid di TP3 ke atas.` : "", a1, "KEKAL", b1 ? `PBD akhir tahun: ${mid(b1, o.sas)}/${o.n} murid di TP3 ke atas.` : "", b1),
+      S(`Memastikan ${o.pct}% murid **${o.kelas2}** mendapat sekurang-kurangnya gred C dalam UASA ${o.subj} 2026.`,
+        a2 ? `Ujian diagnostik: ${Math.round(o.pct * a2 / 100)}% murid mencapai gred C.` : "", a2, "KEKAL", b2 ? `Keputusan UASA: ${Math.round(o.pct * b2 / 100)}% murid gred C ke atas.` : "", b2),
+      S(`Menghasilkan 1 set bahan bantu mengajar digital **${o.subj}** untuk kegunaan panitia sebelum Jun 2026.`,
+        a3 ? (a3 >= 100 ? "Bahan siap dan dikongsi dalam Google Drive panitia." : "Bahan dalam pembangunan.") : "", a3, "KEKAL", b3 ? "Digunakan oleh guru sepanitia." : "", b3),
+    ]},
+    { id: uid(), nama: `PENGURUSAN KELAS (GURU KELAS ${o.kelas.toUpperCase()})`, sasaran: [
+      S(`Memastikan kadar kehadiran murid **${o.kelas}** mencapai sekurang-kurangnya 95% bagi sesi 2026.`,
+        a4 ? `Kehadiran Jan–Jun: ${(95 * a4 / 100).toFixed(1)}%.` : "", a4, "KEKAL", b4 ? `Kehadiran Jan–Sep: ${(95 * b4 / 100).toFixed(1)}%.` : "", b4),
+    ]},
+    { id: uid(), nama: "KOKURIKULUM", sasaran: [
+      S(`Memastikan 8 daripada 8 perjumpaan **${o.koku}** dapat dijalankan sepanjang sesi 2026.`,
+        a5 ? `${Math.round(8 * a5 / 100)}/8 perjumpaan diadakan.` : "", a5, "KEKAL", b5 ? `${Math.round(8 * b5 / 100)}/8 perjumpaan diadakan.` : "", b5),
+    ]},
+    { id: uid(), nama: `TUGAS SAMPINGAN (${o.tugas})`, sasaran: [
+      S(`Menyelesaikan 4 daripada 4 minit **Mesyuarat Panitia ${o.subj}** dalam tempoh 7 hari selepas mesyuarat.`,
+        a6 ? `${Math.round(2 * a6 / 100)}/2 minit disiapkan dalam tempoh.` : "", a6, "KEKAL", b6 ? `${Math.round(4 * b6 / 100)}/4 minit disiapkan dalam tempoh.` : "", b6),
+    ]},
+  ];
+}
+
+function seed() {
+  const TEMPAT = "SK TAMAN DESAMINIUM";
+  const users = [
+    { id: "u1", nama: "NURUL HUDA BINTI AHMAD", jawatan: "Guru Matematik", gred: "DG 10", peranan: "PYD" },
+    { id: "u2", nama: "MOHD FARID BIN ISMAIL", jawatan: "Guru Bahasa Melayu", gred: "DG 10", peranan: "PYD" },
+    { id: "u3", nama: "TAN MEI LING", jawatan: "Guru Sains", gred: "DG 9", peranan: "PYD" },
+    { id: "u4", nama: "SARAVANAN A/L MUNIANDY", jawatan: "Guru Bahasa Inggeris", gred: "DG 10", peranan: "PYD" },
+    { id: "u5", nama: "NUR AISYAH BINTI ZAKARIA", jawatan: "Guru Pendidikan Islam", gred: "DG 9", peranan: "PYD" },
+    { id: "u6", nama: "HAFIZ BIN OTHMAN", jawatan: "Guru Pendidikan Jasmani", gred: "DG 10", peranan: "PYD" },
+    { id: "pp1", nama: "ROHANA BINTI SALLEH", jawatan: "Penolong Kanan Pentadbiran", gred: "DG 12", peranan: "PP1" },
+    { id: "pp2", nama: "KAMAL BIN HASHIM", jawatan: "Guru Besar", gred: "DG 14", peranan: "PP2" },
+  ];
+  const pydOf = u => ({ nama: u.nama, kp: "", gred: u.gred, jawatan: u.jawatan.toUpperCase(), tempat: TEMPAT });
+  const B = (u, bidang, pr, log = []) => ({ uid: u.id, pyd: pydOf(u), bidang, peringkat: { penetapan: pr[0], p1: pr[1], semakan: pr[2], akhir: pr[3] }, log });
+  const L = (t, oleh, teks) => ({ t, oleh, teks });
+  const borang = {};
+
+  // u1 — borang paling lengkap
+  const u1b = [
+    { id: uid(), nama: "PEMBELAJARAN DAN PEMUDAHCARAAN (PDPC)", sasaran: [
+      S("Memastikan 28 daripada 35 orang murid **4 Bestari** mencapai sekurang-kurangnya Tahap Penguasaan (TP) 3 bagi mata pelajaran Matematik dalam PBD akhir tahun.", "PBD pertengahan tahun: 24/35 murid di TP3 ke atas.", 86, "KEKAL", "PBD akhir tahun sedang berjalan; 27/35 murid setakat 14 Okt.", ""),
+      S("Memastikan 30 daripada 35 orang murid **4 Cemerlang** mendapat sekurang-kurangnya gred C dalam UASA Matematik 2026.", "Ujian diagnostik Mac: 25/35 murid mencapai gred C.", 83, "PINDA", "", ""),
+      S("Mengurangkan bilangan murid **4 Bestari** di TP1 bagi Matematik daripada 6 orang kepada 2 orang melalui intervensi kelas tambahan petang.", "4 murid masih di TP1 selepas 8 sesi intervensi.", 50, "KEKAL", "2 murid kekal di TP1 selepas 20 sesi.", 100),
+      S("Menghasilkan 1 set modul latihan **Pecahan Tahun 4** (20 lembaran kerja) untuk kegunaan Panitia Matematik sebelum Jun 2026.", "Modul siap dan dikongsi dalam Google Drive panitia.", 100, "KEKAL", "Digunakan oleh 3 orang guru Tahun 4.", 100),
+    ]},
+    { id: uid(), nama: "PENGURUSAN KELAS (GURU KELAS 4 BESTARI)", sasaran: [
+      S("Memastikan kadar kehadiran murid **4 Bestari** mencapai sekurang-kurangnya 95% bagi sesi 2026.", "Kehadiran Jan–Jun: 93.4%.", 98, "KEKAL", "Kehadiran Jan–Sep: 94.1%.", 99),
+    ]},
+    { id: uid(), nama: "KOKURIKULUM", sasaran: [
+      S("Memastikan 8 daripada 8 perjumpaan **Kelab Matematik** dapat dijalankan sepanjang sesi 2026.", "4/8 perjumpaan diadakan.", 50, "KEKAL", "7/8 perjumpaan diadakan.", 88),
+    ]},
+    { id: uid(), nama: "TUGAS SAMPINGAN (SETIAUSAHA PANITIA MATEMATIK)", sasaran: [
+      S("Menyelesaikan 4 daripada 4 minit **Mesyuarat Panitia Matematik** dalam tempoh 7 hari selepas mesyuarat.", "2/2 minit disiapkan dalam tempoh.", 100, "KEKAL", "", ""),
+      S("Memastikan 1 program **Kem Sifir Tahun 3** dilaksanakan dengan penyertaan sekurang-kurangnya 90% murid Tahun 3 sebelum Oktober 2026.", "", "", "TAMBAH", "Dilaksanakan 18 Sep; 112/120 murid hadir (93%).", 100),
+    ]},
+  ];
+  const [s1, s2, , s4] = u1b[0].sasaran, s6 = u1b[2].sasaran[0], s8 = u1b[3].sasaran[1];
+  s1.bukti.push(F("Analisis PBD pertengahan 4 Bestari.pdf", 182, "p1", "2026-07-12"));
+  s4.bukti.push(F("Modul Pecahan T4.pdf", 2310, "p1", "2026-06-02"));
+  s6.bukti.push(F("Laporan Kelab Matematik Jun.pdf", 410, "p1", "2026-07-10"), F("Kehadiran perjumpaan Jul–Sep.jpg", 960, "akhir", "2026-10-02"));
+  s8.bukti.push(F("Laporan Kem Sifir T3.pdf", 1240, "akhir", "2026-09-25"));
+  s2.ulasan.push(
+    U("pp1", "Ukuran 85% baik, tetapi nyatakan bilangan murid supaya mudah dinilai semasa penilaian akhir.", "2026-01-23T09:12:00"),
+    U("u1", "Baik puan, saya pinda kepada 30 daripada 35 murid semasa semakan sasaran.", "2026-01-23T13:40:00"),
+    U("pp1", "Pindaan diterima. Status PINDA.", "2026-08-09T10:05:00"));
+  s6.ulasan.push(U("pp2", "Pastikan perjumpaan ke-8 direkod sebelum penilaian akhir dihantar.", "2026-10-10T08:30:00"));
+  borang.u1 = B(users[0], u1b,
+    [P("sah2", "2026-01-20", "2026-01-24", "2026-01-28"), P("sah2", "2026-07-14", "2026-07-18", "2026-07-22"), P("sah1", "2026-08-05", "2026-08-09"), P("draf")],
+    [L("2026-01-20T08:00:00", "u1", "Menghantar Penetapan sasaran kepada PP1"), L("2026-01-24T10:00:00", "pp1", "Mengesahkan Penetapan sasaran"), L("2026-01-28T11:00:00", "pp2", "Memperakui Penetapan sasaran"),
+     L("2026-07-14T08:00:00", "u1", "Menghantar Penilaian pertama kepada PP1"), L("2026-07-18T09:30:00", "pp1", "Mengesahkan Penilaian pertama"), L("2026-07-22T12:00:00", "pp2", "Memperakui Penilaian pertama"),
+     L("2026-08-05T08:15:00", "u1", "Menghantar Semakan sasaran kepada PP1"), L("2026-08-09T10:05:00", "pp1", "Mengesahkan Semakan sasaran"), L("2026-10-10T08:30:00", "pp2", "Mengulas sasaran 6")]);
+
+  // u2 — akhir dihantar, tunggu PP1
+  borang.u2 = B(users[1], generik({ subj: "Bahasa Melayu", kelas: "5 Arif", kelas2: "5 Gigih", sas: 26, n: 32, pct: 80, koku: "Persatuan Bahasa Melayu", tugas: "KETUA PANITIA BAHASA MELAYU", m1: [77, 81, 100, 97, 50, 100], m2: [96, 94, 100, 98, 100, 100] }),
+    [P("sah2", "2026-01-19", "2026-01-23", "2026-01-27"), P("sah2", "2026-07-15", "2026-07-20", "2026-07-23"), P("sah2", "2026-08-06", "2026-08-10", "2026-08-12"), P("dihantar", "2026-10-14")],
+    [L("2026-10-14T16:20:00", "u2", "Menghantar Penilaian akhir kepada PP1")]);
+  borang.u2.bidang[0].sasaran[0].bukti.push(F("Analisis PBD akhir 5 Arif.xlsx", 88, "akhir", "2026-10-13"));
+  borang.u2.bidang[0].sasaran[1].bukti.push(F("Keputusan UASA BM 5 Gigih.pdf", 240, "akhir", "2026-10-14"));
+
+  // u3 — semakan dihantar lewat; P1 belum diperakui PP2
+  borang.u3 = B(users[2], generik({ subj: "Sains", kelas: "6 Bijak", kelas2: "6 Cekal", sas: 24, n: 30, pct: 75, koku: "Kelab Sains dan Matematik", tugas: "PENYELARAS STEM", m1: [71, 80, 100, 99, 63, 100], m2: [] }),
+    [P("sah2", "2026-01-21", "2026-01-25", "2026-01-29"), P("sah1", "2026-07-27", "2026-07-30"), P("dihantar", "2026-08-20"), P("draf")],
+    [L("2026-08-20T21:05:00", "u3", "Menghantar Semakan sasaran kepada PP1")]);
+  borang.u3.bidang[0].sasaran[2].status = "GUGUR";
+  borang.u3.bidang[0].sasaran[2].ulasan.push(U("u3", "Cadang GUGUR: bajet panitia untuk bahan digital dipindahkan ke Minggu Sains.", "2026-08-20T21:00:00"));
+
+  // u4 — P1 dipulangkan
+  borang.u4 = B(users[3], generik({ subj: "Bahasa Inggeris", kelas: "3 Gemilang", kelas2: "3 Harmoni", sas: 22, n: 30, pct: 70, koku: "English Language Society", tugas: "SETIAUSAHA PANITIA BAHASA INGGERIS", m1: [82, 90, 100, 96, 50, 100], m2: [] }),
+    [P("sah2", "2026-01-22", "2026-01-26", "2026-01-30"), P("dipulang"), P("draf"), P("draf")],
+    [L("2026-07-28T15:00:00", "u4", "Menghantar Penilaian pertama kepada PP1"), L("2026-08-02T09:40:00", "pp1", "Memulangkan Penilaian pertama untuk pindaan")]);
+  borang.u4.peringkat.p1.pulang = { teks: "Markah sasaran 2 tidak selari dengan bukti. Sila semak semula dan lampirkan analisis ujian.", tarikh: "2026-08-02" };
+  borang.u4.bidang[0].sasaran[1].ulasan.push(U("pp1", "Bukti menunjukkan 18/30 murid (60%) gred C, bukan 63%. Markah sepatutnya 86, bukan 90.", "2026-08-02T09:38:00"));
+
+  // u5 — P1 belum dihantar, lewat
+  borang.u5 = B(users[4], generik({ subj: "Pendidikan Islam", kelas: "2 Cerdik", kelas2: "2 Dedikasi", sas: 25, n: 31, pct: 85, koku: "Kelab Iqra'", tugas: "PENYELARAS j-QAF", m1: [72, "", "", 96, "", ""], m2: [] }),
+    [P("sah1", "2026-01-27", "2026-01-30"), P("draf"), P("draf"), P("draf")],
+    [L("2026-01-27T10:00:00", "u5", "Menghantar Penetapan sasaran kepada PP1"), L("2026-01-30T14:00:00", "pp1", "Mengesahkan Penetapan sasaran")]);
+
+  // u6 — mengikut jadual
+  borang.u6 = B(users[5], generik({ subj: "Pendidikan Jasmani", kelas: "5 Dinamik", kelas2: "5 Elit", sas: 30, n: 33, pct: 90, koku: "Kelab Bola Sepak", tugas: "SETIAUSAHA SUKAN SEKOLAH", m1: [87, 89, 100, 99, 63, 100], m2: [93, "", 100, 100, 88, ""] }),
+    [P("sah2", "2026-01-18", "2026-01-22", "2026-01-26"), P("sah2", "2026-07-08", "2026-07-11", "2026-07-15"), P("sah2", "2026-08-03", "2026-08-07", "2026-08-11"), P("draf")]);
+
+  return { versi: 1, tahun: "2026", users, borang };
+}
+
+/* ---------------- simpanan (pelayar ini sahaja) ---------------- */
+function load(k) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : null; } catch (e) { return null; } }
+function store(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { /* mod peribadi: abaikan */ } }
+let DB = load(KEY); if (!DB || DB.versi !== 1) DB = seed();
+let ui = Object.assign({ as: "u1", tab: "", open: null, filter: "semua", pend: null, pv: null }, load(UIKEY) || {});
+let saveT = 0;
+function save() { clearTimeout(saveT); saveT = setTimeout(() => store(KEY, DB), 250); }
+function saveUi() { store(UIKEY, { as: ui.as, tab: ui.tab, open: ui.open, filter: ui.filter, pv: ui.pv }); }
+
+/* ---------------- logik ---------------- */
+const user = id => DB.users.find(u => u.id === id);
+const me = () => user(ui.as) || DB.users[0];
+const pyds = () => DB.users.filter(u => u.peranan === "PYD");
+function stateOf(b, i) { if (i > 0 && !SAH(b.peringkat[STAGES[i - 1].k].s)) return "kunci"; return b.peringkat[STAGES[i].k].s; }
+function curStage(b) { for (let i = 0; i < 4; i++) if (!SAH(stateOf(b, i))) return i; return 4; }
+const allS = b => b.bidang.flatMap(x => x.sasaran);
+function parseMark(v) { if (v === "" || v == null) return null; const n = Number(v); return Number.isFinite(n) && n > 0 ? n : null; }
+function normalizeMark(v) {
+  v = String(v || "").trim(); if (!v) return "";
+  const f = v.match(/^(\d+(?:\.\d+)?)\s*\/\s*(\d+(?:\.\d+)?)$/);
+  let n = f ? (Number(f[2]) ? Number(f[1]) / Number(f[2]) * 100 : NaN) : Number(v.replace(",", "."));
+  if (!Number.isFinite(n) || n <= 0) return "";
+  return String(Math.min(100, Math.round(n * 100) / 100));
+}
+function calc(which, b) {
+  const marks = [];
+  allS(b).forEach(s => { if (which === 2 && s.status === "GUGUR") return; const m = parseMark(which === 1 ? s.m1 : s.m2); if (m !== null) marks.push(m); });
+  const bil = marks.length, jumlah = Math.round(marks.reduce((a, c) => a + c, 0) * 100) / 100;
+  const purata = bil ? jumlah / bil : null;
+  let skor = null; if (purata !== null) for (const [min, sk] of SKOR_BAND) if (purata >= min) { skor = sk; break; }
+  return { bil, jumlah, purata, skor };
+}
+const plain = t => String(t || "").replace(/\*\*/g, "");
+const rich = t => String(t || "").split("**").map((p, i) => i % 2 ? `<b>${esc(p)}</b>` : esc(p)).join("");
+function hints(t) {
+  const p = plain(t).trim(), h = [];
+  if (!p) return [["warn", "Tulis sasaran"]];
+  if (!KATA_KERJA.test(p)) h.push(["warn", "Mulakan dengan kata kerja hasil"]);
+  if (!/\d|%/.test(p)) h.push(["bad", "Tiada ukuran (nombor atau %)"]);
+  if (RUTIN.test(p)) h.push(["warn", "Mungkin kerja rutin"]);
+  if (!h.length) h.push(["ok", "Boleh diukur"]);
+  return h;
+}
+function perm(b, role) {
+  const st = i => stateOf(b, i), open = i => st(i) === "draf" || st(i) === "dipulang", sent = i => st(i) === "dihantar";
+  const pyd = role === "PYD", pp1 = role === "PP1";
+  return {
+    penetapan: pyd && open(0), semakan: pyd && open(2),
+    p1: pyd && open(1), m1: (pyd && open(1)) || (pp1 && sent(1)),
+    status: (pyd && open(2)) || (pp1 && sent(2)),
+    p2: pyd && open(3), m2: (pyd && open(3)) || (pp1 && sent(3)),
+    bukti: { p1: pyd && open(1), akhir: pyd && open(3) },
+    pyd: pyd,
+  };
+}
+const canTeks = (pm, s) => pm.penetapan || (pm.semakan && (s.status === "PINDA" || s.status === "TAMBAH"));
+function lastBy(s) { const u = s.ulasan[s.ulasan.length - 1]; return u ? user(u.oleh) : null; }
+function unrepliedFor(s, role) { const w = lastBy(s); if (!w) return false; return role === "PYD" ? w.peranan !== "PYD" : w.peranan === "PYD"; }
+function checks(b, i) {
+  const ss = allS(b).filter(s => plain(s.teks).trim());
+  if (i === 0) return [[ss.length >= 5, `${ss.length} sasaran ditulis (minimum 5)`], [ss.every(s => hints(s.teks)[0][0] === "ok"), "Semua sasaran boleh diukur"]];
+  if (i === 1) { const t = ss.filter(s => s.status !== "TAMBAH"); return [[t.every(s => plain(s.p1).trim()), `Pencapaian diisi: ${t.filter(s => plain(s.p1).trim()).length}/${t.length}`], [t.every(s => parseMark(s.m1)), `Cadangan markah: ${t.filter(s => parseMark(s.m1)).length}/${t.length}`], [t.some(s => s.bukti.some(f => f.peringkat === "p1")), "Sekurang-kurangnya satu bukti dimuat naik"]]; }
+  if (i === 2) return [[ss.every(s => STATUS.includes(s.status)), "Status setiap sasaran ditetapkan"], [ss.filter(s => s.status !== "GUGUR").length >= 5, `${ss.filter(s => s.status !== "GUGUR").length} sasaran aktif (minimum 5)`]];
+  const t = ss.filter(s => s.status !== "GUGUR");
+  return [[t.every(s => plain(s.p2).trim()), `Pencapaian akhir diisi: ${t.filter(s => plain(s.p2).trim()).length}/${t.length}`], [t.every(s => parseMark(s.m2)), `Cadangan markah: ${t.filter(s => parseMark(s.m2)).length}/${t.length}`]];
+}
+const blocking = (b, i) => checks(b, i).filter((c, k) => !c[0] && !(i === 0 && k === 1) && !(i === 1 && k === 2));
+function fmt(iso, withTime) {
+  if (!iso) return ""; const d = new Date(iso.length <= 10 ? iso + "T00:00:00" : iso);
+  const s = d.toLocaleDateString("ms-MY", { day: "numeric", month: "short", year: "numeric" });
+  return withTime ? s + ", " + d.toLocaleTimeString("ms-MY", { hour: "2-digit", minute: "2-digit" }) : s;
+}
+const nowLocal = () => { const d = new Date(); return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 19); };
+function log(b, teks) { b.log.push({ t: nowLocal(), oleh: me().id, teks }); }
+function initials(n) { return String(n || "?").replace(/\b(BIN|BINTI|A\/L|A\/P)\b/g, "").trim().split(/\s+/).slice(0, 2).map(w => w[0]).join(""); }
+const avClass = u => u && u.peranan === "PP1" ? "pp1" : u && u.peranan === "PP2" ? "pp2" : "";
+function ringkas(u) {
+  const b = DB.borang[u.id], cur = curStage(b), st = cur < 4 ? stateOf(b, cur) : "selesai";
+  const lewat = cur < 4 && (st === "draf" || st === "dipulang") && todayISO() > STAGES[cur].tutup;
+  const tunggu1 = STAGES.map((x, i) => i).filter(i => stateOf(b, i) === "dihantar");
+  const tunggu2 = STAGES.map((x, i) => i).filter(i => stateOf(b, i) === "sah1");
+  const balas = allS(b).filter(s => unrepliedFor(s, "PP1")).length;
+  return { b, cur, st, lewat, tunggu1, tunggu2, balas, c1: calc(1, b), c2: calc(2, b), bukti: allS(b).reduce((a, s) => a + s.bukti.length, 0) };
+}
+function perluTindakan(r, role) { return role === "PP1" ? r.tunggu1.length > 0 : role === "PP2" ? r.tunggu2.length > 0 : false; }
+
+/* ---------------- render ---------------- */
+function render() {
+  const u = me(), role = u.peranan;
+  const tabs = role === "PYD"
+    ? [["borang", "Borang saya", pydBadge(u)], ["pratonton", "Pratonton borang"], ["aktiviti", "Aktiviti"], ["panduan", "Panduan"]]
+    : [["pantau", "Pantau PYD", pyds().map(ringkas).filter(r => perluTindakan(r, role)).length], ...(ui.open ? [["semak", "Semak: " + shortName(user(ui.open).nama)]] : []), ["pratonton", "Pratonton borang"], ["aktiviti", "Aktiviti"], ["panduan", "Panduan"]];
+  if (!tabs.some(t => t[0] === ui.tab)) ui.tab = tabs[0][0];
+  $("#tabs").innerHTML = tabs.map(([k, t, n]) => `<button class="tab" role="tab" type="button" data-tab="${k}" aria-selected="${k === ui.tab}">${esc(t)}${n ? `<span class="badge">${n}</span>` : ""}</button>`).join("");
+  const v = $("#view");
+  if (ui.tab === "borang") v.innerHTML = viewBorang(DB.borang[u.id], "PYD");
+  else if (ui.tab === "pantau") v.innerHTML = viewPantau(role);
+  else if (ui.tab === "semak") v.innerHTML = viewBorang(DB.borang[ui.open], role);
+  else if (ui.tab === "pratonton") v.innerHTML = viewPratonton(role);
+  else if (ui.tab === "aktiviti") v.innerHTML = viewAktiviti(role);
+  else v.innerHTML = viewPanduan();
+  saveUi();
+}
+const shortName = n => String(n).split(/\s+(BIN|BINTI|A\/L|A\/P)\s+/)[0].split(" ").slice(0, 2).join(" ");
+function pydBadge(u) { const b = DB.borang[u.id], c = curStage(b); return allS(b).filter(s => unrepliedFor(s, "PYD")).length + (c < 4 && stateOf(b, c) === "dipulang" ? 1 : 0); }
+
+function demoNote() {
+  return `<div class="demo-note"><span class="chip gold">Prototaip</span><span>Nama dan data ialah contoh rekaan. Tukar <b>Lihat sebagai</b> untuk mencuba peranan PYD, PP1 dan PP2. Perubahan disimpan dalam pelayar ini sahaja.</span><button class="btn ghost sm" type="button" data-act="reset">Set semula data contoh</button></div>`;
+}
+
+function rail(b) {
+  const cur = curStage(b);
+  return `<ol class="rail" aria-label="Peringkat borang">${STAGES.map((st, i) => {
+    const s = stateOf(b, i), pg = b.peringkat[st.k];
+    const lewat = (s === "draf" || s === "dipulang") && todayISO() > st.tutup;
+    const meta = s === "sah2" ? `PP2 perakui ${fmt(pg.sah2)}` : s === "sah1" ? `PP1 sahkan ${fmt(pg.sah1)} · tunggu PP2` : s === "dihantar" ? `Dihantar ${fmt(pg.hantar)}` : s === "dipulang" ? `Dipulangkan ${fmt(pg.pulang && pg.pulang.tarikh)}` : `Tarikh tutup ${fmt(st.tutup)}`;
+    return `<li class="step s-${s} ${i === cur ? "cur" : ""}"><span class="dot">${SAH(s) ? "✓" : i + 1}</span><div><b>${st.t}</b><span class="chip ${ST_CHIP[s]}">${ST_LABEL[s]}</span>${lewat ? ` <span class="chip bad">Lewat</span>` : ""}<small>${meta}</small></div></li>`;
+  }).join("")}</ol>`;
+}
+
+function actPanel(b, role) {
+  const cur = curStage(b);
+  if (cur === 4 && role !== "PP2") return `<section class="actpanel"><div><h3>Borang lengkap</h3><p>Keempat-empat peringkat telah disahkan. Skor akhir ${calc(2, b).skor ?? "–"} sedia dimasukkan ke e-Prestasi.</p></div></section>`;
+  const st = cur < 4 ? STAGES[cur] : null, s = cur < 4 ? stateOf(b, cur) : "selesai", pg = st ? b.peringkat[st.k] : null;
+  const cl = cur < 4 ? checks(b, cur) : [];
+  const list = cl.length ? `<ul class="checks">${cl.map(([ok, t]) => `<li><span class="${ok ? "y" : "n"}">${ok ? "✓" : "•"}</span>${esc(t)}</li>`).join("")}</ul>` : "";
+  if (role === "PYD") {
+    if (s === "dihantar") return `<section class="actpanel"><div><h3>${st.t}: menunggu PP1</h3><p>Dihantar pada ${fmt(pg.hantar)}. Anda boleh tarik balik untuk membuat pembetulan selagi PP1 belum mengesahkan.</p></div><div class="side"><button class="btn" type="button" data-act="tarik" data-i="${cur}">Tarik balik</button></div></section>`;
+    const blk = blocking(b, cur);
+    return `<section class="actpanel ${s === "dipulang" ? "back" : "need"}"><div><h3>${s === "dipulang" ? "Dipulangkan untuk pindaan: " : "Peringkat semasa: "}${st.t}</h3>
+      <p>${st.pyd} Tarikh tutup ${fmt(st.tutup)}.</p>
+      ${s === "dipulang" && pg.pulang ? `<div class="quote">“${esc(pg.pulang.teks)}” — PP1, ${fmt(pg.pulang.tarikh)}</div>` : ""}${list}</div>
+      <div class="side"><button class="btn primary" type="button" data-act="hantar" data-i="${cur}" ${blk.length ? "disabled" : ""}>Hantar kepada PP1</button>${blk.length ? `<small style="color:var(--muted)">Lengkapkan item bertanda • dahulu</small>` : ""}</div></section>`;
+  }
+  if (role === "PP1") {
+    if (s === "dihantar") return `<section class="actpanel need"><div><h3>Tindakan anda: sahkan ${st.t}</h3><p>${st.pp} Dihantar ${fmt(pg.hantar)}.</p>${list}</div>
+      <div class="side"><button class="btn primary" type="button" data-act="sahkan" data-i="${cur}">Sahkan ${st.t}</button><button class="btn" type="button" data-act="pulang-buka">Pulangkan untuk pindaan</button></div>
+      ${ui.pend === "pulang" ? `<div class="pulang-box"><div class="field"><label for="pulang-teks">Sebab dipulangkan (PYD akan nampak)</label><textarea id="pulang-teks" rows="2" placeholder="Contoh: Markah sasaran 3 tidak selari dengan bukti."></textarea></div><div class="actions"><button class="btn danger on" type="button" data-act="pulang" data-i="${cur}">Pulangkan</button><button class="btn ghost" type="button" data-act="pulang-tutup">Batal</button></div></div>` : ""}</section>`;
+    return `<section class="actpanel"><div><h3>Tiada tindakan diperlukan</h3><p>${s === "dipulang" ? `Borang dipulangkan pada ${fmt(pg.pulang && pg.pulang.tarikh)}; menunggu pindaan PYD.` : `PYD sedang mengisi ${st.t} (tarikh tutup ${fmt(st.tutup)}).`} Anda masih boleh memberi ulasan pada mana-mana sasaran.</p></div></section>`;
+  }
+  const t2 = STAGES.map((x, i) => i).filter(i => stateOf(b, i) === "sah1");
+  if (t2.length) return `<section class="actpanel need"><div><h3>Tindakan anda: perakuan PP2</h3><p>PP1 telah mengesahkan peringkat berikut. Semak dan perakui.</p></div><div class="side">${t2.map(i => `<button class="btn primary" type="button" data-act="perakui" data-i="${i}">Perakui ${STAGES[i].t}</button>`).join("")}</div></section>`;
+  return `<section class="actpanel"><div><h3>Tiada tindakan diperlukan</h3><p>${cur < 4 ? `Peringkat semasa: ${st.t} (${ST_LABEL[s]}).` : "Borang lengkap."} Anda boleh memantau dan memberi ulasan.</p></div></section>`;
+}
+
+function scoreCell(which, b) {
+  const r = calc(which, b), cell = i => !r.skor ? "" : i === r.skor ? "cur" : i < r.skor ? "on" : "";
+  return `<div class="sb"><div class="sb-label">${which === 1 ? "Penilaian pertama" : "Penilaian akhir"}</div>
+    <div class="sb-skor ${r.skor ? "" : "none"}" aria-label="Skor ${r.skor ?? "belum ada"}">${r.skor ?? "–"}</div>
+    <div><div class="meter" aria-hidden="true">${[1, 2, 3, 4, 5].map(i => `<span class="${cell(i)}">${i}</span>`).join("")}</div>
+    <div class="sb-stats num"><b>${r.bil}</b> dinilai · purata <b>${r.purata !== null ? r.purata.toFixed(2) : "–"}</b></div></div></div>`;
+}
+function scoreband(b) {
+  const all = allS(b), n = all.filter(s => s.status !== "GUGUR").length, st = {};
+  all.forEach(s => st[s.status] = (st[s.status] || 0) + 1);
+  const weak = all.filter(s => hints(s.teks)[0][0] !== "ok").length;
+  return `${scoreCell(1, b)}${scoreCell(2, b)}<div class="sb-meta"><span class="chip ${n >= 5 ? "ok" : "warn"}">${n} sasaran aktif${n < 5 ? " · minimum 5" : ""}</span>${STATUS.filter(k => st[k]).map(k => `<span class="chip">${k} ${st[k]}</span>`).join("")}${weak ? `<span class="chip warn">${weak} perlu disemak</span>` : ""}</div>`;
+}
+
+const FILE_IC = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/></svg>`;
+const kb = n => n > 1048576 ? (n / 1048576).toFixed(1) + " MB" : Math.max(1, Math.round(n / 1024)) + " KB";
+function buktiHTML(s, pk, can) {
+  const fs = s.bukti.filter(f => f.peringkat === pk);
+  if (!fs.length && !can) return "";
+  return `<div class="bukti">${fs.map(f => `<div class="file">${FILE_IC}<span class="n" title="${esc(f.nama)}">${esc(f.nama)}</span><small>${kb(f.saiz)} · ${fmt(f.tarikh)}</small>${can ? `<button class="btn danger sm" type="button" data-act="bukti-del" data-sid="${s.id}" data-fid="${f.id}" aria-label="Buang ${esc(f.nama)}">Buang</button>` : ""}</div>`).join("")}
+    ${can ? `<label class="upl">+ Muat naik bukti<input type="file" multiple data-upl="${pk}" data-sid="${s.id}" id="up-${pk}-${s.id}"></label>` : ""}</div>`;
+}
+function threadHTML(s, role) {
+  const n = s.ulasan.length, nu = unrepliedFor(s, role);
+  const open = nu || ui.pend === "th-" + s.id;
+  return `<details class="thread" ${open ? "open" : ""} data-th="${s.id}"><summary>Ulasan${n ? ` (${n})` : ""}${nu ? ` <span class="chip gold">${role === "PYD" ? "Perlu dibalas" : "Balasan PYD"}</span>` : ""}</summary>
+    ${n ? `<div class="msgs">${s.ulasan.map(m => { const w = user(m.oleh); return `<div class="m"><span class="av ${avClass(w)}">${esc(initials(w && w.nama))}</span><div><div class="h"><b>${esc(shortName(w ? w.nama : "?"))}</b> · ${w ? w.peranan : ""} · ${fmt(m.masa, true)}</div><div class="t">${esc(m.teks)}</div></div></div>`; }).join("")}</div>` : `<p style="color:var(--muted);font-size:13.5px;margin:8px 0">Belum ada ulasan. ${role === "PYD" ? "PP boleh mengulas di sini, dan anda boleh membalas." : "Ulasan anda akan dilihat oleh PYD."}</p>`}
+    <div class="reply"><textarea rows="1" id="rp-${s.id}" placeholder="${role === "PYD" ? "Balas atau tanya PP" : "Tulis ulasan kepada PYD"}" aria-label="Ulasan sasaran"></textarea><button class="btn sm primary" type="button" data-act="ulas" data-sid="${s.id}">Hantar</button></div></details>`;
+}
+function evalCol(b, s, which, pm, role) {
+  const pk = which === 1 ? "p1" : "akhir", pf = which === 1 ? "p1" : "p2", mf = which === 1 ? "m1" : "m2";
+  const idx = which === 1 ? 1 : 3, st = stateOf(b, idx);
+  const canP = pm[pf] && !(which === 1 && s.status === "TAMBAH") && !(which === 2 && s.status === "GUGUR");
+  const canM = pm[mf] && !(which === 1 && s.status === "TAMBAH") && !(which === 2 && s.status === "GUGUR");
+  const asal = s[mf + "_asal"];
+  const statusCtl = which === 1 ? (pm.status ? `<select id="st-${s.id}" data-f="status" data-sid="${s.id}" aria-label="Status sasaran">${STATUS.map(k => `<option ${k === s.status ? "selected" : ""}>${k}</option>`).join("")}</select>` : `<span class="chip ${s.status === "GUGUR" ? "bad" : s.status === "TAMBAH" ? "info" : s.status === "PINDA" ? "warn" : ""}">${s.status}</span>`) : "";
+  return `<div class="eval ${canP || canM || (which === 1 && pm.status) ? "open" : ""}"><h4>${which === 1 ? "Penilaian pertama" : "Penilaian akhir"}${st === "kunci" ? ` <span class="chip">belum dibuka</span>` : ""}</h4>
+    ${canP ? `<textarea id="${pf}-${s.id}" data-f="${pf}" data-sid="${s.id}" rows="2" placeholder="Pencapaian semasa ${which === 1 ? "penilaian pertama" : "penilaian akhir"}">${esc(s[pf])}</textarea>` : `<div class="ro ${s[pf] ? "" : "empty"}">${s[pf] ? esc(s[pf]) : (which === 1 && s.status === "TAMBAH" ? "Sasaran ditambah selepas penilaian pertama" : which === 2 && s.status === "GUGUR" ? "Sasaran digugurkan" : "Belum diisi")}</div>`}
+    <div class="row">${canM ? `<input type="text" class="mark" id="${mf}-${s.id}" data-f="${mf}" data-sid="${s.id}" inputmode="decimal" placeholder="Markah" aria-label="Markah" value="${esc(s[mf])}">` : `<span class="markro">${esc(s[mf]) || "–"}</span><small style="color:var(--muted)">markah</small>`}
+      ${asal !== undefined ? `<span class="asal">Cadangan PYD: ${esc(asal) || "–"} · diubah PP1</span>` : ""}
+      ${statusCtl}${canM && role === "PYD" ? `<small style="color:var(--muted)">1–100 atau 15/20</small>` : ""}${canM && role === "PP1" ? `<small style="color:var(--warn)">Anda boleh ubah markah</small>` : ""}</div>
+    ${buktiHTML(s, pk, pm.bukti[pk] && !(which === 1 && s.status === "TAMBAH"))}</div>`;
+}
+function sasaranHTML(b, s, no, pm, role, bi, si, len) {
+  const ct = canTeks(pm, s), pd = ui.pend === "del-" + s.id;
+  return `<div class="sas ${s.status === "GUGUR" ? "gugur" : ""}" data-sid="${s.id}"><div class="no">${no}</div><div class="sas-body">
+    ${ct ? `<textarea id="t-${s.id}" data-f="teks" data-sid="${s.id}" rows="2" aria-label="Sasaran keberhasilan ${no}" placeholder="Memastikan … daripada … orang murid … mencapai … pada …">${esc(s.teks)}</textarea>` : `<div class="teks-ro">${s.teks ? rich(s.teks) : `<span class="ro empty">Sasaran belum ditulis</span>`}</div>`}
+    ${ct || role !== "PYD" ? `<div class="hints" id="h-${s.id}">${hints(s.teks).map(([k, t]) => `<span class="chip ${k}">${esc(t)}</span>`).join("")}</div>` : ""}
+    <div class="evals">${evalCol(b, s, 1, pm, role)}${evalCol(b, s, 2, pm, role)}</div>
+    ${threadHTML(s, role)}
+    ${pm.penetapan ? `<div class="sas-tools"><button class="btn ghost sm" type="button" data-act="up" data-sid="${s.id}" ${si === 0 ? "disabled" : ""} aria-label="Naikkan">↑</button><button class="btn ghost sm" type="button" data-act="down" data-sid="${s.id}" ${si === len - 1 ? "disabled" : ""} aria-label="Turunkan">↓</button><span class="grow"></span>
+      ${pd ? `<span class="confirm">Padam sasaran ini? <button class="btn danger on sm" type="button" data-act="del-yes" data-sid="${s.id}">Padam</button><button class="btn ghost sm" type="button" data-act="del-no">Batal</button></span>` : `<button class="btn danger sm" type="button" data-act="del" data-sid="${s.id}">Padam</button>`}</div>` : ""}
+  </div></div>`;
+}
+function viewBorang(b, role) {
+  const pm = perm(b, role), u = user(b.uid);
+  let no = 0;
+  const canAdd = pm.penetapan || pm.semakan;
+  const bid = b.bidang.map((x, bi) => {
+    const pd = ui.pend === "bdel-" + x.id;
+    return `<section class="bidang" data-bid="${x.id}"><div class="bidang-head">
+      ${pm.penetapan ? `<input type="text" id="bn-${x.id}" data-bn="${x.id}" value="${esc(x.nama)}" aria-label="Nama bidang tugas">` : `<h3>${esc(x.nama)}</h3>`}
+      <span class="chip">${x.sasaran.length} sasaran</span>
+      ${pm.penetapan ? (pd ? `<span class="confirm">Padam bidang dan semua sasarannya? <button class="btn danger on sm" type="button" data-act="bdel-yes" data-bid="${x.id}">Padam</button><button class="btn ghost sm" type="button" data-act="del-no">Batal</button></span>` : `<button class="btn danger sm" type="button" data-act="bdel" data-bid="${x.id}">Padam bidang</button>`) : ""}
+    </div>
+    ${x.sasaran.length ? x.sasaran.map((s, si) => sasaranHTML(b, s, ++no, pm, role, bi, si, x.sasaran.length)).join("") : `<div class="empty"><b>Belum ada sasaran</b>${canAdd ? `<span>Tulis sendiri, atau guna pembina sasaran.</span>` : ""}</div>`}
+    ${canAdd ? `<div class="add-row actions"><button class="btn sm" type="button" data-act="add" data-bid="${x.id}">+ Tambah sasaran${pm.semakan ? " (TAMBAH)" : ""}</button></div>` : ""}</section>`;
+  }).join("");
+  const head = role !== "PYD" ? `<section class="revhead"><button class="btn" type="button" data-act="back">← Senarai PYD</button><div><h2>${esc(u.nama)}</h2><small>${esc(u.jawatan)} · ${esc(u.gred)} · Anda ${role}</small></div></section>` : `<section class="revhead"><div><h2>Borang Keberhasilan ${esc(DB.tahun)}</h2><small>${esc(u.nama)} · PP1 ${esc(shortName(user("pp1").nama))} · PP2 ${esc(shortName(user("pp2").nama))}</small></div></section>`;
+  return `${demoNote()}${head}${rail(b)}${actPanel(b, role)}
+    <section class="scoreband" id="scores" aria-live="polite">${scoreband(b)}</section>
+    <fieldset><legend>Maklumat PYD</legend><div class="grid-pyd">${[["nama", "Nama PYD"], ["kp", "No. K/P"], ["gred", "Gred"], ["jawatan", "Jawatan"], ["tempat", "Tempat bertugas"]].map(([k, l]) =>
+      `<div class="field"><label for="p-${k}">${l}</label><input type="text" id="p-${k}" data-pyd="${k}" value="${esc(b.pyd[k])}" ${pm.pyd ? "" : "disabled"} ${k === "kp" ? `inputmode="numeric" placeholder="${pm.pyd ? "Diisi oleh PYD" : "Disembunyikan"}"` : ""}></div>`).join("")}</div></fieldset>
+    ${bid}
+    ${pm.penetapan || canAdd ? `<div class="actions">${pm.penetapan ? `<button class="btn" type="button" data-act="add-bidang">+ Bidang tugas baharu</button>` : ""}<button class="btn" type="button" data-act="builder">Pembina sasaran</button></div>` : ""}`;
+}
+
+function viewPantau(role) {
+  const rows = pyds().map(u => ({ u, ...ringkas(u) }));
+  const need = rows.filter(r => perluTindakan(r, role)), lewat = rows.filter(r => r.lewat);
+  const sk = rows.map(r => r.c1.skor).filter(Boolean), avg = sk.length ? (sk.reduce((a, c) => a + c, 0) / sk.length) : null;
+  const akhirSah = rows.filter(r => SAH(stateOf(r.b, 3))).length, akhirHantar = rows.filter(r => stateOf(r.b, 3) === "dihantar").length;
+  const F = { semua: rows, tindakan: need, lewat, selesai: rows.filter(r => r.cur === 4) };
+  const list = F[ui.filter] || rows;
+  const lbl = { semua: "Semua", tindakan: "Perlu tindakan anda", lewat: "Lewat", selesai: "Selesai" };
+  return `${demoNote()}
+  <section class="revhead"><div><h2>Pantau PYD · ${esc(DB.tahun)}</h2><small>${esc(me().nama)} · ${role} kepada ${rows.length} orang PYD</small></div></section>
+  <section class="tiles">
+    <div class="card tile ${need.length ? "hot" : ""}"><span class="k">Perlu tindakan anda</span><span class="v num">${need.length}</span><span class="s">${role === "PP1" ? "Peringkat dihantar untuk disahkan" : "Pengesahan PP1 menunggu perakuan"}</span></div>
+    <div class="card tile ${lewat.length ? "badv" : ""}"><span class="k">Lewat tarikh tutup</span><span class="v num">${lewat.length}</span><span class="s">PYD belum menghantar peringkat semasa</span></div>
+    <div class="card tile"><span class="k">Purata skor P1</span><span class="v num">${avg !== null ? avg.toFixed(1) : "–"}</span><span class="s">Daripada ${sk.length} PYD yang dinilai</span></div>
+    <div class="card tile"><span class="k">Penilaian akhir</span><span class="v num">${akhirSah}<span style="font-size:22px;color:var(--muted)">/${rows.length}</span></span><span class="s">Disahkan · ${akhirHantar} menunggu PP1 · tutup ${fmt(STAGES[3].tutup)}</span></div>
+  </section>
+  <section class="filters" role="group" aria-label="Tapis PYD">${Object.keys(F).map(k => `<button class="fbtn" type="button" data-filter="${k}" aria-pressed="${ui.filter === k}">${lbl[k]} <span class="num">${F[k].length}</span></button>`).join("")}<span class="grow"></span>
+    <span class="legend"><span><i style="background:var(--ok)"></i>Diperakui PP2</span><span><i style="background:linear-gradient(90deg,var(--ok) 50%,var(--line) 50%)"></i>Disahkan PP1</span><span><i style="background:var(--info)"></i>Dihantar</span><span><i style="background:var(--bad)"></i>Dipulangkan</span><span><i style="background:var(--line-2)"></i>Draf</span></span></section>
+  <section class="card ledger">
+    <div class="lrow head"><span>PYD</span><span>Peringkat (4)</span><span>Skor P1 · Akhir</span><span>Perhatian</span><span></span></div>
+    ${list.length ? list.map(r => {
+      const flags = [];
+      if (perluTindakan(r, role)) flags.push(`<span class="chip gold">${role === "PP1" ? "Sahkan " + STAGES[r.tunggu1[0]].t : "Perakui " + r.tunggu2.map(i => STAGES[i].t).join(", ")}</span>`);
+      if (r.lewat) flags.push(`<span class="chip bad">Lewat: ${STAGES[r.cur].t}</span>`);
+      if (r.st === "dipulang") flags.push(`<span class="chip bad">Dipulangkan</span>`);
+      if (r.balas) flags.push(`<span class="chip info">${r.balas} balasan PYD</span>`);
+      if (role === "PP1" && r.tunggu2.length && !r.tunggu1.length) flags.push(`<span class="chip">Tunggu PP2</span>`);
+      if (!flags.length) flags.push(`<span class="chip ok">Mengikut jadual</span>`);
+      return `<div class="lrow"><div class="nm"><b>${esc(r.u.nama)}</b><small>${esc(r.u.jawatan)} · ${allS(r.b).length} sasaran · ${r.bukti} bukti</small></div>
+        <div class="trk"><div class="track">${STAGES.map((x, i) => `<i class="${stateOf(r.b, i)}" title="${x.t}: ${ST_LABEL[stateOf(r.b, i)]}"></i>`).join("")}</div><div class="track-l">${r.cur < 4 ? `${STAGES[r.cur].t} · ${ST_LABEL[r.st]}` : "Lengkap"}</div></div>
+        <div class="skr">P1 <b>${r.c1.skor ?? "–"}</b> · Akhir <b>${r.c2.skor ?? "–"}</b></div>
+        <div class="flags">${flags.join("")}</div>
+        <div class="go"><button class="btn ${perluTindakan(r, role) ? "primary" : ""}" type="button" data-act="open" data-u="${r.u.id}">${perluTindakan(r, role) ? "Semak sekarang" : "Buka borang"}</button></div></div>`;
+    }).join("") : `<div class="empty"><b>Tiada PYD dalam tapisan ini</b><span>Pilih “Semua” untuk melihat senarai penuh.</span></div>`}
+  </section>`;
+}
+
+function paperHTML(b) {
+  const p = b.pyd, r1 = calc(1, b), r2 = calc(2, b);
+  let rows = "", no = 0;
+  b.bidang.forEach(x => x.sasaran.forEach((s, i) => {
+    no++;
+    rows += `<tr>${i === 0 ? `<td rowspan="${x.sasaran.length}" class="c"><b>${esc(x.nama)}</b></td>` : ""}<td class="c">${no}</td><td>${rich(s.teks)}</td><td>${esc(s.p1)}</td><td class="c">${esc(s.m1)}</td><td class="c">${esc(s.status)}</td><td>${esc(s.p2)}</td><td class="c">${esc(s.m2)}</td><td>${esc(s.catatan)}</td></tr>`;
+  }));
+  const f = (r, k) => r.bil ? (k === "purata" ? r.purata.toFixed(2) : r[k]) : "";
+  const tot = (l, a, c) => `<tr><td colspan="4" class="nb" style="text-align:right"><b>${l}</b></td><td class="cy c">${a}</td><td colspan="2" class="blk"></td><td class="cy c">${c}</td><td class="blk"></td></tr>`;
+  const pg = STAGES.map(x => b.peringkat[x.k]);
+  const d = v => v ? `✓ ${fmt(v)}` : "";
+  const sig = (w, key) => `<tr class="sig"><td colspan="2" class="c"><b>${w}</b></td><td class="c">${d(pg[0][key])}</td><td class="c">${d(pg[1][key])}</td><td colspan="2" class="c">${d(pg[2][key])}</td><td class="c">${d(pg[3][key])}</td><td colspan="2"></td></tr>`;
+  return `<div class="paper"><div class="ph"><div class="t"><div>PENILAIAN BERSEPADU PEGAWAI PERKHIDMATAN PENDIDIKAN</div><div>BORANG KEBERHASILAN</div><div>TAHUN <u>${esc(DB.tahun)}</u></div></div><div class="lg"><i></i>KEMENTERIAN PENDIDIKAN MALAYSIA</div></div>
+    <table><colgroup><col style="width:15%"><col style="width:3%"><col style="width:23%"><col style="width:15%"><col style="width:7%"><col style="width:7.5%"><col style="width:15%"><col style="width:7%"><col style="width:7.5%"></colgroup>
+    <tr><td class="cy">NAMA PYD</td><td colspan="3" class="c">${esc(p.nama)}</td><td colspan="2" class="cy">GRED</td><td colspan="3" class="c">${esc(p.gred)}</td></tr>
+    <tr><td class="cy">NO.K.P.</td><td colspan="3" class="c">${esc(p.kp)}</td><td colspan="2" rowspan="2" class="cy">TEMPAT BERTUGAS</td><td colspan="3" rowspan="2" class="c">${esc(p.tempat)}</td></tr>
+    <tr><td class="cy">JAWATAN</td><td colspan="3" class="c">${esc(p.jawatan)}</td></tr>
+    <tr><td colspan="9" class="nb gap"></td></tr>
+    <tr><td class="cy c">BIDANG TUGAS/ FUNGSI/ AKAUNTABILITI</td><td class="cy c">BIL</td><td class="cy c">SASARAN KEBERHASILAN</td><td class="cy c">PENCAPAIAN SEMASA PENILAIAN PERTAMA</td><td class="cy c">MARKAH</td><td class="cy c">STATUS SASARAN</td><td class="cy c">PENCAPAIAN SEMASA PENILAIAN AKHIR</td><td class="cy c">MARKAH</td><td class="cy c">CATATAN</td></tr>
+    ${rows}
+    ${tot("BILANGAN SASARAN YANG DINILAI", f(r1, "bil"), f(r2, "bil"))}${tot("JUMLAH MARKAH", f(r1, "jumlah"), f(r2, "jumlah"))}${tot("PURATA PENCAPAIAN", f(r1, "purata"), f(r2, "purata"))}${tot("SKOR", r1.skor ?? "", r2.skor ?? "")}
+    <tr><td colspan="9" class="nb gap"></td></tr>
+    <tr><td colspan="7" class="cy c">TANDATANGAN DAN TARIKH</td><td colspan="2" rowspan="2" class="cy c">CATATAN</td></tr>
+    <tr><td colspan="2" class="cy"></td><td class="cy c">PENETAPAN SASARAN</td><td class="cy c">PENILAIAN PERTAMA</td><td colspan="2" class="cy c">SEMAKAN SASARAN</td><td class="cy c">PENILAIAN AKHIR</td></tr>
+    ${sig("PP1", "sah1")}${sig("PP2", "sah2")}${sig("PYD", "hantar")}
+    </table></div>`;
+}
+function viewPratonton(role) {
+  let id = role === "PYD" ? me().id : (ui.pv || ui.open || pyds()[0].id);
+  const pick = role === "PYD" ? "" : `<div class="field" style="min-width:240px"><label for="pv">Borang PYD</label><select id="pv">${pyds().map(u => `<option value="${u.id}" ${u.id === id ? "selected" : ""}>${esc(u.nama)}</option>`).join("")}</select></div>`;
+  return `${demoNote()}<section class="pv-bar">${pick}<p style="margin:0;color:var(--muted);max-width:70ch">Pratonton mengikut templat rasmi. Ruang tandatangan diisi automatik dengan tarikh hantar (PYD), sah (PP1) dan perakuan (PP2). Muat turun PDF dan Excel akan disediakan dalam versi portal.</p></section>
+    <section class="paper-wrap">${paperHTML(DB.borang[id])}</section>`;
+}
+function viewAktiviti(role) {
+  const ids = role === "PYD" ? [me().id] : pyds().map(u => u.id);
+  const ev = ids.flatMap(id => DB.borang[id].log.map(e => ({ ...e, pyd: id }))).sort((a, c) => c.t.localeCompare(a.t)).slice(0, 80);
+  return `${demoNote()}<section class="revhead"><div><h2>Aktiviti</h2><small>${role === "PYD" ? "Jejak audit borang anda. PP1 dan PP2 melihat senarai yang sama." : "Jejak audit semua PYD di bawah anda."}</small></div></section>
+    <section class="card log">${ev.length ? ev.map(e => { const w = user(e.oleh); return `<div class="e"><span class="av ${avClass(w)}">${esc(initials(w && w.nama))}</span><div><b>${esc(shortName(w ? w.nama : "?"))}</b> <span class="w">${w ? w.peranan : ""}</span><div>${esc(e.teks)}${role !== "PYD" && e.oleh !== e.pyd ? ` <span class="w">· borang ${esc(shortName(user(e.pyd).nama))}</span>` : ""}</div></div><time>${fmt(e.t, true)}</time></div>`; }).join("") : `<div class="empty"><b>Belum ada aktiviti</b></div>`}</section>`;
+}
+function viewPanduan() {
+  return `${demoNote()}<section class="guide">
+    <div class="card" style="grid-column:1/-1"><h3>Siapa buat apa</h3><div class="tbl-wrap"><table class="mini"><tr><th>Peringkat</th><th>PYD</th><th>PP1</th><th>PP2</th><th>Tutup</th></tr>
+      ${STAGES.map(s => `<tr><td><b>${s.t}</b></td><td>${s.pyd}</td><td>${s.pp}</td><td>Perakui selepas PP1 mengesahkan.</td><td class="num">${fmt(s.tutup)}</td></tr>`).join("")}</table></div>
+      <p style="margin-top:10px">Peringkat seterusnya dibuka sebaik sahaja PP1 mengesahkan peringkat sebelumnya. Ulasan boleh ditulis oleh PYD, PP1 dan PP2 pada bila-bila masa, dan setiap tindakan direkod dalam Aktiviti.</p></div>
+    <div class="card"><h3>Empat komponen sasaran</h3><p>Setiap sasaran mesti ada <b>a</b>, <b>b</b> dan <b>c</b>. <b>d</b> ditulis jika sesuai.</p><div class="parts">
+      <div><b>a</b><span><strong>Kata kerja</strong>: memastikan, mencapai, menghasilkan, meningkatkan, mengurangkan, menyelesaikan.</span></div>
+      <div><b>b</b><span><strong>Penyata ukuran</strong>: kuantiti, kualiti, kos atau masa. Contoh: 28 daripada 35 orang murid, 85%.</span></div>
+      <div><b>c</b><span><strong>Tujuan sasaran</strong>: hasil kerja yang mahu dicapai. Contoh: mencapai TP3 bagi Matematik.</span></div>
+      <div><b>d</b><span><strong>Peringkat sasaran</strong>: contohnya dalam PBD akhir tahun, di peringkat daerah.</span></div></div></div>
+    <div class="card"><h3>Pengiraan markah</h3><p>Markah = pencapaian ÷ sasaran × 100, maksimum 100. Taip <b>15/20</b> dan ia ditukar kepada 75.</p><p>Purata = jumlah markah ÷ bilangan sasaran yang dinilai. Sasaran GUGUR tidak dikira dalam penilaian akhir.</p>
+      <table class="mini num"><tr><th>Purata</th><th>Skor</th></tr><tr><td>0 – 20</td><td>1</td></tr><tr><td>21 – 40</td><td>2</td></tr><tr><td>41 – 60</td><td>3</td></tr><tr><td>61 – 80</td><td>4</td></tr><tr><td>81 – 100</td><td>5</td></tr></table></div>
+    <div class="card"><h3>Kesilapan yang perlu dielak</h3><ul><li>Tiada penyataan boleh diukur. <i>“Memastikan kehadiran murid ke sekolah.”</i></li><li>Kerja rutin berbentuk proses. <i>“Memeriksa buku latihan murid.”</i></li><li>Bukan hasil kerja utama. <i>“Menghias kelas.”</i></li></ul><p>Setiap PYD perlu sekurang-kurangnya 5 sasaran aktif. Tulis <code>**teks**</code> untuk menebalkan perkataan.</p></div>
+  </section>`;
+}
+
+/* ---------------- interaksi ---------------- */
+function curB() { return ui.tab === "semak" ? DB.borang[ui.open] : DB.borang[me().id]; }
+function findS(b, id) { for (const x of b.bidang) { const i = x.sasaran.findIndex(s => s.id === id); if (i >= 0) return [x, i, x.sasaran[i]]; } return [null, -1, null]; }
+function toast(t) { const el = $("#toast"); el.textContent = t; el.hidden = false; clearTimeout(toast.t); toast.t = setTimeout(() => el.hidden = true, 2600); }
+function refreshScores(b) { const el = $("#scores"); if (el) el.innerHTML = scoreband(b); }
+
+document.addEventListener("input", e => {
+  const t = e.target, b = curB(); if (!b) return;
+  if (t.dataset.pyd) { b.pyd[t.dataset.pyd] = t.value; save(); return; }
+  if (t.dataset.bn) { const x = b.bidang.find(x => x.id === t.dataset.bn); if (x) { x.nama = t.value; save(); } return; }
+  const f = t.dataset.f; if (!f || f === "status") return;
+  const [, , s] = findS(b, t.dataset.sid); if (!s) return;
+  if (f === "m1" || f === "m2") return; // diproses semasa change
+  s[f] = t.value; save();
+  if (f === "teks") { const h = $("#h-" + s.id); if (h) h.innerHTML = hints(s.teks).map(([k, x]) => `<span class="chip ${k}">${esc(x)}</span>`).join(""); refreshScores(b); }
+});
+document.addEventListener("change", e => {
+  const t = e.target;
+  if (t.id === "as") { ui.as = t.value; ui.open = null; ui.tab = ""; ui.pend = null; ui.filter = "semua"; render(); window.scrollTo(0, 0); return; }
+  if (t.id === "pv") { ui.pv = t.value; render(); return; }
+  const b = curB(); if (!b) return;
+  if (t.dataset.upl) {
+    const [, , s] = findS(b, t.dataset.sid); if (!s) return;
+    [...t.files].forEach(fl => s.bukti.push(F(fl.name, fl.size / 1024, t.dataset.upl, todayISO())));
+    log(b, `Memuat naik ${t.files.length} bukti`); save(); render(); toast(`${t.files.length} bukti ditambah`); return;
+  }
+  const f = t.dataset.f; if (!f) return;
+  const [, , s] = findS(b, t.dataset.sid); if (!s) return;
+  if (f === "status") { const old = s.status; s.status = t.value; log(b, `Menukar status sasaran daripada ${old} kepada ${t.value}`); save(); render(); return; }
+  if (f === "m1" || f === "m2") {
+    const v = normalizeMark(t.value), old = s[f];
+    if (v === old) { t.value = v; return; }
+    if (me().peranan === "PP1") { if (s[f + "_asal"] === undefined) s[f + "_asal"] = old; log(b, `Mengubah markah ${f === "m1" ? "P1" : "akhir"} daripada ${old || "–"} kepada ${v || "–"}`); }
+    s[f] = v; save(); render(); return;
+  }
+});
+document.addEventListener("click", e => {
+  const tab = e.target.closest("[data-tab]"); if (tab) { ui.tab = tab.dataset.tab; ui.pend = null; render(); return; }
+  const fb = e.target.closest("[data-filter]"); if (fb) { ui.filter = fb.dataset.filter; render(); return; }
+  const a = e.target.closest("[data-act]"); if (!a) return;
+  const act = a.dataset.act, b = curB(), i = Number(a.dataset.i);
+  const pg = b && !Number.isNaN(i) && STAGES[i] ? b.peringkat[STAGES[i].k] : null;
+  switch (act) {
+    case "reset": DB = seed(); store(KEY, DB); ui.pend = null; render(); toast("Data contoh dipulihkan"); return;
+    case "open": ui.open = a.dataset.u; ui.pv = a.dataset.u; ui.tab = "semak"; ui.pend = null; render(); window.scrollTo(0, 0); return;
+    case "back": ui.tab = "pantau"; ui.pend = null; render(); return;
+    case "hantar": if (blocking(b, i).length) return; pg.s = "dihantar"; pg.hantar = todayISO(); log(b, `Menghantar ${STAGES[i].t} kepada PP1`); toast("Dihantar kepada PP1"); break;
+    case "tarik": pg.s = "draf"; pg.hantar = null; log(b, `Menarik balik ${STAGES[i].t}`); toast("Ditarik balik. Anda boleh menyunting semula."); break;
+    case "sahkan": pg.s = "sah1"; pg.sah1 = todayISO(); pg.pulang = null; log(b, `Mengesahkan ${STAGES[i].t}`); toast(`${STAGES[i].t} disahkan`); break;
+    case "pulang-buka": ui.pend = "pulang"; render(); setTimeout(() => { const x = $("#pulang-teks"); if (x) x.focus(); }, 0); return;
+    case "pulang-tutup": ui.pend = null; render(); return;
+    case "pulang": { const tx = ($("#pulang-teks").value || "").trim(); if (!tx) { toast("Tulis sebab dipulangkan supaya PYD tahu apa perlu dipinda"); $("#pulang-teks").focus(); return; }
+      pg.s = "dipulang"; pg.pulang = { teks: tx, tarikh: todayISO() }; pg.hantar = null; ui.pend = null; log(b, `Memulangkan ${STAGES[i].t} untuk pindaan`); toast("Dipulangkan kepada PYD"); break; }
+    case "perakui": pg.s = "sah2"; pg.sah2 = todayISO(); log(b, `Memperakui ${STAGES[i].t}`); toast(`${STAGES[i].t} diperakui`); break;
+    case "ulas": { const s = findS(b, a.dataset.sid)[2], ta = $("#rp-" + a.dataset.sid), tx = (ta.value || "").trim(); if (!tx) { ta.focus(); return; }
+      s.ulasan.push(U(me().id, tx, nowLocal())); ui.pend = "th-" + s.id; toast("Ulasan dihantar"); break; }
+    case "bukti-del": { const s = findS(b, a.dataset.sid)[2]; s.bukti = s.bukti.filter(f => f.id !== a.dataset.fid); log(b, "Membuang satu bukti"); break; }
+    case "add": { const x = b.bidang.find(x => x.id === a.dataset.bid), pm = perm(b, me().peranan); const s = S("", "", "", pm.semakan && !pm.penetapan ? "TAMBAH" : "KEKAL"); x.sasaran.push(s); ui.pend = null; save(); render(); setTimeout(() => { const t = $("#t-" + s.id); if (t) t.focus(); }, 0); return; }
+    case "del": ui.pend = "del-" + a.dataset.sid; break;
+    case "bdel": ui.pend = "bdel-" + a.dataset.bid; break;
+    case "del-no": ui.pend = null; break;
+    case "del-yes": { const [x, k] = findS(b, a.dataset.sid); x.sasaran.splice(k, 1); ui.pend = null; break; }
+    case "bdel-yes": b.bidang = b.bidang.filter(x => x.id !== a.dataset.bid); ui.pend = null; break;
+    case "up": case "down": { const [x, k] = findS(b, a.dataset.sid), j = act === "up" ? k - 1 : k + 1; if (j < 0 || j >= x.sasaran.length) return; [x.sasaran[k], x.sasaran[j]] = [x.sasaran[j], x.sasaran[k]]; break; }
+    case "add-bidang": b.bidang.push({ id: uid(), nama: "BIDANG TUGAS BAHARU", sasaran: [] }); break;
+    case "builder": openBuilder(b); return;
+    default: return;
+  }
+  save(); render();
+});
+
+/* pembina sasaran */
+function builderText() {
+  const kk = $("#b-kk").value, u = $("#b-ukur").value.trim(), t = $("#b-tujuan").value.trim(), p = $("#b-peringkat").value.trim();
+  return [kk, u, t, p].filter(Boolean).join(" ").replace(/\s+/g, " ") + (u || t ? "." : "");
+}
+function openBuilder(b) {
+  $("#b-bidang").innerHTML = b.bidang.map(x => `<option value="${x.id}">${esc(x.nama)}</option>`).join("");
+  $("#b-out").textContent = builderText();
+  const d = $("#dlg-builder"); if (d.showModal) d.showModal(); else d.setAttribute("open", "");
+}
+$("#builder-form").addEventListener("input", () => { $("#b-out").textContent = builderText(); });
+$("#b-insert").addEventListener("click", () => {
+  const b = curB(), x = b.bidang.find(x => x.id === $("#b-bidang").value); if (!x) return;
+  const t = builderText(); if (!$("#b-ukur").value.trim()) { toast("Isi penyata ukuran dahulu"); $("#b-ukur").focus(); return; }
+  const pm = perm(b, me().peranan);
+  x.sasaran.push(S(t, "", "", pm.semakan && !pm.penetapan ? "TAMBAH" : "KEKAL"));
+  ["#b-ukur", "#b-tujuan", "#b-peringkat"].forEach(s => $(s).value = "");
+  $("#dlg-builder").close(); save(); render(); toast("Sasaran dimasukkan");
+});
+
+/* boot */
+$("#as").innerHTML = `<optgroup label="Pegawai Yang Dinilai (PYD)">${pyds().map(u => `<option value="${u.id}">${esc(shortName(u.nama))} · ${esc(u.jawatan)}</option>`).join("")}</optgroup>
+  <optgroup label="Pegawai Penilai">${DB.users.filter(u => u.peranan !== "PYD").map(u => `<option value="${u.id}">${u.peranan} · ${esc(shortName(u.nama))} (${esc(u.jawatan)})</option>`).join("")}</optgroup>`;
+if (!user(ui.as)) ui.as = "u1";
+$("#as").value = ui.as;
+if (ui.open && !user(ui.open)) ui.open = null;
+render();
+})();
+</script>
+
+</body></html>

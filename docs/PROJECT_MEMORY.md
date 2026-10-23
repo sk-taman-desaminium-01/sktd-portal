@@ -736,3 +736,31 @@ Teknikal:
 - Subdomain dihidangkan Worker **berasingan** `sktd-interaktif` (`sktd-web/interaktif-worker/`),
   kerana Worker `sktd-web` ialah aset-dahulu dan `run_worker_first` ikut laluan, bukan hos.
 - `DIKHASKAN` wujud di DUA tempat (portal `src/data/interaktif.ts` dan Worker) — kemas kini kedua-duanya.
+## e-Keberhasilan — Borang Keberhasilan PBPPP dua hala (23 Okt 2026)
+
+Kad hab `keberhasilan` (Pengurusan & Pentadbiran) → `/keberhasilan`. Prototaip
+diluluskan: `docs/prototaip/e-keberhasilan-v1.html` (artifact Cx6Ds6XCUrb2Jj7JMAY2kE).
+SQL: `supabase/migrations/20261023_keberhasilan.sql` — **sudah dijalankan 23 Okt**.
+
+- **Tiga lapisan, satu pintu tulisan.** `src/data/keberhasilan.ts` = logik tulen
+  (peringkat, `kuasa()`, `peralihan()`, `kira()`, `gabungIkutKuasa()`), diuji
+  `npm run uji:keberhasilan` (358). `src/lib/keberhasilan.ts` = SATU-SATUNYA
+  pintu ke jadual `ekb_*`. UI di `src/app/keberhasilan/` tidak mengira skor
+  atau kuasa sendiri.
+- **Peranan per BORANG, bukan per akaun.** PYD = pemilik borang; PP1/PP2
+  daripada `ekb_penilai` (ditetapkan pentadbir dalam tab Tetapan penilai).
+  Pelayar menghantar seluruh bidang; pelayan hanya menyalin medan yang peranan
+  itu boleh ubah pada peringkat terbuka (`gabungIkutKuasa`). Jangan pintas.
+- **Pemerhati (urus_guru_kelas) nampak RINGKASAN sahaja** — bukan teks
+  sasaran, ulasan atau bukti. Pentadbir yang perlu membaca dilantik sebagai PP.
+  (Keputusan 23 Okt selepas semakan Siti Aisyah; pengguna boleh mengubahnya.)
+- **Kunci optimistik `versi`.** Setiap tulisan (simpan, peralihan, bukti)
+  menaikkan versi; konflik → `{konflik:true}` dan draf pengguna dikekalkan.
+- **Bukti** dalam baldi PERSENDIRIAN `ekb-bukti`, muat naik terus (signed
+  upload), dibaca melalui URL bertandatangan 10 minit. Bukan `web-media`.
+- **No. K/P hanya kepada PYD.** Notifikasi `peribadi: true` (jenis `umum`) —
+  hanya PYD/PP1/PP2, bukan semua pentadbir.
+- **Markah 0 SAH** (jalur 0–20 → skor 1). Prototaip asal membuangnya dan
+  menaikkan purata — jangan regresi.
+- PP1 mengesah/PP2 memperakui → `penghalang()` disemak SEMULA (PP1 boleh
+  mengubah markah/status selepas PYD menghantar).
