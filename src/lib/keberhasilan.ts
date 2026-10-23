@@ -86,18 +86,43 @@ export interface DataHalaman {
   hariIni: string;
   belumSedia: boolean;
   mesej?: string;
-  /** Null untuk admin mutlak (tiada baris pbd_guru, maka tiada borang sendiri). */
+  /** Null hanya bila pengguna tiada baris pbd_guru (maka tiada borang sendiri). */
   borangSaya: BorangPenuh | null;
   pantau: BarisPantau[];
   pemerhati: boolean;
-  /** Diisi untuk pemerhati sahaja — pilihan PP1/PP2 dalam Tetapan penilai. */
-  guru: Orang[];
+  /** Diisi untuk pemerhati sahaja — senarai PYD dalam Tetapan penilai. */
+  guru: OrangPeranan[];
+  /** Diisi untuk pemerhati sahaja — siapa BOLEH dipilih sebagai PP. */
+  calon: CalonPP | null;
+}
+
+export interface OrangPeranan extends Orang { peranan: string }
+
+/**
+ * Siapa boleh menjadi PP (keputusan pengguna 23 Okt 2026):
+ *  · `pentadbir` — Pentadbir + Admin Mutlak (GB, PK). PP bagi SEMUA PYD.
+ *  · `ppAkp` — kerani/AKP yang dilantik (cth. Ketua Kerani). PP bagi PYD
+ *    yang juga kerani/AKP SAHAJA.
+ *  · `akp` — semua kerani/AKP; calon untuk dilantik ke `ppAkp`.
+ * Pelayan menguatkuasakan senarai ini dalam `tetapPenilai`; dropdown hanya cermin.
+ */
+export interface CalonPP {
+  pentadbir: Orang[];
+  ppAkp: Orang[];
+  akp: Orang[];
+  /** Admin Mutlak (env) yang tiada baris dalam Senarai Akses — tidak boleh dipilih. */
+  mutlakTiadaRekod: number;
+  /** Jadual `ekb_pp_akp` belum dipasang. */
+  ppAkpBelumSedia: boolean;
 }
 
 interface BarisBorang { id: string; tahun: number; pyd_id: string; versi: number; pyd: MaklumatPyd; bidang: Bidang[]; peringkat: Borang["peringkat"] }
 interface BarisPenilai { tahun: number; pyd_id: string; pp1_id: string | null; pp2_id: string | null }
 
 const tahunIni = () => Number(hariIniMY().slice(0, 4));
+
+/** Peranan AKP (Anggota Kumpulan Pelaksana) dalam portal. */
+const PERANAN_AKP = ["kerani", "kakitangan"];
 
 /** Ralat yang kita lontar sendiri dipapar; ralat PostgREST mentah tidak (nama jadual/kekangan). */
 function mesej(e: unknown, lalai: string): string {
@@ -185,7 +210,7 @@ async function borangPenuh(b: BarisBorang, p: BarisPenilai | null, peranan: Pera
 /** Data halaman /keberhasilan: borang saya + senarai PYD yang saya nilai. */
 export async function dataKeberhasilan(): Promise<DataHalaman> {
   const tahun = tahunIni(), hariIni = hariIniMY();
-  const kosong: DataHalaman = { tahun, hariIni, belumSedia: false, borangSaya: null, pantau: [], pemerhati: false, guru: [] };
+  const kosong: DataHalaman = { tahun, hariIni, belumSedia: false, borangSaya: null, pantau: [], pemerhati: false, guru: [], calon: null };
   const saya = await pengguna();
   if (!saya?.peranan) return kosong;
   const pemerhati = boleh(saya.peranan, "urus_guru_kelas");
@@ -242,10 +267,16 @@ export async function dataKeberhasilan(): Promise<DataHalaman> {
       };
     }).sort((a, c) => a.pyd.nama.localeCompare(c.pyd.nama));
 
-    const guru = pemerhati
-      ? (await bacaSemua<Orang>(`pbd_guru?select=id,nama&dibenarkan=eq.true&order=nama.asc,id.asc`))
-      : [];
-    return { tahun, hariIni, belumSedia: false, borangSaya, pantau, pemerhati, guru };
+    const [guru, calon] = pemerhati
+      ? await Promise.all([
+        bacaSemua<OrangPeranan>(`pbd_guru?select=id,nama,peranan&dibenarkan=eq.true&order=nama.asc,id.asc`)
+          // Lapisan admin dirahsiakan (sama seperti `sembunyiBaris`): pelayar
+          // hanya menerima kumpulan, dan "admin" dipapar sebagai pentadbir.
+          .then((g) => g.map((o) => (o.peranan === "admin" ? { ...o, peranan: "pentadbir" } : o))),
+        calonPP().then((c) => (saya.peranan === "admin_mutlak" ? c : { ...c, mutlakTiadaRekod: 0 })),
+      ])
+      : [[], null];
+    return { tahun, hariIni, belumSedia: false, borangSaya, pantau, pemerhati, guru, calon };
   } catch (e) {
     if (belumDipasang(e, "ekb_borang", "ekb_penilai", "ekb_ulasan", "ekb_bukti", "ekb_log")) return { ...kosong, belumSedia: true, mesej: MESEJ_BELUM };
     throw e;
@@ -496,6 +527,70 @@ export async function pautanBukti(buktiId: string): Promise<Hasil<{ url: string 
 
 /* -------------------------------------------------------- tetapan PP --- */
 
+async function calonPP(): Promise<CalonPP> {
+  // Admin Mutlak hidup dalam env, bukan dalam DB — padankan ikut emel.
+  const emel = (process.env.ADMIN_EMAILS ?? "").split(",").map((e) => e.trim().toLowerCase())
+    .filter((e) => /^[^\s",()]+@[^\s",()]+$/.test(e));
+  const [pentadbir, mutlak, akp] = await Promise.all([
+    bacaSemua<Orang>(`pbd_guru?select=id,nama&dibenarkan=eq.true&peranan=eq.pentadbir&order=nama.asc,id.asc`),
+    emel.length
+      ? bacaSemua<Orang & { email: string }>(`pbd_guru?select=id,nama,email&email=in.(${emel.map((e) => `"${encodeURIComponent(e)}"`).join(",")})&order=id.asc`)
+      : Promise.resolve([] as (Orang & { email: string })[]),
+    bacaSemua<Orang>(`pbd_guru?select=id,nama&dibenarkan=eq.true&peranan=in.(${PERANAN_AKP.join(",")})&order=nama.asc,id.asc`),
+  ]);
+  let ppAkp: Orang[] = [], ppAkpBelumSedia = false;
+  try {
+    const dilantik = new Set((await bacaSemua<{ guru_id: string }>("ekb_pp_akp?select=guru_id&order=guru_id.asc")).map((r) => r.guru_id));
+    // Hanya yang MASIH kerani/AKP: orang yang bertukar peranan gugur sendiri.
+    ppAkp = akp.filter((o) => dilantik.has(o.id));
+  } catch (e) {
+    if (!belumDipasang(e, "ekb_pp_akp")) throw e;
+    ppAkpBelumSedia = true;
+  }
+  const semua = new Map<string, Orang>();
+  for (const o of [...pentadbir, ...mutlak]) semua.set(o.id, { id: o.id, nama: o.nama });
+  return {
+    pentadbir: [...semua.values()].sort((a, c) => a.nama.localeCompare(c.nama)),
+    ppAkp, akp, ppAkpBelumSedia,
+    mutlakTiadaRekod: emel.filter((e) => !mutlak.some((m) => m.email?.toLowerCase() === e)).length,
+  };
+}
+
+/** Lantik / gugurkan kerani atau AKP sebagai PP bagi rakan AKP (admin & pentadbir). */
+export async function tetapPpAkp(input: { guruId: string; aktif: boolean }): Promise<Hasil> {
+  try {
+    const saya = await pengguna();
+    if (!saya?.peranan || !boleh(saya.peranan, "urus_guru_kelas")) return { ok: false, mesej: "Tiada kebenaran." };
+    const guruId = sahUuid(input.guruId, "Kakitangan");
+    const db = klienTulis();
+    if (input.aktif) {
+      const [g] = (await db.minta(`pbd_guru?select=peranan&id=eq.${guruId}&limit=1`)) as { peranan: string }[];
+      if (!g || !PERANAN_AKP.includes(g.peranan)) return { ok: false, mesej: "Hanya kerani atau AKP boleh dilantik di sini. Pentadbir sudah menjadi PP secara automatik." };
+      await db.minta("ekb_pp_akp?on_conflict=guru_id", {
+        method: "POST", headers: { Prefer: "resolution=ignore-duplicates,return=minimal" },
+        body: JSON.stringify({ guru_id: guruId }),
+      });
+    } else {
+      await db.minta(`ekb_pp_akp?guru_id=eq.${guruId}`, { method: "DELETE", headers: { Prefer: "return=minimal" } });
+      // Lata: orang yang digugurkan tidak kekal PP pada tahun semasa —
+      // `konteks()` memberi kuasa ikut ekb_penilai, bukan ikut senarai ini.
+      // Pentadbir/Admin Mutlak tidak terjejas kerana mereka tidak di sini.
+      const tahun = tahunIni();
+      for (const lajur of ["pp1_id", "pp2_id"]) {
+        await db.minta(`ekb_penilai?tahun=eq.${tahun}&${lajur}=eq.${guruId}`, {
+          method: "PATCH", headers: { Prefer: "return=minimal" },
+          body: JSON.stringify({ [lajur]: null, dikemas: new Date().toISOString() }),
+        });
+      }
+    }
+    revalidatePath("/keberhasilan");
+    return { ok: true };
+  } catch (e) {
+    if (belumDipasang(e, "ekb_pp_akp")) return { ok: false, mesej: "Admin perlu jalankan SQL `20261023_keberhasilan_pp_akp.sql` sekali." };
+    return { ok: false, mesej: mesej(e, "Gagal menyimpan.") };
+  }
+}
+
 /** Tetapkan PP1/PP2 bagi seorang PYD (pentadbir & admin). Null = kosongkan. */
 export async function tetapPenilai(input: { pydId: string; pp1Id: string | null; pp2Id: string | null }): Promise<Hasil> {
   try {
@@ -506,6 +601,21 @@ export async function tetapPenilai(input: { pydId: string; pp1Id: string | null;
     const pp2 = input.pp2Id ? sahUuid(input.pp2Id, "PP2") : null;
     if (pp1 === pydId || pp2 === pydId) return { ok: false, mesej: "PYD tidak boleh menilai diri sendiri." };
     if (pp1 && pp1 === pp2) return { ok: false, mesej: "PP1 dan PP2 mestilah orang berbeza." };
+    // PP mesti daripada senarai calon — dropdown hanya cermin, ini pagarnya.
+    const [g0] = (await klienTulis().minta(`pbd_guru?select=nama,peranan&id=eq.${pydId}&limit=1`)) as { nama: string; peranan: string }[];
+    if (!g0) return { ok: false, mesej: "PYD tidak dijumpai." };
+    const pydAkp = PERANAN_AKP.includes(g0.peranan);
+    const [calon, [kini]] = await Promise.all([
+      calonPP(),
+      klienTulis().minta(`ekb_penilai?select=pp1_id,pp2_id&tahun=eq.${tahunIni()}&pyd_id=eq.${pydId}&limit=1`) as Promise<{ pp1_id: string | null; pp2_id: string | null }[]>,
+    ]);
+    const sah = new Set([...calon.pentadbir, ...(pydAkp ? calon.ppAkp : [])].map((o) => o.id));
+    // PP sedia ada yang TIDAK berubah dibenarkan kekal (cth. ditetapkan sebelum
+    // kolam wujud) — admin tidak perlu mengosongkannya untuk menukar yang lain.
+    const bolehPilih = (id: string | null, lama: string | null | undefined) => !id || sah.has(id) || id === lama;
+    if (!bolehPilih(pp1, kini?.pp1_id) || !bolehPilih(pp2, kini?.pp2_id)) {
+      return { ok: false, mesej: pydAkp ? "PP mesti Pentadbir, Admin Mutlak, atau kerani/AKP yang dilantik sebagai PP." : "PP mesti Pentadbir atau Admin Mutlak." };
+    }
     const tahun = tahunIni();
     await klienTulis().minta("ekb_penilai?on_conflict=tahun,pyd_id", {
       method: "POST",
@@ -514,7 +624,7 @@ export async function tetapPenilai(input: { pydId: string; pp1Id: string | null;
     });
     // Borang PYD itu dicipta sekarang supaya ia muncul di Pantau PP walaupun
     // PYD belum pernah membuka modul ini.
-    const [g] = (await klienTulis().minta(`pbd_guru?select=nama&id=eq.${pydId}&limit=1`)) as { nama: string }[];
+    const g = g0;
     await klienTulis().minta("ekb_borang?on_conflict=tahun,pyd_id", {
       method: "POST",
       headers: { Prefer: "resolution=ignore-duplicates,return=minimal" },

@@ -186,7 +186,7 @@ export default function PanelKeberhasilan({ data }: { data: DataHalaman }) {
         )}
 
         {tab === "panduan" && <Panduan tahun={data.tahun} />}
-        {tab === "tetapan" && data.pemerhati && <TetapanPenilai guru={data.guru} pantau={data.pantau} selepasSimpan={() => router.refresh()} />}
+        {tab === "tetapan" && data.pemerhati && <TetapanPenilai guru={data.guru} calon={data.calon} pantau={data.pantau} selepasSimpan={() => router.refresh()} />}
       </div>
     </div>
   );
