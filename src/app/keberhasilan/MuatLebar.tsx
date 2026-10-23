@@ -7,6 +7,9 @@ import { useLayoutEffect, useRef, useState, type ReactNode } from "react";
  * sepenuhnya dalam ruangnya — seperti pratonton dokumen. Tanpa ini kertas
  * terpotong di tepi kanan dan nampak rosak, bukan "boleh digulung".
  *
+ * `contain: inline-size`: kandungan 1080px TIDAK boleh meregangkan pembalut —
+ * tanpanya kotak induk mengembang dahulu dan skala dikira daripada lebar salah.
+ *
  * Transform diletak pada pembalut, BUKAN pada elemen ber-id yang disalin
  * `mulaCetak` — jadi cetakan sebenar kekal saiz penuh.
  */
@@ -31,7 +34,7 @@ export default function MuatLebar({ lebar, children }: { lebar: number; children
   }, [lebar]);
 
   return (
-    <div ref={luar} className="w-full overflow-hidden" style={{ height: tinggi }}>
+    <div ref={luar} className="w-full min-w-0 overflow-hidden" style={{ height: tinggi, contain: "inline-size" }}>
       <div ref={dalam} style={{ width: lebar, transform: `scale(${skala})`, transformOrigin: "top left" }}>
         {children}
       </div>
