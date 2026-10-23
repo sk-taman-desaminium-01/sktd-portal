@@ -40,8 +40,14 @@ function SelDaftar({ label, k, hasil }: { label: string; k: "P1" | "Akhir"; hasi
   );
 }
 
-function Pembina({ s, b, buka, tutup, semakanSahaja, fokus }: {
-  s: Suntingan; b: Borang; buka: boolean; tutup: () => void; semakanSahaja: boolean; fokus: (id: string) => void;
+/**
+ * Pembina sasaran — menyusun ayat sasaran mengikut empat komponen KPM
+ * (a kata kerja + b ukuran + c tujuan + d peringkat). Dibuka dari butang
+ * "Bina dengan panduan" dalam SETIAP bidang (bidang itu dipilih terus):
+ * pengguna tidak menjumpai butang tunggal di hujung borang (23 Okt 2026).
+ */
+function Pembina({ s, b, buka, bidangAwal, tutup, semakanSahaja, fokus }: {
+  s: Suntingan; b: Borang; buka: boolean; bidangAwal: string; tutup: () => void; semakanSahaja: boolean; fokus: (id: string) => void;
 }) {
   const dlg = useRef<HTMLDialogElement>(null);
   const [kata, setKata] = useState("Memastikan");
@@ -59,21 +65,30 @@ function Pembina({ s, b, buka, tutup, semakanSahaja, fokus }: {
   }, [buka]);
 
   const teks = ([kata, ukur.trim(), tujuan.trim(), peringkat.trim()].filter(Boolean).join(" ").replace(/\s+/g, " ")) + (ukur.trim() || tujuan.trim() ? "." : "");
-  const sasaranBidang = bidangId && b.bidang.some((x) => x.id === bidangId) ? bidangId : (b.bidang[0]?.id ?? "");
+  const pilih = bidangId || bidangAwal;
+  const sasaranBidang = pilih && b.bidang.some((x) => x.id === pilih) ? pilih : (b.bidang[0]?.id ?? "");
+  const tutupBersih = () => { setBidangId(""); setRalat(""); tutup(); };
 
   function masuk() {
     if (!ukur.trim()) { setRalat("Isi penyata ukuran dahulu."); return; }
     if (!sasaranBidang) { setRalat("Tiada bidang untuk dimasukkan."); return; }
     const id = s.tambahSasaran(sasaranBidang, semakanSahaja ? "TAMBAH" : "KEKAL", teks);
     fokus(id);
-    setUkur(""); setTujuan(""); setPeringkat(""); setRalat("");
-    tutup();
+    setUkur(""); setTujuan(""); setPeringkat("");
+    tutupBersih();
   }
 
   return (
-    <dialog ref={dlg} onClose={tutup} className="m-auto w-[min(640px,calc(100vw-32px))] rounded-2xl border border-garis bg-white p-0 text-slate-800 shadow-2xl backdrop:bg-navy-900/55">
+    <dialog ref={dlg} onClose={tutupBersih} className="m-auto w-[min(640px,calc(100vw-32px))] rounded-2xl border border-garis bg-white p-0 text-slate-800 shadow-2xl backdrop:bg-navy-900/55">
       <div className="grid gap-3 p-5">
-        <h3 className="text-lg font-bold text-navy-800">Pembina sasaran</h3>
+        <div>
+          <h3 className="text-lg font-bold text-navy-800">Bina sasaran dengan panduan</h3>
+          <p className="mt-1 text-sm leading-relaxed text-slate-600">
+            Isi ruang <b>a</b>, <b>b</b> dan <b>c</b> (<b>d</b> jika sesuai). Ayat sasaran
+            tersusun sendiri di bawah — semak, kemudian tekan <b>Masukkan sasaran</b>.
+            Anda masih boleh menyuntingnya selepas itu.
+          </p>
+        </div>
         <div className="grid gap-3 sm:grid-cols-2">
           <div><label htmlFor="pb-kk" className={LABEL}>a. Kata kerja</label>
             <select id="pb-kk" value={kata} onChange={(e) => setKata(e.target.value)} className={`${INPUT} mt-1`}>
@@ -95,7 +110,7 @@ function Pembina({ s, b, buka, tutup, semakanSahaja, fokus }: {
         {ralat && <p role="alert" className="text-sm font-medium text-red-700">{ralat}</p>}
         <div className="flex flex-wrap gap-2">
           <button type="button" onClick={masuk} className={BTN_UTAMA}>Masukkan sasaran</button>
-          <button type="button" onClick={tutup} className={BTN}>Tutup</button>
+          <button type="button" onClick={tutupBersih} className={BTN}>Tutup</button>
         </div>
       </div>
     </dialog>
@@ -110,7 +125,8 @@ export default function BorangEkb({ s, data, onKembali, onRefresh }: {
   const [nota, setNota] = useState<{ ok: boolean; teks: string } | null>(null);
   const [pulang, setPulang] = useState(false);
   const [sebab, setSebab] = useState("");
-  const [pembina, setPembina] = useState(false);
+  // null = tertutup; "" = dibuka tanpa bidang pilihan; id = bidang dipilih terus.
+  const [pembina, setPembina] = useState<string | null>(null);
   const [fokusId, setFokusId] = useState<string | null>(null);
 
   const { penuh, borangLihat: b, draf } = s;
@@ -369,13 +385,21 @@ export default function BorangEkb({ s, data, onKembali, onRefresh }: {
             )) : (
               <div className="grid justify-items-center gap-1 px-4 py-6 text-center text-slate-500">
                 <b>Belum ada sasaran</b>
-                {bolehTambah && <span>Tulis sendiri, atau guna pembina sasaran.</span>}
+                {bolehTambah && (
+                  <span className="max-w-md text-sm">
+                    Tekan <b className="text-navy-700">Bina dengan panduan</b> untuk menyusun sasaran
+                    langkah demi langkah, atau <b className="text-navy-700">+ Tambah sasaran</b> untuk menulis sendiri.
+                  </span>
+                )}
               </div>
             )}
             {bolehTambah && (
-              <div className="bg-slate-50 px-3.5 py-2.5">
+              <div className="flex flex-wrap gap-2 bg-slate-50 px-3.5 py-2.5">
                 <button type="button" className={BTN} onClick={() => setFokusId(s.tambahSasaran(x.id, k.semakan && !k.penetapan ? "TAMBAH" : "KEKAL"))}>
                   + Tambah sasaran{k.semakan && !k.penetapan ? " (TAMBAH)" : ""}
+                </button>
+                <button type="button" className={BTN_UTAMA} onClick={() => setPembina(x.id)}>
+                  Bina dengan panduan
                 </button>
               </div>
             )}
@@ -386,11 +410,11 @@ export default function BorangEkb({ s, data, onKembali, onRefresh }: {
       {bolehTambah && (
         <div className="flex flex-wrap gap-2">
           {k.penetapan && <button type="button" onClick={s.tambahBidang} className={BTN}>+ Bidang tugas baharu</button>}
-          <button type="button" onClick={() => setPembina(true)} className={BTN}>Pembina sasaran</button>
+          <button type="button" onClick={() => setPembina("")} className={BTN}>Bina sasaran dengan panduan</button>
         </div>
       )}
       </fieldset>
-      <Pembina s={s} b={b} buka={pembina} tutup={() => setPembina(false)} semakanSahaja={k.semakan && !k.penetapan} fokus={setFokusId} />
+      <Pembina s={s} b={b} buka={pembina !== null} bidangAwal={pembina ?? ""} tutup={() => setPembina(null)} semakanSahaja={k.semakan && !k.penetapan} fokus={setFokusId} />
     </div>
   );
 }
