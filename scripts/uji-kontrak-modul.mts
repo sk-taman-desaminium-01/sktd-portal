@@ -95,10 +95,11 @@ for (const [nama, fail, bil] of [
   ["Carta organisasi", "src/app/admin/carta/PanelCarta.tsx", 1], ["Borang Kawalan Bilik Darjah", "src/components/CetakKawalanBilikDarjah.tsx", 1],
 ] as const) perlu(`${nama}: kepala berlencana`, (baca(fail).match(/<KepalaCetak \/>/g) ?? []).length === bil);
 perlu("Surat Akuan Waris membawa lencana", baca("src/components/CetakAkuan.tsx").includes("logo-sktd.png"));
+perlu("Borang Keberhasilan membawa lencana", baca("src/components/CetakKeberhasilan.tsx").includes("logo-sktd.png"));
 {
   // Dokumen cetak BAHARU mesti membawa kepala berlencana atau dikecualikan di sini dengan sebab.
   const DIKECUALIKAN = ["CetakMedia.tsx"];                       // lampiran KPM
-  const SENDIRI = ["CetakSurat.tsx", "CetakAkuan.tsx", "KepalaCetak.tsx"];   // kepala sendiri, berlencana
+  const SENDIRI = ["CetakSurat.tsx", "CetakAkuan.tsx", "KepalaCetak.tsx", "CetakKeberhasilan.tsx"];   // kepala sendiri, berlencana
   const semak = (dir: string): string[] => readdirSync(resolve(akar, dir), { withFileTypes: true }).flatMap((e) =>
     e.isDirectory() ? semak(`${dir}/${e.name}`) : e.name.endsWith(".tsx") ? [`${dir}/${e.name}`] : []);
   const tanpa = semak("src").filter((f) => baca(f).includes("data-cetak-kertas") &&

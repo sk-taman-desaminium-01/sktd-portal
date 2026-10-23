@@ -63,3 +63,6 @@ untuk jadual yang 353 waktunya salah — Moral hilang, guru bertukar antara peta
 - Jangan buang `h`/`f` daripada `ItemTeks`, jangan senyapkan
   `HasilHuraian.amaran`, jangan padan nama guru ikut pusat teks (ikut TEPI
   KANAN petak). Butiran: `docs/PROJECT_MEMORY.md`.
+
+## e-Keberhasilan (23 Okt 2026)
+Kuasa ditentukan per borang di `src/lib/keberhasilan.ts` dan `gabungIkutKuasa()` dalam `src/data/keberhasilan.ts` — satu-satunya pintu tulisan jadual `ekb_*`. Pemerhati hanya ringkasan; No. K/P hanya kepada PYD; markah 0 sah. Butiran: `docs/PROJECT_MEMORY.md`.
