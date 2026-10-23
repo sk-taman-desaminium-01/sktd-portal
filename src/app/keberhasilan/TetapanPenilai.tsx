@@ -7,22 +7,22 @@ import { BTN_UTAMA, Chip, INPUT, KAD } from "./alat";
 
 type Pilihan = { pp1: string; pp2: string };
 type Keadaan = { jenis: "simpan" | "ok" | "gagal"; mesej?: string };
-type Kumpulan = "semua" | "guru" | "pentadbir" | "kerani";
+type Kumpulan = "semua" | "guru" | "pentadbir" | "admin" | "kerani";
 const BATCH = 40;
-const LABEL_KUMPULAN: Record<Kumpulan, string> = { semua: "Semua", guru: "Guru", pentadbir: "Pentadbir", kerani: "Kerani & AKP" };
+const LABEL_KUMPULAN: Record<Kumpulan, string> = { semua: "Semua", guru: "Guru", pentadbir: "Pentadbir", admin: "Admin", kerani: "Kerani & AKP" };
 
 /** Peranan DB → kumpulan paparan. */
 function kumpulanDari(p: string): Exclude<Kumpulan, "semua"> {
-  return p === "pentadbir" || p === "admin" ? "pentadbir" : p === "kerani" || p === "kakitangan" ? "kerani" : "guru";
+  return p === "pentadbir" ? "pentadbir" : p === "admin" || p === "admin_mutlak" ? "admin" : p === "kerani" || p === "kakitangan" ? "kerani" : "guru";
 }
-const labelPeranan = (p: string) => (p === "kakitangan" ? "AKP" : p === "kerani" ? "Kerani" : kumpulanDari(p) === "pentadbir" ? "Pentadbir" : "Guru");
+const labelPeranan = (p: string) => (p === "admin_mutlak" ? "Admin Mutlak" : p === "admin" ? "Admin" : p === "kakitangan" ? "AKP" : p === "kerani" ? "Kerani" : p === "pentadbir" ? "Pentadbir" : "Guru");
 const sepadan = (nama: string, cari: string) => {
   const k = cari.toLowerCase().split(/\s+/).filter(Boolean);
   const n = nama.toLowerCase();
   return k.every((x) => n.includes(x));
 };
 
-/** Pemerhati (pentadbir/admin) menetapkan PP1 dan PP2 bagi setiap PYD. */
+/** Admin mutlak menetapkan PP1 dan PP2 bagi setiap PYD. */
 export default function TetapanPenilai({ guru, calon, penilai, selepasSimpan }: {
   guru: OrangPeranan[]; calon: CalonPP | null; penilai: DataHalaman["penilai"]; selepasSimpan: () => void;
 }) {

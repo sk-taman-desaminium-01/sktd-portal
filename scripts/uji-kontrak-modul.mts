@@ -100,17 +100,19 @@ perlu("Borang Keberhasilan hanya membawa logo KPM (keputusan pengguna 23 Okt)",
   && !baca("src/components/CetakKeberhasilan.tsx").includes("logo-sktd.png"));
 {
   // e-Keberhasilan: guru/kerani/AKP biasa nampak borang SENDIRI sahaja;
-  // hanya Pentadbir & Admin Mutlak membaca semua (keputusan pengguna 23 Okt 2026).
+  // Hanya admin mutlak mengurus semua; PP hanya PYD dilantik (23 Okt 2026).
   const ekb = baca("src/lib/keberhasilan.ts");
-  perlu("e-Keberhasilan: lihatSemua = pentadbir & admin_mutlak SAHAJA",
-    /const lihatSemua = \(p[^)]*\) => p === "pentadbir" \|\| p === "admin_mutlak";/.test(ekb));
-  perlu("e-Keberhasilan: PEMERHATI hanya melalui lihatSemua", /pemerhatiDibenarkan && lihatSemua\(saya\.peranan\)\) peranan = "PEMERHATI"/.test(ekb)
-    && !/peranan = "PEMERHATI"[\s\S]*peranan = "PEMERHATI"/.test(ekb));
-  perlu("e-Keberhasilan: tetapPenilai & tetapPpAkp hanya Pentadbir/Admin Mutlak (bukan admin biasa)",
-    (ekb.match(/!lihatSemua\(saya\.peranan\)\) return \{ ok: false, mesej: "Hanya Pentadbir dan Admin Mutlak boleh menetapkan PP\." \}/g) ?? []).length === 2
+  const aksesEkb = baca("src/data/keberhasilan-akses.ts");
+  perlu("e-Keberhasilan: akses semua memerlukan sesi mutlak dan peranan admin_mutlak",
+    aksesEkb.includes('saya.mutlak === true && saya.peranan === "admin_mutlak"'));
+  perlu("e-Keberhasilan: konteks borang menggunakan pagar akses bersama",
+    ekb.includes("perananBorangKeberhasilan(saya, b.pyd_id, p ?? null)"));
+  perlu("e-Keberhasilan: tetapPenilai & tetapPpAkp hanya admin mutlak",
+    (ekb.match(/!lihatSemua\(saya\)\) return \{ ok: false, mesej: "Hanya admin mutlak boleh menetapkan PP\." \}/g) ?? []).length === 2
     && !ekb.includes('"urus_guru_kelas"'));
-  perlu("e-Keberhasilan: PEMERHATI tidak boleh menulis", (ekb.match(/peranan === "PEMERHATI"\) return \{ ok: false/g) ?? []).length >= 2
-    && /peranan !== "PYD" && peranan !== "PP1"\) return/.test(ekb));
+  perlu("e-Keberhasilan: kuasa tindakan ditentukan daripada sesi pelayan",
+    ekb.includes("perananTindakanKeberhasilan(peranan, input.tindakan, mutlak)")
+    && ekb.includes("const mutlak = lihatSemua(saya)"));
 }
 {
   // Dokumen cetak BAHARU mesti membawa kepala berlencana atau dikecualikan di sini dengan sebab.

@@ -41,7 +41,7 @@ export default function PanelKeberhasilan({ data }: { data: DataHalaman }) {
 
   const tabs: { k: Tab; t: string; n?: number }[] = [];
   if (data.borangSaya) tabs.push({ k: "saya", t: "Borang saya", n: saya.penuh ? bilPerluBalas(saya.penuh) : 0 });
-  if (data.pantau.length) tabs.push({ k: "pantau", t: "Pantau PYD", n: data.pantau.filter(perluTindakan).length });
+  if (data.pantau.length || data.pemerhati) tabs.push({ k: "pantau", t: data.pemerhati ? "Pengesahan PYD" : "Pantau PYD", n: data.pantau.filter(perluTindakan).length });
   if (semak.penuh) tabs.push({ k: "semak", t: `Semak: ${namaPendek(semak.penuh.borang.pyd.nama)}` });
   tabs.push({ k: "pratonton", t: "Pratonton borang" }, { k: "aktiviti", t: "Aktiviti" }, { k: "panduan", t: "Panduan" });
   if (data.pemerhati) tabs.push({ k: "tetapan", t: "Tetapan penilai" });
@@ -77,7 +77,7 @@ export default function PanelKeberhasilan({ data }: { data: DataHalaman }) {
   let pvBorang: Borang | null = null;
   let pvPeranan: PerananLihat = "PYD";
   if (pvId && pvId === saya.penuh?.borang.id) { pvBorang = saya.borangLihat; pvPeranan = "PYD"; }
-  else if (pvId && pvId === semak.penuh?.borang.id) { pvBorang = semak.borangLihat; pvPeranan = semak.penuh?.peranan ?? "PEMERHATI"; }
+  else if (pvId && pvId === semak.penuh?.borang.id) { pvBorang = semak.borangLihat; pvPeranan = semak.penuh?.peranan ?? "PP2"; }
   else if (pvId && pvMuat?.borang.id === pvId) { pvBorang = pvMuat.borang; pvPeranan = pvMuat.peranan; }
   const perluMuat = tab === "pratonton" && !!pvId && !pvBorang && pvRalat?.id !== pvId;
 

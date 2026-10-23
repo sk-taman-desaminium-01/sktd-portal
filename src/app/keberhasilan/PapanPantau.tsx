@@ -7,7 +7,8 @@ import { BTN, BTN_UTAMA, Chip, INPUT, KAD, WARNA_JEJAK, tarikh } from "./alat";
 
 /** Peringkat yang menunggu TINDAKAN SAYA pada baris ini. */
 export const perluTindakan = (r: BarisPantau) =>
-  r.peranan === "PP1" ? r.r.tunggu1.length > 0 : r.peranan === "PP2" ? r.r.tunggu2.length > 0 : false;
+  r.mutlak ? r.r.tunggu1.length > 0 || r.r.tunggu2.length > 0
+    : r.peranan === "PP1" ? r.r.tunggu1.length > 0 : r.peranan === "PP2" ? r.r.tunggu2.length > 0 : false;
 
 /** Keadaan peringkat i, diterbitkan daripada ringkasan (tiada borang penuh di sini). */
 function keadaanI(r: BarisPantau, i: number): KeadaanPeringkat {
@@ -38,8 +39,8 @@ export default function PapanPantau({ data, buka, membuka }: {
   return (
     <div className="mt-5 grid min-w-0 gap-4">
       <section>
-        <h2 className="text-xl font-bold text-navy-800">Pantau PYD · {data.tahun}</h2>
-        <small className="text-slate-500">{baris.length} orang PYD di bawah penilaian anda</small>
+        <h2 className="text-xl font-bold text-navy-800">{data.pemerhati ? "Pengesahan semua PYD" : "Pantau PYD"} · {data.tahun}</h2>
+        <small className="text-slate-500">{baris.length} orang PYD{data.pemerhati ? " · akses penuh admin mutlak" : " di bawah penilaian anda"}</small>
       </section>
 
       <section className="grid grid-cols-2 gap-3 lg:grid-cols-4">
@@ -90,14 +91,14 @@ export default function PapanPantau({ data, buka, membuka }: {
           if (r.r.lewat && r.r.cur < 4) bendera.push(<Chip key="l" bungkus v="bad">Lewat: {PERINGKAT[r.r.cur].t}</Chip>);
           if (r.r.st === "dipulang") bendera.push(<Chip key="p" bungkus v="bad">Dipulangkan</Chip>);
           if (r.balasPyd) bendera.push(<Chip key="b" bungkus v="info">{r.balasPyd} balasan PYD</Chip>);
-          if (r.peranan === "PP1" && r.r.tunggu2.length && !r.r.tunggu1.length) bendera.push(<Chip key="w" bungkus>Tunggu PP2</Chip>);
+          if (!r.mutlak && r.peranan === "PP1" && r.r.tunggu2.length && !r.r.tunggu1.length) bendera.push(<Chip key="w" bungkus>Tunggu PP2</Chip>);
           if (!bendera.length) bendera.push(<Chip key="o" bungkus v="ok">Mengikut jadual</Chip>);
           const mendesak = perluTindakan(r);
           return (
             <div key={r.borang_id} className="grid gap-x-4 gap-y-2.5 border-b border-garis p-3.5 last:border-b-0 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1.5fr)_130px_minmax(0,1fr)_auto] lg:items-center">
               <div className="min-w-0">
                 <b className="block break-words text-[15px]">{r.pyd.nama}</b>
-                <small className="text-slate-500">{r.r.bilSasaran} sasaran · {r.bilBukti} bukti{r.peranan === "PEMERHATI" ? (r.pp1 ? ` · PP1 ${r.pp1.nama}` : " · PP1 belum ditetapkan") : ""}</small>
+                <small className="text-slate-500">{r.r.bilSasaran} sasaran · {r.bilBukti} bukti{r.mutlak ? (r.pp1 ? ` · PP1 ${r.pp1.nama}` : " · PP1 belum ditetapkan") : ""}</small>
               </div>
               <div className="min-w-0">
                 <div className="grid grid-cols-4 gap-[3px]">
@@ -109,7 +110,7 @@ export default function PapanPantau({ data, buka, membuka }: {
               <div className="flex flex-wrap gap-1.5">{bendera}</div>
               <div>
                 <button type="button" disabled={membuka === r.borang_id} onClick={() => buka(r)} className={mendesak ? BTN_UTAMA : BTN}>
-                  {membuka === r.borang_id ? "Membuka…" : mendesak ? "Semak sekarang" : r.peranan === "PEMERHATI" ? "Lihat borang" : "Buka borang"}
+                  {membuka === r.borang_id ? "Membuka…" : mendesak ? "Semak sekarang" : "Buka borang"}
                 </button>
               </div>
             </div>
