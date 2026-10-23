@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import {
   kira, keadaan, kuasa, LABEL_KEADAAN, penghalang, peringkatSemasa, PERINGKAT, petunjuk, semakan, semuaSasaran,
-  sah, tarikhTutup, STATUS_SASARAN, ringkasan, teksBiasa, MIN_SASARAN,
+  sah, tarikhTutup, STATUS_SASARAN, ringkasan, teksBiasa, MIN_SASARAN, bidangTetap,
   type Borang, type Kiraan, type PerananEkb, type Tindakan,
 } from "@/data/keberhasilan";
 import type { DataHalaman } from "@/lib/keberhasilan";
@@ -355,17 +355,18 @@ export default function BorangEkb({ s, data, onKembali, onRefresh }: {
       {/* bidang & sasaran */}
       {b.bidang.map((x, bi) => {
         const padamBidang = pend === `bdel-${x.id}`;
+        const tetap = bidangTetap(x.id);
         return (
           <section key={x.id} className="min-w-0 overflow-hidden rounded-xl border border-garis bg-white">
             <div className="flex flex-wrap items-center gap-2 border-b border-garis bg-slate-50 px-3.5 py-2.5">
-              {k.penetapan ? (
+              {k.penetapan && !tetap ? (
                 <input value={x.nama} maxLength={160} aria-label="Nama bidang tugas" onChange={(e) => s.namaBidang(x.id, e.target.value)} onBlur={s.simpanSegera}
                   className={`${INPUT} min-w-52 flex-1 font-bold uppercase`} />
               ) : (
                 <h3 className="min-w-0 flex-1 break-words text-base font-bold uppercase text-navy-800">{x.nama}</h3>
               )}
               <Chip>{x.sasaran.length} sasaran</Chip>
-              {k.penetapan && (padamBidang ? (
+              {k.penetapan && !tetap && (padamBidang ? (
                 <span className="flex flex-wrap items-center gap-1.5 text-sm text-red-700">
                   Padam bidang dan semua sasarannya?
                   <button type="button" onClick={() => { s.padamBidang(x.id); setPend(null); }} className={BTN_BAHAYA_PEKAT}>Padam</button>

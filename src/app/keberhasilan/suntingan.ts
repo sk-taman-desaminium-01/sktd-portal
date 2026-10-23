@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { bukaBorang, simpanBorang, tindakanPeringkat, type Bukti, type BorangPenuh, type Ulasan } from "@/lib/keberhasilan";
 import {
-  sasaranKosong,
+  sasaranKosong, bidangTetap,
   type Bidang, type Borang, type MaklumatPyd, type Sasaran, type StatusSasaran, type Tindakan,
 } from "@/data/keberhasilan";
 
@@ -200,7 +200,7 @@ export function useSuntingan(awal: BorangPenuh | null) {
   const mutasi = {
     ubahSasaran: (id: string, tampung: Partial<Sasaran>) => ubah(peta(id, tampung)),
     ubahPyd: (k: keyof MaklumatPyd, v: string) => ubah((d) => ({ ...d, pyd: { ...d.pyd, [k]: v } })),
-    namaBidang: (id: string, nama: string) => ubah((d) => ({ ...d, bidang: d.bidang.map((b) => (b.id === id ? { ...b, nama } : b)) })),
+    namaBidang: (id: string, nama: string) => ubah((d) => ({ ...d, bidang: d.bidang.map((b) => (b.id === id && !bidangTetap(id) ? { ...b, nama } : b)) })),
     tambahSasaran: (bidangId: string, status: StatusSasaran, teks = ""): string => {
       const id = idBaru();
       ubah((d) => ({ ...d, bidang: d.bidang.map((b) => (b.id === bidangId ? { ...b, sasaran: [...b.sasaran, { ...sasaranKosong(id, status), teks }] } : b)) }));
@@ -218,7 +218,7 @@ export function useSuntingan(awal: BorangPenuh | null) {
       }),
     })),
     tambahBidang: () => ubah((d) => ({ ...d, bidang: [...d.bidang, { id: idBaru(), nama: "BIDANG TUGAS BAHARU", sasaran: [] }] })),
-    padamBidang: (id: string) => ubah((d) => ({ ...d, bidang: d.bidang.filter((b) => b.id !== id) })),
+    padamBidang: (id: string) => ubah((d) => ({ ...d, bidang: d.bidang.filter((b) => b.id !== id || bidangTetap(id)) })),
   };
 
   /* ---- senarai pelayan yang berubah tanpa melalui simpan ---- */
