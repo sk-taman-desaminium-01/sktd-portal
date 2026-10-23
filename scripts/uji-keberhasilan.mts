@@ -7,7 +7,7 @@
  * semula sasaran PYD atau PYD boleh mengubah markah selepas dihantar.
  */
 import {
-  HAD_SASARAN, HAD_TEKS, MIN_SASARAN, PERINGKAT, gabungIkutKuasa, keadaan, kira, kuasa, normalMarkah,
+  HAD_SASARAN, HAD_TEKS, MIN_SASARAN, PERINGKAT, BIDANG_TETAP, bidangTetap, susunBidangTetap, gabungIkutKuasa, keadaan, kira, kuasa, normalMarkah,
   penghalang, peralihan, semakan, peringkatKosong, peringkatSemasa, ringkasan, sasaranKosong, tarikhTutup,
   type Bidang, type Kuasa, type KeadaanPeringkat, type PerananEkb, type Sasaran, type Tindakan,
 } from "../src/data/keberhasilan.ts";
@@ -544,6 +544,48 @@ for (const [nama, st, peranan] of [
   const hasil = ids(gabungIkutKuasa(lama, baru, k, "PYD", janaId()).bidang);
   jangka("id tidak selamat diganti", hasil.includes("../x") || hasil.includes("ab"), false);
   jangka("id tidak selamat: bilangan kekal", hasil.length, 3);
+}
+
+// Empat bidang tetap: pemetaan borang lama dan perlindungan tulisan pelayan.
+{
+  const nama = ["Kurikulum", "Hal Ehwal Murid", "Kokurikulum", "Tugas Sampingan"];
+  const kosong = susunBidangTetap([]);
+  jangka("bidang tetap: borang kosong mendapat empat nama mengikut urutan", kosong.map((x) => x.nama), nama);
+  jangka("bidang tetap: tiada sasaran rekaan", ids(kosong), []);
+  jangka("bidang tetap: id dikenali", kosong.every((x) => bidangTetap(x.id)), true);
+  jangka("bidang tambahan: id bukan tetap", bidangTetap("tambahan"), false);
+
+  const lama: Bidang[] = BIDANG_TETAP.map((x, i) => ({ id: `lama${i}`, nama: x.lama, sasaran: [S(`sas${i}`, `Sasaran ${i}`, { m1: "0", catatan: "Kekal" })] }));
+  const tambahan: Bidang = { id: "sendiri", nama: "Tugas pilihan", sasaran: [S("sendiri1", "Sasaran sendiri")] };
+  const asal = klon(lama);
+  const tetap = susunBidangTetap([...lama, tambahan]);
+  jangka("borang lama: nama dipadankan", tetap.slice(0, 4).map((x) => x.nama), nama);
+  jangka("borang lama: semua sasaran, markah sifar dan catatan kekal", tetap.slice(0, 4).map((x) => x.sasaran), lama.map((x) => x.sasaran));
+  jangka("borang lama: bidang tambahan kekal", tetap[4], tambahan);
+  jangka("borang lama: input tidak dimutasi", lama, asal);
+  jangka("bidang tetap: normalisasi idempoten", susunBidangTetap(tetap), tetap);
+  jangka("satu bidang: tiga bidang lain ditambah tanpa kehilangan sasaran", ids(susunBidangTetap([lama[0]])), ["sas0"]);
+
+  const dipinda = klon(tetap).reverse();
+  for (const x of dipinda) x.nama = "NAMA DIUBAH";
+  const hasil = gabung(tetap, dipinda, DRAF0, "PYD").bidang;
+  jangka("pelayan: nama dan urutan tetap tidak boleh diubah", hasil.slice(0, 4).map((x) => x.nama), nama);
+  jangka("pelayan: sasaran tetap kekal selepas disusun semula", ids(hasil).slice(0, 4), ids(tetap).slice(0, 4));
+  jangka("pelayan: bidang tambahan boleh dinamakan", hasil[4].nama, "NAMA DIUBAH");
+  const dipadam = gabung(tetap, [], DRAF0, "PYD").bidang;
+  jangka("pelayan: empat bidang tetap tidak boleh dipadam", dipadam.map((x) => x.nama), nama);
+  jangka("pelayan: sasaran bidang tetap tidak hilang jika bidang dipadam klien", ids(dipadam), ["sas0", "sas1", "sas2", "sas3"]);
+  jangka("pelayan: bidang tambahan boleh dipadam", dipadam.some((x) => x.id === tambahan.id), false);
+  const sunting = klon(tetap); sunting[0].sasaran[0].teks = "Sasaran dipinda 100%";
+  jangka("bidang tetap: sasaran masih boleh disunting", gabung(tetap, sunting, DRAF0, "PYD").bidang[0].sasaran[0].teks, "Sasaran dipinda 100%");
+  sunting[0].sasaran = [];
+  jangka("bidang tetap: sasaran masih boleh dipadam", gabung(tetap, sunting, DRAF0, "PYD").bidang[0].sasaran, []);
+  const banyak = Array.from({ length: 12 }, (_, i) => ({ ...tambahan, id: `extra${i}`, nama: `Tambahan ${i}`, sasaran: [] }));
+  const terhad = gabung(kosong, banyak, DRAF0, "PYD").bidang;
+  jangka("banyak bidang: had 12 termasuk empat tetap", terhad.length, 12);
+  jangka("banyak bidang: empat tetap tidak terpotong", terhad.slice(0, 4).map((x) => x.nama), nama);
+  const duaBelasLama = susunBidangTetap(banyak);
+  jangka("borang lama dengan 12 bidang sendiri: tambahan tidak hilang ketika simpan", gabung(duaBelasLama, duaBelasLama, DRAF0, "PYD").bidang.length, 16);
 }
 
 if (gagal.length) {

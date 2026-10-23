@@ -47,6 +47,31 @@ export interface Bidang {
   sasaran: Sasaran[];
 }
 
+export const BIDANG_TETAP = [
+  { id: "ekb-kurikulum", nama: "Kurikulum", lama: "PEMBELAJARAN DAN PEMUDAHCARAAN (PDPC)" },
+  { id: "ekb-hem", nama: "Hal Ehwal Murid", lama: "PENGURUSAN KELAS" },
+  { id: "ekb-kokurikulum", nama: "Kokurikulum", lama: "KOKURIKULUM" },
+  { id: "ekb-sampingan", nama: "Tugas Sampingan", lama: "TUGAS SAMPINGAN" },
+] as const;
+
+export const bidangTetap = (id: string) => BIDANG_TETAP.some((x) => x.id === id);
+
+/** Empat bidang di hadapan; sasaran lama dan bidang tambahan tidak dibuang. */
+export function susunBidangTetap(bidang: Bidang[], asal: Bidang[] = []): Bidang[] {
+  const dipakai = new Set<Bidang>();
+  const tetap = BIDANG_TETAP.map(({ id, nama, lama }) => {
+    const ada = bidang.find((x) => x.id === id) ?? bidang.find((x) => {
+      const n = x.nama.trim().toUpperCase();
+      return !dipakai.has(x) && (n === nama.toUpperCase() || n === lama);
+    });
+    if (ada) dipakai.add(ada);
+    // Jika klien memadam bidang tetap, pulihkan bersama sasarannya.
+    const sumber = ada ?? asal.find((x) => x.id === id);
+    return { id, nama, sasaran: sumber?.sasaran ?? [] };
+  });
+  return [...tetap, ...bidang.filter((x) => !dipakai.has(x))];
+}
+
 export interface MaklumatPyd {
   nama: string;
   kp: string;
@@ -351,17 +376,20 @@ export function gabungIkutKuasa(
 
   // Struktur penuh hanya semasa penetapan.
   if (k.penetapan) {
+    const tetap = lama.some((x) => bidangTetap(x.id));
+    const cadangan = tetap ? susunBidangTetap(baru, lama) : baru;
     // Id datang dari pelayar: nyahdua, kalau tidak dua baris berkongsi id
     // dan ulasan/bukti melekat pada kedua-duanya.
     let kira = 0;
     const idBidang = new Set<string>(), idSasaran = new Set<string>();
-    const bidang = baru.slice(0, 12).map((x) => {
+    // Borang lama mungkin sudah ada 12 bidang sendiri sebelum empat tetap ditambah.
+    const bidang = cadangan.slice(0, Math.max(12, lama.length)).map((x) => {
       let id = String(x.id || "").slice(0, 40);
       if (!id || idBidang.has(id)) id = idBaru();
       idBidang.add(id);
       return {
         id,
-        nama: potong(x.nama, 160).toUpperCase(),
+        nama: bidangTetap(id) ? x.nama : potong(x.nama, 160).toUpperCase(),
         sasaran: (Array.isArray(x.sasaran) ? x.sasaran : [])
           .filter((n) => n && typeof n === "object" && !idSasaran.has(n.id) && (idSasaran.add(n.id), ++kira <= HAD_SASARAN))
           .map((n) => satu(indeks.get(n.id), n, true))

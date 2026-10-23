@@ -14,7 +14,7 @@ import { namaBersih } from "./nama";
 import { HAD_BAIT } from "@/data/had-fail";
 import {
   PERINGKAT, HAD_ULASAN, LOG_TINDAKAN, gabungIkutKuasa, kuasa, peralihan, peringkatKosong,
-  ringkasan, semuaSasaran,
+  ringkasan, semuaSasaran, susunBidangTetap,
   type Bidang, type Borang, type MaklumatPyd, type PerananEkb, type RingkasanPyd, type Tindakan,
 } from "@/data/keberhasilan";
 
@@ -42,12 +42,6 @@ import {
 
 const BUCKET = "ekb-bukti";
 const TEMPAT = "SK TAMAN DESAMINIUM";
-const BIDANG_LALAI = [
-  "PEMBELAJARAN DAN PEMUDAHCARAAN (PDPC)",
-  "PENGURUSAN KELAS",
-  "KOKURIKULUM",
-  "TUGAS SAMPINGAN",
-];
 const SAMBUNGAN = /\.(pdf|png|jpe?g|webp|heic|docx?|xlsx?|pptx?|csv|txt)$/i;
 const MESEJ_BELUM = "Modul e-Keberhasilan belum dipasang — admin perlu jalankan SQL `20261023_keberhasilan.sql` sekali.";
 
@@ -158,7 +152,7 @@ function keBorang(r: BarisBorang, peranan: PerananLihat): Borang {
   pyd.nama = namaBersih(pyd.nama).toUpperCase();
   if (peranan !== "PYD") pyd.kp = "";
   const peringkat = { ...peringkatKosong(), ...(r.peringkat ?? {}) };
-  return { id: r.id, tahun: r.tahun, pyd_id: r.pyd_id, versi: r.versi, pyd, bidang: r.bidang ?? [], peringkat };
+  return { id: r.id, tahun: r.tahun, pyd_id: r.pyd_id, versi: r.versi, pyd, bidang: susunBidangTetap(r.bidang ?? []), peringkat };
 }
 
 async function namaGuru(ids: (string | null)[]): Promise<Map<string, { nama: string; email: string | null }>> {
@@ -235,7 +229,7 @@ export async function dataKeberhasilan(): Promise<DataHalaman> {
         body: JSON.stringify({
           tahun, pyd_id: saya.id,
           pyd: { nama: namaBersih(saya.nama ?? "").toUpperCase(), kp: "", gred: "", jawatan: "", tempat: TEMPAT },
-          bidang: BIDANG_LALAI.map((nama) => ({ id: randomUUID().slice(0, 8), nama, sasaran: [] })),
+          bidang: susunBidangTetap([]),
           peringkat: peringkatKosong(),
         }),
       });
@@ -334,8 +328,9 @@ export async function simpanBorang(input: {
     if (b.versi !== versi) return { ok: false, mesej: KONFLIK, konflik: true };
     if (!Array.isArray(input.bidang)) return { ok: false, mesej: "Data borang tidak sah." };
 
-    const k = kuasa(keBorang(b, peranan), peranan);
-    const { bidang, perubahan } = gabungIkutKuasa(b.bidang ?? [], input.bidang, k, peranan, () => randomUUID().slice(0, 8));
+    const asal = keBorang(b, peranan);
+    const k = kuasa(asal, peranan);
+    const { bidang, perubahan } = gabungIkutKuasa(asal.bidang, input.bidang, k, peranan, () => randomUUID().slice(0, 8));
     const isi: Partial<BarisBorang> = { bidang };
     if (peranan === "PYD" && k.penetapan && input.pyd) {
       const potong = (v: unknown, n: number) => String(v ?? "").trim().slice(0, n);
@@ -647,7 +642,7 @@ export async function tetapPenilai(input: { pydId: string; pp1Id: string | null;
       body: JSON.stringify({
         tahun, pyd_id: pydId,
         pyd: { nama: namaBersih(g?.nama ?? "").toUpperCase(), kp: "", gred: "", jawatan: "", tempat: TEMPAT },
-        bidang: BIDANG_LALAI.map((nama) => ({ id: randomUUID().slice(0, 8), nama, sasaran: [] })),
+        bidang: susunBidangTetap([]),
         peringkat: peringkatKosong(),
       }),
     });
