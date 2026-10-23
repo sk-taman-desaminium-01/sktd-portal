@@ -45,7 +45,8 @@ export default function Panduan({ tahun }: { tahun: number }) {
       </div>
       <div className={`${KAD} min-w-0 p-4`}>
         <h3 className="mb-1.5 text-lg font-bold text-navy-800">Pengiraan markah</h3>
-        <p className="text-sm">Markah = pencapaian ÷ sasaran × 100, maksimum 100. Taip <b>15/20</b> dan ia ditukar kepada 75.</p>
+        <p className="text-sm">Isi nilai sasaran dan nilai pencapaian dalam unit yang sama. Markah dikira automatik: pencapaian ÷ sasaran × 100, maksimum 100. Contohnya sasaran 20 dan pencapaian 15 menghasilkan 75 markah.</p>
+        <p className="mt-1.5 text-sm">Nilai sasaran mesti lebih daripada sifar; pencapaian sifar menghasilkan 0 markah. Markah tersimpan lama dikekalkan sehingga angka ukuran diisi. Pindaan sasaran akhir tidak mengubah markah penilaian pertama.</p>
         <p className="mt-1.5 text-sm">Purata = jumlah markah ÷ bilangan sasaran yang dinilai. Sasaran GUGUR tidak dikira dalam penilaian akhir.</p>
         <table className="mt-2 w-full border-collapse font-mono text-sm">
           <thead><tr className="text-left text-xs uppercase text-slate-500"><th className="border-b border-garis p-1.5">Purata</th><th className="border-b border-garis p-1.5">Skor</th></tr></thead>

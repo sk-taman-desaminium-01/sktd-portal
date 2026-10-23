@@ -18,6 +18,8 @@ secara jujur. Memori bersama (WAJIB baca dahulu):
 Repo `gpi`/`erpm` (eGPI) TIDAK BOLEH disentuh. `sktd-mockup` dibekukan.
 
 ### Cara kerja yang pengguna minta
+- e-Keberhasilan: automatic per-target marks from numeric target/achievement
+  (capped at 100); preserve valid zero and legacy marks until measured.
 - e-Keberhasilan: only trusted admin mutlak manages all forms/PP settings and
   confirms/approves any form (including own). Every other PP sees only own
   form plus assigned PYDs. Ordinary admin is not Pentadbir or Admin Mutlak.

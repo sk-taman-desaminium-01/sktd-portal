@@ -39,6 +39,8 @@ export interface Sasaran {
   m2: string;
   m2_asal?: string;
   catatan: string;
+  /** Angka ukuran berasingan daripada penerangan; markah lama kekal jika belum diisi. */
+  ukuran?: { sasaran: string; sasaranAkhir?: string; p1?: string; p2?: string };
 }
 
 export interface Bidang {
@@ -103,9 +105,9 @@ export interface InfoPeringkat {
 
 export const PERINGKAT: InfoPeringkat[] = [
   { k: "penetapan", t: "Penetapan sasaran", tutup: "01-31", pyd: "Tulis sekurang-kurangnya 5 sasaran yang boleh diukur.", pp: "Pastikan setiap sasaran ada kata kerja, ukuran dan tujuan." },
-  { k: "p1", t: "Penilaian pertama", tutup: "07-31", pyd: "Isi pencapaian semasa, cadangan markah dan muat naik bukti.", pp: "Banding markah dengan bukti. Ubah markah jika perlu sebelum sahkan." },
+  { k: "p1", t: "Penilaian pertama", tutup: "07-31", pyd: "Isi angka pencapaian dan muat naik bukti. Markah dikira automatik.", pp: "Banding pencapaian dengan bukti. Betulkan angka pencapaian jika perlu sebelum sahkan." },
   { k: "semakan", t: "Semakan sasaran", tutup: "08-15", pyd: "Cadangkan status KEKAL, PINDA, GUGUR atau TAMBAH. Pinda teks sasaran jika perlu.", pp: "Muktamadkan status setiap sasaran." },
-  { k: "akhir", t: "Penilaian akhir", tutup: "11-30", pyd: "Isi pencapaian akhir, cadangan markah dan bukti.", pp: "Sahkan markah akhir. Skor dimasukkan ke e-Prestasi." },
+  { k: "akhir", t: "Penilaian akhir", tutup: "11-30", pyd: "Isi angka pencapaian akhir dan bukti. Markah dikira automatik.", pp: "Sahkan markah akhir. Skor dimasukkan ke e-Prestasi." },
 ];
 
 export const tarikhTutup = (tahun: number, i: number) => `${tahun}-${PERINGKAT[i].tutup}`;
@@ -167,6 +169,35 @@ export function normalMarkah(v: string): string {
   return String(Math.min(100, Math.round(n * 100) / 100));
 }
 
+/** Angka ukuran boleh melebihi 100; koma perpuluhan diterima, negatif ditolak. */
+export function normalAngkaUkuran(v: unknown): string {
+  const t = String(v ?? "").trim().replace(",", ".");
+  return t.length <= 40 && /^(?:\d+(?:\.\d*)?|\.\d+)$/.test(t) && Number.isFinite(Number(t)) ? t : "";
+}
+
+export function kiraMarkahUkuran(sasaran: string, pencapaian: string | undefined): string {
+  const a = normalAngkaUkuran(sasaran), b = normalAngkaUkuran(pencapaian);
+  if (!a || !b || Number(a) <= 0) return "";
+  return normalMarkah(String(Math.min(100, Number(b) / Number(a) * 100)));
+}
+
+/** Kiraan yang sama digunakan oleh draf, pelayan, ringkasan dan cetakan. */
+export function markahSasaran(s: Sasaran, which: 1 | 2): string {
+  const f = which === 1 ? "p1" : "p2";
+  if (s.ukuran?.[f] === undefined) return which === 1 ? s.m1 : s.m2;
+  const sasaran = which === 1 ? s.ukuran.sasaran : s.ukuran.sasaranAkhir ?? s.ukuran.sasaran;
+  return kiraMarkahUkuran(sasaran, s.ukuran[f]);
+}
+
+export function pencapaianSasaran(s: Sasaran, which: 1 | 2): string {
+  const f = which === 1 ? "p1" : "p2";
+  const teks = s[f].trim();
+  const a = normalAngkaUkuran(which === 1 ? s.ukuran?.sasaran : s.ukuran?.sasaranAkhir ?? s.ukuran?.sasaran);
+  const b = normalAngkaUkuran(s.ukuran?.[f]);
+  const angka = a && b && Number(a) > 0 ? `${b} daripada ${a}` : "";
+  return angka && teks && angka !== teks ? `${angka}. ${teks}` : angka || teks;
+}
+
 export interface Kiraan { bil: number; jumlah: number; purata: number | null; skor: number | null }
 
 /** Markah = capai ÷ sasaran × 100; purata → skor 1–5. GUGUR tidak dikira pada akhir. */
@@ -174,7 +205,7 @@ export function kira(which: 1 | 2, b: Pick<Borang, "bidang">): Kiraan {
   const m: number[] = [];
   for (const s of semuaSasaran(b)) {
     if (which === 2 && s.status === "GUGUR") continue;
-    const x = bacaMarkah(which === 1 ? s.m1 : s.m2);
+    const x = bacaMarkah(markahSasaran(s, which));
     if (x !== null) m.push(x);
   }
   const bil = m.length;
@@ -233,8 +264,8 @@ export function semakan(b: Pick<Borang, "bidang">, i: number, adaBuktiP1 = true)
   if (i === 1) {
     const t = ss.filter((s) => s.status !== "TAMBAH");
     return [
-      [t.every((s) => teksBiasa(s.p1).trim()), `Pencapaian diisi: ${t.filter((s) => teksBiasa(s.p1).trim()).length}/${t.length}`],
-      [t.every((s) => bacaMarkah(s.m1) !== null), `Cadangan markah: ${t.filter((s) => bacaMarkah(s.m1) !== null).length}/${t.length}`],
+      [t.every((s) => teksBiasa(pencapaianSasaran(s, 1)).trim()), `Pencapaian diisi: ${t.filter((s) => teksBiasa(pencapaianSasaran(s, 1)).trim()).length}/${t.length}`],
+      [t.every((s) => bacaMarkah(markahSasaran(s, 1)) !== null), `Cadangan markah: ${t.filter((s) => bacaMarkah(markahSasaran(s, 1)) !== null).length}/${t.length}`],
       [adaBuktiP1, "Sekurang-kurangnya satu bukti dimuat naik"],
     ];
   }
@@ -247,8 +278,8 @@ export function semakan(b: Pick<Borang, "bidang">, i: number, adaBuktiP1 = true)
   }
   const t = ss.filter((s) => s.status !== "GUGUR");
   return [
-    [t.every((s) => teksBiasa(s.p2).trim()), `Pencapaian akhir diisi: ${t.filter((s) => teksBiasa(s.p2).trim()).length}/${t.length}`],
-    [t.every((s) => bacaMarkah(s.m2) !== null), `Cadangan markah: ${t.filter((s) => bacaMarkah(s.m2) !== null).length}/${t.length}`],
+    [t.every((s) => teksBiasa(pencapaianSasaran(s, 2)).trim()), `Pencapaian akhir diisi: ${t.filter((s) => teksBiasa(pencapaianSasaran(s, 2)).trim()).length}/${t.length}`],
+    [t.every((s) => bacaMarkah(markahSasaran(s, 2)) !== null), `Cadangan markah: ${t.filter((s) => bacaMarkah(markahSasaran(s, 2)) !== null).length}/${t.length}`],
   ];
 }
 
@@ -359,10 +390,29 @@ export function gabungIkutKuasa(
     if (bolehTeks(k, s) || baharu) s.teks = potong(n.teks);
     if (k.p1 && s.status !== "TAMBAH") s.p1 = potong(n.p1);
     if (k.p2 && s.status !== "GUGUR") s.p2 = potong(n.p2);
+    if (n.ukuran && typeof n.ukuran === "object") {
+      const u = { ...(s.ukuran ?? { sasaran: "" }) };
+      const sebelum = JSON.stringify(u);
+      const pertamaTerbuka = (k.p1 || k.m1) && s.status !== "TAMBAH";
+      const akhirTerbuka = (k.p2 || k.m2) && s.status !== "GUGUR";
+      // Sasaran pertama dibekukan selepas dinilai; pindaan akhir tidak mengubah P1.
+      if (k.penetapan || (k.semakan && s.status === "TAMBAH") || (pertamaTerbuka && (k.p1 || !u.p1 || !(Number(u.sasaran) > 0)))) {
+        u.sasaran = normalAngkaUkuran(n.ukuran.sasaran);
+      }
+      if (n.ukuran.sasaranAkhir !== undefined && (k.penetapan || (k.semakan && (s.status === "PINDA" || s.status === "TAMBAH"))
+        || (akhirTerbuka && (k.p2 || !u.p2 || !(Number(u.sasaranAkhir ?? u.sasaran) > 0))))) {
+        u.sasaranAkhir = normalAngkaUkuran(n.ukuran.sasaranAkhir);
+      }
+      if (pertamaTerbuka && n.ukuran.p1 !== undefined) u.p1 = normalAngkaUkuran(n.ukuran.p1);
+      if (akhirTerbuka && n.ukuran.p2 !== undefined) u.p2 = normalAngkaUkuran(n.ukuran.p2);
+      if (s.ukuran || sebelum !== JSON.stringify(u)) s.ukuran = u;
+    }
     for (const f of ["m1", "m2"] as const) {
       const boleh = f === "m1" ? k.m1 && s.status !== "TAMBAH" : k.m2 && s.status !== "GUGUR";
       if (!boleh) continue;
-      const v = normalMarkah(String(n[f] ?? ""));
+      const which = f === "m1" ? 1 : 2;
+      const automatik = s.ukuran?.[which === 1 ? "p1" : "p2"] !== undefined;
+      const v = automatik ? markahSasaran(s, which) : normalMarkah(String(n[f] ?? ""));
       if (v === s[f]) continue;
       if (peranan === "PP1") {
         if (s[`${f}_asal`] === undefined) s[`${f}_asal`] = s[f];

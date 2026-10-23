@@ -1,8 +1,8 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useState } from "react";
 import {
-  bolehTeks, keadaan, normalMarkah, petunjuk, segmenTebal, STATUS_SASARAN,
+  bolehTeks, keadaan, markahSasaran, normalAngkaUkuran, pencapaianSasaran, petunjuk, segmenTebal, STATUS_SASARAN,
   type Borang, type Kuasa, type Sasaran, type StatusSasaran,
 } from "@/data/keberhasilan";
 import { HAD_BAIT, semakSaiz } from "@/data/had-fail";
@@ -14,36 +14,14 @@ import {
 import type { Suntingan } from "./suntingan";
 import { BTN_BAHAYA, BTN_BAHAYA_PEKAT, BTN_SENYAP, BTN_UTAMA, Chip, INPUT, inisial, namaPendek, saizFail, tarikh, type Varian } from "./alat";
 
-/** Medan markah: menaip bebas ("15/20"), dinormalkan ke 0–100 bila selesai. */
-function InputMarkah({ id, nilai, tukar, simpan }: { id: string; nilai: string; tukar: (v: string) => void; simpan: () => void }) {
-  const [teks, setTeks] = useState<string | null>(null); // null = ikut data
-  const tunda = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
-  return (
-    <input
-      id={id}
-      type="text"
-      inputMode="decimal"
-      aria-label="Markah"
-      placeholder="Markah"
-      value={teks ?? nilai}
-      onFocus={() => setTeks(nilai)}
-      onChange={(e) => {
-        const mentah = e.target.value;
-        setTeks(mentah);
-        // Skor dan senarai semak dikira semula semasa menaip (nilai sah sahaja).
-        clearTimeout(tunda.current);
-        tunda.current = setTimeout(() => { const v = normalMarkah(mentah); if (v && v !== nilai) tukar(v); }, 400);
-      }}
-      onBlur={() => {
-        clearTimeout(tunda.current);
-        const v = normalMarkah(teks ?? nilai);
-        setTeks(null);
-        if (v !== nilai) tukar(v);
-        simpan();
-      }}
-      className={`${INPUT} w-24 shrink-0 text-center font-mono`}
-    />
-  );
+function InputUkuran({ id, label, nilai, tukar, simpan }: {
+  id: string; label: string; nilai: string; tukar: (v: string) => void; simpan: () => void;
+}) {
+  return <div className="grid gap-1">
+    <label htmlFor={id} className="text-sm font-semibold text-slate-600">{label}</label>
+    <input id={id} type="text" inputMode="decimal" value={nilai} maxLength={40}
+      onChange={(e) => tukar(e.target.value)} onBlur={simpan} className={`${INPUT} font-mono`} />
+  </div>;
 }
 
 function SenaraiBukti({ s, borangId, sasaranId, pk, boleh, sudahDisimpan }: {
@@ -151,13 +129,22 @@ function LajurNilai({ which, s, borang, k, peranan, sas, adaPelayan }: {
   const dikecualikan = (which === 1 && sas.status === "TAMBAH") || (which === 2 && sas.status === "GUGUR");
   const bolehP = k[pf] && !dikecualikan;
   const bolehM = k[mf] && !dikecualikan;
+  const nilaiSasaran = which === 1 ? sas.ukuran?.sasaran ?? "" : sas.ukuran?.sasaranAkhir ?? sas.ukuran?.sasaran ?? "";
+  const nilaiCapai = sas.ukuran?.[pf] ?? "";
+  const sasaranSah = Number(normalAngkaUkuran(nilaiSasaran)) > 0;
+  const bolehSasaran = !dikecualikan && (k.penetapan || bolehP
+    || (which === 2 && k.semakan && (sas.status === "PINDA" || sas.status === "TAMBAH"))
+    || (bolehM && (!nilaiCapai || !sasaranSah)));
+  const tukarUkuran = (medan: "sasaran" | "sasaranAkhir" | "p1" | "p2", nilai: string) =>
+    s.ubahSasaran(sas.id, { ukuran: { sasaran: sas.ukuran?.sasaran ?? "", ...sas.ukuran, [medan]: nilai } });
   const asal = which === 1 ? sas.m1_asal : sas.m2_asal;
-  const buka = bolehP || bolehM || (which === 1 && k.status);
+  const buka = bolehP || bolehM || bolehSasaran || (which === 1 && k.status);
   const kosong = which === 1 && sas.status === "TAMBAH" ? "Sasaran ditambah selepas penilaian pertama"
     : which === 2 && sas.status === "GUGUR" ? "Sasaran digugurkan" : "Belum diisi";
   const varianStatus: Varian = sas.status === "GUGUR" ? "bad" : sas.status === "TAMBAH" ? "info" : sas.status === "PINDA" ? "warn" : "";
-  const nilaiP = which === 1 ? sas.p1 : sas.p2;
-  const nilaiM = which === 1 ? sas.m1 : sas.m2;
+  const nilaiP = pencapaianSasaran(sas, which);
+  const nilaiM = markahSasaran(sas, which);
+  const markahLama = sas.ukuran?.[pf] === undefined && nilaiM !== "";
 
   return (
     <div className={`grid min-w-0 gap-2 rounded-lg border p-3 ${buka ? "border-navy-700/40 bg-white" : "border-garis bg-slate-50"}`}>
@@ -165,29 +152,37 @@ function LajurNilai({ which, s, borang, k, peranan, sas, adaPelayan }: {
         {which === 1 ? "Penilaian pertama" : "Penilaian akhir"}
         {keadaan(borang, idx) === "kunci" && <Chip>belum dibuka</Chip>}
       </h4>
+      {!dikecualikan && <div className="grid gap-2">
+        {bolehSasaran ? <InputUkuran id={`sasaran-${pf}-${sas.id}`} label="Nilai sasaran" nilai={nilaiSasaran}
+          tukar={(v) => tukarUkuran(which === 1 ? "sasaran" : "sasaranAkhir", v)} simpan={s.simpanSegera} />
+          : <div className="text-sm text-slate-600">Nilai sasaran: <b className="font-mono text-slate-800">{nilaiSasaran || "Belum diisi"}</b></div>}
+        {bolehP || bolehM ? <InputUkuran id={`capai-${pf}-${sas.id}`} label="Nilai pencapaian" nilai={nilaiCapai}
+          tukar={(v) => tukarUkuran(pf, v)} simpan={s.simpanSegera} />
+          : <div className="text-sm text-slate-600">Nilai pencapaian: <b className="font-mono text-slate-800">{nilaiCapai || "Belum diisi"}</b></div>}
+        {(bolehSasaran || bolehP || bolehM) && <small className="text-slate-500">Gunakan unit yang sama, contohnya sasaran 20 tugasan dan pencapaian 15 tugasan.</small>}
+        {nilaiSasaran && !sasaranSah && <p role="alert" className="text-sm text-red-700">Nilai sasaran mesti nombor yang lebih daripada sifar.</p>}
+        {nilaiCapai && !normalAngkaUkuran(nilaiCapai) && <p role="alert" className="text-sm text-red-700">Nilai pencapaian mesti nombor sifar atau lebih.</p>}
+      </div>}
       {bolehP ? (
+        <div className="grid gap-1">
+        <label htmlFor={`${pf}-${sas.id}`} className="text-sm font-semibold text-slate-600">Penerangan pencapaian (pilihan jika angka diisi)</label>
         <textarea
           id={`${pf}-${sas.id}`}
           rows={2}
-          value={nilaiP}
+          value={sas[pf]}
           maxLength={1000}
           onChange={(e) => s.ubahSasaran(sas.id, { [pf]: e.target.value })}
           onBlur={s.simpanSegera}
           placeholder={`Pencapaian semasa ${which === 1 ? "penilaian pertama" : "penilaian akhir"}`}
           className={`${INPUT} resize-y leading-snug`}
         />
+        </div>
       ) : (
         <p className={`whitespace-pre-wrap break-words py-1 text-sm ${nilaiP ? "" : "italic text-slate-500"}`}>{nilaiP || kosong}</p>
       )}
       <div className="flex flex-wrap items-center gap-2">
-        {bolehM ? (
-          <InputMarkah id={`${mf}-${sas.id}`} nilai={nilaiM} tukar={(v) => s.ubahSasaran(sas.id, { [mf]: v })} simpan={s.simpanSegera} />
-        ) : (
-          <>
-            <span className="font-mono text-lg font-semibold">{nilaiM || "–"}</span>
-            <small className="text-slate-500">markah</small>
-          </>
-        )}
+        <output aria-label={`Markah ${pf}-${sas.id}`} className="font-mono text-lg font-semibold">{nilaiM || "–"}</output>
+        <small className="text-slate-500">{markahLama ? "markah tersimpan" : "markah automatik"}</small>
         {asal !== undefined && <span className="text-xs font-medium text-amber-800">Cadangan PYD: {asal || "–"} · diubah PP1</span>}
         {which === 1 && (k.status ? (
           <select
@@ -201,8 +196,8 @@ function LajurNilai({ which, s, borang, k, peranan, sas, adaPelayan }: {
         ) : (
           <Chip v={varianStatus}>{sas.status}</Chip>
         ))}
-        {bolehM && peranan === "PYD" && <small className="text-slate-500">1–100 atau 15/20</small>}
-        {bolehM && peranan === "PP1" && <small className="font-medium text-amber-800">Anda boleh ubah markah</small>}
+        {markahLama && (bolehP || bolehM) && <small className="text-slate-500">Isi angka sasaran dan pencapaian untuk menggunakan kiraan automatik.</small>}
+        {bolehM && peranan === "PP1" && <small className="font-medium text-amber-800">Semak dan betulkan angka pencapaian jika perlu.</small>}
       </div>
       <SenaraiBukti
         s={s}

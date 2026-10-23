@@ -9,6 +9,7 @@
 import {
   HAD_SASARAN, HAD_TEKS, MIN_SASARAN, PERINGKAT, BIDANG_TETAP, bidangTetap, susunBidangTetap, gabungIkutKuasa, keadaan, kira, kuasa, normalMarkah,
   penghalang, peralihan, semakan, peringkatKosong, peringkatSemasa, ringkasan, sasaranKosong, tarikhTutup,
+  normalAngkaUkuran, kiraMarkahUkuran, markahSasaran, pencapaianSasaran,
   type Bidang, type Kuasa, type KeadaanPeringkat, type PerananEkb, type Sasaran, type Tindakan,
 } from "../src/data/keberhasilan.ts";
 
@@ -48,6 +49,25 @@ const NM: [string, string][] = [
   ["Infinity", ""], ["0.001", "0"], ["0/20", "0"],
 ];
 for (const [m, h] of NM) jangka(`normalMarkah(${JSON.stringify(m)})`, normalMarkah(m), h);
+
+/* ---------- markah automatik daripada angka ukuran ---------- */
+for (const [sasaran, capai, mahu] of [
+  ["20", "15", "75"], ["3", "1", "33.33"], ["20", "30", "100"],
+  ["20", "0", "0"], ["2,5", "1,25", "50"], ["1000", "750", "75"],
+  ["0", "0", ""], ["0", "10", ""], ["", "10", ""], ["20", "", ""],
+  ["20", "-1", ""], ["-20", "1", ""], ["abc", "1", ""], ["20", "Infinity", ""],
+  ["2", ".5", "25"], ["2.", "1.", "50"], ["2", "9".repeat(41), ""],
+] as const) jangka(`angka ${capai}/${sasaran}`, kiraMarkahUkuran(sasaran, capai), mahu);
+jangka("angka tidak membaca tahun/teks sebagai pencapaian", normalAngkaUkuran("15 tugasan pada 2026"), "");
+{
+  const s = S("auto1", "Sasaran", { m1: "99", m2: "99", ukuran: { sasaran: "20", p1: "15", sasaranAkhir: "40", p2: "20" } });
+  jangka("markah P1 daripada ukuran, bukan nilai dihantar", markahSasaran(s, 1), "75");
+  jangka("sasaran akhir berasingan daripada P1", markahSasaran(s, 2), "50");
+  jangka("penerangan dihasilkan daripada angka", pencapaianSasaran(s, 1), "15 daripada 20");
+  jangka("penerangan manual ditunjuk bersama angka", pencapaianSasaran({ ...s, p1: "Penerangan saya" }, 1), "15 daripada 20. Penerangan saya");
+  jangka("markah lama kekal jika ukuran fasa itu belum diisi", markahSasaran({ ...s, ukuran: { sasaran: "20", p2: "10" } }, 1), "99");
+  jangka("angka pencapaian dikosongkan membuang markah automatik", markahSasaran({ ...s, ukuran: { sasaran: "20", p1: "" } }, 1), "");
+}
 
 /* ---------- kira ---------- */
 const ms = (v: string[], status: Sasaran["status"] = "KEKAL") =>
