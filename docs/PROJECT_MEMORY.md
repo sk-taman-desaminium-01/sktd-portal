@@ -738,15 +738,18 @@ Teknikal:
 - `DIKHASKAN` wujud di DUA tempat (portal `src/data/interaktif.ts` dan Worker) — kemas kini kedua-duanya.
 ## e-Keberhasilan — Borang Keberhasilan PBPPP dua hala (23 Okt 2026)
 
-- **Fixed bidang (owner, 23 Oct):** Kurikulum, Hal Ehwal Murid, Kokurikulum,
-  Tugas Sampingan, in that order. Names/deletion are locked in UI and server;
+- **Fixed bidang (owner, 23 Oct, updated):** Pentadbiran, Kurikulum,
+  Hal Ehwal Murid, Kokurikulum, Tugas Sampingan, in that order.
+  Pentadbiran is inserted above Kurikulum for existing and new forms;
+  existing targets and extra bidang are preserved. An existing custom
+  Pentadbiran is reused. Names/deletion are locked in UI and server;
   users can add, rename and delete extra bidang during penetapan. Existing
   PDPC/Pengurusan Kelas map to Kurikulum/Hal Ehwal Murid with sasaran intact.
   No SQL required. Release authorized by owner: commit and push to `main`
   through the existing Vercel Git integration. Worktree: `codex/ekb-bidang`
   in `../.worktrees/ekb-bidang`. Extra bidang can be deleted by
   their owner during penetapan; no existing records were deleted in this task.
-  Validation: `npm run uji:keberhasilan` = 379 passed; `npm run uji:kuasa` =
+  Validation: `npm run uji:keberhasilan` = 384 passed; `npm run uji:kuasa` =
   33 passed; TypeScript and ESLint for changed source files exited 0.
   Kuota (16 checks + 17 SQL files) and module contracts passed using the
   ignored `scripts/tmp/semak-worktree.mjs` read-only sibling-path adapter.
