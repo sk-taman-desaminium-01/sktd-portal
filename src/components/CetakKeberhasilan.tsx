@@ -1,6 +1,6 @@
 import { Fragment } from "react";
 import { aset } from "@/lib/laluan";
-import { kira, segmenTebal, type Borang, type Kiraan, type KodPeringkat } from "@/data/keberhasilan";
+import { kira, markahSasaran, pencapaianSasaran, segmenTebal, type Borang, type Kiraan, type KodPeringkat } from "@/data/keberhasilan";
 
 /** "2026-07-15T…" → "15.07.2026" */
 function tarikh(v: string | null | undefined) {
@@ -133,11 +133,11 @@ export default function CetakKeberhasilan({
                     <td className={s.status === "GUGUR" ? "kb-gugur" : undefined}>
                       {segmenTebal(s.teks).map((g, j) => (g.tebal ? <b key={j}>{g.teks}</b> : <Fragment key={j}>{g.teks}</Fragment>))}
                     </td>
-                    <td>{s.p1}</td>
-                    <td className="kb-c">{s.m1}</td>
+                    <td>{pencapaianSasaran(s, 1)}</td>
+                    <td className="kb-c">{markahSasaran(s, 1)}</td>
                     <td className="kb-c">{s.status}</td>
-                    <td>{s.p2}</td>
-                    <td className="kb-c">{s.m2}</td>
+                    <td>{pencapaianSasaran(s, 2)}</td>
+                    <td className="kb-c">{markahSasaran(s, 2)}</td>
                     <td>{s.catatan}</td>
                   </tr>
                 );

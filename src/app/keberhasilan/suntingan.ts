@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { bukaBorang, simpanBorang, tindakanPeringkat, type Bukti, type BorangPenuh, type Ulasan } from "@/lib/keberhasilan";
 import {
-  sasaranKosong, bidangTetap,
+  sasaranKosong, bidangTetap, markahSasaran,
   type Bidang, type Borang, type MaklumatPyd, type Sasaran, type StatusSasaran, type Tindakan,
 } from "@/data/keberhasilan";
 
@@ -195,7 +195,11 @@ export function useSuntingan(awal: BorangPenuh | null) {
 
   /* ---- pengubah bidang/sasaran/PYD (semuanya melalui `ubah`) ---- */
   const peta = (id: string, tampung: Partial<Sasaran>) => (d: Draf): Draf => ({
-    ...d, bidang: d.bidang.map((b) => ({ ...b, sasaran: b.sasaran.map((s) => (s.id === id ? { ...s, ...tampung } : s)) })),
+    ...d, bidang: d.bidang.map((b) => ({ ...b, sasaran: b.sasaran.map((s) => {
+      if (s.id !== id) return s;
+      const kini = { ...s, ...tampung };
+      return tampung.ukuran ? { ...kini, m1: markahSasaran(kini, 1), m2: markahSasaran(kini, 2) } : kini;
+    }) })),
   });
   const mutasi = {
     ubahSasaran: (id: string, tampung: Partial<Sasaran>) => ubah(peta(id, tampung)),

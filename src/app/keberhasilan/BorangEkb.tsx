@@ -35,6 +35,7 @@ function SelDaftar({ label, k, hasil }: { label: string; k: "P1" | "Akhir"; hasi
           ))}
         </div>
         <div className="mt-1.5 font-mono text-[12.5px] text-[#9db3d1]"><b className="text-[#eaf1fb]">{hasil.bil}</b> dinilai · purata <b className="text-[#eaf1fb]">{hasil.purata !== null ? hasil.purata.toFixed(2) : "–"}</b></div>
+        <div className="mt-1 text-xs text-[#9db3d1]">Jumlah markah <output aria-label={`Jumlah markah ${k}`} className="font-mono font-bold text-[#eaf1fb]">{hasil.bil ? hasil.jumlah.toFixed(2) : "–"}</output> · dikira automatik</div>
       </div>
     </div>
   );

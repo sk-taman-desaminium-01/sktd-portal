@@ -738,6 +738,24 @@ Teknikal:
 - `DIKHASKAN` wujud di DUA tempat (portal `src/data/interaktif.ts` dan Worker) — kemas kini kedua-duanya.
 ## e-Keberhasilan — Borang Keberhasilan PBPPP dua hala (23 Okt 2026)
 
+- **Automatic marks (owner, 23 Oct):** each target now has numeric target
+  and achievement inputs. Mark = achievement / target * 100, capped at 100;
+  zero achievement is valid, target must be positive. No inference from
+  narrative text. Mark inputs are read-only; totals, averages and 1–5 scores
+  update from the same pure functions in draft, server, dashboard and print.
+  P1 target/achievement freeze after P1 is confirmed; a separate final target
+  prevents final revisions from changing P1. PP1 corrections retain the
+  original suggested mark and obey existing access/state gates.
+  Existing marks stay until that phase's numeric achievement is entered.
+  Numeric measurements alone satisfy achievement completeness; optional
+  narrative remains visible alongside the numbers. Stored in existing JSON,
+  no SQL migration. Source Numbers workbook was read locally, not uploaded
+  or modified; its aggregation/score bands were inspected, no personal data
+  used in fixtures. Do not copy its P1 SUM range omission or exclusion of 0.
+  Validation: keberhasilan 408, access/flow 113, kuasa 33, cetak 24,
+  kuota/module contracts passed; TypeScript/ESLint and diff checks exit 0.
+  Authenticated browser screenshots remain unavailable in this session.
+
 - **Access correction (owner, later 23 Oct):** only a trusted admin mutlak
   session has access to every form and evaluator settings. Ordinary admin,
   pentadbir and all other PPs see their own form plus assigned PYDs only.
