@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import {
   kira, keadaan, kuasa, LABEL_KEADAAN, penghalang, peringkatSemasa, PERINGKAT, petunjuk, semakan, semuaSasaran,
   sah, tarikhTutup, STATUS_SASARAN, ringkasan, teksBiasa, MIN_SASARAN, bidangTetap,
-  type Borang, type Kiraan, type PerananEkb, type Tindakan,
+  type Borang, type Kiraan, type Tindakan,
 } from "@/data/keberhasilan";
 import type { DataHalaman } from "@/lib/keberhasilan";
 import type { Suntingan } from "./suntingan";
@@ -124,6 +124,7 @@ export default function BorangEkb({ s, data, onKembali, onRefresh }: {
   const [sibuk, setSibuk] = useState(false);
   const [nota, setNota] = useState<{ ok: boolean; teks: string } | null>(null);
   const [pulang, setPulang] = useState(false);
+  const [pulangMutlak, setPulangMutlak] = useState<number | null>(null);
   const [sebab, setSebab] = useState("");
   // null = tertutup; "" = dibuka tanpa bidang pilihan; id = bidang dipilih terus.
   const [pembina, setPembina] = useState<string | null>(null);
@@ -133,8 +134,7 @@ export default function BorangEkb({ s, data, onKembali, onRefresh }: {
   if (!penuh || !b || !draf) return null;
 
   const peranan = penuh.peranan;
-  const pe: PerananEkb = peranan === "PEMERHATI" ? "PP2" : peranan;
-  const k = kuasa(b, pe);
+  const k = kuasa(b, peranan);
   const cur = peringkatSemasa(b);
   const idPelayan = new Set(penuh.borang.bidang.flatMap((x) => x.sasaran.map((y) => y.id)));
   const adaBuktiP1 = penuh.bukti.some((x) => x.peringkat === "p1");
@@ -143,6 +143,7 @@ export default function BorangEkb({ s, data, onKembali, onRefresh }: {
   const ring = ringkasan(b, data.hariIni);
   const lemah = semuaS.filter((x) => petunjuk(x.teks)[0][0] !== "ok").length;
   const bolehTambah = k.penetapan || k.semakan;
+  const menungguMutlak = penuh.mutlak ? [0, 1, 2, 3].filter((i) => ["dihantar", "sah1"].includes(keadaan(b, i))) : [];
   const mula: number[] = [];
   let urut = 0;
   for (const x of b.bidang) { mula.push(urut); urut += x.sasaran.length; }
@@ -151,12 +152,13 @@ export default function BorangEkb({ s, data, onKembali, onRefresh }: {
     setSibuk(true); setNota(null);
     const r = await s.tindak(i, t, alasan);
     setSibuk(false);
-    if (r.ok) { setNota({ ok: true, teks: MESEJ_TINDAKAN[t] }); setPulang(false); setSebab(""); onRefresh(); }
+    if (r.ok) { setNota({ ok: true, teks: MESEJ_TINDAKAN[t] }); setPulang(false); setPulangMutlak(null); setSebab(""); onRefresh(); }
     else setNota({ ok: false, teks: r.mesej ?? "Gagal." });
   }
 
   /* ---------------------------------------------------- panel tindakan ---- */
   function panel() {
+    if (penuh!.mutlak && peranan !== "PYD" && menungguMutlak.length) return null;
     const st = cur < 4 ? keadaan(b!, cur) : null;
     const info = cur < 4 ? PERINGKAT[cur] : null;
     const pg = info ? b!.peringkat[info.k] : null;
@@ -165,10 +167,6 @@ export default function BorangEkb({ s, data, onKembali, onRefresh }: {
     if (cur === 4 && peranan !== "PP2") {
       return <section className={`${KAD} p-4`}><h3 className="text-lg font-bold text-navy-800">Borang lengkap</h3>
         <p className="mt-1 text-sm text-slate-600">Keempat-empat peringkat telah disahkan. Skor akhir {kira(2, b!).skor ?? "–"} sedia dimasukkan ke e-Prestasi.</p></section>;
-    }
-    if (peranan === "PEMERHATI") {
-      return <section className={`${KAD} p-4`}><h3 className="text-lg font-bold text-navy-800">Mod baca sahaja</h3>
-        <p className="mt-1 text-sm text-slate-600">Anda melihat borang ini sebagai pemerhati. Hanya PYD, PP1 dan PP2 yang dilantik boleh menyunting, mengesah atau mengulas.</p></section>;
     }
     const senarai = cur < 4 ? semakan(b!, cur, adaBuktiP1) : [];
     const semak = senarai.length > 0 && (
@@ -267,7 +265,7 @@ export default function BorangEkb({ s, data, onKembali, onRefresh }: {
           ) : (
             <>
               <h2 className="break-words text-xl font-bold text-navy-800">{b.pyd.nama}</h2>
-              <small className="block text-slate-500">{[b.pyd.jawatan, b.pyd.gred].filter(Boolean).join(" · ")}{b.pyd.jawatan || b.pyd.gred ? " · " : ""}Anda {peranan === "PEMERHATI" ? "pemerhati" : peranan}</small>
+              <small className="block text-slate-500">{[b.pyd.jawatan, b.pyd.gred].filter(Boolean).join(" · ")}{b.pyd.jawatan || b.pyd.gred ? " · " : ""}Anda {penuh.mutlak ? "admin mutlak" : peranan}</small>
             </>
           )}
         </div>
@@ -307,6 +305,38 @@ export default function BorangEkb({ s, data, onKembali, onRefresh }: {
       </ol>
 
       <div aria-live="polite" className="grid gap-3">
+        {menungguMutlak.length > 0 && (
+          <section className="grid gap-3 rounded-xl border border-emas bg-[#fdf9f0] p-4">
+            <div>
+              <h3 className="text-lg font-bold text-navy-800">Pengesahan admin mutlak</h3>
+              <p className="mt-1 text-sm text-slate-600">Anda boleh mengesahkan atau memperakui borang ini. PP1 dan PP2 yang dilantik kekal seperti ditetapkan.</p>
+            </div>
+            {menungguMutlak.map((i) => {
+              const menungguPp1 = keadaan(b, i) === "dihantar";
+              return (
+                <div key={i} className="grid gap-2 border-t border-garis pt-3">
+                  <b className="text-base text-navy-800">{PERINGKAT[i].t}</b>
+                  <div className="flex flex-wrap gap-2">
+                    <button type="button" disabled={sibuk} onClick={() => void jalan(i, menungguPp1 ? "sahkan" : "perakui")} className={BTN_UTAMA}>
+                      {menungguPp1 ? "Sahkan" : "Perakui"} {PERINGKAT[i].t}
+                    </button>
+                    {menungguPp1 && <button type="button" disabled={sibuk} onClick={() => { setPulangMutlak(i); setSebab(""); }} className={BTN}>Pulangkan untuk pindaan</button>}
+                  </div>
+                  {pulangMutlak === i && menungguPp1 && (
+                    <div className="grid gap-2">
+                      <label htmlFor={`sebab-mutlak-${i}`} className={LABEL}>Sebab dipulangkan (PYD akan nampak)</label>
+                      <textarea id={`sebab-mutlak-${i}`} rows={2} maxLength={1000} value={sebab} onChange={(e) => setSebab(e.target.value)} className={`${INPUT} resize-y`} />
+                      <div className="flex flex-wrap gap-2">
+                        <button type="button" disabled={sibuk || !sebab.trim()} onClick={() => void jalan(i, "pulang", sebab.trim())} className={BTN_BAHAYA_PEKAT}>Pulangkan</button>
+                        <button type="button" onClick={() => setPulangMutlak(null)} className={BTN_SENYAP}>Batal</button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </section>
+        )}
         {panel()}
         {nota && <p role={nota.ok ? "status" : "alert"} className={`rounded-lg p-3 text-sm font-medium ${nota.ok ? "bg-emerald-50 text-emerald-800" : "bg-red-50 text-red-700"}`}>{nota.teks}</p>}
       </div>

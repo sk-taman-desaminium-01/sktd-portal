@@ -226,7 +226,7 @@ function Ulasan({ s, borang, sas, peranan, adaPelayan }: {
   const [teks, setTeks] = useState("");
   const [sibuk, setSibuk] = useState(false);
   const [ralat, setRalat] = useState<string | null>(null);
-  const boleh = peranan !== "PEMERHATI" && adaPelayan;
+  const boleh = adaPelayan;
   if (!senarai.length && !boleh) return null;
 
   async function hantar() {

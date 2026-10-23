@@ -16,6 +16,9 @@ secara jujur. Memori bersama (WAJIB baca dahulu):
 Repo `gpi`/`erpm` (eGPI) TIDAK BOLEH disentuh. `sktd-mockup` dibekukan.
 
 ### Cara kerja yang pengguna minta
+- e-Keberhasilan: only trusted admin mutlak manages all forms/PP settings and
+  confirms/approves any form (including own). Every other PP sees only own
+  form plus assigned PYDs. Ordinary admin is not Pentadbir or Admin Mutlak.
 - Borang Keberhasilan print/preview: KPM logo only; no school crest (owner, 23 Oct).
 - e-Keberhasilan: five fixed bidang = Pentadbiran, Kurikulum, Hal Ehwal Murid,
   Kokurikulum, Tugas Sampingan (in order). Preserve existing sasaran;

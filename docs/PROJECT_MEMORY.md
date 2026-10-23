@@ -738,6 +738,22 @@ Teknikal:
 - `DIKHASKAN` wujud di DUA tempat (portal `src/data/interaktif.ts` dan Worker) — kemas kini kedua-duanya.
 ## e-Keberhasilan — Borang Keberhasilan PBPPP dua hala (23 Okt 2026)
 
+- **Access correction (owner, later 23 Oct):** only a trusted admin mutlak
+  session has access to every form and evaluator settings. Ordinary admin,
+  pentadbir and all other PPs see their own form plus assigned PYDs only.
+  Admin mutlak can confirm/return as PP1 and approve as PP2 on any form,
+  including their own (explicitly confirmed by owner). PP assignments stay
+  unchanged; state, completeness and optimistic version checks still apply.
+  The acting user's identity and system-operator action are audited. The
+  owner's view has a Pengesahan PYD tab and Pengesahan admin mutlak controls.
+  Ordinary admin remains labelled Admin in Tetapan, not Pentadbir/Mutlak.
+  No real evaluation was performed while testing; use
+  `npm run uji:keberhasilan-akses` for the offline Server Action + React tests
+  (90 passed, including negative authorization and concurrent confirmations).
+  Other validation: keberhasilan 384, kuasa 33, cetak 24, kuota/module
+  contracts passed; TypeScript/ESLint passed. Authenticated production
+  accounts were not inspected and no role/environment setting was changed.
+
 - **Print header exception (owner, 23 Oct):** Borang Keberhasilan uses the
   KPM logo only. Remove the SKTD crest from this form's preview/print header;
   keep the KPM logo centered above its ministry name. This supersedes the
@@ -772,14 +788,16 @@ SQL: `supabase/migrations/20261023_keberhasilan.sql` — **sudah dijalankan 23 O
   pintu ke jadual `ekb_*`. UI di `src/app/keberhasilan/` tidak mengira skor
   atau kuasa sendiri.
 - **Peranan per BORANG, bukan per akaun.** PYD = pemilik borang; PP1/PP2
-  daripada `ekb_penilai` (ditetapkan pentadbir dalam tab Tetapan penilai).
+  daripada `ekb_penilai` (ditetapkan admin mutlak dalam tab Tetapan penilai).
+  Admin mutlak has the explicit cross-form approval exception above.
   Pelayar menghantar seluruh bidang; pelayan hanya menyalin medan yang peranan
   itu boleh ubah pada peringkat terbuka (`gabungIkutKuasa`). Jangan pintas.
 - **Siapa nampak apa (keputusan pengguna 23 Okt, MUKTAMAD):** guru, kerani &
   AKP biasa — borang SENDIRI sahaja. PP yang dilantik — + PYD yang dinilai.
-  **Pentadbir & Admin Mutlak** — semua borang (baca sahaja) DAN satu-satunya
-  yang boleh menetapkan PP. Admin biasa TIADA akses Tetapan penilai. Dikunci
-  dalam `scripts/uji-kontrak-modul.mts` (`lihatSemua`).
+  **Admin Mutlak sahaja** — semua borang dan pengesahan PP1/PP2, serta
+  satu-satunya yang boleh menetapkan PP. Pentadbir dan admin biasa TIADA
+  akses Tetapan penilai; PP hanya PYD dilantik. Dikunci dalam
+  `src/data/keberhasilan-akses.ts` dan ujian akses pelayan.
 - **Kunci optimistik `versi`.** Setiap tulisan (simpan, peralihan, bukti)
   menaikkan versi; konflik → `{konflik:true}` dan draf pengguna dikekalkan.
 - **Bukti** dalam baldi PERSENDIRIAN `ekb-bukti`, muat naik terus (signed
@@ -791,11 +809,13 @@ SQL: `supabase/migrations/20261023_keberhasilan.sql` — **sudah dijalankan 23 O
 - PP1 mengesah/PP2 memperakui → `penghalang()` disemak SEMULA (PP1 boleh
   mengubah markah/status selepas PYD menghantar).
 - **Kolam PP (23 Okt, keputusan pengguna):** PP1/PP2 = Pentadbir + Admin Mutlak
-  sahaja. Kerani/AKP juga PYD; admin/pentadbir boleh melantik kerani/AKP
+  sahaja. Kerani/AKP juga PYD; admin mutlak boleh melantik kerani/AKP
   tertentu (cth. Ketua Kerani) ke `ekb_pp_akp` — mereka menjadi pilihan PP
   bagi PYD Kerani/AKP SAHAJA. Dikuatkuasa dalam `tetapPenilai`; menggugurkan
   lantikan mengosongkan PP berkenaan pada tahun semasa.
 - **Admin Mutlak kini mempunyai baris `pbd_guru`** (`idMutlak` dalam
   `src/lib/akses.ts`, peranan DB `admin`, dicipta sekali semasa log masuk).
-  Kuasa tetap daripada env. Lapisan admin dirahsiakan: pelayar bukan-mutlak
-  menerima "admin" sebagai "pentadbir".
+  Kuasa tetap daripada sesi pelayan, bukan label DB. Dalam Tetapan yang
+  hanya dilihat admin mutlak, admin biasa berlabel Admin dan pemilik
+  berlabel Admin Mutlak. Log/notifikasi pengguna lain menggunakan istilah
+  pentadbir sistem untuk tindakan rentas PP.
