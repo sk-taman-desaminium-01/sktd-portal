@@ -10,6 +10,7 @@ import { hantar } from "./notifikasi";
 import { sahInt, sahUuid } from "./sah";
 import { tetapan } from "./fail-sementara";
 import { hariIniMY } from "@/data/tarikh-my";
+import { namaBersih } from "./nama";
 import { HAD_BAIT } from "@/data/had-fail";
 import {
   PERINGKAT, HAD_ULASAN, LOG_TINDAKAN, gabungIkutKuasa, kuasa, peralihan, peringkatKosong,
@@ -153,6 +154,8 @@ async function susulan(kerja: () => Promise<unknown>) {
 
 function keBorang(r: BarisBorang, peranan: PerananLihat): Borang {
   const pyd: MaklumatPyd = Object.assign({ nama: "", kp: "", gred: "", jawatan: "", tempat: TEMPAT }, r.pyd ?? {});
+  // Nama akaun Google KPM membawa "KPM-Guru" — bukan sebahagian nama rasmi.
+  pyd.nama = namaBersih(pyd.nama).toUpperCase();
   if (peranan !== "PYD") pyd.kp = "";
   const peringkat = { ...peringkatKosong(), ...(r.peringkat ?? {}) };
   return { id: r.id, tahun: r.tahun, pyd_id: r.pyd_id, versi: r.versi, pyd, bidang: r.bidang ?? [], peringkat };
@@ -163,7 +166,7 @@ async function namaGuru(ids: (string | null)[]): Promise<Map<string, { nama: str
   const m = new Map<string, { nama: string; email: string | null }>();
   if (!u.length) return m;
   const rows = (await klienTulis().minta(`pbd_guru?select=id,nama,email&id=in.(${u.join(",")})`)) as { id: string; nama: string; email: string | null }[];
-  for (const r of rows) m.set(r.id, { nama: r.nama, email: r.email });
+  for (const r of rows) m.set(r.id, { nama: namaBersih(r.nama), email: r.email });
   return m;
 }
 
@@ -231,7 +234,7 @@ export async function dataKeberhasilan(): Promise<DataHalaman> {
         headers: { Prefer: "resolution=ignore-duplicates,return=minimal" },
         body: JSON.stringify({
           tahun, pyd_id: saya.id,
-          pyd: { nama: (saya.nama ?? "").toUpperCase(), kp: "", gred: "", jawatan: "", tempat: TEMPAT },
+          pyd: { nama: namaBersih(saya.nama ?? "").toUpperCase(), kp: "", gred: "", jawatan: "", tempat: TEMPAT },
           bidang: BIDANG_LALAI.map((nama) => ({ id: randomUUID().slice(0, 8), nama, sasaran: [] })),
           peringkat: peringkatKosong(),
         }),
@@ -283,7 +286,7 @@ export async function dataKeberhasilan(): Promise<DataHalaman> {
         bacaSemua<OrangPeranan>(`pbd_guru?select=id,nama,peranan&dibenarkan=eq.true&order=nama.asc,id.asc`)
           // Lapisan admin dirahsiakan (sama seperti `sembunyiBaris`): pelayar
           // hanya menerima kumpulan, dan "admin" dipapar sebagai pentadbir.
-          .then((g) => g.map((o) => (o.peranan === "admin" ? { ...o, peranan: "pentadbir" } : o))),
+          .then((g) => g.map((o) => ({ ...o, nama: namaBersih(o.nama), peranan: o.peranan === "admin" ? "pentadbir" : o.peranan }))),
         calonPP().then((c) => (saya.peranan === "admin_mutlak" ? c : { ...c, mutlakTiadaRekod: 0 })),
       ])
       : [[], null];
@@ -560,10 +563,11 @@ async function calonPP(): Promise<CalonPP> {
     ppAkpBelumSedia = true;
   }
   const semua = new Map<string, Orang>();
-  for (const o of [...pentadbir, ...mutlak]) semua.set(o.id, { id: o.id, nama: o.nama });
+  for (const o of [...pentadbir, ...mutlak]) semua.set(o.id, { id: o.id, nama: namaBersih(o.nama) });
   return {
     pentadbir: [...semua.values()].sort((a, c) => a.nama.localeCompare(c.nama)),
-    ppAkp, akp, ppAkpBelumSedia,
+    ppAkp: ppAkp.map((o) => ({ ...o, nama: namaBersih(o.nama) })),
+    akp: akp.map((o) => ({ ...o, nama: namaBersih(o.nama) })), ppAkpBelumSedia,
     mutlakTiadaRekod: emel.filter((e) => !mutlak.some((m) => m.email?.toLowerCase() === e)).length,
   };
 }
@@ -642,7 +646,7 @@ export async function tetapPenilai(input: { pydId: string; pp1Id: string | null;
       headers: { Prefer: "resolution=ignore-duplicates,return=minimal" },
       body: JSON.stringify({
         tahun, pyd_id: pydId,
-        pyd: { nama: (g?.nama ?? "").toUpperCase(), kp: "", gred: "", jawatan: "", tempat: TEMPAT },
+        pyd: { nama: namaBersih(g?.nama ?? "").toUpperCase(), kp: "", gred: "", jawatan: "", tempat: TEMPAT },
         bidang: BIDANG_LALAI.map((nama) => ({ id: randomUUID().slice(0, 8), nama, sasaran: [] })),
         peringkat: peringkatKosong(),
       }),
