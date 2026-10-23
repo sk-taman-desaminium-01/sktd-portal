@@ -46,9 +46,9 @@ export type Permohonan =
   | { keadaan: "gagal"; mesej: string };
 
 export interface Pengguna {
-  /** id baris `pbd_guru`. Null untuk admin mutlak (mereka datang dari env,
-   *  bukan dari jadual) — mereka tidak memerlukannya kerana kuasa mereka
-   *  tidak bergantung kepada tugasan kelas. */
+  /** id baris `pbd_guru`. Admin mutlak juga mendapat baris (lihat
+   *  `idMutlak`); null hanya bila baris itu gagal dicipta, atau orang itu
+   *  belum ada dalam senarai akses. */
   id: string | null;
   emel: string;
   nama: string | null;
@@ -134,7 +134,7 @@ export const pengguna = cache(async function pengguna(): Promise<Pengguna | null
   if (!emel) return null;
 
   if (senaraiMutlak().includes(emel)) {
-    return { id: null, emel, nama, peranan: "admin_mutlak", mutlak: true, rasmi: true };
+    return { id: await idMutlak(emel, nama, idClerk), emel, nama, peranan: "admin_mutlak", mutlak: true, rasmi: true };
   }
 
   // Bukan mutlak → semak senarai akses dalam DB.
@@ -192,6 +192,66 @@ export const pengguna = cache(async function pengguna(): Promise<Pengguna | null
     return { id: null, emel, nama, peranan: null, mutlak: false, rasmi: domainRasmi(emel) };
   }
 });
+
+/**
+ * ADMIN MUTLAK JUGA KAKITANGAN. Kuasanya datang daripada env, tetapi dia
+ * tetap seorang warga sekolah: dinilai dalam e-Keberhasilan, boleh dilantik
+ * sebagai PP, dan rekod lain (disiplin, borang) perlu dikaitkan dengan
+ * dirinya. Tanpa baris `pbd_guru`, `id` kekal null dan semua itu mustahil
+ * (permintaan pengguna 23 Okt 2026).
+ *
+ * Baris dicipta SEKALI dengan peranan `admin` — peranan DB itu tidak memberi
+ * kuasa (env yang menentukan), dan `admin` disembunyikan daripada admin lain
+ * dalam Senarai Akses, jadi lapisan mutlak kekal dirahsiakan.
+ *
+ * Kegagalan TIDAK menghalang log masuk: kuasa mutlak tidak boleh bergantung
+ * kepada DB (itulah sebab ia dalam env). Ia dilaporkan ke log pelayan.
+ */
+const ID_MUTLAK = new Map<string, string>();
+
+async function idMutlak(emel: string, nama: string | null, idClerk: string | null): Promise<string | null> {
+  const ingat = ID_MUTLAK.get(emel);
+  if (ingat) return ingat;
+  const db = klienTulis();
+  // Had masa: kuasa mutlak tidak boleh tergantung kerana DB tergantung.
+  const had = () => ({ signal: AbortSignal.timeout(4000) });
+  // Emel lama mungkin tersimpan dengan huruf besar: cari tanpa kira huruf,
+  // kemudian padankan TEPAT di sini (`_` dalam emel ialah kad liar ilike).
+  const cari = async () => {
+    const r = (await db.minta(`pbd_guru?select=id,email,dibenarkan&email=ilike.${encodeURIComponent(emel)}&order=id.asc`, had())) as
+      { id: string; email: string | null; dibenarkan: boolean }[];
+    return r.find((x) => x.email?.toLowerCase() === emel) ?? null;
+  };
+  try {
+    let r = await cari();
+    if (!r) {
+      const asas = nama?.trim() || emel.split("@")[0];
+      // Nama unik (indeks upper(nama)): jika nama itu milik emel lain, beza
+      // dengan awalan emel — lebih baik daripada tiada rekod langsung.
+      for (const n of [asas, `${asas} (${emel.split("@")[0]})`]) {
+        try {
+          await db.minta("pbd_guru", {
+            method: "POST", headers: { Prefer: "return=minimal" }, ...had(),
+            body: JSON.stringify({ clerk_user_id: idClerk, nama: n, email: emel, peranan: "admin", dibenarkan: true }),
+          });
+          break;
+        } catch (e) {
+          // Kalah perlumbaan dengan permintaan serentak, atau nama bertembung.
+          if ((r = await cari())) break;
+          if (n !== asas) throw e;
+        }
+      }
+      r = r ?? (await cari());
+    } else if (!r.dibenarkan) {
+      await db.minta(`pbd_guru?id=eq.${r.id}`, { method: "PATCH", headers: { Prefer: "return=minimal" }, body: JSON.stringify({ dibenarkan: true }), ...had() });
+    }
+    if (r) ID_MUTLAK.set(emel, r.id);
+    return r?.id ?? null;
+  } catch (e) {
+    console.error("[akses] admin mutlak tiada baris pbd_guru dan gagal dicipta", e);
+    return null;
+  }
+}
 
 /**
  * Tulis baris "menunggu kelulusan" untuk orang yang baru log masuk.

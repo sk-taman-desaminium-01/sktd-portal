@@ -764,3 +764,12 @@ SQL: `supabase/migrations/20261023_keberhasilan.sql` — **sudah dijalankan 23 O
   menaikkan purata — jangan regresi.
 - PP1 mengesah/PP2 memperakui → `penghalang()` disemak SEMULA (PP1 boleh
   mengubah markah/status selepas PYD menghantar).
+- **Kolam PP (23 Okt, keputusan pengguna):** PP1/PP2 = Pentadbir + Admin Mutlak
+  sahaja. Kerani/AKP juga PYD; admin/pentadbir boleh melantik kerani/AKP
+  tertentu (cth. Ketua Kerani) ke `ekb_pp_akp` — mereka menjadi pilihan PP
+  bagi PYD Kerani/AKP SAHAJA. Dikuatkuasa dalam `tetapPenilai`; menggugurkan
+  lantikan mengosongkan PP berkenaan pada tahun semasa.
+- **Admin Mutlak kini mempunyai baris `pbd_guru`** (`idMutlak` dalam
+  `src/lib/akses.ts`, peranan DB `admin`, dicipta sekali semasa log masuk).
+  Kuasa tetap daripada env. Lapisan admin dirahsiakan: pelayar bukan-mutlak
+  menerima "admin" sebagai "pentadbir".
