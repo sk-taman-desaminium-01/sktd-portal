@@ -48,6 +48,7 @@ export interface Bidang {
 }
 
 export const BIDANG_TETAP = [
+  { id: "ekb-pentadbiran", nama: "Pentadbiran", lama: "PENTADBIRAN" },
   { id: "ekb-kurikulum", nama: "Kurikulum", lama: "PEMBELAJARAN DAN PEMUDAHCARAAN (PDPC)" },
   { id: "ekb-hem", nama: "Hal Ehwal Murid", lama: "PENGURUSAN KELAS" },
   { id: "ekb-kokurikulum", nama: "Kokurikulum", lama: "KOKURIKULUM" },
@@ -56,7 +57,7 @@ export const BIDANG_TETAP = [
 
 export const bidangTetap = (id: string) => BIDANG_TETAP.some((x) => x.id === id);
 
-/** Empat bidang di hadapan; sasaran lama dan bidang tambahan tidak dibuang. */
+/** Bidang tetap di hadapan; sasaran lama dan bidang tambahan tidak dibuang. */
 export function susunBidangTetap(bidang: Bidang[], asal: Bidang[] = []): Bidang[] {
   const dipakai = new Set<Bidang>();
   const tetap = BIDANG_TETAP.map(({ id, nama, lama }) => {
@@ -382,7 +383,7 @@ export function gabungIkutKuasa(
     // dan ulasan/bukti melekat pada kedua-duanya.
     let kira = 0;
     const idBidang = new Set<string>(), idSasaran = new Set<string>();
-    // Borang lama mungkin sudah ada 12 bidang sendiri sebelum empat tetap ditambah.
+    // Borang lama mungkin sudah ada 12 bidang sendiri sebelum bidang tetap ditambah.
     const bidang = cadangan.slice(0, Math.max(12, lama.length)).map((x) => {
       let id = String(x.id || "").slice(0, 40);
       if (!id || idBidang.has(id)) id = idBaru();

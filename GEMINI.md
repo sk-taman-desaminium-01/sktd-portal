@@ -18,8 +18,9 @@ secara jujur. Memori bersama (WAJIB baca dahulu):
 Repo `gpi`/`erpm` (eGPI) TIDAK BOLEH disentuh. `sktd-mockup` dibekukan.
 
 ### Cara kerja yang pengguna minta
-- e-Keberhasilan: four fixed bidang = Kurikulum, Hal Ehwal Murid, Kokurikulum,
-  Tugas Sampingan. Preserve existing sasaran; extra bidang remain user-editable.
+- e-Keberhasilan: five fixed bidang = Pentadbiran, Kurikulum, Hal Ehwal Murid,
+  Kokurikulum, Tugas Sampingan (in order). Preserve existing sasaran;
+  extra bidang remain user-editable.
 - Commit = push, terus, tanpa tanya. Semak/uji SEBELUM commit — jangan push bila ujian gagal.
 - SQL baharu: beri **kod SQL penuh** di hujung laporan (idempoten), jangan suruh buka fail.
 - Jangan baca `.env.local` atau rahsia. Repo `sktd-portal` AWAM — tiada rahsia dalam kod.
