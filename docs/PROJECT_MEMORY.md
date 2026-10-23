@@ -751,9 +751,11 @@ SQL: `supabase/migrations/20261023_keberhasilan.sql` — **sudah dijalankan 23 O
   daripada `ekb_penilai` (ditetapkan pentadbir dalam tab Tetapan penilai).
   Pelayar menghantar seluruh bidang; pelayan hanya menyalin medan yang peranan
   itu boleh ubah pada peringkat terbuka (`gabungIkutKuasa`). Jangan pintas.
-- **Pemerhati (urus_guru_kelas) nampak RINGKASAN sahaja** — bukan teks
-  sasaran, ulasan atau bukti. Pentadbir yang perlu membaca dilantik sebagai PP.
-  (Keputusan 23 Okt selepas semakan Siti Aisyah; pengguna boleh mengubahnya.)
+- **Siapa nampak apa (keputusan pengguna 23 Okt, MUKTAMAD):** guru, kerani &
+  AKP biasa — borang SENDIRI sahaja. PP yang dilantik — + PYD yang dinilai.
+  **Pentadbir & Admin Mutlak** — semua borang (baca sahaja) DAN satu-satunya
+  yang boleh menetapkan PP. Admin biasa TIADA akses Tetapan penilai. Dikunci
+  dalam `scripts/uji-kontrak-modul.mts` (`lihatSemua`).
 - **Kunci optimistik `versi`.** Setiap tulisan (simpan, peralihan, bukti)
   menaikkan versi; konflik → `{konflik:true}` dan draf pengguna dikekalkan.
 - **Bukti** dalam baldi PERSENDIRIAN `ekb-bukti`, muat naik terus (signed

@@ -97,7 +97,7 @@ export default function PapanPantau({ data, buka, membuka }: {
             <div key={r.borang_id} className="grid gap-x-4 gap-y-2.5 border-b border-garis p-3.5 last:border-b-0 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1.5fr)_130px_minmax(0,1fr)_auto] lg:items-center">
               <div className="min-w-0">
                 <b className="block break-words text-[15px]">{r.pyd.nama}</b>
-                <small className="text-slate-500">{r.r.bilSasaran} sasaran · {r.bilBukti} bukti{r.peranan === "PEMERHATI" ? ` · PP1 ${r.pp1?.nama ?? "–"}` : ""}</small>
+                <small className="text-slate-500">{r.r.bilSasaran} sasaran · {r.bilBukti} bukti{r.peranan === "PEMERHATI" ? (r.pp1 ? ` · PP1 ${r.pp1.nama}` : " · PP1 belum ditetapkan") : ""}</small>
               </div>
               <div className="min-w-0">
                 <div className="grid grid-cols-4 gap-[3px]">
@@ -108,13 +108,9 @@ export default function PapanPantau({ data, buka, membuka }: {
               <div className="text-[13px] text-slate-500">P1 <b className="font-mono text-base text-slate-800">{r.r.k1.skor ?? "–"}</b> · Akhir <b className="font-mono text-base text-slate-800">{r.r.k2.skor ?? "–"}</b></div>
               <div className="flex flex-wrap gap-1.5">{bendera}</div>
               <div>
-                {r.peranan === "PEMERHATI" ? (
-                  <p className="max-w-52 text-xs text-slate-500">Ringkasan sahaja — tetapkan diri sebagai PP untuk membaca borang.</p>
-                ) : (
-                  <button type="button" disabled={membuka === r.borang_id} onClick={() => buka(r)} className={mendesak ? BTN_UTAMA : BTN}>
-                    {membuka === r.borang_id ? "Membuka…" : mendesak ? "Semak sekarang" : "Buka borang"}
-                  </button>
-                )}
+                <button type="button" disabled={membuka === r.borang_id} onClick={() => buka(r)} className={mendesak ? BTN_UTAMA : BTN}>
+                  {membuka === r.borang_id ? "Membuka…" : mendesak ? "Semak sekarang" : r.peranan === "PEMERHATI" ? "Lihat borang" : "Buka borang"}
+                </button>
               </div>
             </div>
           );

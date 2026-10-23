@@ -97,6 +97,20 @@ for (const [nama, fail, bil] of [
 perlu("Surat Akuan Waris membawa lencana", baca("src/components/CetakAkuan.tsx").includes("logo-sktd.png"));
 perlu("Borang Keberhasilan membawa lencana", baca("src/components/CetakKeberhasilan.tsx").includes("logo-sktd.png"));
 {
+  // e-Keberhasilan: guru/kerani/AKP biasa nampak borang SENDIRI sahaja;
+  // hanya Pentadbir & Admin Mutlak membaca semua (keputusan pengguna 23 Okt 2026).
+  const ekb = baca("src/lib/keberhasilan.ts");
+  perlu("e-Keberhasilan: lihatSemua = pentadbir & admin_mutlak SAHAJA",
+    /const lihatSemua = \(p[^)]*\) => p === "pentadbir" \|\| p === "admin_mutlak";/.test(ekb));
+  perlu("e-Keberhasilan: PEMERHATI hanya melalui lihatSemua", /pemerhatiDibenarkan && lihatSemua\(saya\.peranan\)\) peranan = "PEMERHATI"/.test(ekb)
+    && !/peranan = "PEMERHATI"[\s\S]*peranan = "PEMERHATI"/.test(ekb));
+  perlu("e-Keberhasilan: tetapPenilai & tetapPpAkp hanya Pentadbir/Admin Mutlak (bukan admin biasa)",
+    (ekb.match(/!lihatSemua\(saya\.peranan\)\) return \{ ok: false, mesej: "Hanya Pentadbir dan Admin Mutlak boleh menetapkan PP\." \}/g) ?? []).length === 2
+    && !ekb.includes('"urus_guru_kelas"'));
+  perlu("e-Keberhasilan: PEMERHATI tidak boleh menulis", (ekb.match(/peranan === "PEMERHATI"\) return \{ ok: false/g) ?? []).length >= 2
+    && /peranan !== "PYD" && peranan !== "PP1"\) return/.test(ekb));
+}
+{
   // Dokumen cetak BAHARU mesti membawa kepala berlencana atau dikecualikan di sini dengan sebab.
   const DIKECUALIKAN = ["CetakMedia.tsx"];                       // lampiran KPM
   const SENDIRI = ["CetakSurat.tsx", "CetakAkuan.tsx", "KepalaCetak.tsx", "CetakKeberhasilan.tsx"];   // kepala sendiri, berlencana
