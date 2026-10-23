@@ -16,6 +16,7 @@ secara jujur. Memori bersama (WAJIB baca dahulu):
 Repo `gpi`/`erpm` (eGPI) TIDAK BOLEH disentuh. `sktd-mockup` dibekukan.
 
 ### Cara kerja yang pengguna minta
+- Borang Keberhasilan print/preview: KPM logo only; no school crest (owner, 23 Oct).
 - e-Keberhasilan: five fixed bidang = Pentadbiran, Kurikulum, Hal Ehwal Murid,
   Kokurikulum, Tugas Sampingan (in order). Preserve existing sasaran;
   extra bidang remain user-editable.
