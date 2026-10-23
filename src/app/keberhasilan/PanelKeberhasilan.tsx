@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import PilihCari from "@/components/PilihCari";
 import CetakKeberhasilan from "@/components/CetakKeberhasilan";
+import MuatLebar from "./MuatLebar";
 import { mulaCetak } from "@/components/cetak-mudah-alih";
 import { keadaan, peringkatSemasa, type Borang } from "@/data/keberhasilan";
 import { bukaBorang, type BarisPantau, type BorangPenuh, type DataHalaman, type PerananLihat } from "@/lib/keberhasilan";
@@ -151,8 +152,10 @@ export default function PanelKeberhasilan({ data }: { data: DataHalaman }) {
             </section>
             {cetakRalat && <p role="alert" className="rounded-lg bg-red-50 p-3 text-sm font-medium text-red-700">Pratonton cetak tidak dapat dibuka. Semak ruang simpanan pelayar anda dan cuba lagi.</p>}
             {pvBorang ? (
-              <div className="overflow-x-auto rounded-xl border border-garis bg-slate-50 p-3 sm:p-4">
-                <CetakKeberhasilan borang={pvBorang} sembunyiKp={pvPeranan !== "PYD"} />
+              <div className="rounded-xl border border-garis bg-slate-50 p-3 sm:p-4">
+                <MuatLebar lebar={1080}>
+                  <CetakKeberhasilan borang={pvBorang} sembunyiKp={pvPeranan !== "PYD"} />
+                </MuatLebar>
               </div>
             ) : pvRalat?.id === pvId ? (
               <p role="alert" className="rounded-lg bg-red-50 p-3 text-sm font-medium text-red-700">{pvRalat?.mesej}</p>
