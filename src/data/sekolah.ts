@@ -259,10 +259,11 @@ export const SEKOLAH = {
         + "sebelum dibina — diteruskan dalam portal, bukan subdomain berasingan.",
     },
     {
-      id: "payibg", nama: "PayIBG", ikon: "RM", warna: "#5c2f6b",
+      id: "payibg", nama: "Pay-IBG", ikon: "RM", warna: "#5c2f6b",
       fungsi: "Bayaran yuran dan sumbangan PIBG.",
       // subdomain sktd.edu.my — disahkan cikgu
-      domain: "payibg.sktd.edu.my", status: "akan",
+      domain: "payibg.sktd.edu.my", pautan: "https://payibg.sktd.edu.my/",
+      luaran: true, status: "sedia",
       ibuBapa: {
         tugas: "Bayar Yuran & Sumbangan PIBG",
         ringkas: "Bayaran dalam talian untuk yuran dan sumbangan PIBG.",
