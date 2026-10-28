@@ -154,7 +154,7 @@ export default function PanelRuangDeploy({
     ? (saizKod > HAD_KOD_BAIT ? `Kod ini ${mb(saizKod)}. Had ialah ${HAD_KOD_BAIT / 1048576} MB.`
       : !/<[a-z!]/i.test(kod) ? "Ini bukan kod HTML. Salin seluruh kod bermula dengan <!DOCTYPE html> atau <html>." : null)
     : null;
-  const sedia = !kerja && nama.trim().length >= 2 && !!b.tajuk && !sTajuk && !!b.subjek && b.tahun !== "" && !!b.jenis
+  const sedia = !kerja && nama.trim().length >= 2 && !!b.tajuk && !sTajuk && !!b.subjek && (b.tahun !== "" || b.jenis === "pengurusan") && !!b.jenis
     && (b.jenis !== "pengurusan" || !!b.unit)
     && (!!sunting || (!!b.subdomain && !sSub))
     && (b.sumber === "fail" ? (!perluFail || !!fail) && !salahFail
@@ -340,8 +340,13 @@ export default function PanelRuangDeploy({
           </label>
           <label className="grid gap-1.5">
             <span className={label}>Tahun</span>
-            <select id="rd-tahun" className={medan} value={b.tahun} onChange={(e) => ubah({ tahun: e.target.value })}>
-              <option value="">Pilih tahun</option>
+            {/* Laman Pengurusan (OPR, borang) bukan untuk murid: tahun tidak berkaitan. */}
+            <select
+              id="rd-tahun" className={`${medan} disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400`}
+              disabled={b.jenis === "pengurusan"}
+              value={b.jenis === "pengurusan" ? "" : b.tahun} onChange={(e) => ubah({ tahun: e.target.value })}
+            >
+              <option value="">{b.jenis === "pengurusan" ? "Tidak berkaitan" : "Pilih tahun"}</option>
               {TAHUN_LAMAN.map((t) => <option key={t.kod} value={String(t.kod)}>{t.nama}</option>)}
             </select>
           </label>
@@ -472,7 +477,7 @@ export default function PanelRuangDeploy({
           {!hasil?.ok && (
             <div className="flex flex-wrap gap-1.5 text-xs font-bold">
               <span className={`rounded-full bg-white/10 px-2.5 py-1 ${b.subjek ? "" : "text-white/40"}`}>{b.subjek || "Mata pelajaran"}</span>
-              <span className={`rounded-full bg-white/10 px-2.5 py-1 ${b.tahun !== "" ? "" : "text-white/40"}`}>{b.tahun !== "" ? namaTahun(Number(b.tahun)) : "Tahun"}</span>
+              {b.jenis !== "pengurusan" && <span className={`rounded-full bg-white/10 px-2.5 py-1 ${b.tahun !== "" ? "" : "text-white/40"}`}>{b.tahun !== "" ? namaTahun(Number(b.tahun)) : "Tahun"}</span>}
               <span className={`rounded-full px-2.5 py-1 ${b.jenis === "game" ? "bg-emas text-navy-900" : "bg-white/10"} ${b.jenis ? "" : "text-white/40"}`}>{b.jenis ? namaJenis(b.jenis) : "Jenis"}</span>
             </div>
           )}

@@ -208,7 +208,9 @@ export async function sediaLaman(input: InputLaman): Promise<Hasil> {
     const salahTajuk = semakTajuk(tajuk);
     if (salahTajuk) return { ok: false, mesej: salahTajuk };
     if (!SUBJEK_LAMAN.includes(input.subjek)) return { ok: false, mesej: "Pilih mata pelajaran." };
-    if (!TAHUN_LAMAN.some((t) => t.kod === input.tahun)) return { ok: false, mesej: "Pilih tahun." };
+    // Laman Pengurusan bukan untuk murid: tahun disimpan kosong.
+    const tahun = input.jenis === "pengurusan" ? null : input.tahun;
+    if (tahun !== null && !TAHUN_LAMAN.some((t) => t.kod === tahun)) return { ok: false, mesej: "Pilih tahun." };
     if (!JENIS_LAMAN.some((j) => j.kod === input.jenis)) return { ok: false, mesej: "Pilih jenis laman." };
     if (!SUMBER_LAMAN.some((s) => s.kod === input.sumber)) return { ok: false, mesej: "Pilih sumber laman." };
     const unit = input.jenis === "pengurusan" ? (input.unit ?? null) : null;
@@ -248,7 +250,7 @@ export async function sediaLaman(input: InputLaman): Promise<Hasil> {
       }
     }
 
-    const asas = { tajuk, subjek: input.subjek, tahun: input.tahun, jenis: input.jenis, unit, pemilik_nama: nama, updated_at: new Date().toISOString() };
+    const asas = { tajuk, subjek: input.subjek, tahun, jenis: input.jenis, unit, pemilik_nama: nama, updated_at: new Date().toISOString() };
 
     /* --- Sumber pautan: terus terbit --- */
     if (!sumberFail(input.sumber)) {
