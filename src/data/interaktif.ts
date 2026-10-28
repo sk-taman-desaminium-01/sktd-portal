@@ -32,8 +32,22 @@ export const BALDI_INTERAKTIF = "interaktif";
 export const JENIS_LAMAN = [
   { kod: "game", nama: "Permainan" },
   { kod: "nota", nama: "Nota Interaktif" },
+  // Laman dalaman (cth. OPR yang diisi guru) — TIDAK dipapar di /interaktif/.
+  // Ia muncul dalam kad "Pengurusan" bahagian hab mengikut `unit`
+  // (permintaan pengguna, 28 Okt 2026).
+  { kod: "pengurusan", nama: "Pengurusan" },
 ] as const;
 export type JenisLaman = (typeof JENIS_LAMAN)[number]["kod"];
+
+/** Unit bagi laman jenis `pengurusan` — kod sama dengan bahagian hab. */
+export const UNIT_PENGURUSAN = [
+  { kod: "pentadbiran", nama: "Pentadbiran" },
+  { kod: "kurikulum", nama: "Kurikulum" },
+  { kod: "hem", nama: "Hal Ehwal Murid" },
+  { kod: "kokurikulum", nama: "Kokurikulum" },
+] as const;
+export type UnitPengurusan = (typeof UNIT_PENGURUSAN)[number]["kod"];
+export const namaUnit = (u: string | null) => UNIT_PENGURUSAN.find((x) => x.kod === u)?.nama ?? "";
 
 export const SUMBER_LAMAN = [
   { kod: "fail", nama: "Muat naik fail", ringkas: ".html atau .zip" },
@@ -154,6 +168,8 @@ export interface LamanInteraktif {
   subjek: string;
   tahun: number | null;
   jenis: JenisLaman;
+  /** Ada hanya bila jenis `pengurusan`. */
+  unit: UnitPengurusan | null;
   sumber: SumberLaman;
   pautan: string | null;
   saiz: number;

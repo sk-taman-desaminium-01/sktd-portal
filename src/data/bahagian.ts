@@ -313,6 +313,21 @@ export const KAD_TAMBAHAN: KadBaharu[] = [
     // bukan pada penglihatan kad.
   },
 
+  // Kad "Pengurusan" dalam setiap bahagian (permintaan pengguna, 28 Okt 2026):
+  // laman Ruang Deploy berjenis Pengurusan (cth. OPR yang diisi guru)
+  // dikumpul di sini mengikut unit yang dipilih guru, bukan di /interaktif/.
+  ...([
+    ["pentadbiran", "Pentadbiran"],
+    ["kurikulum", "Kurikulum"],
+    ["kokurikulum", "Kokurikulum"],
+    ["hem", "Hal Ehwal Murid"],
+  ] as const).map(([kod, nama]): KadBaharu => ({
+    id: `pengurusan-${kod}`, bahagian: kod,
+    nama: "Pengurusan", ikon: "PGR", warna: "#4f5d75",
+    fungsi: `Laman dalaman unit ${nama} — OPR dan borang yang diterbitkan melalui Ruang Deploy.`,
+    domain: `sktd.edu.my/portal/pengurusan/${kod}`, pautan: `/pengurusan/${kod}`, status: "sedia",
+    catatan: "Terbitkan di Ruang Deploy dengan jenis laman Pengurusan dan pilih unit ini.",
+  })),
 ];
 
 

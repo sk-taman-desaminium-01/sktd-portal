@@ -5,9 +5,9 @@ import { useRouter } from "next/navigation";
 import { unzipSync } from "fflate";
 import {
   HAD_FAIL, HAD_KOD_BAIT, HAD_LAMAN_BAIT, HAD_LAMAN_BULAN, HAD_LAMAN_MB,
-  JENIS_LAMAN, SUBJEK_LAMAN, SUMBER_LAMAN, TAHUN_LAMAN, namaTahun,
+  JENIS_LAMAN, SUBJEK_LAMAN, SUMBER_LAMAN, TAHUN_LAMAN, UNIT_PENGURUSAN, namaTahun, namaUnit,
   cadangSubdomain, laluanSah, perkataan, semakPautan, semakSubdomain, semakTajuk,
-  type JenisLaman, type LamanInteraktif, type SumberLaman,
+  type JenisLaman, type LamanInteraktif, type SumberLaman, type UnitPengurusan,
 } from "@/data/interaktif";
 import { ambilKod, gantungLaman, padamLaman, sahkanLaman, sediaLaman } from "@/lib/interaktif";
 
@@ -116,7 +116,7 @@ function MukaDepan({ html, src, tajuk }: { html?: string | null; src?: string; t
   );
 }
 
-const KOSONG = { tajuk: "", subjek: "", tahun: "", jenis: "" as JenisLaman | "", subdomain: "", sumber: "fail" as SumberLaman, pautan: "" };
+const KOSONG = { tajuk: "", subjek: "", tahun: "", jenis: "" as JenisLaman | "", unit: "", subdomain: "", sumber: "fail" as SumberLaman, pautan: "" };
 
 export default function PanelRuangDeploy({
   namaAwal, saya, semua, bulanIni,
@@ -155,6 +155,7 @@ export default function PanelRuangDeploy({
       : !/<[a-z!]/i.test(kod) ? "Ini bukan kod HTML. Salin seluruh kod bermula dengan <!DOCTYPE html> atau <html>." : null)
     : null;
   const sedia = !kerja && nama.trim().length >= 2 && !!b.tajuk && !sTajuk && !!b.subjek && b.tahun !== "" && !!b.jenis
+    && (b.jenis !== "pengurusan" || !!b.unit)
     && (!!sunting || (!!b.subdomain && !sSub))
     && (b.sumber === "fail" ? (!perluFail || !!fail) && !salahFail
       : b.sumber === "kod" ? !!kod.trim() && !sKod
@@ -182,7 +183,7 @@ export default function PanelRuangDeploy({
     setFail(null);
     setSalahFail("");
     setNama(l.pemilik_nama);
-    setB({ tajuk: l.tajuk, subjek: l.subjek, tahun: l.tahun === null ? "" : String(l.tahun), jenis: l.jenis, subdomain: l.subdomain, sumber: l.sumber, pautan: l.pautan ?? "" });
+    setB({ tajuk: l.tajuk, subjek: l.subjek, tahun: l.tahun === null ? "" : String(l.tahun), jenis: l.jenis, unit: l.unit ?? "", subdomain: l.subdomain, sumber: l.sumber, pautan: l.pautan ?? "" });
     setKod("");
     if (l.sumber === "kod") {
       void ambilKod(l.id).then((r) => (r.ok && r.kod !== undefined ? setKod(r.kod) : setSalahFail(r.mesej)));
@@ -219,6 +220,7 @@ export default function PanelRuangDeploy({
     try {
       const r = await sediaLaman({
         id: sunting?.id, nama, tajuk: b.tajuk, subjek: b.subjek, tahun: Number(b.tahun), jenis: b.jenis as JenisLaman,
+        unit: b.jenis === "pengurusan" ? (b.unit as UnitPengurusan) : null,
         subdomain: sub, sumber: b.sumber, pautan: b.pautan,
         fail: failBaru?.map((f) => ({ laluan: f.laluan, saiz: f.data.size })),
       });
@@ -350,6 +352,18 @@ export default function PanelRuangDeploy({
               {JENIS_LAMAN.map((j) => <option key={j.kod} value={j.kod}>{j.nama}</option>)}
             </select>
           </label>
+          {/* Hanya bila jenis Pengurusan: laman dalaman (cth. OPR) masuk ke
+              kad "Pengurusan" bahagian hab ini, BUKAN ke /interaktif/ awam. */}
+          {b.jenis === "pengurusan" && (
+            <label className="grid gap-1.5 sm:col-start-3">
+              <span className={label}>Unit</span>
+              <select id="rd-unit" className={medan} value={b.unit} onChange={(e) => ubah({ unit: e.target.value })}>
+                <option value="">Pilih unit</option>
+                {UNIT_PENGURUSAN.map((u) => <option key={u.kod} value={u.kod}>{u.nama}</option>)}
+              </select>
+              <p className="text-xs text-slate-500">Tidak disenaraikan di Ruang Pembelajaran Interaktif — ia muncul dalam kad Pengurusan unit ini di portal.</p>
+            </label>
+          )}
         </div>
 
         <label className="grid gap-1.5">
@@ -550,7 +564,7 @@ function SenaraiLaman({
                   {l.subdomain}.sktd.edu.my
                 </a>
                 <p className="text-xs text-slate-500">
-                  {l.subjek}{l.tahun !== null ? ` · ${namaTahun(l.tahun)}` : ""} · {namaJenis(l.jenis)}{onGantung ? ` · ${l.pemilik_nama}` : ""}{l.saiz ? ` · ${mb(l.saiz)}` : ""}
+                  {l.subjek}{l.tahun !== null ? ` · ${namaTahun(l.tahun)}` : ""} · {namaJenis(l.jenis)}{l.unit ? ` (${namaUnit(l.unit)})` : ""}{onGantung ? ` · ${l.pemilik_nama}` : ""}{l.saiz ? ` · ${mb(l.saiz)}` : ""}
                 </p>
               </div>
               {sahPadam === l.id ? (

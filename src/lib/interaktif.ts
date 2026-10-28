@@ -8,9 +8,9 @@ import { klienTulis } from "./supabase-pelayan";
 import { sahUuid } from "./sah";
 import {
   BALDI_INTERAKTIF, HAD_FAIL, HAD_KOD_BAIT, HAD_LAMAN_BAIT, HAD_LAMAN_BULAN, HAD_LAMAN_MB,
-  JENIS_LAMAN, SUBJEK_LAMAN, SUMBER_LAMAN, TAHUN_LAMAN,
+  JENIS_LAMAN, SUBJEK_LAMAN, SUMBER_LAMAN, TAHUN_LAMAN, UNIT_PENGURUSAN,
   awalBulanMy, laluanSah, semakPautan, semakSubdomain, semakTajuk, sumberFail,
-  type LamanInteraktif, type JenisLaman, type SumberLaman,
+  type LamanInteraktif, type JenisLaman, type SumberLaman, type UnitPengurusan,
 } from "@/data/interaktif";
 
 /**
@@ -33,7 +33,7 @@ import {
  * mana-mana laman — disemak di SINI, bukan dengan menyembunyikan butang.
  */
 
-const LAJUR = "id,subdomain,tajuk,subjek,tahun,jenis,sumber,pautan,saiz,pemilik_nama,status,created_at,updated_at";
+const LAJUR = "id,subdomain,tajuk,subjek,tahun,jenis,unit,sumber,pautan,saiz,pemilik_nama,status,created_at,updated_at";
 
 interface Baris extends LamanInteraktif {
   pemilik_emel: string;
@@ -160,6 +160,19 @@ export async function senaraiLaman(): Promise<{ saya: LamanInteraktif[]; semua: 
   return { saya: sendiri, semua, bulanIni: await kiraBulanIni(saya.emel.toLowerCase()) };
 }
 
+/**
+ * Laman jenis `pengurusan` bagi satu unit — untuk kad "Pengurusan" dalam
+ * setiap bahagian hab. Semua kakitangan boleh membacanya (ia dalaman, bukan
+ * awam); laman digantung tidak dipapar.
+ */
+export async function lamanPengurusan(unit: string): Promise<LamanInteraktif[]> {
+  await perluGuru();
+  if (!UNIT_PENGURUSAN.some((u) => u.kod === unit)) throw new Error("Unit tidak sah.");
+  return (await klienTulis().minta(
+    `web_interaktif?jenis=eq.pengurusan&unit=eq.${unit}&status=eq.terbit&select=${LAJUR}&order=tajuk.asc&limit=1000`,
+  )) as LamanInteraktif[];
+}
+
 /* ------------------------------------------------------------ terbit ---- */
 
 export interface InputLaman {
@@ -170,6 +183,8 @@ export interface InputLaman {
   subjek: string;
   tahun: number;
   jenis: JenisLaman;
+  /** Wajib bila jenis `pengurusan`; diabaikan bagi jenis lain. */
+  unit?: UnitPengurusan | null;
   subdomain: string;
   sumber: SumberLaman;
   pautan?: string;
@@ -196,6 +211,10 @@ export async function sediaLaman(input: InputLaman): Promise<Hasil> {
     if (!TAHUN_LAMAN.some((t) => t.kod === input.tahun)) return { ok: false, mesej: "Pilih tahun." };
     if (!JENIS_LAMAN.some((j) => j.kod === input.jenis)) return { ok: false, mesej: "Pilih jenis laman." };
     if (!SUMBER_LAMAN.some((s) => s.kod === input.sumber)) return { ok: false, mesej: "Pilih sumber laman." };
+    const unit = input.jenis === "pengurusan" ? (input.unit ?? null) : null;
+    if (input.jenis === "pengurusan" && !UNIT_PENGURUSAN.some((u) => u.kod === unit)) {
+      return { ok: false, mesej: "Pilih unit pengurusan." };
+    }
 
     const db = klienTulis();
     let lama: Baris | null = null;
@@ -229,7 +248,7 @@ export async function sediaLaman(input: InputLaman): Promise<Hasil> {
       }
     }
 
-    const asas = { tajuk, subjek: input.subjek, tahun: input.tahun, jenis: input.jenis, pemilik_nama: nama, updated_at: new Date().toISOString() };
+    const asas = { tajuk, subjek: input.subjek, tahun: input.tahun, jenis: input.jenis, unit, pemilik_nama: nama, updated_at: new Date().toISOString() };
 
     /* --- Sumber pautan: terus terbit --- */
     if (!sumberFail(input.sumber)) {
