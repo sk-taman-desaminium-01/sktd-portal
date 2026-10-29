@@ -85,7 +85,9 @@ export default clerkMiddleware(
     const dariProksi = req.headers.get("x-sktd-proksi") === "1";
     if (hos === HOS_LANGSUNG && !dariProksi) {
       const url = new URL(req.url);
-      return Response.redirect(`${HOS_UTAMA}${url.pathname}${url.search}`, 308);
+      // NextResponse, bukan Response.redirect: pengepala Response.redirect tidak
+      // boleh diubah, dan Clerk menambah pengepala sendiri → 500.
+      return NextResponse.redirect(`${HOS_UTAMA}${url.pathname}${url.search}`, 308);
     }
 
     const kepala = new Headers(req.headers);
