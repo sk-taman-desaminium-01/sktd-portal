@@ -1,4 +1,6 @@
 import Link from "@/components/Pautan";
+import AmaranMuatGagal from "@/components/AmaranMuatGagal";
+import { ambilSelamat } from "@/lib/ambil-selamat";
 import { pengguna } from "@/lib/akses";
 import { senaraiSuratSaya, kepalaSurat } from "@/lib/surat";
 import { senaraiPentadbirUntukSemua } from "@/lib/pentadbir";
@@ -13,9 +15,9 @@ export default async function UrusBorang() {
     return <main className="mx-auto max-w-2xl px-5 py-16 text-center"><h1 className="text-xl font-bold text-navy-800">Tiada kebenaran</h1><Link href="/" className="mt-6 inline-block text-sm text-navy-700 underline">← Portal</Link></main>;
   }
 
-  const [{ belumSedia, senarai }, pentadbir, kepala] = await Promise.all([
+  const [{ belumSedia, senarai }, { data: pentadbir, gagal: pentadbirGagal }, kepala] = await Promise.all([
     senaraiSuratSaya(),
-    senaraiPentadbirUntukSemua().catch(() => []),
+    ambilSelamat(senaraiPentadbirUntukSemua(), "borang/urus pentadbir", []),
     kepalaSurat(),
   ]);
 
@@ -25,6 +27,7 @@ export default async function UrusBorang() {
       <h1 className="mt-3 text-2xl font-bold text-navy-800">Urus Borang Sekolah</h1>
       <p className="mt-1 text-sm leading-relaxed text-slate-500">Surat rasmi, rekod Kebenaran Gambar dan cetakan borang sekolah.</p>
       <Link href="/borang/aktiviti/urus" className="mt-5 block rounded-xl border border-garis bg-white p-4 font-semibold text-navy-800">Urus Surat Akuan Penyertaan Aktiviti →</Link>
+      {pentadbirGagal && <AmaranMuatGagal apa="Senarai pentadbir" />}
       {belumSedia ? (
         <div className="mt-6 rounded-xl border border-[#e9d9ae] bg-[#fdf9f0] p-5 text-sm leading-relaxed text-[#7a5a12]">
           <p className="font-semibold">Modul ini belum dipasang.</p>

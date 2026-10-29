@@ -123,3 +123,19 @@ export function pecahFormat(teks: string, asas: Omit<KepingTeks, "teks"> = { teb
 export function teksBiasa(teks: string): string {
   return pecahFormat(teks).map((k) => k.teks).join("");
 }
+
+/**
+ * Potong teks pada sempadan perkataan: berhenti pada ruang putih terakhir
+ * sebelum `had`, kemudian tambah "…". Tidak pernah memotong di tengah perkataan
+ * (dahulu `slice(0,199)` memaparkan "DITANGGU…" pada laman awam).
+ */
+export function potongPerkataan(teks: string, had: number): string {
+  const rata = teks.replace(/\s+/g, " ").trim();
+  if (rata.length <= had) return rata;
+  const kepala = rata.slice(0, had);
+  // Aksara tepat selepas had ialah ruang → kepala sudah berakhir pada hujung perkataan.
+  const tepat = /\s/.test(rata.charAt(had));
+  const titik = kepala.search(/\s\S*$/);
+  const potong = tepat || titik <= 0 ? kepala : kepala.slice(0, titik);
+  return `${potong.trimEnd()}…`;
+}

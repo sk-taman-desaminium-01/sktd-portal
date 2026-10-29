@@ -63,8 +63,13 @@ function borangAwam(path: string): boolean {
  * jabat tangan Clerk yang berulang itu ialah masa menunggu yang mereka rasa.
  *
  * Maka alamat langsung MELENCONG ke alamat proksi. Permintaan yang datang
- * DARI Worker dikecualikan (ia membawa `X-Forwarded-Host`); tanpa
+ * DARI Worker dikecualikan (ia membawa `X-SKTD-Proksi`); tanpa
  * pengecualian itu, proksi dan lencongan akan berbalas-balas selamanya.
+ *
+ * JANGAN guna `X-Forwarded-Host` untuk ini. Vercel meletakkannya pada SETIAP
+ * permintaan, jadi semakan `has()` sentiasa benar dan lencongan ini mati
+ * senyap — disahkan pada domain hidup 29 Okt 2026. Worker mesti di-deploy
+ * dengan penanda baharu SEBELUM perubahan ini, kalau tidak ia berpusing.
  *
  * Diukur pada domain hidup: proksi menambah 50–170ms setiap permintaan.
  * Itu harga yang dibayar untuk satu sesi dan app iOS yang tidak pecah —
@@ -77,7 +82,7 @@ const HOS_UTAMA = "https://sktd.edu.my";
 export default clerkMiddleware(
   async (auth, req) => {
     const hos = req.headers.get("host") ?? "";
-    const dariProksi = req.headers.has("x-forwarded-host");
+    const dariProksi = req.headers.get("x-sktd-proksi") === "1";
     if (hos === HOS_LANGSUNG && !dariProksi) {
       const url = new URL(req.url);
       return Response.redirect(`${HOS_UTAMA}${url.pathname}${url.search}`, 308);

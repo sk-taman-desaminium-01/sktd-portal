@@ -1,4 +1,6 @@
 import Link from "@/components/Pautan";
+import AmaranMuatGagal from "@/components/AmaranMuatGagal";
+import { ambilSelamat } from "@/lib/ambil-selamat";
 import { sesiSemasa } from "@/lib/pbd";
 import { senaraiKawalanKelas } from "@/lib/kawalan-kelas";
 import { senaraiKehadiranMuridLog } from "@/lib/kehadiran-murid";
@@ -17,13 +19,18 @@ export const metadata = { title: "Rekod Kawalan Kelas & Kehadiran" };
  */
 export default async function KawalanKelas() {
   const sesi = (await sesiSemasa())?.tahun_sesi ?? new Date().getFullYear();
-  const [k, kehadiranMurid, namaGuruKelas, namaGuru, jadual] = await Promise.all([
+  const [k, hKehadiran, hGuruKelas, hGuru, hJadual] = await Promise.all([
     senaraiKawalanKelas(sesi),
-    senaraiKehadiranMuridLog(sesi).catch(() => []),
-    namaGuruKelasSemua().catch(() => ({}) as Record<string, string>),
-    namaGuruUntukPilihan().catch(() => [] as string[]),
-    ambilJadual().catch(() => null),
+    ambilSelamat(senaraiKehadiranMuridLog(sesi), "kawalan-kelas kehadiran murid", []),
+    ambilSelamat(namaGuruKelasSemua(), "kawalan-kelas guru kelas", {} as Record<string, string>),
+    ambilSelamat(namaGuruUntukPilihan(), "kawalan-kelas senarai guru", [] as string[]),
+    ambilSelamat(ambilJadual(), "kawalan-kelas jadual", null),
   ]);
+  const { data: kehadiranMurid } = hKehadiran;
+  const { data: namaGuruKelas } = hGuruKelas;
+  const { data: namaGuru } = hGuru;
+  const { data: jadual } = hJadual;
+  const gagal = [hKehadiran, hGuruKelas, hGuru, hJadual].filter((h) => h.gagal).length > 0;
   const kelas = [...semuaKelas(), ...semuaKelasPPKI()];
 
   return (
@@ -34,6 +41,7 @@ export default async function KawalanKelas() {
         Siapa masuk kelas, subjek, relief, dan bilangan kehadiran harian.
       </p>
 
+      {gagal && <AmaranMuatGagal apa="Sebahagian data (kehadiran murid, nama guru atau jadual)" />}
       {k.belumSedia ? (
         <div className="mt-5 rounded-xl border border-[#e9d9ae] bg-[#fdf9f0] p-5 text-sm leading-relaxed text-[#7a5a12]">
           <p className="font-semibold">Modul ini belum dipasang.</p>

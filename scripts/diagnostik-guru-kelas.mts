@@ -58,5 +58,4 @@ console.log(`\nTIADA PADANAN dalam senarai akses (${tiada.length}):`);
 tiada.forEach((x) => console.log("  " + x));
 
 // Kelas yang LANGSUNG tiada dalam buku (tiada baris pun)
-const kelasDalamBuku = new Set(pasangan.map((p) => p.kelas));
 console.log("\nKelas dalam buku tapi:", pasangan.length, "· (bandingkan dgn 66 kelas rasmi guna diagnostik lain)");

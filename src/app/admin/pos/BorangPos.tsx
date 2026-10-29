@@ -10,7 +10,7 @@ import {
 } from "@/lib/kecilkan-gambar";
 import { pautGambar } from "@/data/pautan-gambar";
 import EditorIsiSurat from "@/components/EditorIsiSurat";
-import { teksBiasa } from "@/data/isi-surat";
+import { teksBiasa, potongPerkataan } from "@/data/isi-surat";
 
 type Jenis = "pengumuman" | "aktiviti";
 
@@ -60,8 +60,7 @@ export default function BorangPos({
   }
 
   function auto200(): string {
-    const rata = teksBiasa(kandungan).replace(/\s+/g, " ").trim();
-    return rata.length <= 200 ? rata : `${rata.slice(0, 200)}…`;
+    return potongPerkataan(teksBiasa(kandungan), 200);
   }
 
   async function hantarStatus(status: "draf" | "terbit", tajukAkhir: string) {

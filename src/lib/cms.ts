@@ -6,7 +6,7 @@ import { klienTulis } from "./supabase-pelayan";
 import { binaSemulaLamanAwam } from "./bina-semula";
 import { hantar } from "./notifikasi";
 import { sahUuid } from "./sah";
-import { teksBiasa } from "@/data/isi-surat";
+import { teksBiasa, potongPerkataan } from "@/data/isi-surat";
 
 export type Keutamaan = "segera" | "utama" | "biasa";
 export type Status = "draf" | "terbit";
@@ -69,13 +69,11 @@ export async function ambilPos(id: string): Promise<(PosCms & { kandungan: strin
   return baris[0] ?? null;
 }
 
-/** Ringkasan automatik daripada kandungan — potong pada 200 aksara (permintaan L). */
+/** Ringkasan automatik daripada kandungan — potong pada 200 aksara, pada sempadan perkataan (permintaan L). */
 function auto200(kandungan: string | null): string | null {
   if (!kandungan) return null;
   // Penanda format (*tebal* _italik_ ~coret~) dibuang: ringkasan ialah teks biasa.
-  const rata = teksBiasa(kandungan).replace(/\s+/g, " ").trim();
-  if (rata.length <= 200) return rata || null;
-  return `${rata.slice(0, 199).trimEnd()}…`;
+  return potongPerkataan(teksBiasa(kandungan), 200) || null;
 }
 
 function jadikanSlug(t: string) {

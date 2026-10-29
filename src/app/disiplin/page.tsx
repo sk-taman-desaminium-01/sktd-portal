@@ -1,4 +1,6 @@
 import Link from "@/components/Pautan";
+import AmaranMuatGagal from "@/components/AmaranMuatGagal";
+import { ambilSelamat } from "@/lib/ambil-selamat";
 import { sesiSemasa } from "@/lib/pbd";
 import { senaraiDisiplin } from "@/lib/disiplin";
 import { senaraiMuridCadangan } from "@/lib/murid-cadangan";
@@ -14,9 +16,9 @@ export const metadata = { title: "Disiplin & Sahsiah" };
  */
 export default async function Disiplin() {
   const sesi = (await sesiSemasa())?.tahun_sesi ?? new Date().getFullYear();
-  const [d, cadangan] = await Promise.all([
+  const [d, { data: cadangan, gagal: cadanganGagal }] = await Promise.all([
     senaraiDisiplin(sesi),
-    senaraiMuridCadangan(sesi).catch(() => []),
+    ambilSelamat(senaraiMuridCadangan(sesi), "disiplin cadangan murid", []),
   ]);
   const kelas = [...semuaKelas(), ...semuaKelasPPKI()];
 
@@ -31,6 +33,7 @@ export default async function Disiplin() {
           : " Senarai di bawah hanya memaparkan rekod yang anda sendiri laporkan."}
       </p>
 
+      {cadanganGagal && <AmaranMuatGagal apa="Cadangan nama murid" />}
       {d.belumSedia ? (
         <div className="mt-5 rounded-xl border border-[#e9d9ae] bg-[#fdf9f0] p-5 text-sm leading-relaxed text-[#7a5a12]">
           <p className="font-semibold">Modul ini belum dipasang.</p>
