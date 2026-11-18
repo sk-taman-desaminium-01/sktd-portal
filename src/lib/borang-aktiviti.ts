@@ -61,6 +61,16 @@ async function tulisDenganTamat(laluan: string, kaedah: "POST" | "PATCH", data: 
   }
 }
 
+/** Emel pengurus pasukan yang dilantik bagi skop ini (sesi aktif). Gagal = senarai kosong; tidak pernah menghalang borang. */
+async function emelPengurusSkop(skop: string): Promise<string[]> {
+  if (!skop || skop === "SEKOLAH") return [];
+  try {
+    const sesi = await tahunSesiAktif();
+    const rows = await klienTulis().minta(`pbd_guru_kelas?select=pbd_guru(email)&tahun_sesi=eq.${sesi}&peranan=eq.pengurus_pasukan&kelas=eq.${encodeURIComponent(skop)}`) as { pbd_guru: { email: string | null } | null }[];
+    return rows.map((r) => r.pbd_guru?.email?.toLowerCase()).filter((e): e is string => !!e);
+  } catch { return []; }
+}
+
 /** Semakan ringan untuk mengelakkan skrin pengurus gagal putih jika SQL belum dipasang. */
 export async function modulAktivitiSedia() {
  try {
@@ -78,22 +88,34 @@ async function urus(id: string) {
  if (!uuid(id)) throw new Error("Aktiviti tidak sah.");
  const { saya, admin } = await akses();
  const rows = await klienTulis().minta(`borang_aktiviti?select=*&id=eq.${id}&limit=1`) as AktivitiBorang[];
- const a = rows[0]; if (!a || (!admin && a.pengurus_emel !== saya.emel)) throw new Error("Tiada kebenaran aktiviti.");
- if (!admin) {
-   const skop = await skopAktivitiSaya();
-   if (!skop.includes(a.skop)) throw new Error("Tugasan pengurus tidak lagi aktif.");
- }
+ const a = rows[0]; if (!a) throw new Error("Aktiviti tidak ditemui.");
+ // Pengurus pasukan mengurus SEMUA aktiviti berskop pasukannya — termasuk
+ // yang dicipta admin bagi pihaknya — bukan hanya yang dia cipta sendiri.
+ // Pencipta yang tugasannya sudah tamat tidak lagi boleh mengurus.
+ if (!admin && !(await skopAktivitiSaya()).includes(a.skop)) throw new Error(a.pengurus_emel === saya.emel ? "Tugasan pengurus tidak lagi aktif." : "Tiada kebenaran aktiviti.");
  return a;
 }
 export async function skopAktivitiSaya(): Promise<string[]> {
- const { saya, admin } = await akses(); if (admin) return ["SEKOLAH"];
+ const { saya, admin } = await akses();
  const sesi = await tahunSesiAktif();
+ if (admin) {
+   // Admin boleh mencipta/memindahkan aktiviti ke mana-mana pasukan yang ada
+   // pengurus dilantik — supaya pengurus itu nampak dan boleh mengurusnya.
+   const semua = await klienTulis().minta(`pbd_guru_kelas?select=kelas&tahun_sesi=eq.${sesi}&peranan=eq.pengurus_pasukan`) as {kelas:string}[];
+   return ["SEKOLAH", ...[...new Set(semua.map((r) => r.kelas))].filter((k) => k !== "SEKOLAH").sort()];
+ }
  const rows = await klienTulis().minta(`pbd_guru_kelas?select=kelas&guru_id=eq.${saya.id}&tahun_sesi=eq.${sesi}&peranan=eq.pengurus_pasukan`) as {kelas:string}[];
  return [...new Set(rows.map((r) => r.kelas))];
 }
 export async function senaraiAktivitiSaya(): Promise<AktivitiBorang[]> {
- const { saya, admin } = await akses();
- return bacaSemua<AktivitiBorang>(`borang_aktiviti?select=*&order=dicipta.desc,id.asc${admin ? "" : `&pengurus_emel=eq.${encodeURIComponent(saya.emel)}`}`);
+ const { admin } = await akses();
+ if (admin) return bacaSemua<AktivitiBorang>(`borang_aktiviti?select=*&order=dicipta.desc,id.asc`);
+ // Ikut SKOP pasukan yang dilantik, bukan pencipta: aktiviti yang admin
+ // cipta untuk pasukan HOKI mesti kelihatan kepada pengurus HOKI.
+ const skop = await skopAktivitiSaya();
+ if (!skop.length) return [];
+ const senarai = skop.map((k) => `"${k.replace(/["\\]/g, "")}"`).join(",");
+ return bacaSemua<AktivitiBorang>(`borang_aktiviti?select=*&skop=in.(${encodeURIComponent(senarai)})&order=dicipta.desc,id.asc`);
 }
 export async function ciptaAktiviti(input: Omit<AktivitiBorang,"id"|"pengurus_emel"|"aktif">) {
  try {
@@ -190,14 +212,18 @@ export async function jawapanAktiviti(id:string):Promise<JawapanAktiviti[]> {
 export async function tutupAktiviti(id:string) {
  await urus(id); await klienTulis().minta(`borang_aktiviti?id=eq.${id}`,{method:"PATCH",body:JSON.stringify({aktif:false})}); segarAktiviti();
 }
-export async function suntingAktiviti(id: string, input: Pick<AktivitiBorang,"nama"|"tarikh"|"tarikh_tamat"|"masa"|"tempat"|"anjuran"|"tutup">) {
+export async function suntingAktiviti(id: string, input: Pick<AktivitiBorang,"nama"|"tarikh"|"tarikh_tamat"|"masa"|"tempat"|"anjuran"|"tutup"> & { skop?: string }) {
  try {
   const asal = await urus(id);
   for (const k of ["nama","masa","tempat","anjuran"] as const) if (!input[k]?.trim() || input[k].length > 500) throw new Error("Lengkapkan butiran aktiviti.");
   if (!/^\d{4}-\d{2}-\d{2}$/.test(input.tarikh) || !/^\d{4}-\d{2}-\d{2}$/.test(input.tutup) || input.tutup > input.tarikh) throw new Error("Tarikh aktiviti atau tarikh tutup tidak sah.");
   const data = { nama: input.nama.trim(), tarikh: input.tarikh, tarikh_tamat: sahTamat(input.tarikh, input.tarikh_tamat), masa: input.masa.trim(), tempat: input.tempat.trim(), anjuran: input.anjuran.trim(), tutup: input.tutup };
-  await tulisDenganTamat(`borang_aktiviti?id=eq.${asal.id}`, "PATCH", data);
-  segarAktiviti(); return { ok: true, mesej: "Butiran aktiviti dikemas kini.", rekod: { ...asal, ...data } };
+  // Pindah pasukan: hanya ke skop yang pengguna ini sendiri boleh urus.
+  const skopBaru = input.skop?.trim();
+  if (skopBaru && skopBaru !== asal.skop && !(await skopAktivitiSaya()).includes(skopBaru)) throw new Error("Pasukan / skop itu bukan dalam kuasa anda.");
+  const dataPenuh = skopBaru && skopBaru !== asal.skop ? { ...data, skop: skopBaru } : data;
+  await tulisDenganTamat(`borang_aktiviti?id=eq.${asal.id}`, "PATCH", dataPenuh);
+  segarAktiviti(); return { ok: true, mesej: "Butiran aktiviti dikemas kini.", rekod: { ...asal, ...dataPenuh } };
  } catch (e) { return { ok: false, mesej: e instanceof Error ? e.message : "Gagal menyunting aktiviti." }; }
 }
 export async function padamAktiviti(id: string) {
@@ -235,8 +261,8 @@ export async function hantarAkuan(id:string, data: AkuanAktiviti, lamanPerangkap
   const dibenar=await db.minta("rpc/borang_ambil_giliran",{method:"POST",body:JSON.stringify({p_kunci:hash(`${ip}:${id}:${data.muridKp}`)})});
   if(!dibenar) throw new Error("Had cubaan hari ini dicapai. Hubungi pengurus aktiviti.");
   const aktiviti = await db.minta(
-    `borang_aktiviti?select=id,nama,pengurus_emel&aktif=eq.true&tutup=gte.${hariIniMY()}&id=eq.${id}&limit=1`,
-  ) as { id: string; nama: string; pengurus_emel: string }[];
+    `borang_aktiviti?select=id,nama,pengurus_emel,skop&aktif=eq.true&tutup=gte.${hariIniMY()}&id=eq.${id}&limit=1`,
+  ) as { id: string; nama: string; pengurus_emel: string; skop: string }[];
   if(!aktiviti[0]) throw new Error("Borang telah ditutup atau tidak ditemui.");
   const p=await db.minta(`borang_peserta?select=murid_id,nama,kelas&aktiviti_id=eq.${id}&no_kp=eq.${data.muridKp}&limit=1`) as {murid_id:string;nama:string;kelas:string}[];
   // Hanya murid yang DIPILIH pengurus boleh diisi. No. MyKid mesti tepat;
@@ -260,7 +286,7 @@ export async function hantarAkuan(id:string, data: AkuanAktiviti, lamanPerangkap
   const resit=randomBytes(32).toString("hex");
   await db.minta("borang_jawapan",{method:"POST",headers:{Prefer:"return=minimal"},body:JSON.stringify({aktiviti_id:id,murid_id:p[0].murid_id,data:rekod,resit_hash:hash(resit)})});
   await hantar({
-    penerima: [aktiviti[0].pengurus_emel], jenis: "borang",
+    penerima: [...new Set([aktiviti[0].pengurus_emel, ...(await emelPengurusSkop(aktiviti[0].skop))])], jenis: "borang",
     tajuk: `Akuan penyertaan diterima · ${aktiviti[0].nama}`,
     teks: `${p[0].nama} (${p[0].kelas}) menghantar Surat Akuan Penyertaan Aktiviti.`,
     pautan: "/borang/aktiviti/urus",
