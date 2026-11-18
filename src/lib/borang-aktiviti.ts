@@ -185,7 +185,7 @@ export async function tambahPesertaAktiviti(id: string, teks: string, simpan=fal
  } catch(e) {return {ok:false,mesej:e instanceof Error?e.message:"Gagal membaca peserta."};}
 }
 export async function jawapanAktiviti(id:string):Promise<JawapanAktiviti[]> {
- await urus(id); return bacaSemua<JawapanAktiviti>(`borang_jawapan?select=id,aktiviti_id,data,dicipta&aktiviti_id=eq.${id}&order=dicipta.asc,id.asc`);
+ await urus(id); return bacaSemua<JawapanAktiviti>(`borang_jawapan?select=id,aktiviti_id,murid_id,data,dicipta&aktiviti_id=eq.${id}&order=dicipta.asc,id.asc`);
 }
 export async function tutupAktiviti(id:string) {
  await urus(id); await klienTulis().minta(`borang_aktiviti?id=eq.${id}`,{method:"PATCH",body:JSON.stringify({aktif:false})}); segarAktiviti();
@@ -254,7 +254,9 @@ export async function hantarAkuan(id:string, data: AkuanAktiviti, lamanPerangkap
   if(!p[0]) throw new Error("No. MyKid ini tiada dalam senarai peserta aktiviti ini. Semak semula nombor MyKid anak (12 digit), atau hubungi jurulatih/pengurus pasukan supaya anak ditambah atau MyKid dibetulkan.");
   if(!namaHampir(p[0].nama, data.muridNama)) throw new Error("No. MyKid dijumpai, tetapi nama murid tidak sepadan dengan senarai peserta. Taip nama penuh anak seperti dalam MyKid, atau hubungi jurulatih/pengurus pasukan supaya ejaan nama dibetulkan.");
   // Nama dan kelas rasmi daripada daftar ePBD — bukan taipan penjaga.
-  const rekod: AkuanAktiviti = { ...data, muridNama: p[0].nama, kelas: p[0].kelas, tandatangan };
+  // `pindaan` hanya ditulis pengurus — buang apa-apa yang datang dari pelayar.
+  const { pindaan: _abaiPindaan, ...isian } = data; void _abaiPindaan;
+  const rekod: AkuanAktiviti = { ...isian, muridNama: p[0].nama, kelas: p[0].kelas, tandatangan };
   const resit=randomBytes(32).toString("hex");
   await db.minta("borang_jawapan",{method:"POST",headers:{Prefer:"return=minimal"},body:JSON.stringify({aktiviti_id:id,murid_id:p[0].murid_id,data:rekod,resit_hash:hash(resit)})});
   await hantar({
@@ -275,7 +277,9 @@ export async function resitAkuan(token:string) {
    const rows=await klienTulis().minta(`borang_jawapan?select=id,aktiviti_id,data,dicipta&resit_hash=eq.${hash(token)}&limit=1`) as JawapanAktiviti[];
    const r=rows[0]; if(!r || Date.now()-new Date(r.dicipta).getTime()>90*86400000) return null;
    const aktiviti=await denganTamat((lajur)=>klienTulis().minta(`borang_aktiviti?select=${lajur}&id=eq.${r.aktiviti_id}&limit=1`)) as AktivitiBorang[];
-   return aktiviti[0]?{jawapan:r,aktiviti:aktiviti[0]}:null;
+   // Jejak pindaan (emel kakitangan) tidak dipaparkan pada resit awam.
+   const { pindaan: _p, ...dataAwam } = r.data; void _p;
+   return aktiviti[0]?{jawapan:{...r,data:dataAwam},aktiviti:aktiviti[0]}:null;
  } catch {
    return null;
  }
@@ -342,20 +346,28 @@ export async function buangPesertaAktiviti(id: string, muridId: string) {
 }
 
 /**
- * Betulkan nama / No. MyKid / kelas seorang peserta yang SUDAH dipilih.
+ * Betulkan NAMA / KELAS / No. MyKid seorang murid dalam aktiviti — sebelum
+ * ATAU selepas ibu bapa menghantar akuan (aduan ejaan daripada ibu bapa).
  *
- * Hanya baris `borang_peserta` aktiviti ini diubah — daftar ePBD
- * (`pbd_murid`) dan akuan yang sudah dihantar TIDAK disentuh, jadi tiada
- * data ibu bapa hilang. Nama/KP di sini ialah yang dipadankan semasa ibu
- * bapa mengisi borang, jadi membetulkannya membuka jalan kepada penjaga
- * yang tadinya ditolak kerana nama/MyKid tidak sepadan.
+ * Yang berubah HANYA tiga medan itu, di DUA tempat yang mesti seiring:
+ *  - `borang_peserta` (senarai padanan semasa ibu bapa mengisi), dan
+ *  - `borang_jawapan.data` → `muridNama`, `kelas`, `muridKp` sahaja.
+ * Semua yang ibu bapa isi — butiran penjaga, alamat, telefon, persetujuan,
+ * jawapan kesihatan, tandatangan — dibaca semula dan ditulis kembali SEBIJIK.
+ * Ibu bapa TIDAK perlu mengisi semula.
  *
- * No. MyKid dikunci selepas akuan diterima: akuan itu menyimpan MyKid yang
- * diisi penjaga, dan menukarnya memutuskan padanan status "Diterima".
+ * Nilai lama disimpan dalam `data.pindaan` (siapa, bila, dari apa) supaya
+ * pindaan boleh dijejak. Daftar ePBD (`pbd_murid`) tidak disentuh.
+ * Kuasa: pengurus aktiviti itu atau admin (lihat `urus`).
+ *
+ * Tertib selamat: peserta dahulu (MyKid berulang ditolak di sini oleh
+ * kekangan unik, sebelum akuan disentuh); jika akuan gagal ditulis, peserta
+ * dipulihkan kepada nilai asal supaya kedua-dua tempat tidak bercanggah.
  */
 export async function suntingPesertaAktiviti(id: string, muridId: string, input: { nama: string; no_kp: string; kelas: string }) {
  try {
   await urus(id);
+  const { saya } = await akses();
   if (!uuid(muridId)) throw new Error("Murid tidak sah.");
   const nama = input.nama.trim().replace(/\s+/g, " ").toUpperCase();
   const no_kp = input.no_kp.replace(/[- ]/g, "");
@@ -364,16 +376,42 @@ export async function suntingPesertaAktiviti(id: string, muridId: string, input:
   if (!/^\d{12}$/.test(no_kp)) throw new Error("No. MyKid mesti 12 digit.");
   if (!kelas || kelas.length > 100) throw new Error("Kelas tidak sah.");
   const db = klienTulis();
-  const asal = await db.minta(`borang_peserta?select=no_kp&aktiviti_id=eq.${id}&murid_id=eq.${muridId}&limit=1`) as { no_kp: string }[];
-  if (!asal[0]) throw new Error("Peserta tiada dalam senarai aktiviti ini.");
-  if (asal[0].no_kp !== no_kp) {
-   const dihantar = await db.minta(`borang_jawapan?select=id&aktiviti_id=eq.${id}&murid_id=eq.${muridId}&limit=1`) as { id: string }[];
-   if (dihantar[0]) throw new Error("Akuan murid ini sudah diterima — No. MyKid tidak boleh ditukar. Nama dan kelas masih boleh dibetulkan.");
+  const [pesertaAsal, jawapanAsal] = await Promise.all([
+   db.minta(`borang_peserta?select=nama,no_kp,kelas&aktiviti_id=eq.${id}&murid_id=eq.${muridId}&limit=1`) as Promise<{ nama: string; no_kp: string; kelas: string }[]>,
+   db.minta(`borang_jawapan?select=id,data&aktiviti_id=eq.${id}&murid_id=eq.${muridId}&limit=1`) as Promise<{ id: string; data: AkuanAktiviti }[]>,
+  ]);
+  const p0 = pesertaAsal[0], j0 = jawapanAsal[0];
+  if (!p0 && !j0) throw new Error("Murid ini tiada dalam senarai peserta atau akuan aktiviti ini.");
+
+  if (p0) await db.minta(`borang_peserta?aktiviti_id=eq.${id}&murid_id=eq.${muridId}`, { method: "PATCH", headers: { Prefer: "return=minimal" }, body: JSON.stringify({ nama, no_kp, kelas }) });
+
+  let akuanDikemas = false;
+  if (j0) {
+   const d = j0.data;
+   const berubah = d.muridNama !== nama || d.kelas !== kelas || d.muridKp !== no_kp;
+   if (berubah) {
+    const data: AkuanAktiviti = {
+     ...d, muridNama: nama, kelas, muridKp: no_kp,
+     pindaan: [...(d.pindaan ?? []).slice(-9), { masa: new Date().toISOString(), oleh: saya.emel, dari: { muridNama: d.muridNama, kelas: d.kelas, muridKp: d.muridKp } }],
+    };
+    try {
+     // Ditapis juga pada id jawapan: jika akuan itu dipadam/diganti serentak, tiada apa ditulis ganti.
+     await db.minta(`borang_jawapan?id=eq.${j0.id}&aktiviti_id=eq.${id}&murid_id=eq.${muridId}`, { method: "PATCH", headers: { Prefer: "return=minimal" }, body: JSON.stringify({ data }) });
+     akuanDikemas = true;
+    } catch (e) {
+     if (p0) await db.minta(`borang_peserta?aktiviti_id=eq.${id}&murid_id=eq.${muridId}`, { method: "PATCH", headers: { Prefer: "return=minimal" }, body: JSON.stringify(p0) }).catch(() => undefined);
+     throw e;
+    }
+   }
   }
-  await db.minta(`borang_peserta?aktiviti_id=eq.${id}&murid_id=eq.${muridId}`, { method: "PATCH", headers: { Prefer: "return=minimal" }, body: JSON.stringify({ nama, no_kp, kelas }) });
-  return { ok: true, mesej: `Butiran ${nama} dikemas kini.`, peserta: { murid_id: muridId, nama, no_kp, kelas } };
+  return {
+   ok: true,
+   mesej: `Butiran ${nama} dikemas kini${akuanDikemas ? " — termasuk dalam akuan yang sudah dihantar (jawapan ibu bapa yang lain kekal)" : ""}.`,
+   peserta: { murid_id: muridId, nama, no_kp, kelas },
+   akuanDikemas,
+  };
  } catch (e) {
-  const m = e instanceof Error ? e.message : "Gagal mengemas kini peserta.";
+  const m = e instanceof Error ? e.message : "Gagal mengemas kini murid.";
   return { ok: false, mesej: /23505|duplicate key/.test(m) ? "No. MyKid itu sudah digunakan oleh peserta lain dalam aktiviti ini." : m };
  }
 }

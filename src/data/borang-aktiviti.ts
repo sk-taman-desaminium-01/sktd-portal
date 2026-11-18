@@ -7,6 +7,8 @@ export interface AkuanAktiviti {
  alamat: string; telefon: string; bersetuju: boolean; penyakit: { ada: boolean; catatan: string }[];
  /** Tandatangan penjaga (data URL PNG/JPEG). Pilihan — borang lama tidak mempunyainya. */
  tandatangan?: string;
+ /** Jejak pindaan nama/kelas/MyKid oleh pengurus selepas dihantar (nilai lama). */
+ pindaan?: { masa: string; oleh: string; dari: { muridNama: string; kelas: string; muridKp: string } }[];
 }
 /**
  * Had tandatangan dalam jsonb.
@@ -32,7 +34,7 @@ export function semakAkuan(x: unknown): x is AkuanAktiviti {
  return typeof d.muridKp === "string" && typeof d.penjagaKp === "string" && /^\d{12}$/.test(d.muridKp) && /^\d{12}$/.test(d.penjagaKp) && typeof d.bersetuju === "boolean" &&
    Array.isArray(d.penyakit) && d.penyakit.length === PENYAKIT.length && d.penyakit.every((p) => p && typeof p.ada === "boolean" && typeof p.catatan === "string" && p.catatan.length <= 500);
 }
-export interface JawapanAktiviti { id: string; aktiviti_id: string; data: AkuanAktiviti; dicipta: string }
+export interface JawapanAktiviti { id: string; aktiviti_id: string; murid_id?: string; data: AkuanAktiviti; dicipta: string }
 
 /** Token nama untuk padanan: huruf besar, BT/BINTI/B. → BIN, A/L → AL, A/P → AP. */
 export function tokenNama(n: string): string[] {

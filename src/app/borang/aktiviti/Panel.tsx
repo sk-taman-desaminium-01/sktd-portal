@@ -152,16 +152,28 @@ export default function Panel({ senarai, skop }: { senarai: AktivitiBorang[]; sk
   const [suntingPeserta, setSuntingPeserta] = useState<string | null>(null);
   /** Menu ⋯ dipapar SEBARIS di bawah peserta, bukan terapung: senarai ini boleh ditatal (overflow-auto) dan menu terapung akan terpotong. */
   const [menuPeserta, setMenuPeserta] = useState<string | null>(null);
-  const simpanPeserta = (p: Peserta, fd: FormData) => {
+  /** Jawapan mana sedang disunting (id jawapan). */
+  const [suntingJawapan, setSuntingJawapan] = useState<string | null>(null);
+  /**
+   * Satu simpanan, dua paparan dikemas: senarai peserta dan akuan diterima.
+   * Pelayan hanya menukar nama/kelas/MyKid — data lain ibu bapa kekal.
+   */
+  const simpanMurid = (muridId: string, fd: FormData) => {
     if (!pilih) return;
     void laksana(async () => {
-      const r = await suntingPesertaAktiviti(pilih.id, p.murid_id, { nama: nilai(fd, "nama"), no_kp: nilai(fd, "no_kp"), kelas: nilai(fd, "kelas") });
+      const r = await suntingPesertaAktiviti(pilih.id, muridId, { nama: nilai(fd, "nama"), no_kp: nilai(fd, "no_kp"), kelas: nilai(fd, "kelas") });
       setNota(r.mesej);
-      if (r.ok && r.peserta) { setPeserta((s) => s.map((x) => (x.murid_id === p.murid_id ? r.peserta! : x))); setSuntingPeserta(null); }
-    }, "Gagal mengemas kini peserta.");
+      if (!r.ok || !r.peserta) return;
+      const baru = r.peserta;
+      setPeserta((s) => s.map((x) => (x.murid_id === muridId ? baru : x)));
+      if (r.akuanDikemas) setJawapan(await jawapanAktiviti(pilih.id));
+      setSuntingPeserta(null); setSuntingJawapan(null);
+    }, "Gagal mengemas kini murid.");
   };
 
-  const sudahHantar = new Set(jawapan.map((j) => j.data.muridKp));
+  const muridHantar = new Set(jawapan.map((j) => j.murid_id).filter(Boolean));
+  const kpHantar = new Set(jawapan.map((j) => j.data.muridKp));
+  const sudahHantar = (p: Peserta) => muridHantar.has(p.murid_id) || kpHantar.has(p.no_kp);
 
   return (
     <div className="mt-5 space-y-5">
@@ -240,22 +252,8 @@ export default function Panel({ senarai, skop }: { senarai: AktivitiBorang[]; sk
               {peserta.map((p, i) => (
                 suntingPeserta === p.murid_id ? (
                 <li key={p.murid_id} className="px-3 py-3 text-sm">
-                  <form onSubmit={(e) => { e.preventDefault(); simpanPeserta(p, new FormData(e.currentTarget)); }} className="grid gap-2 sm:grid-cols-[1fr_9rem_7rem]">
-                    <label className="min-w-0 text-xs font-semibold text-navy-800">Nama murid
-                      <input name="nama" defaultValue={p.nama} required minLength={2} maxLength={200} className={kelasInput} />
-                    </label>
-                    <label className="min-w-0 text-xs font-semibold text-navy-800">No. MyKid
-                      <input name="no_kp" defaultValue={p.no_kp} required inputMode="numeric" pattern="[0-9 -]{12,14}" readOnly={sudahHantar.has(p.no_kp)} className={kelasInput} />
-                    </label>
-                    <label className="min-w-0 text-xs font-semibold text-navy-800">Kelas
-                      <input name="kelas" defaultValue={p.kelas} required maxLength={100} className={kelasInput} />
-                    </label>
-                    <div className="flex gap-2 sm:col-span-3">
-                      <button disabled={sibuk} className="rounded-lg bg-navy-800 px-3 py-2 text-sm font-semibold text-white disabled:opacity-50">Simpan</button>
-                      <button type="button" disabled={sibuk} onClick={() => setSuntingPeserta(null)} className="rounded-lg border border-slate-300 px-3 py-2 text-sm">Batal</button>
-                    </div>
-                    <p className="text-xs text-slate-500 sm:col-span-3">Hanya senarai peserta aktiviti ini dibetulkan; daftar murid dan akuan yang sudah diterima tidak berubah.{sudahHantar.has(p.no_kp) ? " No. MyKid dikunci kerana akuan sudah diterima." : ""}</p>
-                  </form>
+                  <BorangSuntingMurid nama={p.nama} noKp={p.no_kp} kelas={p.kelas} sibuk={sibuk} adaAkuan={sudahHantar(p)}
+                    onSimpan={(fd) => simpanMurid(p.murid_id, fd)} onBatal={() => setSuntingPeserta(null)} />
                 </li>
                 ) : (
                 <li key={p.murid_id} className="flex flex-wrap items-center gap-2 px-3 py-2 text-sm">
@@ -264,7 +262,7 @@ export default function Panel({ senarai, skop }: { senarai: AktivitiBorang[]; sk
                     <span className="block truncate font-semibold text-navy-800">{p.nama}</span>
                     <span className="block text-xs text-slate-500">{p.kelas} · {p.no_kp}</span>
                   </span>
-                  {sudahHantar.has(p.no_kp)
+                  {sudahHantar(p)
                     ? <span className="shrink-0 rounded-full bg-[#eef8f2] px-2 py-0.5 text-[11px] font-semibold text-[#167a4b]">Diterima</span>
                     : <span className="shrink-0 rounded-full bg-slate-100 px-2 py-0.5 text-[11px] text-slate-500">Menunggu</span>}
                   <button disabled={sibuk} onClick={() => setMenuPeserta((m) => (m === p.murid_id ? null : p.murid_id))}
@@ -319,9 +317,16 @@ export default function Panel({ senarai, skop }: { senarai: AktivitiBorang[]; sk
                     <small className={`block ${j.data.bersetuju ? "text-[#167a4b]" : "text-[#8f2424]"}`}>{j.data.bersetuju ? "Membenarkan" : "Tidak membenarkan"}</small>
                   </span>
                   <span className="flex gap-3">
+                    {j.murid_id && <button disabled={sibuk} onClick={() => setSuntingJawapan(suntingJawapan === j.id ? null : j.id)} className="text-sm font-semibold text-navy-700 underline">Betulkan nama/kelas/MyKid</button>}
                     <button onClick={() => { setCetakSemua(false); setCetak(j); }} className="text-sm font-semibold text-navy-700 underline">Buka cetakan</button>
                     <button disabled={sibuk} onClick={() => padamJawapan(j)} className="text-sm text-[#8f2424] underline">Padam</button>
                   </span>
+                  {suntingJawapan === j.id && j.murid_id && (
+                    <div className="basis-full">
+                      <BorangSuntingMurid nama={j.data.muridNama} noKp={j.data.muridKp} kelas={j.data.kelas} sibuk={sibuk} adaAkuan
+                        onSimpan={(fd) => simpanMurid(j.murid_id!, fd)} onBatal={() => setSuntingJawapan(null)} />
+                    </div>
+                  )}
                 </li>
               ))}
               {jawapan.length === 0 && <li className="py-3 text-sm text-slate-500">Belum ada akuan diterima.</li>}
@@ -419,5 +424,37 @@ function CariMurid({ aktivitiId, sudah, sibuk, tambah }: {
         </div>
       )}
     </div>
+  );
+}
+
+/**
+ * Borang kecil betulkan nama / No. MyKid / kelas — dipakai di senarai
+ * peserta DAN di senarai akuan diterima (aduan ejaan ibu bapa).
+ */
+function BorangSuntingMurid({ nama, noKp, kelas, sibuk, adaAkuan, onSimpan, onBatal }: {
+  nama: string; noKp: string; kelas: string; sibuk: boolean; adaAkuan: boolean;
+  onSimpan: (fd: FormData) => void; onBatal: () => void;
+}) {
+  return (
+    <form onSubmit={(e) => { e.preventDefault(); onSimpan(new FormData(e.currentTarget)); }} className="mt-2 grid gap-2 rounded-lg bg-slate-50 p-3 sm:grid-cols-[1fr_9rem_7rem]">
+      <label className="min-w-0 text-xs font-semibold text-navy-800">Nama murid
+        <input name="nama" defaultValue={nama} required minLength={2} maxLength={200} className={kelasInput} />
+      </label>
+      <label className="min-w-0 text-xs font-semibold text-navy-800">No. MyKid
+        <input name="no_kp" defaultValue={noKp} required inputMode="numeric" pattern="[0-9 \-]{12,14}" title="12 digit" className={kelasInput} />
+      </label>
+      <label className="min-w-0 text-xs font-semibold text-navy-800">Kelas
+        <input name="kelas" defaultValue={kelas} required maxLength={100} className={kelasInput} />
+      </label>
+      <div className="flex gap-2 sm:col-span-3">
+        <button disabled={sibuk} className="rounded-lg bg-navy-800 px-3 py-2 text-sm font-semibold text-white disabled:opacity-50">{sibuk ? "Menyimpan…" : "Simpan"}</button>
+        <button type="button" disabled={sibuk} onClick={onBatal} className="rounded-lg border border-slate-300 px-3 py-2 text-sm">Batal</button>
+      </div>
+      <p className="text-xs text-slate-500 sm:col-span-3">
+        {adaAkuan
+          ? "Akuan sudah diterima: hanya nama, kelas dan No. MyKid dalam akuan itu ditukar. Butiran penjaga, jawapan kesihatan dan tandatangan KEKAL — ibu bapa tidak perlu mengisi semula. Nilai lama direkodkan."
+          : "Hanya senarai peserta aktiviti ini dibetulkan. Daftar murid ePBD tidak berubah."}
+      </p>
+    </form>
   );
 }
