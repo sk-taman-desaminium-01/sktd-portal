@@ -149,6 +149,8 @@ export default function Panel({ senarai, skop }: { senarai: AktivitiBorang[]; sk
   };
 
   const [suntingPeserta, setSuntingPeserta] = useState<string | null>(null);
+  /** Menu ⋯ dipapar SEBARIS di bawah peserta, bukan terapung: senarai ini boleh ditatal (overflow-auto) dan menu terapung akan terpotong. */
+  const [menuPeserta, setMenuPeserta] = useState<string | null>(null);
   const simpanPeserta = (p: Peserta, fd: FormData) => {
     if (!pilih) return;
     void laksana(async () => {
@@ -255,7 +257,7 @@ export default function Panel({ senarai, skop }: { senarai: AktivitiBorang[]; sk
                   </form>
                 </li>
                 ) : (
-                <li key={p.murid_id} className="flex items-center gap-2 px-3 py-2 text-sm">
+                <li key={p.murid_id} className="flex flex-wrap items-center gap-2 px-3 py-2 text-sm">
                   <span className="w-6 shrink-0 text-right text-xs text-slate-500">{i + 1}.</span>
                   <span className="min-w-0 flex-1">
                     <span className="block truncate font-semibold text-navy-800">{p.nama}</span>
@@ -264,8 +266,15 @@ export default function Panel({ senarai, skop }: { senarai: AktivitiBorang[]; sk
                   {sudahHantar.has(p.no_kp)
                     ? <span className="shrink-0 rounded-full bg-[#eef8f2] px-2 py-0.5 text-[11px] font-semibold text-[#167a4b]">Diterima</span>
                     : <span className="shrink-0 rounded-full bg-slate-100 px-2 py-0.5 text-[11px] text-slate-500">Menunggu</span>}
-                  <button disabled={sibuk} onClick={() => setSuntingPeserta(p.murid_id)} aria-label={`Sunting ${p.nama}`} className="shrink-0 rounded px-1.5 text-xs font-semibold text-navy-800 underline">Sunting</button>
-                  <button disabled={sibuk} onClick={() => buangPeserta(p)} aria-label={`Buang ${p.nama}`} className="shrink-0 px-1 text-slate-500 hover:text-[#8f2424]">✕</button>
+                  <button disabled={sibuk} onClick={() => setMenuPeserta((m) => (m === p.murid_id ? null : p.murid_id))}
+                    aria-label={`Pilihan untuk ${p.nama}`} aria-expanded={menuPeserta === p.murid_id}
+                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xl leading-none text-slate-600 hover:bg-slate-100">⋯</button>
+                  {menuPeserta === p.murid_id && (
+                    <span className="flex basis-full justify-end gap-2 pt-1">
+                      <button disabled={sibuk} onClick={() => { setMenuPeserta(null); setSuntingPeserta(p.murid_id); }} className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-semibold text-navy-800">✎ Sunting nama / MyKid / kelas</button>
+                      <button disabled={sibuk} onClick={() => { setMenuPeserta(null); buangPeserta(p); }} className="rounded-lg border border-red-200 px-3 py-1.5 text-xs font-semibold text-[#8f2424]">Buang</button>
+                    </span>
+                  )}
                 </li>
                 )
               ))}
