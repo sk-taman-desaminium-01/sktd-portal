@@ -440,7 +440,7 @@ function BorangSuntingMurid({ nama, noKp, kelas, sibuk, adaAkuan, onSimpan, onBa
       <label className="min-w-0 text-xs font-semibold text-navy-800">Nama murid
         <input name="nama" defaultValue={nama} required minLength={2} maxLength={200} className={kelasInput} />
       </label>
-      <label className="min-w-0 text-xs font-semibold text-navy-800">No. MyKid
+      <label className="min-w-0 text-xs font-semibold text-navy-800">No. MyKid (tanpa -)
         <input name="no_kp" defaultValue={noKp} required inputMode="numeric" pattern="[0-9 \-]{12,14}" title="12 digit" className={kelasInput} />
       </label>
       <label className="min-w-0 text-xs font-semibold text-navy-800">Kelas

@@ -51,7 +51,7 @@ export default function Borang({ aktivitiId }: { aktivitiId: string }) {
           <h2 className="text-lg font-bold text-navy-800">Maklumat murid dan penjaga</h2>
           <div className="mt-4 grid min-w-0 gap-4 sm:grid-cols-2">
             <Teks nama="muridNama" label="Nama penuh murid (seperti dalam MyKid)" />
-            <Teks nama="muridKp" label="No. MyKid / Surat Beranak murid" />
+            <Teks nama="muridKp" label="No. MyKid / Surat Beranak murid (tanpa -)" />
             <Teks nama="penjagaNama" label="Nama ibu bapa atau penjaga" lengkap="name" />
             <Teks nama="penjagaKp" label="No. KP penjaga" />
             <Teks nama="telefon" label="No. telefon" jenis="tel" lengkap="tel" />
