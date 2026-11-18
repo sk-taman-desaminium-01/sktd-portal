@@ -9,7 +9,7 @@ import { tahunSesiAktif } from "./sesi-aktif";
 import { bacaSemua } from "./baca-semua";
 import { bacaSenaraiMurid } from "./kenal-murid";
 import { hariIniMY } from "./bilik";
-import { semakAkuan, namaSepadan, type AktivitiBorang, type AkuanAktiviti, type JawapanAktiviti } from "@/data/borang-aktiviti";
+import { semakAkuan, namaHampir, type AktivitiBorang, type AkuanAktiviti, type JawapanAktiviti } from "@/data/borang-aktiviti";
 import { hantar } from "./notifikasi";
 import { padatkanTandatangan } from "./padat-tandatangan";
 const uuid = (s: string) => /^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(s);
@@ -242,7 +242,17 @@ export async function hantarAkuan(id:string, data: AkuanAktiviti, lamanPerangkap
   // Hanya murid yang DIPILIH pengurus boleh diisi. No. MyKid mesti tepat;
   // nama diterima dengan ejaan biasa ibu bapa (BT/BINTI, huruf kecil, nama
   // pendek) supaya salah taip kecil tidak menolak penjaga yang sah.
-  if(!p[0] || !namaSepadan(p[0].nama, data.muridNama)) throw new Error("Murid ini tiada dalam senarai peserta yang dipilih jurulatih/pengurus, atau nama dan No. MyKid tidak sepadan. Semak dengan pengurus pasukan.");
+  // Padanan ikut senarai PESERTA aktiviti ini (yang boleh disunting
+  // jurulatih), BUKAN daftar ePBD — ejaan yang sudah dibetulkan jurulatih
+  // ialah yang dipakai. MyKid penentu; nama dimaafkan (lihat namaHampir).
+  if(!p[0]) {
+    // Aktiviti berganda (nama sama dicipta dua kali) — penjaga mungkin membuka
+    // salinan yang tiada peserta. Tunjukkan jalan ke borang yang betul.
+    const lain=await db.minta(`borang_peserta?select=aktiviti_id,borang_aktiviti!inner(nama,aktif,tutup)&no_kp=eq.${data.muridKp}&aktiviti_id=neq.${id}&borang_aktiviti.aktif=eq.true&borang_aktiviti.tutup=gte.${hariIniMY()}&limit=1`).catch(()=>[]) as {aktiviti_id:string}[];
+    if(lain[0]) throw new Error("Anak anda tersenarai dalam borang aktiviti LAIN yang sedang dibuka (mungkin aktiviti bernama sama). Kembali ke senarai aktiviti dan pilih borang yang satu lagi.");
+  }
+  if(!p[0]) throw new Error("No. MyKid ini tiada dalam senarai peserta aktiviti ini. Semak semula nombor MyKid anak (12 digit), atau hubungi jurulatih/pengurus pasukan supaya anak ditambah atau MyKid dibetulkan.");
+  if(!namaHampir(p[0].nama, data.muridNama)) throw new Error("No. MyKid dijumpai, tetapi nama murid tidak sepadan dengan senarai peserta. Taip nama penuh anak seperti dalam MyKid, atau hubungi jurulatih/pengurus pasukan supaya ejaan nama dibetulkan.");
   // Nama dan kelas rasmi daripada daftar ePBD — bukan taipan penjaga.
   const rekod: AkuanAktiviti = { ...data, muridNama: p[0].nama, kelas: p[0].kelas, tandatangan };
   const resit=randomBytes(32).toString("hex");

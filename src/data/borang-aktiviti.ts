@@ -54,6 +54,39 @@ export function namaSepadan(rasmi: string, taip: string): boolean {
  return b.every((t, i) => a[i] === t);
 }
 
+/** Jarak suntingan kecil (Levenshtein) — untuk salah ejaan satu-dua huruf. */
+function jarak(a: string, b: string): number {
+ if (Math.abs(a.length - b.length) > 2) return 3;
+ let prev = Array.from({ length: b.length + 1 }, (_, j) => j);
+ for (let i = 1; i <= a.length; i++) {
+   const cur = [i];
+   for (let j = 1; j <= b.length; j++) cur[j] = Math.min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+   prev = cur;
+ }
+ return prev[b.length];
+}
+const PENYAMBUNG = new Set(["BIN", "AL", "AP", "A", "L", "P", "MOHD", "MUHAMMAD", "MUHAMAD", "MOHAMAD", "MOHAMMAD", "MOHAMED", "MD", "NUR", "NURUL", "SITI"]);
+const kataSama = (a: string, b: string) => a === b || (Math.min(a.length, b.length) >= 4 && jarak(a, b) <= (Math.min(a.length, b.length) >= 7 ? 2 : 1));
+
+/**
+ * Padanan nama untuk akuan aktiviti, apabila No. MyKid SUDAH tepat.
+ *
+ * MyKid 12 digit ialah penentu sebenar. Nama hanya semakan kewarasan — jadi
+ * ia mesti memaafkan cara ibu bapa menaip: "MUHAMMAD" vs "MOHD", tanpa
+ * "BIN …", tanda ' atau -, nama pendek, dan salah ejaan 1–2 huruf (pada
+ * daftar ATAU pada taipan). Lulus jika `namaSepadan`, ATAU sekurang-kurangnya
+ * satu kata nama bermakna sepadan dan majoriti kata bermakna yang ditaip
+ * terdapat dalam nama rasmi.
+ */
+export function namaHampir(rasmi: string, taip: string): boolean {
+ if (namaSepadan(rasmi, taip)) return true;
+ const a = tokenNama(rasmi).filter((t) => !PENYAMBUNG.has(t));
+ const b = tokenNama(taip).filter((t) => !PENYAMBUNG.has(t));
+ if (!a.length || !b.length) return false;
+ const jumpa = b.filter((t) => a.some((r) => kataSama(r, t))).length;
+ return jumpa >= 1 && jumpa * 2 >= b.length;
+}
+
 const BULAN_BORANG = ["JANUARI", "FEBRUARI", "MAC", "APRIL", "MEI", "JUN", "JULAI", "OGOS", "SEPTEMBER", "OKTOBER", "NOVEMBER", "DISEMBER"];
 
 /**
