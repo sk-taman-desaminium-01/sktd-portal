@@ -189,7 +189,7 @@ export default function Panel({ senarai, skop }: { senarai: AktivitiBorang[]; sk
             ))}
             <label className="min-w-0 text-sm font-semibold text-navy-800">Pasukan / skop
               <select name="skop" className={kelasInput}>{skop.map((s) => <option key={s}>{s}</option>)}</select>
-              <span className="mt-1 block text-[11px] font-normal text-slate-500">Pilih pasukan supaya pengurus pasukan yang dilantik nampak dan boleh mengurus aktiviti ini. SEKOLAH = admin sahaja.</span>
+              <span className="mt-1 block text-[11px] font-normal text-slate-500">Label pasukan aktiviti ini. Semua pengurus pasukan yang dilantik (mana-mana sukan/kelab) boleh melihat dan mengurus semua aktiviti.</span>
             </label>
             <button disabled={sibuk} className="min-h-11 self-end rounded-lg bg-navy-800 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">{sibuk ? "Menyimpan…" : "Cipta aktiviti"}</button>
             {ralatCipta && <p role="alert" className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm font-semibold text-red-800 sm:col-span-2">{ralatCipta}</p>}
@@ -232,7 +232,7 @@ export default function Panel({ senarai, skop }: { senarai: AktivitiBorang[]; sk
                   <input required={wajib} name={k} type={t} defaultValue={String(pilih[k] ?? "")} className={kelasInput} />
                 </label>
               ))}
-              <label className="min-w-0 text-xs font-semibold text-slate-600">Pasukan / skop (pengurus pasukan ini boleh lihat &amp; urus)
+              <label className="min-w-0 text-xs font-semibold text-slate-600">Pasukan / skop
                 <select name="skop" defaultValue={pilih.skop} className={kelasInput}>
                   {[...new Set([pilih.skop, ...skop])].map((k) => <option key={k} value={k}>{k}</option>)}
                 </select>

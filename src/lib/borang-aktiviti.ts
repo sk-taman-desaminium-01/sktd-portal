@@ -89,10 +89,11 @@ async function urus(id: string) {
  const { saya, admin } = await akses();
  const rows = await klienTulis().minta(`borang_aktiviti?select=*&id=eq.${id}&limit=1`) as AktivitiBorang[];
  const a = rows[0]; if (!a) throw new Error("Aktiviti tidak ditemui.");
- // Pengurus pasukan mengurus SEMUA aktiviti berskop pasukannya — termasuk
- // yang dicipta admin bagi pihaknya — bukan hanya yang dia cipta sendiri.
- // Pencipta yang tugasannya sudah tamat tidak lagi boleh mengurus.
- if (!admin && !(await skopAktivitiSaya()).includes(a.skop)) throw new Error(a.pengurus_emel === saya.emel ? "Tugasan pengurus tidak lagi aktif." : "Tiada kebenaran aktiviti.");
+ // Keputusan pengguna 18 Nov 2026: SETIAP pengurus pasukan yang dilantik
+ // (mana-mana sukan/kelab) boleh melihat dan mengurus SEMUA aktiviti —
+ // mereka saling membantu. Yang tiada lantikan aktif (atau sudah tamat)
+ // tidak boleh, walaupun dia pencipta aktiviti itu.
+ if (!admin && !(await skopAktivitiSaya()).length) throw new Error(a.pengurus_emel === saya.emel ? "Tugasan pengurus tidak lagi aktif." : "Tiada kebenaran aktiviti.");
  return a;
 }
 export async function skopAktivitiSaya(): Promise<string[]> {
@@ -109,13 +110,9 @@ export async function skopAktivitiSaya(): Promise<string[]> {
 }
 export async function senaraiAktivitiSaya(): Promise<AktivitiBorang[]> {
  const { admin } = await akses();
- if (admin) return bacaSemua<AktivitiBorang>(`borang_aktiviti?select=*&order=dicipta.desc,id.asc`);
- // Ikut SKOP pasukan yang dilantik, bukan pencipta: aktiviti yang admin
- // cipta untuk pasukan HOKI mesti kelihatan kepada pengurus HOKI.
- const skop = await skopAktivitiSaya();
- if (!skop.length) return [];
- const senarai = skop.map((k) => `"${k.replace(/["\\]/g, "")}"`).join(",");
- return bacaSemua<AktivitiBorang>(`borang_aktiviti?select=*&skop=in.(${encodeURIComponent(senarai)})&order=dicipta.desc,id.asc`);
+ // Semua aktiviti untuk admin DAN untuk setiap pengurus pasukan yang dilantik (lihat `urus`).
+ if (!admin && !(await skopAktivitiSaya()).length) return [];
+ return bacaSemua<AktivitiBorang>(`borang_aktiviti?select=*&order=dicipta.desc,id.asc`);
 }
 export async function ciptaAktiviti(input: Omit<AktivitiBorang,"id"|"pengurus_emel"|"aktif">) {
  try {
