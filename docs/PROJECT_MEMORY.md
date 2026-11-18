@@ -837,3 +837,17 @@ SQL: `supabase/migrations/20261023_keberhasilan.sql` — **sudah dijalankan 23 O
   hanya dilihat admin mutlak, admin biasa berlabel Admin dan pemilik
   berlabel Admin Mutlak. Log/notifikasi pengguna lain menggunakan istilah
   pentadbir sistem untuk tindakan rentas PP.
+
+## Borang Aktiviti: cipta gagal senyap + identiti deploy (18 Nov 2026)
+
+- **Gejala:** pengurus "mencipta" aktiviti, tetapi senarai urus dan halaman
+  ibu bapa kosong — rekod tidak pernah tersimpan. `<form action>` React 19
+  mengosongkan borang walaupun pelayan MENOLAK (lazimnya tarikh tutup
+  jawapan selepas tarikh mula), dan ralat terpapar di luar borang.
+  Dibaiki dalam `Panel.tsx`: `onSubmit`, reset hanya bila tersimpan, semakan
+  tarikh di pelayar, ralat merah dalam borang. **Jangan kembali ke
+  `<form action>` untuk borang yang boleh ditolak pelayan.**
+- **Identiti deploy Vercel:** gabung PR di GitHub (walaupun kaedah rebase)
+  menjadikan PENGGABUNG (akaun peribadi) sebagai committer di `main`.
+  Untuk memastikan deploy dikaitkan dengan akaun sekolah, commit dan push
+  ke `main` dengan author DAN committer `SK-Taman-Desaminium`.
