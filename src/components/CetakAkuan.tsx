@@ -45,9 +45,8 @@ function Potong({ ya, a, b }: { ya: boolean; a: string; b: string }) {
  * Yang dipotong ("ADA / TIDAK ADA*", "membenarkan / tidak membenarkan*")
  * dicoret mengikut jawapan penjaga, sama seperti borang yang diisi dengan pen.
  */
-export default function CetakAkuan({
-  aktiviti: a, data: d, tarikh,
-}: { aktiviti: Program; data: AkuanAktiviti; tarikh?: string | null }) {
+/** Satu helaian A4 landskap (dua muka) bagi SATU akuan. */
+function Helaian({ a, d, tarikh }: { a: Program; d: AkuanAktiviti; tarikh?: string | null }) {
   const adaPenyakit = d.penyakit.some((p) => p.ada);
   const nyatakan = d.penyakit
     .map((p, i) => (p.ada ? `${PENYAKIT[i]}${p.catatan ? ` (${p.catatan})` : ""}` : ""))
@@ -55,64 +54,8 @@ export default function CetakAkuan({
   const tt = tarikhTandatangan(tarikh);
   const namaPenjaga = d.penjagaNama.toUpperCase();
 
-  return <>
-    <button type="button" onClick={() => mulaCetak("akuan-cetak", `Surat Akuan Waris - ${d.muridNama}`)}
-      className="my-4 min-h-11 rounded-lg bg-navy-800 px-4 py-2 text-sm font-semibold text-white print:hidden">
-      Cetak / Simpan PDF
-    </button>
-
-    <div className="max-w-full overflow-x-auto rounded-lg border border-slate-200 bg-white print:overflow-visible print:border-0">
-    <div id="akuan-cetak" data-cetak-kertas="landscape">
-      <style>{`
-        #akuan-cetak { box-sizing: border-box; width: 277mm; min-height: 190mm; margin: 0 auto; background: #fff; color: #000;
-          padding: 2mm 0; font-family: Arial, Helvetica, sans-serif; font-size: 7.3pt; line-height: 1.25; }
-        /* DUA MUKA KIRI–KANAN pada satu helaian A4 melintang, seperti borang asal.
-           Grid diletakkan pada bekas DALAM, bukan pada #akuan-cetak: mulaCetak()
-           dan halaman pratonton memaksa akar dokumen menjadi display:block, dan
-           itu pernah menyusun dua muka ini ATAS–BAWAH (laporan pengguna 9 Okt 2026). */
-        #akuan-cetak .dua-muka { display: grid; grid-template-columns: 1fr 1fr; column-gap: 9mm; }
-        #akuan-cetak * { box-sizing: border-box; }
-        #akuan-cetak p { margin: 0; }
-        #akuan-cetak .u { display: inline-block; border-bottom: .6pt solid #000; min-height: 1.25em; padding: 0 1mm; vertical-align: bottom; overflow-wrap: anywhere; }
-        #akuan-cetak .baris { display: flex; align-items: flex-end; gap: 1.2mm; margin-top: 2mm; }
-        #akuan-cetak .baris .u { flex: 1; min-width: 0; }
-        #akuan-cetak .baris .tetap { flex: none; }
-        /* ---------- muka kiri: Surat Akuan Kebenaran Waris ---------- */
-        #akuan-cetak .kepala { display: grid; grid-template-columns: 17mm 1fr 34mm 14mm; align-items: center; column-gap: 2mm; }
-        #akuan-cetak .kepala img { width: 100%; height: 15mm; object-fit: contain; }
-        #akuan-cetak .kepala .sek { font-size: 7.4pt; line-height: 1.35; }
-        #akuan-cetak .kepala .sek b { font-size: 7.8pt; }
-        #akuan-cetak .kepala .hub { font-size: 6.6pt; line-height: 1.35; align-self: end; }
-        #akuan-cetak .tajuk-w { margin-top: 1mm; text-align: center; font-weight: 700; font-size: 8.2pt; }
-        #akuan-cetak .garis-tajuk { width: fit-content; min-width: 62%; max-width: 100%; margin: .6mm auto 0; padding: 0 2mm; border-bottom: .6pt solid #000;
-          min-height: 3.6mm; text-align: center; font-weight: 700; font-size: 8.2pt; line-height: 1.3; overflow-wrap: anywhere; }
-        #akuan-cetak .anak { margin-left: 11mm; }
-        #akuan-cetak .prog { display: grid; grid-template-columns: 30mm 3mm 1fr; row-gap: .6mm; margin: 1.2mm 0 0 16mm; width: 100mm; }
-        #akuan-cetak .prog .u { display: block; font-size: 7.4pt; }
-        #akuan-cetak .no { display: grid; grid-template-columns: 11mm 1fr; margin-top: 2mm; text-align: justify; }
-        #akuan-cetak .kecil { font-size: 5.6pt; }
-        #akuan-cetak .ttd { display: grid; grid-template-columns: 1fr 42mm; align-items: end; margin-top: 2.5mm; }
-        #akuan-cetak .ttd-ruang { position: relative; width: 44mm; height: 7mm; }
-        #akuan-cetak .ttd-ruang img { position: absolute; left: 2mm; bottom: -1.2mm; height: 11mm; max-width: 40mm; object-fit: contain; mix-blend-mode: multiply; }
-        #akuan-cetak .saksi-tajuk { margin-top: 2.6mm; font-weight: 700; text-decoration: underline; }
-        #akuan-cetak .cop { display: flex; justify-content: space-between; align-items: flex-end; }
-        /* ---------- muka kanan: Borang Perakuan Kesihatan ---------- */
-        #akuan-cetak .kanan { font-family: Calibri, Carlito, "Segoe UI", Arial, sans-serif; font-size: 7.9pt; }
-        #akuan-cetak .kepala-k { display: flex; justify-content: center; align-items: flex-start; min-height: 20mm; }
-        #akuan-cetak .jata-k { text-align: center; font-family: Arial, sans-serif; font-size: 5.6pt; font-weight: 700; line-height: 1.3; letter-spacing: .02em; }
-        #akuan-cetak .jata-k img { display: block; margin: 0 auto 1mm; height: 14mm; }
-        #akuan-cetak .tajuk-k { margin-top: 2.6mm; text-align: center; font-weight: 700; font-size: 8.2pt; line-height: 1.35; }
-        #akuan-cetak .blok { display: grid; grid-template-columns: 8mm 51mm 1fr; margin-top: 3.4mm; font-weight: 700; }
-        #akuan-cetak .sub { display: grid; grid-template-columns: 13mm 6mm 40mm 3mm 1fr; margin-top: .7mm; }
-        #akuan-cetak .jadual { width: 100%; border-collapse: collapse; margin-top: 3.2mm; font-size: 7.6pt; }
-        #akuan-cetak .jadual th, #akuan-cetak .jadual td { border: .8pt solid #000; height: 5.1mm; padding: 0 1.4mm; }
-        #akuan-cetak .jadual th { font-weight: 700; text-align: center; }
-        #akuan-cetak .jadual .c { text-align: center; }
-        #akuan-cetak .ttd-k { display: grid; grid-template-columns: 19mm 3mm 1fr; align-items: end; margin-top: 4.4mm; }
-        #akuan-cetak .titik { border-bottom: .9pt dotted #000; min-height: 1.3em; padding: 0 1mm; }
-        @media print { #akuan-cetak { width: 100%; } }
-      `}</style>
-
+  return (
+    <div className="satu-slip">
       <div className="dua-muka">
       {/* ======================= MUKA KIRI ======================= */}
       <section>
@@ -244,6 +187,87 @@ export default function CetakAkuan({
         <p style={{ marginTop: "3.4mm", fontWeight: 700 }}>*Potong yang mana tidak berkenaan</p>
       </section>
       </div>
+    </div>
+  );
+}
+
+export type AkuanUntukCetak = { data: AkuanAktiviti; tarikh?: string | null };
+
+/**
+ * Satu akuan (`data`) ATAU cetak pukal (`senarai`) — setiap akuan satu
+ * helaian `.satu-slip`: pratonton PDF menjana satu muka surat bagi setiap
+ * `.satu-slip`, dan cetakan desktop memecah halaman pada `break-after`.
+ */
+export default function CetakAkuan({
+  aktiviti: a, data, tarikh, senarai: pukal,
+}: { aktiviti: Program; data?: AkuanAktiviti; tarikh?: string | null; senarai?: AkuanUntukCetak[] }) {
+  const senarai: AkuanUntukCetak[] = pukal ?? (data ? [{ data, tarikh }] : []);
+  if (!senarai.length) return null;
+  const tajuk = senarai.length === 1 ? `Surat Akuan Waris - ${senarai[0].data.muridNama}` : `Surat Akuan Waris - ${a.nama} (${senarai.length})`;
+
+  return <>
+    <button type="button" onClick={() => mulaCetak("akuan-cetak", tajuk)}
+      className="my-4 min-h-11 rounded-lg bg-navy-800 px-4 py-2 text-sm font-semibold text-white print:hidden">
+      {senarai.length > 1 ? `Cetak / Simpan PDF (${senarai.length} helaian)` : "Cetak / Simpan PDF"}
+    </button>
+
+    <div className="max-w-full overflow-x-auto rounded-lg border border-slate-200 bg-white print:overflow-visible print:border-0">
+    <div id="akuan-cetak" data-cetak-kertas="landscape">
+      <style>{`
+        #akuan-cetak { box-sizing: border-box; width: 277mm; margin: 0 auto; background: #fff; color: #000;
+          padding: 2mm 0; font-family: Arial, Helvetica, sans-serif; font-size: 7.3pt; line-height: 1.25; }
+        /* DUA MUKA KIRI–KANAN pada satu helaian A4 melintang, seperti borang asal.
+           Grid diletakkan pada bekas DALAM, bukan pada #akuan-cetak: mulaCetak()
+           dan halaman pratonton memaksa akar dokumen menjadi display:block, dan
+           itu pernah menyusun dua muka ini ATAS–BAWAH (laporan pengguna 9 Okt 2026). */
+        #akuan-cetak .satu-slip { min-height: 190mm; break-after: page; page-break-after: always; }
+        #akuan-cetak .satu-slip:last-child { break-after: auto; page-break-after: auto; }
+        #akuan-cetak .satu-slip + .satu-slip { border-top: 1px dashed #cbd5e1; padding-top: 4mm; }
+        @media print { #akuan-cetak .satu-slip + .satu-slip { border-top: 0; padding-top: 0; } }
+        #akuan-cetak .dua-muka { display: grid; grid-template-columns: 1fr 1fr; column-gap: 9mm; }
+        #akuan-cetak * { box-sizing: border-box; }
+        #akuan-cetak p { margin: 0; }
+        #akuan-cetak .u { display: inline-block; border-bottom: .6pt solid #000; min-height: 1.25em; padding: 0 1mm; vertical-align: bottom; overflow-wrap: anywhere; }
+        #akuan-cetak .baris { display: flex; align-items: flex-end; gap: 1.2mm; margin-top: 2mm; }
+        #akuan-cetak .baris .u { flex: 1; min-width: 0; }
+        #akuan-cetak .baris .tetap { flex: none; }
+        /* ---------- muka kiri: Surat Akuan Kebenaran Waris ---------- */
+        #akuan-cetak .kepala { display: grid; grid-template-columns: 17mm 1fr 34mm 14mm; align-items: center; column-gap: 2mm; }
+        #akuan-cetak .kepala img { width: 100%; height: 15mm; object-fit: contain; }
+        #akuan-cetak .kepala .sek { font-size: 7.4pt; line-height: 1.35; }
+        #akuan-cetak .kepala .sek b { font-size: 7.8pt; }
+        #akuan-cetak .kepala .hub { font-size: 6.6pt; line-height: 1.35; align-self: end; }
+        #akuan-cetak .tajuk-w { margin-top: 1mm; text-align: center; font-weight: 700; font-size: 8.2pt; }
+        #akuan-cetak .garis-tajuk { width: fit-content; min-width: 62%; max-width: 100%; margin: .6mm auto 0; padding: 0 2mm; border-bottom: .6pt solid #000;
+          min-height: 3.6mm; text-align: center; font-weight: 700; font-size: 8.2pt; line-height: 1.3; overflow-wrap: anywhere; }
+        #akuan-cetak .anak { margin-left: 11mm; }
+        #akuan-cetak .prog { display: grid; grid-template-columns: 30mm 3mm 1fr; row-gap: .6mm; margin: 1.2mm 0 0 16mm; width: 100mm; }
+        #akuan-cetak .prog .u { display: block; font-size: 7.4pt; }
+        #akuan-cetak .no { display: grid; grid-template-columns: 11mm 1fr; margin-top: 2mm; text-align: justify; }
+        #akuan-cetak .kecil { font-size: 5.6pt; }
+        #akuan-cetak .ttd { display: grid; grid-template-columns: 1fr 42mm; align-items: end; margin-top: 2.5mm; }
+        #akuan-cetak .ttd-ruang { position: relative; width: 44mm; height: 7mm; }
+        #akuan-cetak .ttd-ruang img { position: absolute; left: 2mm; bottom: -1.2mm; height: 11mm; max-width: 40mm; object-fit: contain; mix-blend-mode: multiply; }
+        #akuan-cetak .saksi-tajuk { margin-top: 2.6mm; font-weight: 700; text-decoration: underline; }
+        #akuan-cetak .cop { display: flex; justify-content: space-between; align-items: flex-end; }
+        /* ---------- muka kanan: Borang Perakuan Kesihatan ---------- */
+        #akuan-cetak .kanan { font-family: Calibri, Carlito, "Segoe UI", Arial, sans-serif; font-size: 7.9pt; }
+        #akuan-cetak .kepala-k { display: flex; justify-content: center; align-items: flex-start; min-height: 20mm; }
+        #akuan-cetak .jata-k { text-align: center; font-family: Arial, sans-serif; font-size: 5.6pt; font-weight: 700; line-height: 1.3; letter-spacing: .02em; }
+        #akuan-cetak .jata-k img { display: block; margin: 0 auto 1mm; height: 14mm; }
+        #akuan-cetak .tajuk-k { margin-top: 2.6mm; text-align: center; font-weight: 700; font-size: 8.2pt; line-height: 1.35; }
+        #akuan-cetak .blok { display: grid; grid-template-columns: 8mm 51mm 1fr; margin-top: 3.4mm; font-weight: 700; }
+        #akuan-cetak .sub { display: grid; grid-template-columns: 13mm 6mm 40mm 3mm 1fr; margin-top: .7mm; }
+        #akuan-cetak .jadual { width: 100%; border-collapse: collapse; margin-top: 3.2mm; font-size: 7.6pt; }
+        #akuan-cetak .jadual th, #akuan-cetak .jadual td { border: .8pt solid #000; height: 5.1mm; padding: 0 1.4mm; }
+        #akuan-cetak .jadual th { font-weight: 700; text-align: center; }
+        #akuan-cetak .jadual .c { text-align: center; }
+        #akuan-cetak .ttd-k { display: grid; grid-template-columns: 19mm 3mm 1fr; align-items: end; margin-top: 4.4mm; }
+        #akuan-cetak .titik { border-bottom: .9pt dotted #000; min-height: 1.3em; padding: 0 1mm; }
+        @media print { #akuan-cetak { width: 100%; } }
+      `}</style>
+
+      {senarai.map((x, i) => <Helaian key={i} a={a} d={x.data} tarikh={x.tarikh} />)}
     </div>
     </div>
   </>;

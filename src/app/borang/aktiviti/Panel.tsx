@@ -35,6 +35,7 @@ export default function Panel({ senarai, skop }: { senarai: AktivitiBorang[]; sk
   const [nota, setNota] = useState("");
   const [sibuk, setSibuk] = useState(false);
   const [cetak, setCetak] = useState<JawapanAktiviti | null>(null);
+  const [cetakSemua, setCetakSemua] = useState(false);
 
   async function laksana(kerja: () => Promise<void>, gagal: string) {
     setSibuk(true);
@@ -87,7 +88,7 @@ export default function Panel({ senarai, skop }: { senarai: AktivitiBorang[]; sk
   }
 
   const buka = (a: AktivitiBorang) => laksana(async () => {
-    setCetak(null); setSemak(null); setTeks("");
+    setCetak(null); setCetakSemua(false); setSemak(null); setTeks("");
     await muatSemula(a);
     setPilih(a);
   }, "Gagal membaca aktiviti.");
@@ -301,7 +302,15 @@ export default function Panel({ senarai, skop }: { senarai: AktivitiBorang[]; sk
 
           {/* ---------------- jawapan ---------------- */}
           <div>
-            <h3 className="font-bold text-navy-800">Akuan diterima dan cetakan</h3>
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <h3 className="font-bold text-navy-800">Akuan diterima dan cetakan</h3>
+              {jawapan.length > 0 && (
+                <button onClick={() => { setCetak(null); setCetakSemua(true); }}
+                  className="min-h-10 rounded-lg bg-navy-800 px-3 py-2 text-sm font-semibold text-white">
+                  🖨 Cetak semua ({jawapan.length})
+                </button>
+              )}
+            </div>
             <ul className="mt-2 divide-y divide-slate-100">
               {jawapan.map((j) => (
                 <li key={j.id} className="flex flex-wrap items-center justify-between gap-3 py-3">
@@ -310,7 +319,7 @@ export default function Panel({ senarai, skop }: { senarai: AktivitiBorang[]; sk
                     <small className={`block ${j.data.bersetuju ? "text-[#167a4b]" : "text-[#8f2424]"}`}>{j.data.bersetuju ? "Membenarkan" : "Tidak membenarkan"}</small>
                   </span>
                   <span className="flex gap-3">
-                    <button onClick={() => setCetak(j)} className="text-sm font-semibold text-navy-700 underline">Buka cetakan</button>
+                    <button onClick={() => { setCetakSemua(false); setCetak(j); }} className="text-sm font-semibold text-navy-700 underline">Buka cetakan</button>
                     <button disabled={sibuk} onClick={() => padamJawapan(j)} className="text-sm text-[#8f2424] underline">Padam</button>
                   </span>
                 </li>
@@ -318,7 +327,13 @@ export default function Panel({ senarai, skop }: { senarai: AktivitiBorang[]; sk
               {jawapan.length === 0 && <li className="py-3 text-sm text-slate-500">Belum ada akuan diterima.</li>}
             </ul>
           </div>
-          {cetak && <CetakAkuan aktiviti={pilih} data={cetak.data} tarikh={cetak.dicipta} />}
+          {cetakSemua && jawapan.length > 0 && (
+            <div>
+              <p className="text-sm text-slate-600">Pratonton {jawapan.length} akuan — satu helaian A4 bagi setiap murid, ikut susunan diterima.</p>
+              <CetakAkuan aktiviti={pilih} senarai={jawapan.map((j) => ({ data: j.data, tarikh: j.dicipta }))} />
+            </div>
+          )}
+          {!cetakSemua && cetak && <CetakAkuan aktiviti={pilih} data={cetak.data} tarikh={cetak.dicipta} />}
         </section>
       )}
     </div>
