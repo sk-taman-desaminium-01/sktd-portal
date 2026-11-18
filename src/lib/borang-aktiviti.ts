@@ -267,3 +267,40 @@ export async function buangPesertaAktiviti(id: string, muridId: string) {
   return { ok: true, mesej: "Peserta dibuang daripada senarai." };
  } catch (e) { return { ok: false, mesej: e instanceof Error ? e.message : "Gagal membuang peserta." }; }
 }
+
+/**
+ * Betulkan nama / No. MyKid / kelas seorang peserta yang SUDAH dipilih.
+ *
+ * Hanya baris `borang_peserta` aktiviti ini diubah — daftar ePBD
+ * (`pbd_murid`) dan akuan yang sudah dihantar TIDAK disentuh, jadi tiada
+ * data ibu bapa hilang. Nama/KP di sini ialah yang dipadankan semasa ibu
+ * bapa mengisi borang, jadi membetulkannya membuka jalan kepada penjaga
+ * yang tadinya ditolak kerana nama/MyKid tidak sepadan.
+ *
+ * No. MyKid dikunci selepas akuan diterima: akuan itu menyimpan MyKid yang
+ * diisi penjaga, dan menukarnya memutuskan padanan status "Diterima".
+ */
+export async function suntingPesertaAktiviti(id: string, muridId: string, input: { nama: string; no_kp: string; kelas: string }) {
+ try {
+  await urus(id);
+  if (!uuid(muridId)) throw new Error("Murid tidak sah.");
+  const nama = input.nama.trim().replace(/\s+/g, " ").toUpperCase();
+  const no_kp = input.no_kp.replace(/[- ]/g, "");
+  const kelas = input.kelas.trim().replace(/\s+/g, " ").toUpperCase();
+  if (nama.length < 2 || nama.length > 200) throw new Error("Nama murid mesti 2–200 aksara.");
+  if (!/^\d{12}$/.test(no_kp)) throw new Error("No. MyKid mesti 12 digit.");
+  if (!kelas || kelas.length > 100) throw new Error("Kelas tidak sah.");
+  const db = klienTulis();
+  const asal = await db.minta(`borang_peserta?select=no_kp&aktiviti_id=eq.${id}&murid_id=eq.${muridId}&limit=1`) as { no_kp: string }[];
+  if (!asal[0]) throw new Error("Peserta tiada dalam senarai aktiviti ini.");
+  if (asal[0].no_kp !== no_kp) {
+   const dihantar = await db.minta(`borang_jawapan?select=id&aktiviti_id=eq.${id}&murid_id=eq.${muridId}&limit=1`) as { id: string }[];
+   if (dihantar[0]) throw new Error("Akuan murid ini sudah diterima — No. MyKid tidak boleh ditukar. Nama dan kelas masih boleh dibetulkan.");
+  }
+  await db.minta(`borang_peserta?aktiviti_id=eq.${id}&murid_id=eq.${muridId}`, { method: "PATCH", headers: { Prefer: "return=minimal" }, body: JSON.stringify({ nama, no_kp, kelas }) });
+  return { ok: true, mesej: `Butiran ${nama} dikemas kini.`, peserta: { murid_id: muridId, nama, no_kp, kelas } };
+ } catch (e) {
+  const m = e instanceof Error ? e.message : "Gagal mengemas kini peserta.";
+  return { ok: false, mesej: /23505|duplicate key/.test(m) ? "No. MyKid itu sudah digunakan oleh peserta lain dalam aktiviti ini." : m };
+ }
+}

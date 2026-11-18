@@ -5,7 +5,7 @@ import Link from "@/components/Pautan";
 import {
   ciptaAktiviti, tambahPesertaAktiviti, pesertaAktiviti, jawapanAktiviti, tutupAktiviti,
   suntingAktiviti, padamAktiviti, padamJawapanAktiviti, cariMuridAktiviti, tambahPesertaPilih,
-  buangPesertaAktiviti,
+  buangPesertaAktiviti, suntingPesertaAktiviti,
 } from "@/lib/borang-aktiviti";
 import { julatTarikh, type AktivitiBorang, type JawapanAktiviti } from "@/data/borang-aktiviti";
 import CetakAkuan from "@/components/CetakAkuan";
@@ -148,6 +148,16 @@ export default function Panel({ senarai, skop }: { senarai: AktivitiBorang[]; sk
     }, "Gagal membuang peserta.");
   };
 
+  const [suntingPeserta, setSuntingPeserta] = useState<string | null>(null);
+  const simpanPeserta = (p: Peserta, fd: FormData) => {
+    if (!pilih) return;
+    void laksana(async () => {
+      const r = await suntingPesertaAktiviti(pilih.id, p.murid_id, { nama: nilai(fd, "nama"), no_kp: nilai(fd, "no_kp"), kelas: nilai(fd, "kelas") });
+      setNota(r.mesej);
+      if (r.ok && r.peserta) { setPeserta((s) => s.map((x) => (x.murid_id === p.murid_id ? r.peserta! : x))); setSuntingPeserta(null); }
+    }, "Gagal mengemas kini peserta.");
+  };
+
   const sudahHantar = new Set(jawapan.map((j) => j.data.muridKp));
 
   return (
@@ -225,6 +235,26 @@ export default function Panel({ senarai, skop }: { senarai: AktivitiBorang[]; sk
 
             <ol className="mt-3 max-h-80 divide-y divide-slate-100 overflow-auto rounded-lg border border-slate-100">
               {peserta.map((p, i) => (
+                suntingPeserta === p.murid_id ? (
+                <li key={p.murid_id} className="px-3 py-3 text-sm">
+                  <form onSubmit={(e) => { e.preventDefault(); simpanPeserta(p, new FormData(e.currentTarget)); }} className="grid gap-2 sm:grid-cols-[1fr_9rem_7rem]">
+                    <label className="min-w-0 text-xs font-semibold text-navy-800">Nama murid
+                      <input name="nama" defaultValue={p.nama} required minLength={2} maxLength={200} className={kelasInput} />
+                    </label>
+                    <label className="min-w-0 text-xs font-semibold text-navy-800">No. MyKid
+                      <input name="no_kp" defaultValue={p.no_kp} required inputMode="numeric" pattern="[0-9 -]{12,14}" readOnly={sudahHantar.has(p.no_kp)} className={kelasInput} />
+                    </label>
+                    <label className="min-w-0 text-xs font-semibold text-navy-800">Kelas
+                      <input name="kelas" defaultValue={p.kelas} required maxLength={100} className={kelasInput} />
+                    </label>
+                    <div className="flex gap-2 sm:col-span-3">
+                      <button disabled={sibuk} className="rounded-lg bg-navy-800 px-3 py-2 text-sm font-semibold text-white disabled:opacity-50">Simpan</button>
+                      <button type="button" disabled={sibuk} onClick={() => setSuntingPeserta(null)} className="rounded-lg border border-slate-300 px-3 py-2 text-sm">Batal</button>
+                    </div>
+                    <p className="text-xs text-slate-500 sm:col-span-3">Hanya senarai peserta aktiviti ini dibetulkan; daftar murid dan akuan yang sudah diterima tidak berubah.{sudahHantar.has(p.no_kp) ? " No. MyKid dikunci kerana akuan sudah diterima." : ""}</p>
+                  </form>
+                </li>
+                ) : (
                 <li key={p.murid_id} className="flex items-center gap-2 px-3 py-2 text-sm">
                   <span className="w-6 shrink-0 text-right text-xs text-slate-500">{i + 1}.</span>
                   <span className="min-w-0 flex-1">
@@ -234,8 +264,10 @@ export default function Panel({ senarai, skop }: { senarai: AktivitiBorang[]; sk
                   {sudahHantar.has(p.no_kp)
                     ? <span className="shrink-0 rounded-full bg-[#eef8f2] px-2 py-0.5 text-[11px] font-semibold text-[#167a4b]">Diterima</span>
                     : <span className="shrink-0 rounded-full bg-slate-100 px-2 py-0.5 text-[11px] text-slate-500">Menunggu</span>}
+                  <button disabled={sibuk} onClick={() => setSuntingPeserta(p.murid_id)} aria-label={`Sunting ${p.nama}`} className="shrink-0 rounded px-1.5 text-xs font-semibold text-navy-800 underline">Sunting</button>
                   <button disabled={sibuk} onClick={() => buangPeserta(p)} aria-label={`Buang ${p.nama}`} className="shrink-0 px-1 text-slate-500 hover:text-[#8f2424]">✕</button>
                 </li>
+                )
               ))}
               {peserta.length === 0 && <li className="px-3 py-3 text-sm text-slate-500">Belum ada peserta.</li>}
             </ol>
