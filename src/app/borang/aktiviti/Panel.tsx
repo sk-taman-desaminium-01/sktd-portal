@@ -10,7 +10,7 @@ import {
 import { julatTarikh, type AktivitiBorang, type JawapanAktiviti } from "@/data/borang-aktiviti";
 import CetakAkuan from "@/components/CetakAkuan";
 
-type Peserta = { murid_id: string; nama: string; no_kp: string; kelas: string };
+type Peserta = { murid_id: string; nama: string; no_kp: string; kelas: string; baharu?: boolean };
 
 /** [medan, label, jenis, wajib, lebar penuh] — tarikh mula & tamat bersebelahan. */
 const MEDAN: [keyof AktivitiBorang, string, string, boolean, boolean][] = [
@@ -282,13 +282,17 @@ export default function Panel({ senarai, skop }: { senarai: AktivitiBorang[]; sk
             </ol>
 
             <details className="mt-3">
-              <summary className="cursor-pointer text-xs font-semibold text-slate-600">Atau tampal senarai (nama + No. KP) secara pukal</summary>
+              <summary className="cursor-pointer text-xs font-semibold text-slate-600">Atau tampal senarai (nama + No. KP) secara pukal — termasuk murid baharu</summary>
+              <p className="mt-2 text-xs text-slate-500">Satu murid sebaris: nama dan No. KP (cth. <i>AHMAD BIN ALI 160101101234</i>). Murid dalam daftar ePBD diisi automatik dengan nama &amp; kelas rasmi; yang tiada ditambah sebagai MURID BAHARU.</p>
               <textarea disabled={sibuk} value={teks} onChange={(e) => { setTeks(e.target.value); setSemak(null); }} rows={5}
                 className="mt-2 w-full min-w-0 rounded-lg border border-slate-300 p-2 text-sm" aria-label="Senarai peserta" />
               <button disabled={sibuk || !teks.trim()} onClick={() => void importPeserta(false)} className="mt-2 rounded-lg border border-slate-300 px-3 py-2 text-sm">Semak senarai</button>
               {semak && (
                 <div className="mt-3">
-                  <ol className="max-h-60 overflow-auto text-sm">{semak.map((p) => <li key={p.murid_id}>{p.nama} · {p.kelas} · {p.no_kp}</li>)}</ol>
+                  <ol className="max-h-60 list-decimal overflow-auto pl-6 text-sm">{semak.map((p) => (
+                    <li key={p.murid_id} className="py-0.5">{p.nama} · {p.kelas} · {p.no_kp}
+                      {p.baharu && <span className="ml-1 rounded-full bg-[#fdf3dc] px-2 py-0.5 text-[11px] font-semibold text-[#7a5a12]">Baharu — tiada dalam ePBD</span>}</li>
+                  ))}</ol>
                   <button disabled={sibuk} onClick={() => void importPeserta(true)} className="mt-3 rounded-lg bg-navy-800 px-3 py-2 text-sm text-white">Sahkan peserta</button>
                 </div>
               )}
