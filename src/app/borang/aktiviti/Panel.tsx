@@ -44,15 +44,41 @@ export default function Panel({ senarai, skop }: { senarai: AktivitiBorang[]; sk
 
   const nilai = (fd: FormData, k: string) => String(fd.get(k) ?? "");
 
-  const cipta = (fd: FormData) => laksana(async () => {
-    const r = await ciptaAktiviti({
-      nama: nilai(fd, "nama"), tarikh: nilai(fd, "tarikh"), tarikh_tamat: nilai(fd, "tarikh_tamat") || null,
-      masa: nilai(fd, "masa"), tempat: nilai(fd, "tempat"),
-      anjuran: nilai(fd, "anjuran"), tutup: nilai(fd, "tutup"), skop: nilai(fd, "skop"),
-    });
-    setNota(r.mesej);
-    if (r.rekod) { setSemua((s) => [r.rekod!, ...s]); await buka(r.rekod); }
-  }, "Gagal mencipta aktiviti.");
+  /**
+   * BUKAN `<form action>`: React 19 MENGOSONGKAN borang selepas setiap
+   * tindakan — termasuk bila pelayan menolaknya. Pengurus yang tersilap
+   * tarikh tutup kehilangan semua yang ditaip, mesej ralat terpapar di luar
+   * borang yang sudah tertutup, dan skrin kelihatan seperti aktiviti sudah
+   * dicipta. Ibu bapa kemudian tidak menjumpai apa-apa. Borang hanya
+   * dikosongkan bila aktiviti BENAR-BENAR tersimpan.
+   */
+  const [ralatCipta, setRalatCipta] = useState("");
+  const cipta = async (borang: HTMLFormElement) => {
+    const fd = new FormData(borang);
+    const tarikh = nilai(fd, "tarikh"), tamat = nilai(fd, "tarikh_tamat"), tutupJawapan = nilai(fd, "tutup");
+    setRalatCipta("");
+    if (tutupJawapan > tarikh) { setRalatCipta("Tarikh tutup jawapan ibu bapa mesti SAMA atau SEBELUM tarikh mula aktiviti."); return; }
+    if (tamat && tamat < tarikh) { setRalatCipta("Tarikh tamat mesti sama atau selepas tarikh mula."); return; }
+    setSibuk(true);
+    setNota("");
+    let rekod: AktivitiBorang | undefined;
+    try {
+      const r = await ciptaAktiviti({
+        nama: nilai(fd, "nama"), tarikh, tarikh_tamat: tamat || null,
+        masa: nilai(fd, "masa"), tempat: nilai(fd, "tempat"),
+        anjuran: nilai(fd, "anjuran"), tutup: tutupJawapan, skop: nilai(fd, "skop"),
+      });
+      if (!r.ok || !r.rekod) { setRalatCipta(r.mesej || "Aktiviti TIDAK disimpan. Cuba lagi."); return; }
+      rekod = r.rekod;
+    } catch (e) {
+      setRalatCipta(`Aktiviti TIDAK disimpan: ${e instanceof Error ? e.message : "sambungan gagal"}. Muat semula halaman dan cuba lagi.`);
+      return;
+    } finally { setSibuk(false); }
+    borang.reset();
+    setSemua((s) => [rekod!, ...s]);
+    await buka(rekod);
+    setNota("Aktiviti dicipta dan dibuka kepada ibu bapa. Tambah peserta di bawah — hanya murid dalam senarai peserta boleh diisi akuannya.");
+  };
 
   async function muatSemula(a: AktivitiBorang) {
     const [p, j] = await Promise.all([pesertaAktiviti(a.id), jawapanAktiviti(a.id)]);
@@ -128,7 +154,7 @@ export default function Panel({ senarai, skop }: { senarai: AktivitiBorang[]; sk
     <div className="mt-5 space-y-5">
       <details className="rounded-xl border border-slate-200 bg-white p-4">
         <summary className="cursor-pointer font-bold text-navy-800">+ Cipta aktiviti baharu</summary>
-        <form action={cipta} className="mt-4 grid gap-3 sm:grid-cols-2">
+        <form onSubmit={(e) => { e.preventDefault(); void cipta(e.currentTarget); }} className="mt-4 grid gap-3 sm:grid-cols-2">
           <fieldset disabled={sibuk} className="contents">
             {MEDAN.map(([k, l, t, wajib, penuh]) => (
               <label key={k} className={`min-w-0 text-sm font-semibold text-navy-800${penuh ? " sm:col-span-2" : ""}`}>{l}
@@ -138,7 +164,8 @@ export default function Panel({ senarai, skop }: { senarai: AktivitiBorang[]; sk
             <label className="min-w-0 text-sm font-semibold text-navy-800">Pasukan / skop
               <select name="skop" className={kelasInput}>{skop.map((s) => <option key={s}>{s}</option>)}</select>
             </label>
-            <button disabled={sibuk} className="min-h-11 self-end rounded-lg bg-navy-800 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">Cipta aktiviti</button>
+            <button disabled={sibuk} className="min-h-11 self-end rounded-lg bg-navy-800 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">{sibuk ? "Menyimpan…" : "Cipta aktiviti"}</button>
+            {ralatCipta && <p role="alert" className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm font-semibold text-red-800 sm:col-span-2">{ralatCipta}</p>}
           </fieldset>
         </form>
       </details>
