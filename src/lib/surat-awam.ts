@@ -8,7 +8,7 @@ import { klienTulis } from "./supabase-pelayan";
 import { tahunSesiAktif } from "./sesi-aktif";
 import { hantar, emelIkutPeranan } from "./notifikasi";
 import type { DataSuratGambar } from "./surat";
-import { namaSepadan } from "@/data/borang-aktiviti";
+import { namaHampir } from "@/data/borang-aktiviti";
 import { padatkanTandatangan } from "./padat-tandatangan";
 
 export interface InputKebenaranGambarAwam {
@@ -36,7 +36,6 @@ export type HasilKebenaranGambarAwam = {
 const EMEL_AWAM = "borang-awam@sktd.invalid";
 const kelasSah = new Set([...semuaKelas(), ...semuaKelasPPKI()]);
 const hash = (nilai: string) => createHash("sha256").update(nilai).digest("hex");
-const sama = (nilai: string) => nilai.toUpperCase().replace(/[^A-Z0-9]/g, "");
 
 class RalatBorangAwam extends Error {}
 function gagal(mesej: string): never { throw new RalatBorangAwam(mesej); }
@@ -123,18 +122,30 @@ export async function hantarKebenaranGambarAwam(input: InputKebenaranGambarAwam)
       `pbd_pendaftaran?select=murid_id,tahun,kelas,pbd_murid!inner(nama,no_kp)` +
       `&tahun_sesi=eq.${sesi}&status=in.(aktif,pindah_masuk,ulang)&pbd_murid.no_kp=eq.${muridKp}&limit=2`,
     )) as { murid_id: string; tahun: number; kelas: string; pbd_murid: { nama: string; no_kp: string } }[];
-    const murid = pendaftaran.find((baris) => {
-      const label = baris.tahun === 0 ? baris.kelas : `${baris.tahun} ${baris.kelas}`;
-      return namaSepadan(baris.pbd_murid.nama, muridNama) && sama(label) === sama(muridKelas);
-    });
-    if (!murid) gagal("Butiran murid tidak sepadan dengan daftar sekolah. Semak nama, kelas dan MyKid atau hubungi guru kelas.");
+    // MyKid 12 digit ialah PENENTU. Nama hanya semakan kewarasan dan mesti
+    // memaafkan ejaan: daftar ePBD sendiri ada nama tersalah eja, dan ibu
+    // bapa menaip nama BETUL anak mereka (aduan 18 Nov 2026 — nama "tally"
+    // tetapi ditolak). Kelas diambil daripada DAFTAR, bukan pilihan penjaga,
+    // supaya tersalah pilih kelas tidak menolak borang yang sah.
+    let kelasRasmi = muridKelas;
+    if (pendaftaran.length) {
+      const murid = pendaftaran.find((baris) => namaHampir(baris.pbd_murid.nama, muridNama));
+      if (!murid) gagal("No. MyKid dijumpai dalam daftar sekolah, tetapi nama murid tidak sepadan. Taip nama penuh anak seperti dalam MyKid, atau hubungi guru kelas supaya ejaan dalam daftar dibetulkan.");
+      kelasRasmi = murid.tahun === 0 ? murid.kelas : `${murid.tahun} ${murid.kelas}`;
+    } else {
+      // Murid baharu yang direkod tanpa pendaftaran kelas (cth. ditambah
+      // melalui borang aktiviti): MyKid wujud, kelas ikut pilihan penjaga.
+      const rekod = (await db.minta(`pbd_murid?select=nama&no_kp=eq.${muridKp}&limit=1`)) as { nama: string }[];
+      if (!rekod[0]) gagal("No. MyKid ini tiada dalam daftar sekolah. Semak semula 12 digit MyKid anak, atau hubungi guru kelas.");
+      if (!namaHampir(rekod[0].nama, muridNama)) gagal("No. MyKid dijumpai dalam daftar sekolah, tetapi nama murid tidak sepadan. Taip nama penuh anak seperti dalam MyKid, atau hubungi guru kelas.");
+    }
 
-    const guru = await guruKelasBagi(muridKelas);
+    const guru = await guruKelasBagi(kelasRasmi);
     const emelGuru = guru.emel;
     const pemilik = emelGuru[0] ?? EMEL_AWAM;
     const data: DataSuratGambar = {
       penjagaNama, penjagaKp, alamat, telefon, muridKp,
-      muridNama, muridKelas, bersetuju: input.bersetuju, catatan, sumber: "awam", guruKelasNama: guru.nama,
+      muridNama, muridKelas: kelasRasmi, bersetuju: input.bersetuju, catatan, sumber: "awam", guruKelasNama: guru.nama,
     };
     const disimpan = (await db.minta("pbd_surat", {
       method: "POST",
@@ -150,7 +161,7 @@ export async function hantarKebenaranGambarAwam(input: InputKebenaranGambarAwam)
     const penerima = emelGuru.length ? emelGuru : await emelIkutPeranan(["pentadbir", "admin"]).catch(() => [] as string[]);
     await hantar({
       penerima, jenis: "borang", tajuk: "Kebenaran Gambar diterima",
-      teks: `${muridNama} (${muridKelas}): ibu bapa atau penjaga ${input.bersetuju ? "BERSETUJU" : "TIDAK BERSETUJU"}.`,
+      teks: `${muridNama} (${kelasRasmi}): ibu bapa atau penjaga ${input.bersetuju ? "BERSETUJU" : "TIDAK BERSETUJU"}.`,
       pautan: "/borang/urus",
     });
 
