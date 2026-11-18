@@ -7,7 +7,7 @@ import {
   suntingAktiviti, padamAktiviti, padamJawapanAktiviti, cariMuridAktiviti, tambahPesertaPilih,
   buangPesertaAktiviti, suntingPesertaAktiviti,
 } from "@/lib/borang-aktiviti";
-import { julatTarikh, type AktivitiBorang, type JawapanAktiviti } from "@/data/borang-aktiviti";
+import { julatTarikh, akuanLewat, type AktivitiBorang, type JawapanAktiviti } from "@/data/borang-aktiviti";
 import CetakAkuan from "@/components/CetakAkuan";
 
 type Peserta = { murid_id: string; nama: string; no_kp: string; kelas: string; baharu?: boolean };
@@ -175,6 +175,8 @@ export default function Panel({ senarai, skop }: { senarai: AktivitiBorang[]; sk
   const muridHantar = new Set(jawapan.map((j) => j.murid_id).filter(Boolean));
   const kpHantar = new Set(jawapan.map((j) => j.data.muridKp));
   const sudahHantar = (p: Peserta) => muridHantar.has(p.murid_id) || kpHantar.has(p.no_kp);
+  const lewat = new Set(jawapan.filter((j) => akuanLewat(j.dicipta, pilih?.tutup)).flatMap((j) => [j.murid_id ?? "", j.data.muridKp]));
+  const ChipLewat = () => <span className="ml-1 shrink-0 rounded-full bg-[#fdecec] px-2 py-0.5 text-[11px] font-semibold text-[#8f2424]">Lewat</span>;
 
   return (
     <div className="mt-5 space-y-5">
@@ -270,7 +272,7 @@ export default function Panel({ senarai, skop }: { senarai: AktivitiBorang[]; sk
                     <span className="block text-xs text-slate-500">{p.kelas} · {p.no_kp}</span>
                   </span>
                   {sudahHantar(p)
-                    ? <span className="shrink-0 rounded-full bg-[#eef8f2] px-2 py-0.5 text-[11px] font-semibold text-[#167a4b]">Diterima</span>
+                    ? <span className="flex shrink-0 items-center"><span className="rounded-full bg-[#eef8f2] px-2 py-0.5 text-[11px] font-semibold text-[#167a4b]">Diterima</span>{(lewat.has(p.murid_id) || lewat.has(p.no_kp)) && <ChipLewat />}</span>
                     : <span className="shrink-0 rounded-full bg-slate-100 px-2 py-0.5 text-[11px] text-slate-500">Menunggu</span>}
                   <button disabled={sibuk} onClick={() => setMenuPeserta((m) => (m === p.murid_id ? null : p.murid_id))}
                     aria-label={`Pilihan untuk ${p.nama}`} aria-expanded={menuPeserta === p.murid_id}
@@ -320,7 +322,7 @@ export default function Panel({ senarai, skop }: { senarai: AktivitiBorang[]; sk
               {jawapan.map((j) => (
                 <li key={j.id} className="flex flex-wrap items-center justify-between gap-3 py-3">
                   <span className="min-w-0 text-sm">
-                    <b className="text-navy-800">{j.data.muridNama}</b> · {j.data.kelas}
+                    <b className="text-navy-800">{j.data.muridNama}</b> · {j.data.kelas}{akuanLewat(j.dicipta, pilih.tutup) && <ChipLewat />}
                     <small className={`block ${j.data.bersetuju ? "text-[#167a4b]" : "text-[#8f2424]"}`}>{j.data.bersetuju ? "Membenarkan" : "Tidak membenarkan"}</small>
                   </span>
                   <span className="flex gap-3">

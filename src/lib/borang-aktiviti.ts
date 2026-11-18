@@ -43,6 +43,21 @@ async function denganTamat<T>(cuba: (lajur: string) => Promise<T>): Promise<T> {
   try { return await cuba(LAJUR_AWAM); }
   catch (e) { if (tiadaLajurTamat(e)) return cuba(LAJUR_AWAM.replace(",tarikh_tamat", "")); throw e; }
 }
+/**
+ * Borang DIBUKA kepada ibu bapa selagi aktiviti aktif dan belum TAMAT
+ * (tarikh tamat, atau tarikh mula jika sehari). Tarikh `tutup` bukan lagi
+ * pintu — selepasnya akuan masih diterima tetapi ditanda LEWAT kepada
+ * pengurus sahaja (keputusan pengguna 18 Nov 2026; tidak dicetak).
+ * Lajur `tarikh_tamat` mungkin tiada (SQL lama) → jatuh kepada `tarikh`.
+ */
+function tapisBuka(adaTamat = true, awalan = ""): string {
+  const t = hariIniMY();
+  return adaTamat ? `&${awalan}or=(tarikh.gte.${t},tarikh_tamat.gte.${t})` : `&${awalan}tarikh=gte.${t}`;
+}
+async function denganTapisBuka<T>(cuba: (tapis: string, lajurTamat: boolean) => Promise<T>): Promise<T> {
+  try { return await cuba(tapisBuka(true), true); }
+  catch (e) { if (tiadaLajurTamat(e)) return cuba(tapisBuka(false), false); throw e; }
+}
 function sahTamat(mula: string, tamat: string | null | undefined): string | null {
   if (!tamat) return null;
   if (!/^\d{4}-\d{2}-\d{2}$/.test(tamat)) throw new Error("Tarikh tamat tidak sah.");
@@ -252,7 +267,7 @@ export async function padamJawapanAktiviti(aktivitiId: string, jawapanId: string
 export async function aktivitiAwam(id?:string) {
  if(id && !uuid(id)) return [];
  try {
-   return await denganTamat((lajur) => bacaSemua<Pick<AktivitiBorang,"id"|"nama"|"tarikh"|"tarikh_tamat"|"masa"|"tempat"|"anjuran"|"tutup">>(`borang_aktiviti?select=${lajur}&aktif=eq.true&tutup=gte.${hariIniMY()}&order=tarikh.asc,id.asc${id?`&id=eq.${id}`:""}`));
+   return await denganTapisBuka((tapis, adaTamat) => bacaSemua<Pick<AktivitiBorang,"id"|"nama"|"tarikh"|"tarikh_tamat"|"masa"|"tempat"|"anjuran"|"tutup">>(`borang_aktiviti?select=${adaTamat ? LAJUR_AWAM : LAJUR_AWAM.replace(",tarikh_tamat", "")}&aktif=eq.true${tapis}&order=tarikh.asc,id.asc${id?`&id=eq.${id}`:""}`));
  } catch {
    // Laluan ini awam. Tiada skema DB atau ralat dalaman boleh dipaparkan
    // kepada penjaga; mereka hanya melihat tiada borang dibuka.
@@ -271,9 +286,9 @@ export async function hantarAkuan(id:string, data: AkuanAktiviti, lamanPerangkap
   const db=klienTulis();
   const dibenar=await db.minta("rpc/borang_ambil_giliran",{method:"POST",body:JSON.stringify({p_kunci:hash(`${ip}:${id}:${data.muridKp}`)})});
   if(!dibenar) throw new Error("Had cubaan hari ini dicapai. Hubungi pengurus aktiviti.");
-  const aktiviti = await db.minta(
-    `borang_aktiviti?select=id,nama,pengurus_emel,skop&aktif=eq.true&tutup=gte.${hariIniMY()}&id=eq.${id}&limit=1`,
-  ) as { id: string; nama: string; pengurus_emel: string; skop: string }[];
+  const aktiviti = await denganTapisBuka((tapis) => db.minta(
+    `borang_aktiviti?select=id,nama,pengurus_emel,skop,tutup&aktif=eq.true${tapis}&id=eq.${id}&limit=1`,
+  )) as { id: string; nama: string; pengurus_emel: string; skop: string; tutup: string }[];
   if(!aktiviti[0]) throw new Error("Borang telah ditutup atau tidak ditemui.");
   const p=await db.minta(`borang_peserta?select=murid_id,nama,kelas&aktiviti_id=eq.${id}&no_kp=eq.${data.muridKp}&limit=1`) as {murid_id:string;nama:string;kelas:string}[];
   // Hanya murid yang DIPILIH pengurus boleh diisi. No. MyKid mesti tepat;
@@ -285,7 +300,7 @@ export async function hantarAkuan(id:string, data: AkuanAktiviti, lamanPerangkap
   if(!p[0]) {
     // Aktiviti berganda (nama sama dicipta dua kali) — penjaga mungkin membuka
     // salinan yang tiada peserta. Tunjukkan jalan ke borang yang betul.
-    const lain=await db.minta(`borang_peserta?select=aktiviti_id,borang_aktiviti!inner(nama,aktif,tutup)&no_kp=eq.${data.muridKp}&aktiviti_id=neq.${id}&borang_aktiviti.aktif=eq.true&borang_aktiviti.tutup=gte.${hariIniMY()}&limit=1`).catch(()=>[]) as {aktiviti_id:string}[];
+    const lain=await db.minta(`borang_peserta?select=aktiviti_id,borang_aktiviti!inner(nama,aktif,tutup)&no_kp=eq.${data.muridKp}&aktiviti_id=neq.${id}&borang_aktiviti.aktif=eq.true${tapisBuka(true, "borang_aktiviti.")}&limit=1`).catch(()=>[]) as {aktiviti_id:string}[];
     if(lain[0]) throw new Error("Anak anda tersenarai dalam borang aktiviti LAIN yang sedang dibuka (mungkin aktiviti bernama sama). Kembali ke senarai aktiviti dan pilih borang yang satu lagi.");
   }
   if(!p[0]) throw new Error("No. MyKid ini tiada dalam senarai peserta aktiviti ini. Semak semula nombor MyKid anak (12 digit), atau hubungi jurulatih/pengurus pasukan supaya anak ditambah atau MyKid dibetulkan.");
@@ -298,7 +313,7 @@ export async function hantarAkuan(id:string, data: AkuanAktiviti, lamanPerangkap
   await db.minta("borang_jawapan",{method:"POST",headers:{Prefer:"return=minimal"},body:JSON.stringify({aktiviti_id:id,murid_id:p[0].murid_id,data:rekod,resit_hash:hash(resit)})});
   await hantar({
     penerima: [...new Set([aktiviti[0].pengurus_emel, ...(await emelPengurusSkop(aktiviti[0].skop))])], jenis: "borang",
-    tajuk: `Akuan penyertaan diterima · ${aktiviti[0].nama}`,
+    tajuk: `Akuan penyertaan diterima${hariIniMY() > aktiviti[0].tutup ? " (LEWAT)" : ""} · ${aktiviti[0].nama}`,
     teks: `${p[0].nama} (${p[0].kelas}) menghantar Surat Akuan Penyertaan Aktiviti.`,
     pautan: "/borang/aktiviti/urus",
   });

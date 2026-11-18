@@ -89,6 +89,19 @@ export function namaHampir(rasmi: string, taip: string): boolean {
  return jumpa >= 1 && jumpa * 2 >= b.length;
 }
 
+/**
+ * Akuan LEWAT = dihantar (tarikh Malaysia) selepas tarikh tutup. Dikira semasa
+ * paparan, tidak disimpan, dan TIDAK dicetak pada borang — tanda untuk
+ * pengurus sahaja.
+ */
+export function akuanLewat(dicipta: string, tutup: string | null | undefined): boolean {
+ if (!tutup) return false;
+ const t = new Date(dicipta);
+ if (Number.isNaN(t.getTime())) return false;
+ const hari = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kuala_Lumpur", year: "numeric", month: "2-digit", day: "2-digit" }).format(t);
+ return hari > tutup;
+}
+
 const BULAN_BORANG = ["JANUARI", "FEBRUARI", "MAC", "APRIL", "MEI", "JUN", "JULAI", "OGOS", "SEPTEMBER", "OKTOBER", "NOVEMBER", "DISEMBER"];
 
 /**

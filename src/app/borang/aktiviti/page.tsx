@@ -1,6 +1,7 @@
 import Link from "@/components/Pautan";
 import { aktivitiAwam } from "@/lib/borang-aktiviti";
 import { julatTarikh } from "@/data/borang-aktiviti";
+import { hariIniMY } from "@/lib/bilik";
 
 export const metadata = {
   title: "Surat Akuan Penyertaan Aktiviti",
@@ -33,7 +34,8 @@ export default async function AktivitiAwam() {
                   <dt className="font-semibold">Tempat</dt><dd>{aktiviti.tempat}</dd>
                   <dt className="font-semibold">Anjuran</dt><dd>{aktiviti.anjuran}</dd>
                 </dl>
-                <p className="mt-4 text-xs font-semibold text-[#8a5a00]">Borang ditutup {tarikhMY(aktiviti.tutup)}</p>
+                {/* Selepas tarikh tutup borang MASIH diterima (ditanda lewat untuk pengurus sahaja) — jangan tulis "ditutup". */}
+                {aktiviti.tutup >= hariIniMY() && <p className="mt-4 text-xs font-semibold text-[#8a5a00]">Sila hantar sebelum {tarikhMY(aktiviti.tutup)}</p>}
               </Link>
             </li>
           ))}
