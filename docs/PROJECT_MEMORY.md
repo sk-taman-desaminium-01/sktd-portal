@@ -851,3 +851,19 @@ SQL: `supabase/migrations/20261023_keberhasilan.sql` — **sudah dijalankan 23 O
   menjadikan PENGGABUNG (akaun peribadi) sebagai committer di `main`.
   Untuk memastikan deploy dikaitkan dengan akaun sekolah, commit dan push
   ke `main` dengan author DAN committer `SK-Taman-Desaminium`.
+
+## Borang Aktiviti: akses pengurus & perlindungan data (18 Nov 2026)
+
+- SETIAP pengurus pasukan yang dilantik (sesi aktif, mana-mana sukan/kelab)
+  boleh MELIHAT & MEMBANTU semua aktiviti (keputusan pengguna). Tanpa
+  lantikan → tiada akses, walaupun pencipta.
+- **Padam aktiviti / padam akuan / tutup borang: admin atau PENCIPTA
+  sahaja** (`urusPenuh`). Padam aktiviti memadam semua peserta & akuan
+  (cascade) — jangan longgarkan.
+- Tambah peserta (carian & tampal pukal) guna `ignore-duplicates`: peserta
+  sedia ada TIDAK ditimpa — ejaan yang dibetulkan jurulatih kekal.
+- Betulkan nama/kelas/MyKid selepas akuan dihantar: hanya tiga medan itu
+  dalam `borang_jawapan.data`; selebihnya ditulis semula sebijik; nilai lama
+  dalam `data.pindaan`.
+- Padanan nama ibu bapa (`namaHampir`): MyKid penentu, ejaan dimaafkan —
+  dipakai di akuan aktiviti DAN Kebenaran Gambar.

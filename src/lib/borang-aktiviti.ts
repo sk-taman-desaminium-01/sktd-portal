@@ -157,7 +157,9 @@ function gabungBarisPukal(teks: string): string {
  *     minimum dicipta (TANPA pendaftaran kelas, jadi senarai kelas, ePBD dan
  *     statistik tidak berubah). Bila Guru Kelas mendaftarkannya kemudian,
  *     import padan ikut No. KP (`on_conflict=no_kp`) — tiada pendua.
- * Peserta & akuan sedia ada tidak disentuh (merge-duplicates).
+ * Peserta & akuan sedia ada tidak disentuh (ignore-duplicates): murid yang
+ * sudah dalam senarai KEKAL dengan nama/kelas/MyKid yang mungkin telah
+ * dibetulkan jurulatih — tampalan semula tidak menimpanya.
  */
 export async function tambahPesertaAktiviti(id: string, teks: string, simpan=false) {
  try {
@@ -196,7 +198,7 @@ export async function tambahPesertaAktiviti(id: string, teks: string, simpan=fal
   });
   if (simpan) {
    if (peserta.some((p)=>!uuid(p.murid_id))) throw new Error("Rekod murid baharu tidak dapat dicipta. Cuba lagi.");
-   await db.minta("borang_peserta?on_conflict=aktiviti_id,murid_id",{method:"POST",headers:{Prefer:"resolution=merge-duplicates,return=minimal"},body:JSON.stringify(peserta.map(({baharu:_b,...p})=>{void _b;return p;}))});
+   await db.minta("borang_peserta?on_conflict=aktiviti_id,murid_id",{method:"POST",headers:{Prefer:"resolution=ignore-duplicates,return=minimal"},body:JSON.stringify(peserta.map(({baharu:_b,...p})=>{void _b;return p;}))});
   }
   const nBaharu=peserta.filter((p)=>p.baharu).length;
   const abai=ditolak.length?` ⚠️ ${ditolak.length} baris TIDAK dibaca (tiada No. KP 12 digit): ${ditolak.slice(0,5).join(" | ")}.`:"";
@@ -206,8 +208,20 @@ export async function tambahPesertaAktiviti(id: string, teks: string, simpan=fal
 export async function jawapanAktiviti(id:string):Promise<JawapanAktiviti[]> {
  await urus(id); return bacaSemua<JawapanAktiviti>(`borang_jawapan?select=id,aktiviti_id,murid_id,data,dicipta&aktiviti_id=eq.${id}&order=dicipta.asc,id.asc`);
 }
+/**
+ * Tindakan yang MEMBUANG data (padam aktiviti → semua peserta & akuan ibu
+ * bapa ikut terpadam; padam satu akuan) atau menutup borang: hanya admin
+ * atau pencipta aktiviti itu. Pengurus lain boleh melihat & membantu
+ * (peserta, sunting ejaan, cetak), tetapi tidak boleh memadam kerja orang lain.
+ */
+async function urusPenuh(id: string) {
+ const a = await urus(id);
+ const { saya, admin } = await akses();
+ if (!admin && a.pengurus_emel !== saya.emel) throw new Error("Hanya admin atau pencipta aktiviti ini boleh menutup/memadam. Data tidak diubah.");
+ return a;
+}
 export async function tutupAktiviti(id:string) {
- await urus(id); await klienTulis().minta(`borang_aktiviti?id=eq.${id}`,{method:"PATCH",body:JSON.stringify({aktif:false})}); segarAktiviti();
+ await urusPenuh(id); await klienTulis().minta(`borang_aktiviti?id=eq.${id}`,{method:"PATCH",body:JSON.stringify({aktif:false})}); segarAktiviti();
 }
 export async function suntingAktiviti(id: string, input: Pick<AktivitiBorang,"nama"|"tarikh"|"tarikh_tamat"|"masa"|"tempat"|"anjuran"|"tutup"> & { skop?: string }) {
  try {
@@ -224,12 +238,12 @@ export async function suntingAktiviti(id: string, input: Pick<AktivitiBorang,"na
  } catch (e) { return { ok: false, mesej: e instanceof Error ? e.message : "Gagal menyunting aktiviti." }; }
 }
 export async function padamAktiviti(id: string) {
- await urus(id);
+ await urusPenuh(id);
  await klienTulis().minta(`borang_aktiviti?id=eq.${id}`, { method: "DELETE" });
  segarAktiviti();
 }
 export async function padamJawapanAktiviti(aktivitiId: string, jawapanId: string) {
- await urus(aktivitiId);
+ await urusPenuh(aktivitiId);
  if (!uuid(jawapanId)) throw new Error("Jawapan tidak sah.");
  await klienTulis().minta(`borang_jawapan?id=eq.${jawapanId}&aktiviti_id=eq.${aktivitiId}`, { method: "DELETE" });
  segarAktiviti();
@@ -353,7 +367,7 @@ export async function tambahPesertaPilih(id: string, muridIds: string[]) {
   if (tanpaKp.length) throw new Error(`No. MyKid belum ada dalam daftar untuk: ${tanpaKp.map((r) => r.pbd_murid.nama).join(", ")}. Lengkapkan di kad Guru Kelas dahulu.`);
   if (rows.length !== ids.length) throw new Error("Sebahagian murid tiada dalam daftar aktif sesi ini.");
   const peserta = rows.map((r) => ({ aktiviti_id: id, murid_id: r.murid_id, nama: r.pbd_murid.nama, no_kp: r.pbd_murid.no_kp!, kelas: r.tahun ? `${r.tahun} ${r.kelas}` : r.kelas }));
-  await db.minta("borang_peserta?on_conflict=aktiviti_id,murid_id", { method: "POST", headers: { Prefer: "resolution=merge-duplicates,return=minimal" }, body: JSON.stringify(peserta) });
+  await db.minta("borang_peserta?on_conflict=aktiviti_id,murid_id", { method: "POST", headers: { Prefer: "resolution=ignore-duplicates,return=minimal" }, body: JSON.stringify(peserta) });
   return { ok: true, mesej: `${peserta.length} peserta ditambah.` };
  } catch (e) { return { ok: false, mesej: e instanceof Error ? e.message : "Gagal menambah peserta." }; }
 }
