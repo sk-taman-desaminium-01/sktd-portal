@@ -109,6 +109,26 @@ export async function pesertaAktiviti(id: string) {
  await urus(id);
  return bacaSemua<{murid_id:string;nama:string;no_kp:string;kelas:string}>(`borang_peserta?select=murid_id,nama,no_kp,kelas&aktiviti_id=eq.${id}&order=nama.asc,murid_id.asc`);
 }
+const KP_DALAM = /\d{6}\s*-?\s*\d{2}\s*-?\s*\d{4}/;
+const KEPALA = /^(bil\.?|no\.?|nama|kp|ic|kad pengenalan|jantina|kelas)\b/i;
+/**
+ * Tampalan sebenar dari WhatsApp/PDF/Word sering MEMECAHKAN satu murid kepada
+ * beberapa baris ("NUR AIMY BINTI MOHD AL-" ↵ "AMIN 160101101234", atau nama
+ * sebaris dan No. KP baris berikutnya). Baris tanpa No. KP disambung kepada
+ * baris seterusnya sehingga No. KP ditemui — satu murid = satu No. KP.
+ */
+function gabungBarisPukal(teks: string): string {
+  const keluar: string[] = []; let tampung = "";
+  for (const mentah of teks.split(/\r?\n/)) {
+    const b = mentah.trim();
+    if (!b || (KEPALA.test(b) && b.length < 40 && !KP_DALAM.test(b))) continue;
+    tampung = tampung ? (tampung.endsWith("-") ? tampung + b : `${tampung} ${b}`) : b;
+    if (KP_DALAM.test(b)) { keluar.push(tampung); tampung = ""; }
+  }
+  if (tampung) keluar.push(tampung);
+  return keluar.join("\n");
+}
+
 /**
  * Tampal pukal (nama + No. KP). Setiap baris dikesan sendiri:
  *  1. ada dalam daftar ePBD aktif → nama & kelas RASMI daftar;
@@ -122,16 +142,19 @@ export async function pesertaAktiviti(id: string) {
  */
 export async function tambahPesertaAktiviti(id: string, teks: string, simpan=false) {
  try {
-  await urus(id); const {murid,berulang,ditolak} = bacaSenaraiMurid(teks);
-  if (berulang.length) throw new Error(`No. KP berulang dalam senarai: ${berulang.join(", ")}.`);
-  const tanpaKp = murid.filter((m)=>!m.no_kp || !/^\d{12}$/.test(m.no_kp));
-  if (tanpaKp.length) throw new Error(`Setiap baris perlukan No. KP 12 digit. Semak: ${tanpaKp.map((m)=>m.asal).slice(0,5).join(" | ")}`);
-  if (!murid.length || murid.length>200) throw new Error("Senarai mesti 1–200 murid (satu baris: nama + No. KP).");
+  await urus(id);
+  const dibaca = bacaSenaraiMurid(gabungBarisPukal(teks));
+  // No. KP sama ditampal dua kali (salin-tampal berganda) — simpan sekali, bukan tolak seluruh senarai.
+  const dilihat = new Set<string>(); const murid = dibaca.murid.filter((m) => !m.no_kp || (dilihat.has(m.no_kp) ? false : (dilihat.add(m.no_kp), true)));
+  const ditolak = [...dibaca.ditolak, ...murid.filter((m)=>!m.no_kp || !/^\d{12}$/.test(m.no_kp)).map((m)=>m.asal)];
+  const sah = murid.filter((m)=>m.no_kp && /^\d{12}$/.test(m.no_kp) && m.nama.trim().length>=2);
+  if (!sah.length) throw new Error(`Tiada murid dikesan. Setiap murid perlukan nama dan No. KP 12 digit (cth. AHMAD BIN ALI 160101101234).${ditolak.length?` Tidak dibaca: ${ditolak.slice(0,3).join(" | ")}`:""}`);
+  if (sah.length>200) throw new Error("Maksimum 200 murid sekali tampal.");
   const db=klienTulis(); const sesi=await tahunSesiAktif();
-  const kps=murid.map((m)=>m.no_kp!);
+  const kps=sah.map((m)=>m.no_kp!);
   const daftar=await db.minta(`pbd_pendaftaran?select=murid_id,tahun,kelas,pbd_murid!inner(nama,no_kp)&tahun_sesi=eq.${sesi}&status=in.(aktif,pindah_masuk,ulang)&pbd_murid.no_kp=in.(${kps.join(",")})`) as {murid_id:string;tahun:number;kelas:string;pbd_murid:{nama:string;no_kp:string}}[];
   const ikutKp=new Map(daftar.map((r)=>[r.pbd_murid.no_kp,r]));
-  const luar=murid.filter((m)=>!ikutKp.has(m.no_kp!));
+  const luar=sah.filter((m)=>!ikutKp.has(m.no_kp!));
   const idLuar=new Map<string,string>();
   if (luar.length) {
    const wujud=await db.minta(`pbd_murid?select=id,no_kp&no_kp=in.(${luar.map((m)=>`"${m.no_kp}"`).join(",")})`) as {id:string;no_kp:string}[];
@@ -147,7 +170,7 @@ export async function tambahPesertaAktiviti(id: string, teks: string, simpan=fal
     }
    }
   }
-  const peserta=murid.map((m)=>{
+  const peserta=sah.map((m)=>{
    const r=ikutKp.get(m.no_kp!);
    if (r) return {aktiviti_id:id,murid_id:r.murid_id,nama:r.pbd_murid.nama,no_kp:r.pbd_murid.no_kp,kelas:r.tahun?`${r.tahun} ${r.kelas}`:r.kelas,baharu:false};
    return {aktiviti_id:id,murid_id:idLuar.get(m.no_kp!) ?? `baharu-${m.no_kp}`,nama:m.nama.toUpperCase(),no_kp:m.no_kp!,kelas:"MURID BAHARU",baharu:true};
@@ -157,7 +180,7 @@ export async function tambahPesertaAktiviti(id: string, teks: string, simpan=fal
    await db.minta("borang_peserta?on_conflict=aktiviti_id,murid_id",{method:"POST",headers:{Prefer:"resolution=merge-duplicates,return=minimal"},body:JSON.stringify(peserta.map(({baharu:_b,...p})=>{void _b;return p;}))});
   }
   const nBaharu=peserta.filter((p)=>p.baharu).length;
-  const abai=ditolak.length?` ${ditolak.length} baris tidak dibaca (tiada nama/No. KP).`:"";
+  const abai=ditolak.length?` ⚠️ ${ditolak.length} baris TIDAK dibaca (tiada No. KP 12 digit): ${ditolak.slice(0,5).join(" | ")}.`:"";
   return {ok:true,mesej:`${peserta.length} peserta ${simpan?"disimpan":"dikesan"}${nBaharu?` — ${nBaharu} tiada dalam daftar ePBD, ${simpan?"ditambah":"akan ditambah"} sebagai MURID BAHARU (kelas boleh dibetulkan melalui ⋯ › Sunting)`:""}.${abai}`,peserta};
  } catch(e) {return {ok:false,mesej:e instanceof Error?e.message:"Gagal membaca peserta."};}
 }
